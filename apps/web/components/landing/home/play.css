@@ -1,0 +1,199 @@
+/* "Try the rules" + "Under the hood": section-specific motion and interaction (design-direction 04 §4, §6 and the
+   micro-interaction catalogue). Imported by RulesPlayground.tsx and UnderTheHood.tsx. Like the toolkit's
+   landing-motion.css, every rule is scoped under [data-landing] (Next keeps a page's CSS after a client navigation)
+   and uses only tokens: --ease-* from globals.css, --duration-* / --ease-spring from landing-motion.css, colours from
+   tokens.css. Reduced motion: no translate, scale, rotation or glide; text and colours swap instantly (end of file). */
+
+@layer theme, base, components, utilities;
+
+@layer components {
+  /* ---------------------------------------------------------------------------------------------------------
+     Layers (RulesParts.tsx): every state of a box stacked in one grid cell, so the cell keeps the tallest state's
+     size and a swap never moves the layout. A swap takes 160 ms: the leaving state is gone in 80 ms and the arriving
+     one fades in over 120 ms from 40 ms, so two sentences never share a frame at half opacity (a 200 ms crossfade
+     read muddy at 20 fps) and the box is never blank (a strict fade-through blinked). A state that mounts with the
+     tap (the result's) fades in the same way. */
+  [data-landing] {
+    --play-out: 80ms;
+    --play-in-at: 40ms;
+  }
+  [data-landing] .play-layers {
+    display: grid;
+  }
+  [data-landing] .play-layers > * {
+    grid-area: 1 / 1;
+    align-self: center;
+  }
+  [data-landing] .play-layers > [data-on="false"] {
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      opacity var(--play-out) var(--ease-standard),
+      visibility 0s linear var(--play-out);
+  }
+  [data-landing] .play-layers > [data-on="true"] {
+    opacity: 1;
+    transition: opacity var(--duration-fast) var(--ease-standard) var(--play-in-at);
+  }
+  [data-landing] .play-layers > .play-in[data-on="true"] {
+    animation: play-fade var(--duration-fast) var(--ease-standard) var(--play-in-at) backwards;
+  }
+
+  /* an icon or chip that arrives with a state pops on spring-pop (scale only, from .5; opacity in its own 120 ms) */
+  [data-landing] .play-layers > [data-on="true"] .play-pop {
+    animation:
+      play-pop var(--duration-slow) var(--ease-spring) var(--play-in-at) backwards,
+      play-fade var(--duration-fast) linear var(--play-in-at) backwards;
+  }
+  [data-landing] .play-pop-chip {
+    --play-pop-from: 0.6;
+  }
+
+  /* the result's extra rows: they arrive with the tap (the box glides open around them, useGlide) and, when the
+     box returns to the preview, they fade while it closes over them (in-flow height 0, so the box can shrink) */
+  [data-landing] .play-rows {
+    animation: play-rows-in var(--duration-moderate) var(--ease-enter) backwards;
+  }
+
+  /* a line that appears when the money moves (the rule list's "You've used $84 of it."), its space kept from the tap */
+  [data-landing] .play-fade-line {
+    transition:
+      opacity var(--duration-base) var(--ease-standard),
+      visibility 0s;
+  }
+
+  /* the capsule's tint: sunken → brand-soft ("the rules did this") and back, 200 ms */
+  [data-landing] .play-capsule {
+    transition: background-color var(--duration-base) var(--ease-standard);
+  }
+
+  /* the action button's label: the new word fades in when the button changes job (Spend ↔ Approve as Leo) */
+  [data-landing] .play-label {
+    animation: play-fade var(--duration-base) var(--ease-standard) backwards;
+  }
+  /* busy (60 %) and not-allowed (50 %) dim over 200 ms on a wrapper (the Button's own transition list is fixed) */
+  [data-landing] .play-dim {
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  /* "Start over" appears with the first change and leaves after its icon has turned (a 120 ms hold, then 200 ms);
+     its underline darkens on hover in 120 ms */
+  [data-landing] .play-reset {
+    transition:
+      opacity var(--duration-base) var(--ease-standard),
+      visibility 0s,
+      text-decoration-color var(--duration-fast) var(--ease-standard);
+  }
+  [data-landing] .play-reset[data-hidden] {
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      opacity var(--duration-base) var(--ease-standard) var(--duration-fast),
+      visibility 0s linear calc(var(--duration-fast) + var(--duration-base));
+  }
+
+  /* ---------------------------------------------------------------------------------------------------------
+     Reason chips (RulesChip): the check's slot opens 0fr → 1fr over 200 ms, so the chip grows and its neighbours
+     glide; the check pops on the spring when it arrives and fades in 120 ms when it leaves. Below a 23rem row the
+     emoji hide, so the three chips fit one line at 390 px. */
+  [data-landing] .play-chips {
+    container: play-chips / inline-size;
+  }
+  [data-landing] .play-chip-slot {
+    grid-template-columns: 0fr;
+    transition: grid-template-columns var(--duration-base) var(--ease-standard);
+  }
+  [data-landing] .play-chip[data-on="true"] .play-chip-slot {
+    grid-template-columns: 1fr;
+  }
+  [data-landing] .play-chip-check {
+    opacity: 0;
+    scale: 0.5;
+    transition:
+      opacity var(--duration-fast) var(--ease-standard),
+      scale var(--duration-fast) var(--ease-standard);
+  }
+  [data-landing] .play-chip[data-on="true"] .play-chip-check {
+    opacity: 1;
+    scale: 1;
+    transition:
+      opacity var(--duration-fast) linear,
+      scale var(--duration-slow) var(--ease-spring);
+  }
+  @container play-chips (max-width: 23rem) {
+    [data-landing] .play-chip-emoji {
+      display: none;
+    }
+  }
+
+  /* Amount radios (RulesSegmented): one sliding thumb (translate only, 280 ms), the app's 1 px lift in Day.
+     Night: the track becomes a ground well and the thumb a sunken pill with a line edge, so the selected amount is
+     raised, not a darker hole (detail audit D4; tokens only). */
+  [data-landing] .play-seg-thumb {
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--pot-ink) 12%, transparent); /* the app's Segmented/TabList lift */
+    transition: translate var(--duration-moderate) var(--ease-standard);
+  }
+  [data-landing] :where([data-theme="night"], [data-theme="night"] *) .play-seg {
+    background-color: var(--pot-ground);
+  }
+  [data-landing] :where([data-theme="night"], [data-theme="night"] *) .play-seg-thumb {
+    background-color: var(--pot-surface-sunken);
+    box-shadow: inset 0 0 0 1px var(--pot-line);
+  }
+}
+
+/* closing (unlayered, so it beats the rows' own margin utility): in-flow height 0 so the stage can glide shut over
+   them, fading meanwhile */
+[data-landing] .play-rows[data-closing] {
+  height: 0;
+  margin-top: 0;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+@keyframes play-pop {
+  from {
+    transform: scale(var(--play-pop-from, 0.5));
+  }
+}
+@keyframes play-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes play-rows-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   Under the hood: the tech flow traces ONE $84 spend (04 §6) with the toolkit's sequence engine (lit nodes, draw-x/-y
+   traces, out, pop). One extra effect extends it the documented way: longhands only, so the engine's delay and
+   paused-while-armed rules still apply, and a pot-seq- name, so the engine waits for it.
+   reveal: a brand copy of a rounded connector (the fork and join brackets), cut to its own clip-path (the half the
+   spend travels) and revealed along it from --seq-reveal-from, so its rounded corners never squash (a scale would). */
+[data-landing] :is([data-seq-state], [data-seq-state] *)[data-seq="reveal"] {
+  animation-name: pot-seq-play-reveal;
+  animation-duration: var(--seq-dur, 240ms);
+  animation-timing-function: var(--ease-standard);
+  animation-fill-mode: backwards;
+}
+@keyframes pot-seq-play-reveal {
+  from {
+    clip-path: var(--seq-reveal-from);
+  }
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   Reduced motion: swaps are instant, nothing slides, pops, glides or turns (the 1.2 s "Checking Pot rules" beat is
+   pacing and stays; the toolkit's guards already stop every [data-seq], including reveal-*). */
+@media (prefers-reduced-motion: reduce) {
+  [data-landing] :is(.play-layers > *, .play-fade-line, .play-capsule, .play-dim, .play-reset, .play-reset[data-hidden], .play-rows[data-closing], .play-chip-slot, .play-chip-check, .play-seg-thumb) {
+    transition: none !important;
+  }
+  [data-landing] :is(.play-pop, .play-rows, .play-label, .play-layers > .play-in) {
+    animation: none !important;
+  }
+}

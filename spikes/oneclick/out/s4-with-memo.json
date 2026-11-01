@@ -1,0 +1,29 @@
+{
+  "name": "s4-with-memo",
+  "at": "2026-10-21T11:29:20.730Z",
+  "request": {
+    "method": "GET",
+    "url": "https://1click.chaindefuser.com/v0/status?depositAddress=0x000000000000000000000000000000000000dEaD&depositMemo=123",
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "response": {
+    "status": 404,
+    "ms": 65,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1195",
+      "x-ratelimit-reset-unauth": "59"
+    },
+    "body": {
+      "message": "Deposit address 0x000000000000000000000000000000000000dEaD not found",
+      "error": "Not Found",
+      "statusCode": 404,
+      "timestamp": "2026-10-21T11:29:20.783Z",
+      "path": "/v0/status?depositAddress=0x000000000000000000000000000000000000dEaD&depositMemo=123"
+    }
+  }
+}

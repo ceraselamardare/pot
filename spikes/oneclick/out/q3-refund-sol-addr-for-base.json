@@ -1,0 +1,42 @@
+{
+  "name": "q3-refund-sol-addr-for-base",
+  "at": "2026-10-21T11:27:21.082Z",
+  "request": {
+    "method": "POST",
+    "url": "https://1click.chaindefuser.com/v0/quote",
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "dry": true,
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "150000000",
+      "refundTo": "13QkxhNMrTPxoCkRdYdJ65tFuwXPhL5gLS2Z5Nr6gjRK",
+      "refundType": "ORIGIN_CHAIN",
+      "recipient": "near",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2026-10-21T12:27:12.904Z"
+    }
+  },
+  "response": {
+    "status": 400,
+    "ms": 55,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1185",
+      "x-ratelimit-reset-unauth": "52"
+    },
+    "body": {
+      "message": "refundTo is not valid",
+      "correlationId": "3b3a58fc-2c5a-4a0b-9706-0a86d3ffdf8b",
+      "timestamp": "2026-10-21T11:27:21.138Z",
+      "path": "/v0/quote"
+    }
+  }
+}

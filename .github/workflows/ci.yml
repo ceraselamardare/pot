@@ -1,0 +1,266 @@
+# X-02 CI (plan/test-plan.md §7). Written 2026-10-22 by QA; never run on GitHub yet (no repository exists).
+# Pinned: ubuntu-24.04 (never ubuntu-latest), Rust 1.93.0 from contracts/rust-toolchain.toml, cargo-near 0.22.0,
+# Node 22.22.x, pnpm 11 (packageManager in package.json), Postgres 17 (same major as infra/docker-compose.yml).
+# No NEAR keys live in GitHub: the testnet job only drives an already deployed preview through its own relayer.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      testnet_base_url:
+        description: "Deployed preview URL for the testnet e2e job (empty = skip it)"
+        required: false
+        default: ""
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22.22"
+  CARGO_NEAR_VERSION: "0.22.0"
+  NEAR_SANDBOX_VERSION: "2.13.4"
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      contracts: ${{ steps.filter.outputs.contracts }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then echo "contracts=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base" HEAD | grep -qE '^(contracts/|packages/pot-sdk/src/math/vectors/)'; then
+            echo "contracts=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "contracts=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Unit + proptest + sandbox. Every sandbox test runs on Sputnik build A (testnet global Ea8t…) and build B
+  # (mainnet v3.2 DtHZ…) inside one run (the `dual!` macro), so no matrix is needed for A/B.
+  contracts:
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: contracts
+    env:
+      NEAR_RPC_TIMEOUT_SECS: "60"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          toolchain: "1.93.0"
+          target: wasm32-unknown-unknown
+          components: rustfmt, clippy
+          cache-workspaces: contracts
+          rustflags: ""
+          build-warnings: ""
+      - name: Cache cargo-near
+        id: cargo-near-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/cargo-near
+          key: cargo-near-${{ env.CARGO_NEAR_VERSION }}-${{ runner.os }}
+      - name: Install cargo-near (pinned installer)
+        if: steps.cargo-near-cache.outputs.cache-hit != 'true'
+        working-directory: .
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v${CARGO_NEAR_VERSION}/cargo-near-installer.sh | sh
+      - name: Cache the nearcore sandbox binaries
+        uses: actions/cache@v6
+        with:
+          path: ~/.near
+          key: near-sandbox-${{ env.NEAR_SANDBOX_VERSION }}-2.14.0-rc.4-${{ runner.os }}
+      - name: Vendored Sputnik wasm hashes (INV-17, T-00)
+        working-directory: contracts/res/sputnik
+        run: shasum -a 256 -c SHA256SUMS
+      - name: Build pot-hub and test-usdc (cargo near, D-12)
+        run: ./scripts/build.sh
+      - name: Unit + property tests (PR-01 10k, PR-02 parity, PR-03)
+        run: cargo test -p pot-hub -p test-usdc
+      - name: Sandbox tests, builds A and B (protocol 86)
+        run: cargo test -p pot-tests -- --test-threads=2
+        env:
+          POT_NO_BUILD: "1"
+
+  # The ★ tests on protocol 88 (testnet parity), nearcore 2.14.0-rc.4.
+  contracts-p88:
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: contracts
+    env:
+      NEAR_RPC_TIMEOUT_SECS: "60"
+      POT_SANDBOX_VERSION: "2.14.0-rc.4"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          toolchain: "1.93.0"
+          target: wasm32-unknown-unknown
+          cache-workspaces: contracts
+          rustflags: ""
+          build-warnings: ""
+      - name: Cache cargo-near
+        id: cargo-near-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/cargo-near
+          key: cargo-near-${{ env.CARGO_NEAR_VERSION }}-${{ runner.os }}
+      - name: Install cargo-near (pinned installer)
+        if: steps.cargo-near-cache.outputs.cache-hit != 'true'
+        working-directory: .
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v${CARGO_NEAR_VERSION}/cargo-near-installer.sh | sh
+      - run: ./scripts/build.sh
+      - name: ★ tests on protocol 88
+        run: cargo test -p pot-tests -- --test-threads=2 t00_ t01_ t10_ t20_ t40_ t50_ t60_ t70_ t89_
+        env:
+          POT_NO_BUILD: "1"
+
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: pot
+          POSTGRES_PASSWORD: pot # CI-only throwaway credential, same as infra/docker-compose.yml
+          POSTGRES_DB: pot
+          TZ: UTC
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U pot -d pot"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgres://pot:pot@localhost:54329/pot
+      DATABASE_URL_UNPOOLED: postgres://pot:pot@localhost:54329/pot
+      DATABASE_URL_TEST: postgres://pot:pot@localhost:54329/pot_test
+      # public, non-secret config of the testnet preview (also in .env.example)
+      NEXT_PUBLIC_NETWORK: testnet
+      NEXT_PUBLIC_HUB_ID: pots.potprev.testnet
+      NEXT_PUBLIC_USDC_ID: usdc.potprev.testnet
+      NEXT_PUBLIC_RPC_URLS: https://rpc.testnet.fastnear.com,https://near-testnet.drpc.org
+      NEXT_PUBLIC_TX_API: https://tx.test.fastnear.com
+      NEXT_PUBLIC_EXPLORER: https://testnet.nearblocks.io
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # version from package.json "packageManager" (pnpm 11)
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: The test database (the local init script creates pot_test too)
+        run: PGPASSWORD=pot psql -h localhost -p 54329 -U pot -d pot -c "CREATE DATABASE pot_test"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm exec tsc -p scripts
+      - run: pnpm lint
+      - name: README steps ↔ tests (drift check, test-plan §5.3)
+        run: node scripts/check-readme-steps.ts
+      - name: Unit, property and DB integration tests (web, sdk, scripts)
+        run: pnpm test
+      - name: sdk under plain Node (type stripping)
+        run: pnpm --filter @pot/sdk test:node
+      - name: Production build (mock data source)
+        run: pnpm --filter web build
+        env:
+          NEXT_PUBLIC_DATA_SOURCE: mock
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.64.1-${{ runner.os }}
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: Mocked UI e2e (mobile-day, mobile-night, desktop; axe + brand checks)
+        run: pnpm --filter web exec playwright test
+        env:
+          CI: "1"
+          E2E_PORT: "3100"
+          NEXT_PUBLIC_DATA_SOURCE: mock
+      - name: Integrations e2e (fake NEAR Auth issuer, fake RPC, mock wallet; no testnet)
+        run: pnpm --filter web exec playwright test -c e2e/integrations/playwright.config.ts
+        env:
+          CI: "1"
+          E2E_INT_PORT: "3790"
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
+
+  security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: SEC-1 lockfile pins (next ≥ 16.4.1, react / react-dom ≥ 19.3.1; GHSA-673q-mjm6-r5xr)
+        run: node scripts/check-pins.ts
+      - name: pnpm audit (production dependencies; fails on critical)
+        run: pnpm audit --prod --audit-level critical
+      - name: Secret scan (gitleaks, full history)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
+          ./gitleaks git --redact --no-banner --exit-code 1 .
+      - name: No NEAR private keys outside ignored paths
+        run: |
+          if git grep -nIE 'ed25519:[1-9A-HJ-NP-Za-km-z]{80,}' -- . ':!pnpm-lock.yaml'; then
+            echo "an ed25519 private key is committed"; exit 1
+          fi
+
+  # Manual only: drives an already deployed preview (its server relays and pays; GitHub holds no NEAR keys).
+  e2e-testnet:
+    if: github.event_name == 'workflow_dispatch' && inputs.testnet_base_url != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      E2E_TESTNET: "1"
+      E2E_BASE_URL: ${{ inputs.testnet_base_url }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      NEXT_PUBLIC_HUB_ID: pots.potprev.testnet
+      NEXT_PUBLIC_USDC_ID: usdc.potprev.testnet
+      NEXT_PUBLIC_RPC_URLS: https://rpc.testnet.fastnear.com,https://near-testnet.drpc.org
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: README judge script (E-10) and the flows (E-a…E-f), rules + close, the 1Click simulator
+        run: pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts demo.testnet.ts flows.testnet.ts p2.testnet.ts deposit.testnet.ts
+      - name: README CLI twins (E-11, read-only)
+        run: scripts/readme-cli-check.sh

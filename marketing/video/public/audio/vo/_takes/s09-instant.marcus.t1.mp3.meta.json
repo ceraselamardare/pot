@@ -1,0 +1,31 @@
+{
+  "tool": "eleven.tts",
+  "endpoint": "POST /v1/text-to-speech/{voice_id}/with-timestamps",
+  "model_id": "eleven_v4",
+  "voice_id": "y0s2ExEMuum3muUnA6Zd",
+  "request": {
+    "text": "Small spends approve themselves. Eighty-four dollars for groceries? Pot checks the rules… approved, and paid back in seconds.",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.45,
+      "similarity_boost": 0.75
+    },
+    "previous_text": "Drop the link in the chat. Friends join with Google and chip in their share. No wallet. No seed phrase. No gas.",
+    "next_text": "Bigger spends go to the group. The three-hundred-dollar boat trip needs two of three… so Leo approves, right from a notification.",
+    "seed": 7,
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": "JjjedGq3rykQ7CcbJVVo",
+    "headers": {
+      "character-cost": "27",
+      "history-item-id": "OXlhyJk9jhXoR7FjOPZn",
+      "request-id": "JjjedGq3rykQ7CcbJVVo"
+    },
+    "latency_ms": 12566,
+    "bytes": 136715,
+    "duration_sec": 8.48,
+    "has_alignment": true
+  },
+  "created_at": "2026-10-22T09:10:48.331Z"
+}

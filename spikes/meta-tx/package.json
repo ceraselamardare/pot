@@ -1,0 +1,15 @@
+{
+  "name": "pot-spike-meta-tx",
+  "private": true,
+  "type": "module",
+  "description": "THROWAWAY Phase 0 spike 3 (NEP-366 relayer). Never import into the product.",
+  "scripts": {},
+  "dependencies": {
+    "near-api-js": "7.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  }
+}

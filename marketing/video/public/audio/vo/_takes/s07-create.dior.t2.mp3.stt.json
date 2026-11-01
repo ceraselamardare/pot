@@ -1,0 +1,205 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s07-create.dior.t2.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "1",
+      "fiat-cost-before-overages": "0.000364"
+    },
+    "latency_ms": 642
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "Start a pot for the trip and set the rules in plain words",
+    "words": [
+      {
+        "text": "Start",
+        "start": 0.14,
+        "end": 0.3,
+        "type": "word",
+        "logprob": -0.25200918316841125
+      },
+      {
+        "text": " ",
+        "start": 0.3,
+        "end": 0.34,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "a",
+        "start": 0.34,
+        "end": 0.42,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 0.42,
+        "end": 0.46,
+        "type": "spacing",
+        "logprob": -0.0008836655179038644
+      },
+      {
+        "text": "pot",
+        "start": 0.46,
+        "end": 0.66,
+        "type": "word",
+        "logprob": -0.0008836655179038644
+      },
+      {
+        "text": " ",
+        "start": 0.66,
+        "end": 0.72,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "for",
+        "start": 0.72,
+        "end": 0.82,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 0.82,
+        "end": 0.86,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "the",
+        "start": 0.86,
+        "end": 0.94,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 0.94,
+        "end": 0.98,
+        "type": "spacing",
+        "logprob": -0.000002861018856492592
+      },
+      {
+        "text": "trip",
+        "start": 0.98,
+        "end": 1.28,
+        "type": "word",
+        "logprob": -0.000002861018856492592
+      },
+      {
+        "text": " ",
+        "start": 1.28,
+        "end": 1.28,
+        "type": "spacing",
+        "logprob": -0.006834937259554863
+      },
+      {
+        "text": "and",
+        "start": 1.82,
+        "end": 1.94,
+        "type": "word",
+        "logprob": -0.006834937259554863
+      },
+      {
+        "text": " ",
+        "start": 1.94,
+        "end": 2,
+        "type": "spacing",
+        "logprob": -0.0000015497195136049413
+      },
+      {
+        "text": "set",
+        "start": 2,
+        "end": 2.16,
+        "type": "word",
+        "logprob": -0.0000015497195136049413
+      },
+      {
+        "text": " ",
+        "start": 2.16,
+        "end": 2.18,
+        "type": "spacing",
+        "logprob": -8.344646857949556e-7
+      },
+      {
+        "text": "the",
+        "start": 2.18,
+        "end": 2.3,
+        "type": "word",
+        "logprob": -8.344646857949556e-7
+      },
+      {
+        "text": " ",
+        "start": 2.3,
+        "end": 2.34,
+        "type": "spacing",
+        "logprob": -0.0000014305104514278355
+      },
+      {
+        "text": "rules",
+        "start": 2.34,
+        "end": 2.64,
+        "type": "word",
+        "logprob": -0.0000014305104514278355
+      },
+      {
+        "text": " ",
+        "start": 2.64,
+        "end": 2.68,
+        "type": "spacing",
+        "logprob": -0.000001311301275563892
+      },
+      {
+        "text": "in",
+        "start": 2.68,
+        "end": 2.82,
+        "type": "word",
+        "logprob": -0.000001311301275563892
+      },
+      {
+        "text": " ",
+        "start": 2.82,
+        "end": 2.88,
+        "type": "spacing",
+        "logprob": -0.000003099436753473128
+      },
+      {
+        "text": "plain",
+        "start": 2.88,
+        "end": 3.16,
+        "type": "word",
+        "logprob": -0.000003099436753473128
+      },
+      {
+        "text": " ",
+        "start": 3.16,
+        "end": 3.26,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "words",
+        "start": 3.26,
+        "end": 3.64,
+        "type": "word",
+        "logprob": -2.3841855067985307e-7
+      }
+    ],
+    "transcription_id": "NlhfD3TwKMHBO6WNX8DI",
+    "audio_duration_secs": 3.92
+  },
+  "created_at": "2026-10-22T09:24:29.616Z"
+}

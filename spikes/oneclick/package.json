@@ -1,0 +1,10 @@
+{
+  "name": "pot-spike-oneclick",
+  "private": true,
+  "version": "0.0.0",
+  "description": "THROWAWAY Phase 0 spike: 1Click API read-only tests. Never import into the product.",
+  "type": "module",
+  "dependencies": {
+    "@defuse-protocol/one-click-sdk-typescript": "^0.1.26"
+  }
+}

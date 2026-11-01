@@ -1,0 +1,88 @@
+{
+  "name": "q2-appfee480-unauth",
+  "at": "2026-10-21T11:26:21.851Z",
+  "request": {
+    "method": "POST",
+    "url": "https://1click.chaindefuser.com/v0/quote",
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "dry": true,
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "150000000",
+      "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+      "refundType": "ORIGIN_CHAIN",
+      "recipient": "near",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2026-10-21T12:26:19.232Z",
+      "appFees": [
+        {
+          "recipient": "near",
+          "fee": 480
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 201,
+    "ms": 369,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1196",
+      "x-ratelimit-reset-unauth": "58"
+    },
+    "body": {
+      "quote": {
+        "amountIn": "150000000",
+        "amountInFormatted": "150.0",
+        "amountInUsd": "149.913600000000",
+        "minAmountIn": "150000000",
+        "amountOut": "142797507",
+        "amountOutFormatted": "142.797507",
+        "amountOutUsd": "142.715255635968",
+        "minAmountOut": "141369531",
+        "timeEstimate": 35,
+        "refundFee": "2400",
+        "withdrawFee": "0"
+      },
+      "quoteRequest": {
+        "dry": true,
+        "depositMode": "SIMPLE",
+        "swapType": "EXACT_INPUT",
+        "slippageTolerance": 100,
+        "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "depositType": "ORIGIN_CHAIN",
+        "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "amount": "150000000",
+        "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+        "refundType": "ORIGIN_CHAIN",
+        "recipient": "near",
+        "recipientType": "DESTINATION_CHAIN",
+        "deadline": "2026-10-21T12:26:19.232Z",
+        "confidentiality": "public",
+        "quoteWaitingTimeMs": 0,
+        "appFees": [
+          {
+            "recipient": "near",
+            "fee": 240
+          },
+          {
+            "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+            "fee": 240
+          }
+        ],
+        "insured": false
+      },
+      "signature": "ed25519:3GrbKT9PtL5aVQNw6xGZUADk3AReTzXpZDjqJn36EN2zZNVrTro6R47zhFzCztMazm7xS8QW5sSND7XekiScNRyW",
+      "timestamp": "2026-10-21T11:26:21.595Z",
+      "correlationId": "8ad0aad6-a63e-44f6-855d-1d058effe7c8"
+    }
+  }
+}

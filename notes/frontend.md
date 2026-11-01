@@ -1,0 +1,349 @@
+# Frontend notes: wave 1 (F-02, F-04, F-06, F-07, F-13/F-15/F-16 UI) on mocks
+
+> Written 2026-10-22 by the frontend engineer. Specs: plan/frontend-architecture.md, plan/ux-spec.md, plan/design-direction/, brand/README.md + tokens.json, decisions.md Rev 7.
+> Review screenshots (390×844 @3x, Day + Night): `notes/screens/{day,night}-{pot,invite-landing,instant-approval}.png`.
+
+## Status
+
+| Command (from the repo root) | Result |
+|---|---|
+| `pnpm --filter web typecheck` | clean |
+| `pnpm --filter web lint` | `lint-copy: 558 strings, 0 banned words`; `messages.d.ts is up to date`; eslint 0 errors (my code 0 warnings) |
+| `pnpm --filter web test` | 21 files, 460 passed, 1 skipped (includes the backend's tests) |
+| `pnpm --filter web build` | passes; `/`, `/demo`, `/pots`, `/requests`, `/you` static; `/p/[slug]`, `/j/[slug]` partial prerender |
+| `E2E_PORT=3317 pnpm --filter web test:e2e` | **69 passed** (mobile-day, mobile-night, desktop) |
+
+**E2E port:** another agent's `next-server` sat on :3100 during this work, and `reuseExistingServer` silently reused it (no security headers → everything failed). Run with `E2E_PORT=<free port>` or stop the stray server.
+
+## Screens built
+
+| Route / sheet | Notes |
+|---|---|
+| `/` lite landing | lockup H1, tagline, sample Pot card ($450.00), [Start a Pot] (marigold) + [Try the demo]; redirects signed-in users to `/pots` |
+| `/j/[slug]` invite landing (F-13 UI) | SSR body inside `<Suspense>` (params + `?i=`), cover banner, "Maya invited you to …", seats + dashed "You" seat, Pot card + GoalBar + "Everyone's chipping in $150", trust callout, rules peek, expiry; invite error states (invalid/expired/used/replaced/closed/incomplete/already member); privacy rule: names only with an active `?i=`; `generateMetadata` (title, noindex) |
+| Join island | `#secret` → sessionStorage, device key pre-generated on idle, join machine with ProgressSteps ("Welcome, Leo" → setup → joining → "You're in!" sheet, focus on its heading, one announcement), strips the fragment, [Add my $150 share] → `/p/<slug>?sheet=add&amount=150` |
+| `(app)` shell | SessionGate (signed out → "Sign in to Pot" with the demo), DemoBanner (switch person / reset), OfflineBanner + "Back online", one polite LiveRegion, TabBar (Pots · Requests · You, 56 px + safe area; badge in **ink**) and a 64 px TopBar from bp-lg |
+| `/pots` | header "+", waiting strip, PotCards (cover, seats, $ in Gabarito, share, waiting chip or goal bar), dashed ghost "Start a Pot", empty state with the glyph; 2-col grid from md |
+| `/p/[slug]` | header (back, cover, H1, seats, ••• menu: Share invite, Close Pot "coming soon"), BalanceHero (two decimals, 500 ms count-up, "+$150 on the way"), GoalBar with brand-deep edge + text twin, [Add money] marigold + [Spend] secondary (52 px), SegmentedTabs Activity · Members · Rules (`?tab=` replaceState), "Waiting on you" RequestCards, feed by day; **bp-lg two columns**: Activity · Rules left, Waiting on you / Your requests / Members right (sticky) |
+| Members / Rules tabs | totals strip, "Gets back" rows, explainer; rule rows with icons + personal ink meter |
+| Add money sheet | amount → chips → source (Demo dollars preselected, Pot dollars, "Another app or exchange" soon) → first-time USDC note → outcome line → [Add $150] → keypad; closes at once, op shows "Adding $150…" + Sending… |
+| Spend sheet | Reimburse me / Pay a member, keypad, RulePreview (instant / 2 of 3 / blocked), reason chips, note; result card: typing dots ≥ 1.2 s → brand-soft "Approved by Pot rules" + the 600 ms burst → "Sending…" → "$84 sent to you" (one announcement) → [Done]; vote path: "Sent to the group" + ApprovalTimeline |
+| Approve sheet (`?r=`) | amount, reason, why box, ApprovalTimeline, Pot after this, Expires; [Approve $300] marigold + [Decline] (optional reason); own / already / decided / expired / failed states; final = check + `approve.final`, **no burst** |
+| `/requests` | Waiting on you · Your requests · Decided; empty states; sheet via `?r=&pot=` |
+| Create Pot (`/pots?sheet=create`) | step 1 name + emoji grid + 6 gradient swatches + live preview; step 2 Trip card, Club/Team "coming soon", "$150 each" switch (ink); step 3 ProgressSteps "Free: we cover the setup" → `/p/<slug>?sheet=share` |
+| Share sheet | chat-preview card, share body, expiry + joins left, the full link, [Share link] (Web Share, copy fallback), [Copy link] → "Link copied" in place, QR (lazy, white plate in Night), [Make a new link] with confirm |
+| `/you`, `/you/advanced` | profile, **Appearance** (Match my phone · Day · Night, live + persisted), rows, sign out; Advanced room (account id, network) lint-exempt |
+| `/demo` (F-15 UI) | prerendered; banner, "Try Pot as…", three real `<form method=post action=/api/demo/session>` (work without JS; with JS the island switches persona locally), What to try, reference-Pot snapshot read through **@pot/sdk ChainViews** (`lisbonTrip("seeded")`, `'use cache'` 30 s), JSON link, `?as=` and `?ro=1` islands |
+
+## Code map
+
+- `i18n/en.json` (558 strings: ux-spec §5 + proposed keys), `messages.d.ts` (generated), `t.ts` (typed `t()`, plurals, `tLines()` for "title · body" keys, `pageTitle()`), `banned.mjs` (one list for both layers), `lint-copy.mjs`, `gen-types.mjs`.
+- `eslint.config.mjs`: `react/jsx-no-literals` on app/components (ui + advanced exempt), jargon regex on JSXText + UI attributes, **no `text-brand*` classes**, import guards (near-api-js, @pot/sdk/sign, @auth0, @hot-labs).
+- `lib/client/`: `money.ts` (over @pot/sdk money + keypad helpers), `rules.ts` (over sdk `previewSpendDecision`, `approvalsNeeded`, `shareOf`), `machines/{spend,join,create}.ts`, `ops/store.ts`, `keys/device-key-store.ts`, `mock/{fixtures,types,world,store}.ts`, `data.ts` (hooks returning view models), `actions.ts`, `sheet.ts` (URL sheet state), `browser.ts` (online, reduced motion, 150 ms delay, live region), `invite.ts` (sdk links/seeds), `time.ts`, `cn.ts`.
+- `components/`: `pot/*`, `sheets/*`, `money/{MoneyText,Keypad,Celebration}`, `feedback/{TypingDots,States}`, `app-shell/*`, `landing/*`, `brand/Glyph`, `advanced/*`.
+- Tests: unit next to code + `components/__tests__/*` (jsdom); e2e `e2e/mock/{flows,screens,states,demo-nojs}.spec.ts`, helpers `e2e/fixtures/pot.ts`, updated `e2e/smoke.spec.ts`.
+
+## F-07 DeviceKeyStore
+WebCrypto Ed25519 non-extractable (`generateKey(..., false, …)`), structured-clone `CryptoKey` in IndexedDB `pot-keys` v1 / store `device`; noble fallback with an AES-GCM-wrapped seed; `ensurePending` (idempotent, run on idle on `/j`), `promotePending(account)`, `sign`, `popMessage`/`pop` (`pot-session-v1|b64url(sha256(idToken))|ts`), `clear`, `persistStorage()`, and `nearSigner()` = `@pot/sdk/sign` **HashSigner** loaded lazily. Tests: both paths verify, reload survival, non-extractable, PoP bytes, HashSigner.
+
+## Data source and the sdk
+- Today the UI reads a **persistent browser mock world** (`lib/client/mock`, localStorage, shared across tabs, deterministic latencies, `localStorage['pot.mock.fail']='add|spend|vote|create|join'` fault injection). Reason: the sdk's `MockChain` is in-memory per page, and the flows need state to survive navigations, reloads and persona switches.
+- It is kept honest against the sdk: money formatting/parsing, decide(), k-of-n, pro-rata and invite links **are** the sdk functions, and `mock/sdk-parity.test.ts` checks the story against `lisbonTrip()` / `LISBON_EXPECTED` (450 → 366 → 66, $22 each, same `wouldGetBack`).
+- `/demo` already reads through the `ChainViews` interface (MockChain); F-05/F-15 swap `lisbonTrip()` for `createChainViews(cfg)`.
+
+## Deviations (with reasons)
+1. **Invite story runs on a second fixture Pot, "Porto Weekend"** ($300 of $450, Maya + Sam), because the seeded Lisbon Trip is the post-Leo D-61 README state that flows (b)/(c) and `/demo` need. With MockChain wiring, `/j/lisbon-trip` at `pre_leo` replaces it.
+2. **Mock sign-in: "Join with Google" / email / passkey sign the invitee in as Leo without a popup** (no NEAR Auth in this wave). The join machine already has the `authorizing` state for F-14.
+3. **One Drawer for all widths** (bottom sheet < 768 px, centred 440 px dialog ≥ 768 px via CSS) instead of Drawer + Dialog: no viewport branching at hydration, same a11y (role dialog, focus title, Esc, ✕).
+4. **Motion in CSS, not `motion/react`:** typing dots (4 × 1200 ms, stops < 5 s), the 12-particle 600 ms burst, check pop, feed insert, Undo hairline. All honour reduced motion (burst not rendered). Saves the Motion chunk.
+5. **`tabular-nums` on `body`** as a safety net (every digit is tabular), plus `MoneyText` on every displayed amount.
+6. **`cn()` replaced by `lib/client/cn.ts`** (`createCn` with the brand type scale). The stock merger read `text-balance-hero`/`text-label` as colours and dropped them next to `text-ink` (the hero rendered at 16 px; every Button lost `text-label`). `components/ui/button.tsx` now imports it too. `lib/utils.ts` (outside my paths) still exports the stock one: **switch it** (or delete it) so shadcn additions don't regress.
+7. **Approve sheet doesn't auto-close after the final approval;** it shows the check + `approve.final` and a [Done] (design-direction says close after 1.5 s).
+8. **"Another wallet or exchange" → "Another app or exchange"** (`add.source.other_wallet` isn't allowlisted; design-direction default).
+9. **Requests badge is `ink`** (task + design-direction), not the brand README's `waiting` fill.
+10. **Inline Approve is on** for the mock signer (device-key users); `RequestCard needsGesture` shows [Review] instead.
+11. **`/j` without JS:** the body streams behind `<Suspense>` (Cache Components), so it's in the HTML (bots, previews; tested) but showing it needs JS. `/demo` is fully static and works without JS.
+12. **Goal = $150 × max(3, members)** for the mock (ux-spec: × invited count, which we don't know yet).
+13. Package changes (unavoidable): `package.json` lint script = `lint-copy && i18n --check && eslint`, + `lint:copy`, `i18n:gen`, `i18n:check`; devDeps `@testing-library/react 16.3.3`, `@testing-library/dom 10.4.2`, `@testing-library/user-event 14.6.8`, `jsdom 30.1.3`, `fake-indexeddb 6.2.6` (Testing Library was mandated, nothing was installed). `eslint.config.mjs` edited (F-02 needs it). `app/layout.tsx`, `app/globals.css` (keyframes, glyph swap), `app/page.tsx` edited.
+
+## Open design questions I defaulted (Cerasela)
+1. Hero "Your share" = pro-rata part ($122 after the $84 spend) vs the contribution: kept ux-spec wording; DD-02 Q3 suggests "Your part".
+2. Night `link` (#ffc94d) next to marigold buttons (text links like "Add a note", "Make a new link"): kept the token.
+3. Tab labels and badges use `body-sm` 14 px / `text-xs` 12 px (no 12/16 caption token yet).
+4. Disabled primary = `surface-sunken` fill + `ink-muted` label (DD-01), not 50 % marigold — so a screen never shows a dead marigold.
+5. Google "G" on a white disc inside the marigold button (Google branding rules unchecked).
+6. "Pay a member" kept; preview says "needs 2 of 3", after sending "Approvals · 1 of 2" (DD-02 Q10 rename to "It needs 1 more" not applied).
+7. Pots tab icon `House` (no pot or coin icons, brand rule).
+8. Empty member feed: dots + "Be the first to add money." (no ghost row).
+
+Proposed copy keys added (ⓟ, not in ux-spec §5 yet): `home.*`, `landing.title.fallback`, `landing.share`, `landing.members.count`, `landing.no_app`, `landing.more.*` hints, `auth.continue_in_window`, `setup.greeting/time/progress.3/retry/body_plain/cta_plain`, `signin.*`, `invite.incomplete.*`, `pots.empty.join_hint`, `pots.waiting_strip`, `pots.card.*` extras, `pot.closing`, `pot.menu.*`, `feed.*.sub`, `feed.instant.rule`, `feed.day.*`, `feed.created`, `chip.not_sent`, `members.refund_hint/totals/gets_back/only_you`, `rules.budget.used/new_member/change.in_flight`, `add.after(.goal)`, `add.source.short/test_pill/soon`, `spend.reason.word.*`, `spend.sent.member`, `spend.done`, `approve.timeline.*`, `approve.own.hint`, `requests.section.waiting.empty`, `requests.mine.row`, `create.step_of/preview_hint/name.*/cover.color`, `share.preview_hint/link.label/qr.*`, `close.busy/in_flight/retry`, `you.settings/profile.demo/soon`, `generic.checking`, `stale.updated`, `demo.sam/intro/try.*/snapshot.*/readonly`, `notif.*` (push/bot table), `a11y.*`, `time.*`.
+
+## Pending for testnet wiring
+- **F-05:** replace `lib/client/data.ts` bodies with TanStack queries over `createChainViews(cfg)` + `GET /api/pots/[pot]/feed` (heartbeat on `PotView.seq`), keep the view models; delete `lib/client/mock` from runtime (keep for e2e).
+- **F-08:** signing engine in `lib/signing/` (HashSigner via `DeviceKeyStore.nearSigner()`, SigningQueue, relay client + §4.8 error map); `actions.ts` swaps `mock/store` calls for `intent → sign → POST /api/relay`, ops settle by `blockHeight ≥ executedAtBlock`.
+- **F-13/F-14:** `/j` preview from views + DB names (`invite-preview.ts` keeps its shape), `?i=` via `invitePkFromParam` (done), join = sdk `signJoinWebCrypto` + relay `join`; NEAR Auth popup in the `authorizing` state; `pot_hint` cookie in `useMe()`.
+- **F-15:** `/demo` forms already post to the backend's `/api/demo/session`; the JS island should `fetch` it (BotID) instead of switching locally; snapshot from `createChainViews` over `DEMO_REFERENCE_POT`.
+- **Contract facts from the sdk:** after close show `usdc.ft_balance_of(dao)` not `balanceEstimate`; `ERR_POT_BUSY` → `close.busy` + retry (copy added; Close sheet is P2); disable rules change / Close while `openRulesProposal` / `closingInFlight` (`rules.change.in_flight`, `close.in_flight` added); Approve sheet must render `decodeCloseKind`/`decodeRulesKind`/Transfer from the proposal and act only on `getProposalSubject(...).live` (rev4, M-17).
+- Not built this wave: Close sheet (P2), deposit stepper (P2), install coach / push (F-23), receipts sheet, Telegram, the real Requests `direct_change` cards (needs live proposals).
+
+
+---
+
+# Wave 2: testnet wiring (F-05, F-08…F-13, F-15, F-16, X-07)
+
+> Written 2026-10-22 by the frontend-integration engineer, against the preview deploy in notes/deploy.md
+> (hub `pots.potprev.testnet`, token `usdc.potprev.testnet`, reference Pot `lisbon-trip`, pool Pots `lisbon-qg6e/fhq8/fpcz`).
+
+## Status (actual output)
+
+| Command | Result |
+|---|---|
+| `pnpm --filter web typecheck` | clean |
+| `pnpm --filter web lint` | `lint-copy: 564 strings, 0 banned words` · `messages.d.ts is up to date` · eslint clean |
+| `pnpm --filter web test` | `Test Files 22 passed \| 3 skipped (25)` · `Tests 486 passed \| 13 skipped (499)` |
+| `pnpm --filter web build` (default = mock) | passes; also passes with `NEXT_PUBLIC_DATA_SOURCE=testnet` |
+| `E2E_PORT=3517 NEXT_PUBLIC_DATA_SOURCE=mock pnpm exec playwright test` | **69 passed (32.4s)** |
+| testnet `flows.testnet.ts` (E-a…E-d, E-f) | **5 passed (2.5m)** |
+| testnet `demo.testnet.ts` (E-e = README J-1…J-5) | **4 passed (50.4s)** |
+| testnet `screens.testnet.ts` (read-only) | 1 passed → `notes/screens/live-{day,night}-pot.png`; `live-{day,night}-join.png` come from E-b |
+
+Testnet run (gated, signs testnet txs through the app's relayer only; never while the backend live tests run):
+```
+E2E_TESTNET=1 E2E_PORT=3417 pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts
+```
+The config builds and starts its own server (`NEXT_PUBLIC_DATA_SOURCE=testnet`, `NEXT_PUBLIC_APP_URL=http://localhost:<port>`
+so the API's Origin check passes) and passes local-only overrides: `QUOTA_IP_FAUCET_USD` ($50k, one laptop IP),
+`QUOTA_GLOBAL_HUB_YOCTO` (2 NEAR/day, the shared preview cap was exhausted), browsers on dRPC first / server on FastNEAR first.
+**Cost:** `flows` creates exactly 1 Pot + 2 dev accounts per run (≈ 0.07 NEAR hub float + relayer gas); `demo` creates none and
+reuses its lease across runs (`test-results/testnet-demo-visitor.json`, `E2E_DEMO_FRESH=1` for a new one); `screens` signs nothing.
+
+Tx evidence (passing flows run, `https://testnet.nearblocks.io/txns/<hash>`): create_pot `57jrRAmGAmxivHzQD8DxjqvYP1YQbTSAM5auGfApNWEx`,
+join `T9G9rLURwcgqmer2742XuBGkcwd2RwoXHSqB46Bv11W`, adds `aLoYSm9DeCdYMKE2xrMeEa9gcg4pLcw2hPGT3cjGPAy` / `72iaYiGhAWpPhs4Y9reDThkFfP3cwHF7mqbzLbCC3SMC`,
+instant $20 `BXy7NYUUGt3SDGxL6Q2on5tBXh914SAHTDmsU52c7Fke`, vote request $120 `HPV7WRZ8zkjK46LMGWCix9FW6Cfq39w9oy3zB4fENY4a`
++ own approval `8tD1muMJ2AdDZsRc41MCJECrb77gv8ek9HXszTRsdw99` + friend's approval `8zygU8j9R1JKBmbJEfuGVks5V9v4jYAmnD2mbwm6qvx6`,
+propose_close `4kJ7cJtb…` (ERR_POT_BUSY → "Money just moved…" → Try again) then `CfC4hZgLtceLYmH4fEQWEUwv7kSM6oyvxJfJa8dvX6uG`,
+close approvals `3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK` / `MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK` → refunds $44 / $66, Pot 0.
+Demo (lease `lisbon-fhq8`): instant $20 `Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk`, $300 request `9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b`,
+Maya `H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa`, Leo `6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH` → $130.
+(The `refused` spend state and the add-money settle tweak landed after that flows run; they're covered by unit tests and the demo
+run on the rebuilt server. The flows suite wasn't re-run to spare the hub's sponsorship balance.)
+
+## What's wired
+
+- **Switch** `lib/client/config.ts`: `NEXT_PUBLIC_DATA_SOURCE=mock|testnet` (inlined at build; default mock). `data.ts`, `actions.ts`,
+  `session.ts` are the only things components import; each picks the mock store or `lib/client/live/*` per build. The mock suite is unchanged.
+  `.env.local` is not edited: run a testnet build with `NEXT_PUBLIC_DATA_SOURCE=testnet` in the environment (or add it below the marker).
+- **F-05 reads** `live/queries.ts` + `live/vm.ts`: TanStack keys `['pot',dao,'view'|'balance']` (3 s on the Pot, 10 s on lists, visible
+  only), `['pot',dao,'bundle']` (members, requests, feed route, this device's invite; refetched when `seq`/totals/balance change),
+  `['pot',dao,'proposals',ids]` (3 s only while a proposal is InProgress), `['potsOf',me]`, `['usdc','balance',me]`. Every chain value keeps
+  its block height; `live/settle.ts` keeps an op's projection until the views read at ≥ the relay's `executedAtBlock` (10 s fallback).
+  The Pot screen never drops back to its skeleton once ready (an open sheet would unmount mid-flow).
+- **F-16 feed merge** (`vm.ts`, pure, `vm.test.ts`): feed route contributions (receipts) ⊕ chain joins/requests/close ⊕ synthesized
+  contributions the route never saw; DAO status wins over the hub's lagging one; expiry computed client-side; names from feed profiles →
+  session name → persona account (`maya-qg6e` → Maya) → "A friend".
+- **F-08 signing** `keys/engine.ts` (the only `@pot/sdk/sign` importer, lazy) + `live/signing.ts`: `DeviceKeySigner` (WebCrypto key via
+  `HashSigner`, nonce = max(chain optimistic, last)+1, TTL 200 blocks, sign + relay inside `SigningQueue` per key, re-sign once on
+  `expired`/`nonce_used`/`nonce_pending`), `DemoSigner` (`{demo:{intent}}`). Signing-path reads use an unbudgeted RPC client so heartbeats
+  can't queue an action. `live/relay.ts`: 202 → poll `GET /api/relay/[id]`; network error → same body ×2; two-phase `followRelay`.
+  `errors.ts`: reason → class (§4.8) → `*.error.relayer` / `*.error.generic` / `relayer.cap`.
+- **F-09** create = one `create_pot` delegate with the invite key, silent re-suffix on `slug_taken`, seed in IndexedDB `pot-invites`,
+  gradient in `context.meta`; Share shows expiry + joins left from `get_invite`; other devices get [Make a new link] (`add_invite` /
+  `rotate_invite`). **F-10** add = faucet top-up when demo dollars fall short (≥ $50) → `ft_transfer_call`; "+$X on the way" until settled.
+  **F-11** spend = memo first, `request_spend`; instant: early answer → Approved → final poll → Sent / payout failed / **refused** (new
+  state + `spend.refused`, never a false "Sent"); vote: own approval with the exact kind (waits for the `final` view to show the new
+  proposal). **F-12** Approve: `get_proposal_subject.live` check, Transfer kind must match amount + receiver, already/decided/expired.
+  **Close (P-9, live only)**: `CloseSheet` (refund table, `propose_close` + own approval at 300 Tgas, `close.busy` + Try again, approve
+  face for the others decoded from the proposal's `ft_transfer`s, closed face with who got what).
+- **F-13** `/j/[slug]` SSR reads the real Pot (`app/_lib/chain.ts`, server RPC, DB display names, `?i=` checked with `get_invite`);
+  [Join with a test account] (FLAG_DEV_SESSION) → dev session → D-08 signature → relay `join`. **F-15** `/demo` snapshot over
+  `DEMO_REFERENCE_POT`; persona forms `fetch` `/api/demo/session` (no-JS form post still works); `?as=` auto-switch; banner switch/reset.
+- Dev sign-in on the signed-out screen (FLAG_DEV_SESSION). NEAR Auth live login is not wired (F-14).
+
+## Deviations
+1. The faucet top-up happens on submit, not when the Add sheet opens (one claim per real add; the faucet's min is $50).
+2. "$X each" goal is off-chain and per device (`localStorage pot.goal.<slug>`), default $150 for Trip; needs X-05b meta.
+3. Close is enabled on testnet builds only (mock keeps "coming soon"); no FLAG_CLOSE client flag was read.
+4. Members' "Gets back" uses `get_members(balance)` / the close record, never `balance_estimate`.
+
+## Flaky areas
+- **One IP for everything:** two phones + runner + relayer + other agents → FastNEAR 429s without CORS (console noise; failover works).
+- **Shared relayer keys with the backend live tests** (`pot_test` leases don't see the dev DB's): a broadcast lost to a nonce clash left
+  a `request_spend` `pending` forever (UNKNOWN_TRANSACTION). Don't run both together.
+- Fresh dev accounts: the client waits for finality to pass the new key's block before signing (see request 1).
+- Shared preview caps (`global_hub_yocto` 1 NEAR/day, `ip_faucet_usd` $1k/day) run out across agents.
+
+## Requests to backend
+1. `pipeline.ts` nonce check `nonce >= final_head × 10⁶ → bad_request too_large` rejects the first delegate of a key added a block ago
+   (its nonce is (optimistic block) × 10⁶). Compare against the optimistic head or allow +2 blocks. Client workaround in `signing.ts`.
+2. A failed broadcast leaves `relay_log.status = pending` and `GET /api/relay/[id]` pending forever; mark it failed (or re-broadcast)
+   after `tx` returns UNKNOWN_TRANSACTION past the TTL, so the client can say "nothing moved".
+3. Feed `profiles` only cover actors on the page; include every active member (the creator often has no item) so names don't fall back.
+4. Partition `RELAYER_KEYS` between live tests and dev servers (or share one lease DB).
+5. Pool refill: each demo e2e lease retires a seeded Pot; `refillDemoPool` (or the seeding script) needs to run on preview.
+6. `/api/demo/state` and `/api/health` log "bail out of prerendering" errors during `next build` (they read headers at build time).
+
+
+---
+
+# Wave 3: Phase 2 (F-20, F-22, F-23, F-24, F-25 + design-direction leftovers)
+
+> Written 2026-10-22 by the frontend-phase-2 engineer. Screens (390×844 @3x, Day + Night): `notes/screens/p2-{day,night}-*.png`
+> (rules, rules-change, rules-review, close, close-approve, closed-moment, pot-closed, coach-card, coach-ios, push-prompt,
+> inapp-landing, advanced) and `p2-day-og-image.png` (1200×630).
+
+## Status (actual output)
+
+| Command (apps/web) | Result |
+|---|---|
+| `pnpm typecheck` | clean |
+| `pnpm lint` | `lint-copy: 752 strings, 0 banned words` · `messages.d.ts is up to date` · eslint clean |
+| `pnpm test` | `Test Files 34 passed \| 3 skipped (37)` · `Tests 625 passed \| 13 skipped (638)` |
+| `pnpm build` (mock) | passes; `/j/[slug]/opengraph-image` is a dynamic route |
+| `E2E_PORT=3637 NEXT_PUBLIC_DATA_SOURCE=mock pnpm exec playwright test` | **164 passed, 13 skipped (1.0m)**: the 69 earlier + 95 new (p2, pwa, a11y in 3 projects); the 13 skips are per-project gates (e.g. 320 px only in mobile-day, keyboard only on desktop, no coach on desktop) |
+| `E2E_TESTNET=1 E2E_PORT=3427 scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts p2.testnet.ts` | **3 passed (2.3m)**: setup (1 new Pot, 43.1s) · P2-a rules change A→B, `get_rules` $50, `preview_spend($60)` = vote/over_cap, `$40` instant (44.1s) · P2-b full close, RefundTable = `preview_close`, payouts $100/$150 landed, Pot 0 and closed (43.7s) |
+
+Shared-tree hazard: `.next/` and `test-results/` are shared with other agents' builds and Playwright runs (a rebuild mid-run serves
+500s for chunks; a parallel run deletes trace files). I ran Playwright with `--output=<private dir>` and rebuilt before each run.
+
+## What's new
+
+- **F-20 Members / Rules.** "Gets back" is hub `preview_close` at the live balance (bundle query; mock: the sdk `prorata` twin, dust
+  included), with "How it's worked out" (a small sheet). Rules are sentences (`ruleSentences()` shared with the change sheet).
+  [Ask the group to change a rule] (secondary) → `?sheet=rules` (`components/sheets/RulesSheet.tsx`): two selectable cards
+  (instant limit, limit per person) edited with the keypad, a live preview of the new sentences, "This needs k of n approvals",
+  [Ask the group] = `propose_rules` + the proposer's own `VoteApprove` (FunctionCall kind → 300 Tgas via `voteGas`). While
+  `open_rules_proposal` is set the button gives way to a waiting card (+ [Review]) or, if this device can't decode it yet,
+  `rules.change.in_flight`. Reviewers see the old sentence struck through above the new one, decoded from the proposal
+  (`decodeRulesKind`, must target this Pot). Sole member: [Change rules] → `set_rules`, applied at once.
+  Advanced: account + per-Pot explorer links, Pot (DAO) + Rules (hub) ids, and the **On-chain rules** panel (get_policy +
+  get_rules + get_pot: members, rulebot, threshold → k/n, quorum, period, instant_cap, member_budget, payees, rules_version,
+  open_rules_proposal). No Trezu on testnet (D-52).
+- **F-22 Close.** `CloseSheet` has four faces: propose (RefundTable from `preview_close`, remainder line, open requests,
+  "what happens next", [Ask the group to close] / [Keep the Pot open]), vote ([Approve closing] 300 Tgas / [Say no], payouts decoded
+  from the proposal's `ft_transfer`s), waiting ("Your approval is counted. It needs 1 more." + timeline), closed (calm: glyph + check,
+  no burst). Errors: `ERR_POT_BUSY` → `close.busy` + [Try again]; `ERR_CLOSE_IN_PROGRESS`/`closing_in_flight` → `close.in_flight`;
+  `ERR_CLOSE_COOLDOWN`, `ERR_PAYOUTS_PENDING`, nothing to refund. While closing (or a close is in flight) Add/Spend are
+  `aria-disabled` with `pot.closing` and a closing note sits on the Pot. Closed Pot: hero "Closed Oct 22", no money buttons, a closed
+  card "$22.00 is in your Pot account." + "It stays in your Pot dollars… Taking money out of Pot isn't available yet." (honest: no
+  cash-out in the MVP), announced once per device; Pots card shows "You got back $22.00". `RefundTable` is a real `<table>` (You
+  first on surface-sunken, a total row, names truncate visually only). Close now works in the mock build too (no more "coming soon").
+- **F-23 PWA.** `public/sw.js`: install/activate (skipWaiting/claim) + `push` + `notificationclick` only (no fetch, no cache).
+  Declarative + flat payloads; icon `/icon-192.png`, badge `/icons/badge-96.png` (the glyph as a white alpha mask, 96 px); app badge
+  from `app_badge`; same-origin only; an approval's `?r=<proposalId>` is rewritten to `?pid=`, which the Pot screen resolves to the
+  spend request (`?r=<requestId>`), the close (`?sheet=close`) or the rules change (`?sheet=rules`). Open window → focus +
+  `pot:navigate` → `SwBridge` `router.push`. `lib/client/pwa/`: `platform.ts` (iOS 26 vs 27 by `Version/2x`, in-app browsers incl.
+  Telegram globals, Android prompt capture, `x-safari-https` escape keeping the `#fragment`; Android intent only without a fragment),
+  `coach.ts` (≤ 2 auto shows, 7-day snooze, first contribution on this device or a new Pot, never desktop/installed), `push.ts`
+  (`requestPermission()` first inside the tap, `pushManager.subscribe` with `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, POST/DELETE
+  `/api/push/subscription` per api-spec §2.6; logout deletes), `badge.ts` (iOS: standalone + permission; else installed only).
+  Components: `CoachCard` (on the Pot after the trigger), `CoachSheet` (`?sheet=coach`), `PushPrompt` (`?sheet=push`, opens itself
+  only on a Home Screen launch, lock-screen-safe examples), `PwaHost` (in the app shell) + You rows (Notifications status/toggle,
+  Add Pot to your Home Screen).
+- **F-24** `app/j/[slug]/opengraph-image.tsx`: 1200×630 marigold, cover tile in the middle square, Gabarito 800 name in on-brand,
+  initials-only avatars + "{n} friends are in" / "Closed", glyph + wordmark; no balance, no names; unknown slug or any error → the
+  static `og-image.png`. Fonts: static TTFs in `apps/web/assets/fonts/` (Gabarito 800, Figtree 600, OFL). In-app browsers on `/j`:
+  "Open in Safari to join" banner above the CTAs, [Open in Safari] (marigold there) + [Copy link]; Google and passkey hidden, email stays.
+- **F-25** fixes: skip link ("Skip to content", first Tab stop); sheet bodies that scroll become a focusable named region (axe
+  `scrollable-region-focusable` was serious on the Close sheet); 200 % text: the Pot name wraps instead of truncating to nothing, the
+  hero amount caps at 15vw, hero buttons stack (rem-based auto-fit), Buttons use min-heights and wrap (were `whitespace-nowrap` with
+  fixed heights), tab-bar and segmented labels cap at ~4vw, the Members header and Pots grid wrap, long words break (`overflow-wrap`).
+  Rules/Close sheet titles stay put through their faces (the dialog keeps its name).
+
+## Tests added
+- Unit (vitest): `lib/client/pwa/pwa.test.ts` (context detection for 10 UAs, escape links, coach caps, push support/auto-prompt,
+  VAPID decode, badge rule), `lib/client/pwa/sw.test.ts` (sw.js in a fake worker: handlers, payload shapes, `?pid=` rewrite,
+  same-origin, focus vs openWindow), `lib/client/mock/world-p2.test.ts` (close math incl. the unequal $29.33/$22.00/$14.67 + dust,
+  majority, reopen on no, sole member; rules propose/approve/apply/pending/sole), `lib/client/live/vm-p2.test.ts` (preview_close
+  Gets back, rules decode + wrong-Pot guard, close payouts decode, closing in flight), `components/__tests__/p2.test.tsx`
+  (RefundTable semantics, error copy maps, changed rules, `?pid=` resolver).
+- Mock e2e: `e2e/mock/p2.spec.ts` (rules change Maya→Sam, then a $60 spend needs the group; sole member; ERR_RULES_PENDING; close
+  with ERR_POT_BUSY → Try again → Sam approves → closed/read-only/Leo's view; `?pid=` deep link; Members; Advanced), `pwa.spec.ts`
+  (coach iOS 26 / iOS 27 / Android prompt / Android menu / Instagram landing + coach / desktop; push granted (mocked route) / denied /
+  not now / tab / iOS tab; badge; `/sw.js` headers; OG image), `a11y.spec.ts` (320 px on 14 screens, 200 % desktop zoom, 200 % text,
+  join + approve reading order and focus, keyboard-only approve and rules change, reduced motion). Every new sheet runs axe (0
+  serious) and the brand checks (one marigold, marigold never text, tabular figures).
+- Testnet: `e2e/testnet/p2.testnet.ts` (one Pot per run). `flows.testnet.ts` E-f updated for the new close copy.
+
+## Deviations
+1. The push example notifications say "Maya needs your OK · A request is waiting in Lisbon Trip" (lock-screen safe, no note text;
+   frontend-architecture Q14 default), not "$300 for Tickets".
+2. The closed copy is "Pot closed. $22.00 is in your Pot account." everywhere (`close.done.self`, `notif.closed.body` reworded too):
+   "on its way back to you" promised a cash-out the MVP doesn't have (design-direction Q11/Q15).
+3. The "closed moment" is a card on the Pot (announced once) plus the sheet face for whoever made the last approval, not a sheet that
+   opens by itself for everyone.
+4. Tab-bar, segmented-control labels and the hero amount cap at a viewport-relative size under large text (vw caps), so 200 % text
+   never scrolls sideways; everything else scales fully.
+5. The rules change sheet edits the two amounts only (instant limit, per-person limit). Recipients/allowlist and the period aren't
+   editable (period is a DAO setting; allowlist is Phase 3).
+6. Android in-app escape: no "Open in Chrome" link when the URL carries the invite `#secret` (an intent URL can't keep it); Copy link.
+7. `components/ui/button.tsx`: `whitespace-nowrap` + fixed heights → `text-center` + min-heights (same look at normal size).
+8. The hide-Change rule for the shared demo Pot (demo_forbidden) isn't applied: the UI can't tell the shared Pot from a lease. It shows
+   `rules.change.error` if refused.
+
+## Requests to backend
+7. **VAPID public key for the client:** the browser reads `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (frontend-architecture §1.5 env table); it isn't
+   in `.env.local` / the preview env yet. Until it is set, [Turn on notifications] ends in `push.error`.
+8. **Push `navigate` for approvals:** keep `/p/<slug>?r=<proposalId>` **and** `data.proposalId` in the payload (as `payload.ts` does):
+   the SW rewrites it to `?pid=`, which the app resolves to the request, the close or the rules change. A close or rules request
+   with only `?r=` and no `data.proposalId` would open as a (missing) spend request.
+9. **Feed route:** add `rule_change` items for `rules_change_proposed` with `proposalId` (actor = the member who asked); the UI falls
+   back to the first approval to name who asked (the DAO proposer is the hub). Same for `close_requested` with `proposalId`.
+10. **Relayer R11 for rules votes:** `vote` on the hub's set_rules FunctionCall proposal at exactly 300 Tgas, `get_proposal_subject.kind
+    = "rules"`, `live` while `open_rules_proposal == id`; and `sync` after it so `open_rules_proposal` clears (the UI keeps the button
+    held while it is set).
+
+## Open questions for Cerasela (every one I know of, with the default this build uses)
+Defaults in brackets. Sources: plan/design-direction/README.md (DD), 01 (DD-01), 02 (DD-02), frontend-architecture §15 (FA), ux-spec §13 (UX).
+
+| # | Question | Default used | Source |
+|---|---|---|---|
+| 1 | Google button "Join with Google" vs "Continue with Google"; G on a white disc inside marigold OK with Google's rules? | ["Join with Google", G on a white disc] | DD 1, DD-01 2 |
+| 2 | Landing: add "Everyone's chipping in $150", drop "No crypto needed"? | [added; dropped] | DD 2, DD-01 3 |
+| 3 | "wallet" in main paths vs "Another app or exchange" | [renamed] | DD 3, DD-01 4 |
+| 4 | Outcome line above Add money ("Lisbon Trip will have $450") | [yes] | DD 4, DD-01 5 |
+| 5 | First Home Screen launch: lazy "Confirm it's you", or bundle it with the push prompt as "Finish setting up"? | [push pre-prompt alone; confirm stays lazy (integrations' area)] | DD 5, DD-01 6 |
+| 6 | Testnet deposit: "Simulate sending $150" as the marigold, hide Copy address | [yes, integrations' sheet] | DD 6, DD-01 7 |
+| 7 | Create: Club/Team as "Coming soon" cards or hidden; six cover gradients | [cards; six gradients] | DD 7, DD-01 8 |
+| 8 | Link-preview emoji: Twemoji vs the gradient + Gabarito initial | [Twemoji on the cover gradient] | DD 8, DD-01 9 |
+| 9 | Marigold when something waits on you: Add money stays, inline Approve secondary? | [Add money stays] | DD 9, DD-02 1 |
+| 10 | Hero actions vs "bottom 40 %": documented exception or a sticky bar | [exception] | DD 10, DD-02 2 |
+| 11 | "Your share" means $150 and $122: rename to "Your part"/"You'd get back"? | [kept "Your share"] | DD 11, DD-02 3 |
+| 12 | Burst only on "Approved by Pot rules", or also final group approval / Pot closed? | [rules only; Pot closed is calm] | DD 12, DD-02 4 |
+| 13 | Expired = ink-muted + hourglass + "Expired" | [yes] | DD 13, DD-02 7 |
+| 14 | Copy: "Pay a member", "Ask the group to change a rule", "Approve closing", "It needs 1 more" | [all four for close/rules; spends keep "Approvals · 1 of 2"] | DD 14, DD-02 10 |
+| 15 | After close, where does Leo's $22 go (no cash-out in the MVP)? | ["$22.00 is in your Pot account." + "Taking money out of Pot isn't available yet."; P1 to confirm] | DD 15, DD-02 11 |
+| 16 | Mockups to D-61 numbers before hallway round A | [the build uses D-61] | DD 16, DD-02 12 |
+| 17 | FA §15 Q16 brand calls + Appearance copy; unused `avatar_tint` | [Match my phone · Day · Night; tint unused] | DD 17 |
+| 18 | Night `link`/`focus` #FFC94D next to marigold: keep or light plum / underlined ink? | [kept the token] | DD-02 5, DD-01 10 |
+| 19 | Requests badge in `ink` instead of `declined` red | [ink] | DD-02 6 |
+| 20 | Status pills: Lucide check/clock/x instead of 8 px dots | [icons] | DD-02 8 |
+| 21 | Small text: a 12/16 caption style, or everything ≥ body-sm 14? | [body-sm 14; badges 12] | DD-02 9 |
+| 22 | Eggplant on pressed `brand-deep` is 4.33:1: lighten Day `brand-deep`? | [accepted as a momentary state] | DD table, DD-01 1 |
+| 23 | Brand tokens replace ux-spec §7; Gabarito/Figtree `tnum` | [yes; tabular-nums on body + MoneyText] | DD-01 1 |
+| 24 | Dynamic Type 17 px root on iOS: accept or compensate? | [accept] | FA 1 |
+| 25 | Approved → Sent beat when both arrive together (≥ 600 ms / ≥ 400 ms) | [kept the beats] | FA 2 |
+| 26 | OG image without the balance, initials only | [yes] | FA 3 |
+| 27 | Covers emoji-only in the MVP | [yes] | FA 4 |
+| 28 | Inline Approve with Undo on by default for device-key users | [on] | FA 7, UX 4 |
+| 29 | Android: [Install Pot] card after the first contribution, or only in You? | [card after the first contribution (and after Create), plus You] | FA 8 |
+| 30 | Session hint cookie: display name readable by page JS | [OK] | FA 9 |
+| 31 | New ⓟ copy keys into ux-spec §5 (FA list + this wave: `rules.change.*`, `approve.rules.*`, `close.*` extras, `push.prompt.prime/settings`, `push.example.*`, `coach.*` extras, `og.*`, `members.how.*`, `pots.card.closed_refund`, `advanced.onchain.*`) | [added to en.json, lint-clean] | FA 11 |
+| 32 | Desktop: a 440 px dialog for every sheet, Create included | [yes] | FA 12 |
+| 33 | New members: instant spends need money put in first (`new_member`) | [yes] | FA 13 |
+| 34 | Privacy copy at Create ("name and amounts are public") and a lock-screen-safe push body | [no Create copy; push examples lock-screen safe; server body is P1's] | FA 14 |
+| 35 | Late-money hint in the Add sheet | [not shown; README] | FA 15 |
+| 36 | FA §15 Q16: one marigold = Add money; no burst on group approval; two decimals in the hero; disabled style; switch colour; ••• icon | [Add money; none; two decimals; disabled primary = surface-sunken (wave 1) but hero buttons while closing/offline = 50 % opacity; ink; ellipsis-vertical] | FA 16 |
+| 37 | Hero number: balance vs "Your share" | [balance] | UX 1 |
+| 38 | Login set and order on testnet | [Join with Google (marigold) + Continue with email + More ways] | UX 2 |
+| 39 | Trip limits $100 instant / $200 per person | [yes] | UX 3 |
+| 40 | Decline reason optional | [optional] | UX 9 |
+| 41 | Say "Free" once at Create | [yes] | UX 10 |
+| 42 | (this wave) Rules change edits only the two amounts | [yes; see deviation 5] | new |
+| 43 | (this wave) Close cooldown copy "You can ask again tomorrow" vs the exact time | [tomorrow] | new |
+| 44 | (this wave) Large-text caps for tab labels / hero amount (vw) | [capped; see deviation 4] | new |
+
+## QA wave 4 (2026-10-22): live data fixes (details in notes/qa-report.md §2)
+- **Q3:** never `invalidateQueries` the bundle from a change detector: it cancels the fetch in flight, whose RPC reads
+  still drain the tab's 100/min FIFO bucket, and the bundle never landed under a burst of changes. Use
+  `lib/client/live/refresh.ts` `refreshQuery()` (no cancel, one trailing refetch). `invalidatePot` passes
+  `cancelRefetch: false`. The open proposals' votes are read through `signingChain()` (unbudgeted, ≤ 1 call / 3 s).

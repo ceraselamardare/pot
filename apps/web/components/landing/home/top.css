@@ -1,0 +1,97 @@
+/* The landing's header, hero and problem details (round 2, motion-top; design-direction 04 §0-2 + the detail audit's
+   area A, D1 and D6). Imported once from app/page.tsx, after the toolkit's landing-motion.css. Every rule is scoped
+   under [data-landing] (page.tsx's display:contents wrapper), because Next keeps a page's CSS loaded after a client
+   navigation; keyframes are prefixed pot-top-. Tokens only (colours from tokens.css, durations and curves from
+   landing-motion.css / globals.css). */
+
+/* Same order as Tailwind's own declaration, so this file can't reorder the layers whichever stylesheet loads first. */
+@layer theme, base, components, utilities;
+
+/* -----------------------------------------------------------------------------------------------------------
+   D1 · Line breaks: headings balance, running text avoids one-word last lines (page-wide on "/"). Longhands only:
+   the `text-wrap` shorthand would also reset text-wrap-mode and undo an inherited nowrap. In the base layer, so a
+   text-balance / text-pretty utility on the element still wins. */
+@layer base {
+  [data-landing] :is(h1, h2, h3, h4) {
+    text-wrap-style: balance;
+  }
+  [data-landing] :is(p, li, dd, figcaption) {
+    text-wrap-style: pretty;
+  }
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   D6 · Text links answer a tap. Buttons from buttonVariants (.group/button) already press (.97); the header nav's
+   anchors don't (04: the scroll is their feedback). Everything else (the lockup links, Back to top) darkens its own
+   hit area: in 120 ms, released over 200 ms. A background, never opacity or scale, so the logo itself never changes
+   (brand: never recoloured, never animated). Components layer: a utility on the link still wins. */
+@layer components {
+  [data-landing] a:not(.group\/button, nav a) {
+    transition: background-color var(--duration-base) var(--ease-standard);
+  }
+  [data-landing] a:not(.group\/button, nav a):active {
+    background-color: var(--pot-surface-sunken);
+    transition-duration: var(--duration-fast);
+  }
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   Header (04 §0) · the active-section bar (SiteHeaderNav): transform + opacity only. */
+[data-landing] [data-nav-indicator] {
+  transition:
+    transform var(--duration-moderate) var(--ease-standard),
+    opacity var(--duration-base) var(--ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-landing] [data-nav-indicator] {
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+}
+/* where an anchor jump lands: the section's H2 takes focus (tabindex -1, set by SiteHeaderNav) for screen readers
+   and the next Tab; it isn't a control, so it shows no ring */
+[data-landing] h2[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   Hero (04 §1) · the CSS-only arrival plays on first paint and ends on the server's frame. Reduced motion: the
+   toolkit stops it. Without JS (the `scripting` media feature): it doesn't play either, so the visual is simply there. */
+@media (scripting: none) {
+  [data-landing] :is([data-seq-load], [data-seq-load] *)[data-seq] {
+    animation: none !important;
+  }
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   Typing dots (TypingInView, data-typing-pulse): still at the brand's still look (.6, like every still dot on the
+   page) until their turn, then the brand pulse (1200 ms, 150 ms apart) that starts and ends on that look, then still
+   again. Unlayered, like globals.css's .pot-dot, which these outrank; reduced motion keeps globals' `animation: none`
+   (!important), so the dots stay still. */
+[data-landing] [data-typing-pulse] .pot-dot {
+  animation: none;
+  opacity: 0.6;
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+[data-landing] :is([data-typing-pulse="running"], [data-typing-pulse="paused"]) .pot-dot {
+  animation: pot-top-dot 1200ms var(--ease-standard) 4 backwards;
+}
+[data-landing] :is([data-typing-pulse="running"], [data-typing-pulse="paused"]) .pot-dot:nth-child(2) {
+  animation-delay: 150ms;
+}
+[data-landing] :is([data-typing-pulse="running"], [data-typing-pulse="paused"]) .pot-dot:nth-child(3) {
+  animation-delay: 300ms;
+}
+[data-landing] [data-typing-pulse="paused"] .pot-dot {
+  animation-play-state: paused;
+}
+@keyframes pot-top-dot {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: none;
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}

@@ -1,0 +1,48 @@
+import { describe, expect, it } from "vitest"
+import { dollars } from "./money"
+import { approvalsNeeded, getsBack, previewSpend, TRIP_RULES, type PreviewInput } from "./rules"
+
+describe("approvalsNeeded (majority, quorum 1)", () => {
+  it.each([
+    [1, 1],
+    [2, 2],
+    [3, 2],
+    [4, 3],
+    [5, 3],
+    [40, 21],
+  ])("n=%i → k=%i", (n, k) => expect(approvalsNeeded(n)).toBe(k))
+})
+
+describe("previewSpend (frontend-architecture §3.7)", () => {
+  const base: PreviewInput = {
+    amount: dollars(84),
+    balance: dollars(450),
+    rules: TRIP_RULES,
+    memberCount: 3,
+    used: 0n,
+    contributed: dollars(150),
+    receiverIsMember: true,
+  }
+  it.each<[string, Partial<PreviewInput>, string, string]>([
+    ["$84 groceries", {}, "instant", "ok"],
+    ["$0", { amount: 0n }, "empty", "empty"],
+    ["$300 boat", { amount: dollars(300) }, "vote", "over_cap"],
+    ["over the per-person limit", { used: dollars(150) }, "vote", "over_budget"],
+    ["outside payee", { receiverIsMember: false }, "vote", "recipient"],
+    ["new member (rev4)", { contributed: 0n }, "vote", "new_member"],
+    ["more than the Pot has", { amount: dollars(500) }, "blocked", "balance"],
+  ])("%s", (_, patch, path, reason) => {
+    const p = previewSpend({ ...base, ...patch })
+    expect(p.path).toBe(path)
+    expect(p.reason).toBe(reason)
+    expect([p.k, p.n]).toEqual([2, 3])
+  })
+})
+
+describe("getsBack (D-09 pro-rata, floored)", () => {
+  it("splits $66 by contribution", () => {
+    expect(getsBack(dollars(66), dollars(150), dollars(450))).toBe(dollars(22))
+    expect(getsBack(dollars(66), dollars(200), dollars(450))).toBe(29_330_000n)
+    expect(getsBack(dollars(66), dollars(100), dollars(450))).toBe(14_660_000n)
+  })
+})

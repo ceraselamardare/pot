@@ -1,0 +1,68 @@
+// Quota limits (api-spec §3.1 families, §3.5 global caps and budgets). Every limit can be overridden with
+// QUOTA_<NAME> (e.g. QUOTA_GLOBAL_RELAY_YOCTO, QUOTA_USER_CONTRIBUTE); unset → the coded default for the
+// environment (prod vs preview/local).
+import "server-only"
+import { getConfig } from "./config"
+
+const NEAR = 10n ** 24n
+const mNEAR = (n: number) => (BigInt(Math.round(n * 1e6)) * NEAR) / 1_000_000n
+
+/** name → [prod, preview] */
+const DEFAULTS: Record<string, [bigint, bigint]> = {
+  // per user per UTC day (families)
+  user_contribute: [20n, 20n],
+  user_create: [3n, 3n],
+  email_create: [3n, 3n],
+  user_spend: [30n, 30n],
+  user_join: [10n, 10n],
+  user_invite: [20n, 20n],
+  user_rules: [10n, 10n],
+  user_close: [3n, 3n],
+  user_maintenance: [20n, 20n],
+  user_vote: [100n, 100n],
+  user_test: [20n, 50n],
+  user_notes: [60n, 60n],
+  user_burst: [20n, 20n], // per minute
+  // per Pot per day
+  pot_contribute: [200n, 200n],
+  pot_spend: [100n, 100n],
+  pot_vote: [500n, 500n],
+  pot_close: [3n, 3n],
+  proposal_finalize: [3n, 3n],
+  // per-user NEAR budgets (rev4)
+  user_relay_yocto: [mNEAR(0.2), mNEAR(0.1)],
+  user_hub_yocto: [mNEAR(0.3), mNEAR(0.15)],
+  // global
+  global_relay_yocto: [5n * NEAR, 1n * NEAR],
+  global_hub_yocto: [5n * NEAR, 1n * NEAR],
+  global_demo_yocto: [3n * NEAR, 1n * NEAR],
+  // DAO float top-ups (demo and reference Pots only, ≤ 2 per DAO lifetime; rev4 M-4)
+  global_topup_yocto: [2n * NEAR, NEAR / 2n],
+  global_relays: [20_000n, 2_000n],
+  global_pots_created: [20n, 10n],
+  global_accounts_created: [300n, 50n],
+  global_registrations: [200n, 50n],
+  global_dev_accounts: [0n, 20n],
+  global_mpc_signs: [100n, 20n],
+  global_faucet_usd: [50_000_000_000n, 5_000_000_000n],
+  // per IP
+  ip_accounts_created: [3n, 3n],
+  ip_dev_accounts: [10n, 10n],
+  ip_session_create: [10n, 10n], // per hour in the spec; daily bucket here (WAF covers bursts)
+  ip_faucet_usd: [1_000_000_000n, 1_000_000_000n],
+  ipnet_lease: [10n, 10n],
+  // faucet per account
+  account_faucet_claims: [5n, 5n],
+  account_faucet_usd: [500_000_000n, 500_000_000n],
+  // demo
+  visitor_reset: [10n, 10n],
+  visitor_create: [1n, 1n],
+}
+
+export function limit(name: keyof typeof DEFAULTS | string): bigint {
+  const env = process.env[`QUOTA_${name.toUpperCase()}`]
+  if (env && /^[0-9]+$/.test(env)) return BigInt(env)
+  const d = DEFAULTS[name]
+  if (!d) throw new Error(`unknown quota ${name}`)
+  return getConfig().quotaScale === "prod" ? d[0] : d[1]
+}

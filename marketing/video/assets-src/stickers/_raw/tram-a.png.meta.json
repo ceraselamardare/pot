@@ -1,0 +1,42 @@
+{
+  "tool": "openai.generateImage",
+  "endpoint": "POST /v1/images/generations",
+  "model": "gpt-image-2.5-sunburst",
+  "request": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A single glossy die-cut vinyl sticker of a classic yellow Lisbon tram, the iconic vintage streetcar of Lisbon, in three-quarter view. Flat vector illustration with soft, minimal shading and chunky rounded shapes, bold dark eggplant (#2b1b3a) outlines, a limited warm palette of marigold yellow (#ffb320), cream (#faf9f6) and soft periwinkle (#b8c7ff) windows, a thick clean white sticker border all around the shape, and a very subtle soft drop shadow. Centered, isolated on a transparent background. No text, no letters, no numbers, no logos, no coins. The roof is cream; the wheels, bumpers and trolley pole are dark eggplant (#2b1b3a); no grey, no black, no red. The destination sign above the windshield is a blank cream panel: no route number, no fleet number and no lettering anywhere on the tram. Keep it simple and iconic, with few bold details. Everything sits inside one single continuous white die-cut outline, with no separate floating pieces, sparkles or crumbs. The sticker fills most of the canvas with a small even margin.",
+    "size": "1536x1024",
+    "quality": "high",
+    "background": "transparent",
+    "output_format": "png"
+  },
+  "response": {
+    "request_id": "req_b1e1f8c6ac3b498b927026fed6480c55",
+    "headers": {
+      "openai-processing-ms": "33373",
+      "x-request-id": "req_b1e1f8c6ac3b498b927026fed6480c55"
+    },
+    "created": 1792660164,
+    "background": "transparent",
+    "quality": "high",
+    "size": "1536x1024",
+    "output_format": "png",
+    "usage": {
+      "input_tokens": 245,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 245
+      },
+      "output_tokens": 1372,
+      "output_tokens_details": {
+        "image_tokens": 1372,
+        "text_tokens": 0
+      },
+      "total_tokens": 1617
+    },
+    "latency_ms": 34714,
+    "bytes": 1481763,
+    "index": 0
+  },
+  "created_at": "2026-10-22T09:09:25.370Z"
+}

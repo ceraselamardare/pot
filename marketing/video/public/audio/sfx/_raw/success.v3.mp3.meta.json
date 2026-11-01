@@ -1,0 +1,22 @@
+{
+  "tool": "eleven.sfx",
+  "endpoint": "POST /v1/sound-generation",
+  "model_id": "eleven_text_to_sound_v2",
+  "request": {
+    "text": "A warm, bright two-note success chime: a short note followed by a higher note, a payment-approved sound in a modern fintech app. Soft bell tone, clean, short, positive.",
+    "duration_seconds": 1,
+    "prompt_influence": 0.55,
+    "model_id": "eleven_text_to_sound_v2",
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "5"
+    },
+    "latency_ms": 1591,
+    "bytes": 17179,
+    "duration_sec": 1
+  },
+  "created_at": "2026-10-22T09:38:18.082Z"
+}

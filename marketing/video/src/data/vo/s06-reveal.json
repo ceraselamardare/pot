@@ -1,0 +1,57 @@
+{
+  "id": "s06-reveal",
+  "file": "audio/vo/s06-reveal.mp3",
+  "durationSec": 3.751,
+  "words": [
+    {
+      "text": "Meet",
+      "start": 0.05,
+      "end": 0.179
+    },
+    {
+      "text": "Pot",
+      "start": 0.379,
+      "end": 0.73
+    },
+    {
+      "text": "Group",
+      "start": 1.308,
+      "end": 1.499
+    },
+    {
+      "text": "chat",
+      "start": 1.539,
+      "end": 1.719
+    },
+    {
+      "text": "money",
+      "start": 1.779,
+      "end": 2.059
+    },
+    {
+      "text": "that",
+      "start": 2.099,
+      "end": 2.252
+    },
+    {
+      "text": "follows",
+      "start": 2.336,
+      "end": 2.599
+    },
+    {
+      "text": "its",
+      "start": 2.639,
+      "end": 2.78
+    },
+    {
+      "text": "own",
+      "start": 2.89,
+      "end": 3.059
+    },
+    {
+      "text": "rules",
+      "start": 3.139,
+      "end": 3.591
+    }
+  ]
+}

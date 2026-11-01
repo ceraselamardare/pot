@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+members = ["pot-hub", "test-usdc", "tests"]
+
+[workspace.package]
+rust-version = "1.93"
+repository = "https://github.com/pot-app/pot"
+license = "MIT"
+
+# cargo-near template profile; overflow-checks matters for money math (INV-13).
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true

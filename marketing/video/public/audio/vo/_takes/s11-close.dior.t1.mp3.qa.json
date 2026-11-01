@@ -1,0 +1,152 @@
+{
+  "take": "s11-close.dior.t1.mp3",
+  "line": "s11-close",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "When the trip's over, close the Pot. Everyone gets their fair share back.",
+  "duration": 4.64,
+  "speech_start": 0.03,
+  "speech_end": 4.156,
+  "speech_span": 4.077,
+  "words": 13,
+  "syllables": 16,
+  "wps_span": 3.19,
+  "sps_span": 3.92,
+  "wps_articulation": 4.03,
+  "pauses": [
+    {
+      "after": "over",
+      "k": 3,
+      "sec": 0.272
+    },
+    {
+      "after": "Pot",
+      "k": 6,
+      "sec": 0.576
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.042,
+    "anchors": [
+      {
+        "word": "When",
+        "k": 0,
+        "onset": 0.03,
+        "breath": false,
+        "stt_minus_onset": 0.03,
+        "align_minus_onset": -0.03
+      },
+      {
+        "word": "close",
+        "k": 4,
+        "onset": 1.238,
+        "breath": false,
+        "stt_minus_onset": 0.042,
+        "align_minus_onset": 0.042
+      },
+      {
+        "word": "Everyone",
+        "k": 7,
+        "onset": 2.495,
+        "breath": false,
+        "stt_minus_onset": 0.045,
+        "align_minus_onset": 0.185
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.042
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "When the trip's over, close the pot. Everyone gets their fair share back"
+  },
+  "f0": {
+    "f0_median_hz": 153.5,
+    "st_sd": 4.58,
+    "st_p5_p95": 14.8,
+    "st_p10_p90": 12.48,
+    "st_motion_per_s": 27.0,
+    "voiced_s": 1.66
+  },
+  "loudness": {
+    "I": -25.9,
+    "LRA": 1.9,
+    "TP": -5.2
+  },
+  "threshold_db": -57.2,
+  "times": [
+    [
+      "When",
+      0.03,
+      0.118
+    ],
+    [
+      "the",
+      0.138,
+      0.218
+    ],
+    [
+      "trip's",
+      0.258,
+      0.538
+    ],
+    [
+      "over",
+      0.618,
+      0.967
+    ],
+    [
+      "close",
+      1.238,
+      1.518
+    ],
+    [
+      "the",
+      1.558,
+      1.638
+    ],
+    [
+      "Pot",
+      1.678,
+      1.92
+    ],
+    [
+      "Everyone",
+      2.495,
+      2.878
+    ],
+    [
+      "gets",
+      2.918,
+      3.078
+    ],
+    [
+      "their",
+      3.118,
+      3.298
+    ],
+    [
+      "fair",
+      3.338,
+      3.478
+    ],
+    [
+      "share",
+      3.558,
+      3.778
+    ],
+    [
+      "back",
+      3.798,
+      4.107
+    ]
+  ]
+}

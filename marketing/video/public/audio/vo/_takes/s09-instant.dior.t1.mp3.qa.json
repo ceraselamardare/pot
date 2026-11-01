@@ -1,0 +1,203 @@
+{
+  "take": "s09-instant.dior.t1.mp3",
+  "line": "s09-instant",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "Small spends approve themselves. Eighty-four dollars for groceries? Pot checks the rules\u2026 approved, and paid back in seconds.",
+  "duration": 8.32,
+  "speech_start": 0.01,
+  "speech_end": 7.967,
+  "speech_span": 7.951,
+  "words": 18,
+  "syllables": 27,
+  "wps_span": 2.26,
+  "sps_span": 3.4,
+  "wps_articulation": 2.81,
+  "pauses": [
+    {
+      "after": "themselves",
+      "k": 3,
+      "sec": 0.419
+    },
+    {
+      "after": "groceries",
+      "k": 7,
+      "sec": 0.389
+    },
+    {
+      "after": "rules",
+      "k": 11,
+      "sec": 0.399
+    },
+    {
+      "after": "approved",
+      "k": 12,
+      "sec": 0.344
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.015,
+    "anchors": [
+      {
+        "word": "Small",
+        "k": 0,
+        "onset": 0.01,
+        "breath": false,
+        "stt_minus_onset": 0.09,
+        "align_minus_onset": -0.01
+      },
+      {
+        "word": "Eighty-four",
+        "k": 4,
+        "onset": 2.353,
+        "breath": true,
+        "stt_minus_onset": 0.007,
+        "align_minus_onset": 0.047
+      },
+      {
+        "word": "Pot",
+        "k": 8,
+        "onset": 4.252,
+        "breath": false,
+        "stt_minus_onset": 0.008,
+        "align_minus_onset": 0.068
+      },
+      {
+        "word": "approved",
+        "k": 12,
+        "onset": 5.638,
+        "breath": true,
+        "stt_minus_onset": 0.022,
+        "align_minus_onset": 0.402
+      },
+      {
+        "word": "and",
+        "k": 13,
+        "onset": 6.474,
+        "breath": true,
+        "stt_minus_onset": 0.006,
+        "align_minus_onset": 0.113
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.035
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Small spends approve themselves. $84 for groceries? Pot checks the rules. Approved and paid back in seconds"
+  },
+  "f0": {
+    "f0_median_hz": 152.8,
+    "st_sd": 4.8,
+    "st_p5_p95": 15.59,
+    "st_p10_p90": 12.44,
+    "st_motion_per_s": 41.5,
+    "voiced_s": 2.35
+  },
+  "loudness": {
+    "I": -25.5,
+    "LRA": 2.8,
+    "TP": -2.9
+  },
+  "threshold_db": -57.3,
+  "times": [
+    [
+      "Small",
+      0.01,
+      0.285
+    ],
+    [
+      "spends",
+      0.445,
+      0.745
+    ],
+    [
+      "approve",
+      0.865,
+      1.185
+    ],
+    [
+      "themselves",
+      1.225,
+      1.935
+    ],
+    [
+      "Eighty-four",
+      2.353,
+      2.555
+    ],
+    [
+      "dollars",
+      2.555,
+      2.765
+    ],
+    [
+      "for",
+      3.105,
+      3.165
+    ],
+    [
+      "groceries",
+      3.245,
+      3.863
+    ],
+    [
+      "Pot",
+      4.252,
+      4.385
+    ],
+    [
+      "checks",
+      4.465,
+      4.685
+    ],
+    [
+      "the",
+      4.725,
+      4.805
+    ],
+    [
+      "rules",
+      4.845,
+      5.24
+    ],
+    [
+      "approved",
+      5.638,
+      6.13
+    ],
+    [
+      "and",
+      6.474,
+      6.625
+    ],
+    [
+      "paid",
+      6.665,
+      6.865
+    ],
+    [
+      "back",
+      6.905,
+      7.165
+    ],
+    [
+      "in",
+      7.205,
+      7.365
+    ],
+    [
+      "seconds",
+      7.445,
+      7.961
+    ]
+  ]
+}

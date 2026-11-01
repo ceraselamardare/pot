@@ -1,0 +1,144 @@
+/* GENERATED from brand/tokens.json by apps/web/scripts/gen-tokens.mjs. Do not edit by hand. */
+/* Theme-switched colours and shadows: Day on :root and [data-theme="day"], Night on [data-theme="night"]. */
+
+:root {
+  --pot-text-balance-hero: 2.75rem;
+  --pot-text-balance-hero-line-height: 3rem;
+  --pot-text-balance-hero-font-weight: 800;
+  --pot-text-balance-hero-letter-spacing: -0.02em;
+  --pot-text-title: 1.625rem;
+  --pot-text-title-line-height: 1.875rem;
+  --pot-text-title-font-weight: 700;
+  --pot-text-title-letter-spacing: -0.01em;
+  --pot-text-heading: 1.1875rem;
+  --pot-text-heading-line-height: 1.5rem;
+  --pot-text-heading-font-weight: 700;
+  --pot-text-heading-letter-spacing: 0em;
+  --pot-text-body: 1rem;
+  --pot-text-body-line-height: 1.5rem;
+  --pot-text-body-font-weight: 400;
+  --pot-text-body-letter-spacing: 0em;
+  --pot-text-body-sm: 0.875rem;
+  --pot-text-body-sm-line-height: 1.25rem;
+  --pot-text-body-sm-font-weight: 400;
+  --pot-text-body-sm-letter-spacing: 0em;
+  --pot-text-label: 0.9375rem;
+  --pot-text-label-line-height: 1.25rem;
+  --pot-text-label-font-weight: 600;
+  --pot-text-label-letter-spacing: 0em;
+  --pot-text-amount: 1.0625rem;
+  --pot-text-amount-line-height: 1.5rem;
+  --pot-text-amount-font-weight: 700;
+  --pot-text-amount-letter-spacing: 0em;
+  --pot-space-1: 0.25rem;
+  --pot-space-2: 0.5rem;
+  --pot-space-3: 0.75rem;
+  --pot-space-4: 1rem;
+  --pot-space-6: 1.5rem;
+  --pot-space-8: 2rem;
+  --pot-space-12: 3rem;
+  --pot-radius-sm: 0.625rem;
+  --pot-radius-md: 1rem;
+  --pot-radius-lg: 1.5rem;
+  --pot-radius-pill: 999px;
+  /* --pot-bp-sm: 360px (literal in globals.css) */
+  /* --pot-bp-md: 768px (literal in globals.css) */
+  /* --pot-bp-lg: 1024px (literal in globals.css) */
+  --pot-container-flow: 27.5rem;
+  --pot-container-app: 67.5rem;
+  --pot-tap-min: 2.75rem;
+}
+
+:root,
+[data-theme="day"] {
+  color-scheme: light;
+  --pot-ground: #faf9f6;
+  --pot-surface: #ffffff;
+  --pot-surface-sunken: #f1eee9;
+  --pot-line: #e6e1da;
+  --pot-line-strong: #8f8597;
+  --pot-ink: #2b1b3a;
+  --pot-ink-muted: #645a70;
+  --pot-brand: #ffb320;
+  --pot-brand-soft: #ffe7a8;
+  --pot-brand-deep: #b87800;
+  --pot-on-brand: #2b1b3a;
+  --pot-link: #5b3a8c;
+  --pot-focus: #5b3a8c;
+  --pot-approved: #1e7a54;
+  --pot-waiting: #2d5bc9;
+  --pot-declined: #c0373c;
+  --pot-member-1: #ffd166;
+  --pot-member-2: #9ad7c2;
+  --pot-member-3: #b8c7ff;
+  --pot-member-4: #f5b3c8;
+  --pot-member-5: #d7c1f0;
+  --pot-member-6: #c9e3a6;
+  --pot-shadow-card: 0 1px 2px rgba(43, 27, 58, 0.06), 0 8px 24px rgba(43, 27, 58, 0.08);
+  --pot-shadow-sheet: 0 -8px 32px rgba(43, 27, 58, 0.16);
+  --pot-brand-border: var(--pot-brand-deep);
+  --pot-scrim: rgb(43 27 58 / 0.45);
+}
+
+[data-theme="night"] {
+  color-scheme: dark;
+  --pot-ground: #1c1424;
+  --pot-surface: #261c30;
+  --pot-surface-sunken: #33283f;
+  --pot-line: #3f3350;
+  --pot-line-strong: #8e819e;
+  --pot-ink: #f6f1ea;
+  --pot-ink-muted: #bdb2c8;
+  --pot-brand: #ffb320;
+  --pot-brand-soft: #4a3a22;
+  --pot-brand-deep: #e39a00;
+  --pot-on-brand: #2b1b3a;
+  --pot-link: #ffc94d;
+  --pot-focus: #ffc94d;
+  --pot-approved: #5fd3a0;
+  --pot-waiting: #93b0ff;
+  --pot-declined: #ff8a8f;
+  --pot-member-1: #ffd166;
+  --pot-member-2: #9ad7c2;
+  --pot-member-3: #b8c7ff;
+  --pot-member-4: #f5b3c8;
+  --pot-member-5: #d7c1f0;
+  --pot-member-6: #c9e3a6;
+  --pot-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+  --pot-shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  --pot-brand-border: transparent;
+  --pot-scrim: rgb(0 0 0 / 0.35);
+}
+
+/* No-JS fallback (e.g. the /demo HTML AI judges read): Night when the OS is dark and no data-theme is set. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --pot-ground: #1c1424;
+    --pot-surface: #261c30;
+    --pot-surface-sunken: #33283f;
+    --pot-line: #3f3350;
+    --pot-line-strong: #8e819e;
+    --pot-ink: #f6f1ea;
+    --pot-ink-muted: #bdb2c8;
+    --pot-brand: #ffb320;
+    --pot-brand-soft: #4a3a22;
+    --pot-brand-deep: #e39a00;
+    --pot-on-brand: #2b1b3a;
+    --pot-link: #ffc94d;
+    --pot-focus: #ffc94d;
+    --pot-approved: #5fd3a0;
+    --pot-waiting: #93b0ff;
+    --pot-declined: #ff8a8f;
+    --pot-member-1: #ffd166;
+    --pot-member-2: #9ad7c2;
+    --pot-member-3: #b8c7ff;
+    --pot-member-4: #f5b3c8;
+    --pot-member-5: #d7c1f0;
+    --pot-member-6: #c9e3a6;
+    --pot-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+    --pot-shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
+    --pot-brand-border: transparent;
+    --pot-scrim: rgb(0 0 0 / 0.35);
+  }
+}

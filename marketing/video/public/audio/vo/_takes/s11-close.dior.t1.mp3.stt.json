@@ -1,0 +1,205 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s11-close.dior.t1.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "1",
+      "fiat-cost-before-overages": "0.000364"
+    },
+    "latency_ms": 789
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "When the trip's over, close the pot. Everyone gets their fair share back",
+    "words": [
+      {
+        "text": "When",
+        "start": 0.06,
+        "end": 0.16,
+        "type": "word",
+        "logprob": -0.0000046491513785440475
+      },
+      {
+        "text": " ",
+        "start": 0.16,
+        "end": 0.18,
+        "type": "spacing",
+        "logprob": -0.0000015497195136049413
+      },
+      {
+        "text": "the",
+        "start": 0.18,
+        "end": 0.26,
+        "type": "word",
+        "logprob": -0.0000015497195136049413
+      },
+      {
+        "text": " ",
+        "start": 0.26,
+        "end": 0.3,
+        "type": "spacing",
+        "logprob": -0.0004203628050163388
+      },
+      {
+        "text": "trip's",
+        "start": 0.3,
+        "end": 0.58,
+        "type": "word",
+        "logprob": -0.00033671764443354846
+      },
+      {
+        "text": " ",
+        "start": 0.58,
+        "end": 0.66,
+        "type": "spacing",
+        "logprob": -4.768370445162873e-7
+      },
+      {
+        "text": "over,",
+        "start": 0.66,
+        "end": 0.88,
+        "type": "word",
+        "logprob": -0.00006800938272135681
+      },
+      {
+        "text": " ",
+        "start": 0.88,
+        "end": 1.28,
+        "type": "spacing",
+        "logprob": -0.0000010728830375228426
+      },
+      {
+        "text": "close",
+        "start": 1.28,
+        "end": 1.56,
+        "type": "word",
+        "logprob": -0.0000010728830375228426
+      },
+      {
+        "text": " ",
+        "start": 1.56,
+        "end": 1.6,
+        "type": "spacing",
+        "logprob": -9.536738616588991e-7
+      },
+      {
+        "text": "the",
+        "start": 1.6,
+        "end": 1.68,
+        "type": "word",
+        "logprob": -9.536738616588991e-7
+      },
+      {
+        "text": " ",
+        "start": 1.68,
+        "end": 1.72,
+        "type": "spacing",
+        "logprob": -0.000002622600959512056
+      },
+      {
+        "text": "pot.",
+        "start": 1.72,
+        "end": 2.02,
+        "type": "word",
+        "logprob": -0.00011834772629981671
+      },
+      {
+        "text": " ",
+        "start": 2.02,
+        "end": 2.54,
+        "type": "spacing",
+        "logprob": -0.000016927575416048057
+      },
+      {
+        "text": "Everyone",
+        "start": 2.54,
+        "end": 2.92,
+        "type": "word",
+        "logprob": -0.000016927575416048057
+      },
+      {
+        "text": " ",
+        "start": 2.92,
+        "end": 2.96,
+        "type": "spacing",
+        "logprob": -0.0000011920922133867862
+      },
+      {
+        "text": "gets",
+        "start": 2.96,
+        "end": 3.12,
+        "type": "word",
+        "logprob": -0.0000011920922133867862
+      },
+      {
+        "text": " ",
+        "start": 3.12,
+        "end": 3.16,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "their",
+        "start": 3.16,
+        "end": 3.34,
+        "type": "word",
+        "logprob": 0
+      },
+      {
+        "text": " ",
+        "start": 3.34,
+        "end": 3.38,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "fair",
+        "start": 3.38,
+        "end": 3.52,
+        "type": "word",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": " ",
+        "start": 3.52,
+        "end": 3.6,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "share",
+        "start": 3.6,
+        "end": 3.82,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 3.82,
+        "end": 3.84,
+        "type": "spacing",
+        "logprob": -9.536738616588991e-7
+      },
+      {
+        "text": "back",
+        "start": 3.84,
+        "end": 4.12,
+        "type": "word",
+        "logprob": -9.536738616588991e-7
+      }
+    ],
+    "transcription_id": "y5modQ7oVsnppLZ16MyQ",
+    "audio_duration_secs": 4.64
+  },
+  "created_at": "2026-10-22T09:18:54.261Z"
+}

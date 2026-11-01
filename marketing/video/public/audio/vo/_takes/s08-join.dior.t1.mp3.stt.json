@@ -1,0 +1,331 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s08-join.dior.t1.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "1",
+      "fiat-cost-before-overages": "0.000364"
+    },
+    "latency_ms": 695
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "Drop the link in the chat. Friends join with Google and chip in their share. No wallet, no seed phrase, no gas",
+    "words": [
+      {
+        "text": "Drop",
+        "start": 0.04,
+        "end": 0.26,
+        "type": "word",
+        "logprob": -0.000791236583609134
+      },
+      {
+        "text": " ",
+        "start": 0.26,
+        "end": 0.28,
+        "type": "spacing",
+        "logprob": -5.960462772236497e-7
+      },
+      {
+        "text": "the",
+        "start": 0.28,
+        "end": 0.36,
+        "type": "word",
+        "logprob": -5.960462772236497e-7
+      },
+      {
+        "text": " ",
+        "start": 0.36,
+        "end": 0.4,
+        "type": "spacing",
+        "logprob": -4.768370445162873e-7
+      },
+      {
+        "text": "link",
+        "start": 0.4,
+        "end": 0.56,
+        "type": "word",
+        "logprob": -4.768370445162873e-7
+      },
+      {
+        "text": " ",
+        "start": 0.56,
+        "end": 0.6,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "in",
+        "start": 0.6,
+        "end": 0.66,
+        "type": "word",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": " ",
+        "start": 0.66,
+        "end": 0.68,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "the",
+        "start": 0.68,
+        "end": 0.76,
+        "type": "word",
+        "logprob": 0
+      },
+      {
+        "text": " ",
+        "start": 0.76,
+        "end": 0.8,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "chat.",
+        "start": 0.8,
+        "end": 1.12,
+        "type": "word",
+        "logprob": -0.000024317239854099172
+      },
+      {
+        "text": " ",
+        "start": 1.12,
+        "end": 1.12,
+        "type": "spacing",
+        "logprob": -0.000015139465176616795
+      },
+      {
+        "text": "Friends",
+        "start": 1.74,
+        "end": 2,
+        "type": "word",
+        "logprob": -0.000015139465176616795
+      },
+      {
+        "text": " ",
+        "start": 2,
+        "end": 2.04,
+        "type": "spacing",
+        "logprob": -0.00000834461570775602
+      },
+      {
+        "text": "join",
+        "start": 2.04,
+        "end": 2.22,
+        "type": "word",
+        "logprob": -0.00000834461570775602
+      },
+      {
+        "text": " ",
+        "start": 2.22,
+        "end": 2.24,
+        "type": "spacing",
+        "logprob": -0.0000029802276912960224
+      },
+      {
+        "text": "with",
+        "start": 2.24,
+        "end": 2.38,
+        "type": "word",
+        "logprob": -0.0000029802276912960224
+      },
+      {
+        "text": " ",
+        "start": 2.38,
+        "end": 2.42,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "Google",
+        "start": 2.42,
+        "end": 2.7,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 2.7,
+        "end": 2.86,
+        "type": "spacing",
+        "logprob": -0.00006782778655178845
+      },
+      {
+        "text": "and",
+        "start": 2.86,
+        "end": 2.98,
+        "type": "word",
+        "logprob": -0.00006782778655178845
+      },
+      {
+        "text": " ",
+        "start": 2.98,
+        "end": 3.02,
+        "type": "spacing",
+        "logprob": -0.000002145764938177308
+      },
+      {
+        "text": "chip",
+        "start": 3.02,
+        "end": 3.2,
+        "type": "word",
+        "logprob": -0.000002145764938177308
+      },
+      {
+        "text": " ",
+        "start": 3.2,
+        "end": 3.24,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "in",
+        "start": 3.24,
+        "end": 3.3,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 3.3,
+        "end": 3.34,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "their",
+        "start": 3.34,
+        "end": 3.48,
+        "type": "word",
+        "logprob": 0
+      },
+      {
+        "text": " ",
+        "start": 3.48,
+        "end": 3.52,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "share.",
+        "start": 3.52,
+        "end": 3.78,
+        "type": "word",
+        "logprob": -0.000002702058409909114
+      },
+      {
+        "text": " ",
+        "start": 3.78,
+        "end": 3.78,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "No",
+        "start": 4.38,
+        "end": 4.54,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 4.54,
+        "end": 4.56,
+        "type": "spacing",
+        "logprob": -0.00001156323378381785
+      },
+      {
+        "text": "wallet,",
+        "start": 4.56,
+        "end": 4.84,
+        "type": "word",
+        "logprob": -0.000015650303664317888
+      },
+      {
+        "text": " ",
+        "start": 4.84,
+        "end": 5.26,
+        "type": "spacing",
+        "logprob": -5.960462772236497e-7
+      },
+      {
+        "text": "no",
+        "start": 5.26,
+        "end": 5.44,
+        "type": "word",
+        "logprob": -5.960462772236497e-7
+      },
+      {
+        "text": " ",
+        "start": 5.44,
+        "end": 5.5,
+        "type": "spacing",
+        "logprob": -0.000012636104656849056
+      },
+      {
+        "text": "seed",
+        "start": 5.5,
+        "end": 5.66,
+        "type": "word",
+        "logprob": -0.000012636104656849056
+      },
+      {
+        "text": " ",
+        "start": 5.66,
+        "end": 5.72,
+        "type": "spacing",
+        "logprob": -0.00001168244216387393
+      },
+      {
+        "text": "phrase,",
+        "start": 5.72,
+        "end": 6.08,
+        "type": "word",
+        "logprob": -0.000010950163219344436
+      },
+      {
+        "text": " ",
+        "start": 6.08,
+        "end": 6.4,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "no",
+        "start": 6.4,
+        "end": 6.5,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 6.5,
+        "end": 6.6,
+        "type": "spacing",
+        "logprob": -0.000011205610462639015
+      },
+      {
+        "text": "gas",
+        "start": 6.6,
+        "end": 6.96,
+        "type": "word",
+        "logprob": -0.000011205610462639015
+      }
+    ],
+    "transcription_id": "C85loMpBtvkfjqHhn8Ya",
+    "audio_duration_secs": 7.44
+  },
+  "created_at": "2026-10-22T09:18:49.155Z"
+}

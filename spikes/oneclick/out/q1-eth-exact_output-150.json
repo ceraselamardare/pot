@@ -1,0 +1,80 @@
+{
+  "name": "q1-eth-exact_output-150",
+  "at": "2026-10-21T11:25:20.244Z",
+  "request": {
+    "method": "POST",
+    "url": "https://1click.chaindefuser.com/v0/quote",
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "dry": true,
+      "swapType": "EXACT_OUTPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "150000000",
+      "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+      "refundType": "ORIGIN_CHAIN",
+      "recipient": "near",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2026-10-21T12:25:19.838Z",
+      "referral": "pot-spike"
+    }
+  },
+  "response": {
+    "status": 201,
+    "ms": 405,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1195",
+      "x-ratelimit-reset-unauth": "58"
+    },
+    "body": {
+      "quote": {
+        "amountIn": "151536790",
+        "amountInFormatted": "151.53679",
+        "amountInUsd": "151.450262492910",
+        "minAmountIn": "150021422",
+        "amountOut": "150000000",
+        "amountOutFormatted": "150.0",
+        "amountOutUsd": "149.914350000000",
+        "minAmountOut": "150000000",
+        "timeEstimate": 45,
+        "refundFee": "300000",
+        "withdrawFee": "0"
+      },
+      "quoteRequest": {
+        "dry": true,
+        "depositMode": "SIMPLE",
+        "swapType": "EXACT_OUTPUT",
+        "slippageTolerance": 100,
+        "originAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "depositType": "ORIGIN_CHAIN",
+        "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "amount": "150000000",
+        "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+        "refundType": "ORIGIN_CHAIN",
+        "recipient": "near",
+        "recipientType": "DESTINATION_CHAIN",
+        "deadline": "2026-10-21T12:25:19.838Z",
+        "confidentiality": "public",
+        "referral": "pot-spike",
+        "quoteWaitingTimeMs": 0,
+        "insured": false,
+        "appFees": [
+          {
+            "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+            "fee": 1
+          }
+        ]
+      },
+      "signature": "ed25519:5mBReAkMk3XHPjwrVBjPTCSbiJgthhdi5PVxzPygKVtamsRmgUeWBZDJJ1D5ws3WGXUHcE91HzMSqQVXb8u5F31Q",
+      "timestamp": "2026-10-21T11:25:19.956Z",
+      "correlationId": "3c1c78ec-9131-4ecc-be7b-381d8e8aea4e"
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "take": "s03-chase.dior.t1.mp3",
+  "line": "s03-chase",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "\u2026then spends weeks chasing everyone to pay up.",
+  "duration": 2.88,
+  "speech_start": 0.037,
+  "speech_end": 2.749,
+  "speech_span": 2.638,
+  "words": 8,
+  "syllables": 11,
+  "wps_span": 3.03,
+  "sps_span": 4.17,
+  "wps_articulation": 3.03,
+  "pauses": [],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.063,
+    "anchors": [
+      {
+        "word": "then",
+        "k": 0,
+        "onset": 0.037,
+        "breath": false,
+        "stt_minus_onset": 0.063,
+        "align_minus_onset": 0.083
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.023
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "then spends weeks chasing everyone to pay up"
+  },
+  "f0": {
+    "f0_median_hz": 131.3,
+    "st_sd": 4.23,
+    "st_p5_p95": 13.75,
+    "st_p10_p90": 12.62,
+    "st_motion_per_s": 53.3,
+    "voiced_s": 1.48
+  },
+  "loudness": {
+    "I": -26.3,
+    "LRA": 0.0,
+    "TP": -8.5
+  },
+  "threshold_db": -57.6,
+  "times": [
+    [
+      "then",
+      0.037,
+      0.177
+    ],
+    [
+      "spends",
+      0.297,
+      0.517
+    ],
+    [
+      "weeks",
+      0.737,
+      1.037
+    ],
+    [
+      "chasing",
+      1.137,
+      1.577
+    ],
+    [
+      "everyone",
+      1.657,
+      2.037
+    ],
+    [
+      "to",
+      2.077,
+      2.177
+    ],
+    [
+      "pay",
+      2.217,
+      2.377
+    ],
+    [
+      "up",
+      2.457,
+      2.675
+    ]
+  ]
+}

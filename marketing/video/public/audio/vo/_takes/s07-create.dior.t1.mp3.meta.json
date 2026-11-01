@@ -1,0 +1,31 @@
+{
+  "tool": "eleven.tts",
+  "endpoint": "POST /v1/text-to-speech/{voice_id}/with-timestamps",
+  "model_id": "eleven_v4",
+  "voice_id": "4XLp6ou1JHGgf9xXbHCM",
+  "request": {
+    "text": "Start a Pot for the trip, and set the rules in plain words.",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.45,
+      "similarity_boost": 0.75
+    },
+    "previous_text": "Meet Pot. … Group chat money that follows its own rules.",
+    "next_text": "Drop the link in the chat. Friends join with Google and chip in their share. No wallet. No seed phrase. No gas.",
+    "seed": 7,
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": "VD8BpuXxOuQnin0rhotq",
+    "headers": {
+      "character-cost": "13",
+      "history-item-id": "GewJbi0wxYGtdsQeQvU3",
+      "request-id": "VD8BpuXxOuQnin0rhotq"
+    },
+    "latency_ms": 1118,
+    "bytes": 56049,
+    "duration_sec": 3.44,
+    "has_alignment": true
+  },
+  "created_at": "2026-10-22T09:18:46.155Z"
+}

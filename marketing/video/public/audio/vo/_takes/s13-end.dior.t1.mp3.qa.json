@@ -1,0 +1,99 @@
+{
+  "take": "s13-end.dior.t1.mp3",
+  "line": "s13-end",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "Pot. Built at Near Hackathon.",
+  "duration": 2.56,
+  "speech_start": 0.037,
+  "speech_end": 2.385,
+  "speech_span": 2.326,
+  "words": 5,
+  "syllables": 7,
+  "wps_span": 2.15,
+  "sps_span": 3.01,
+  "wps_articulation": 2.68,
+  "pauses": [
+    {
+      "after": "Pot",
+      "k": 0,
+      "sec": 0.461
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.063,
+    "anchors": [
+      {
+        "word": "Pot",
+        "k": 0,
+        "onset": 0.037,
+        "breath": false,
+        "stt_minus_onset": 0.023,
+        "align_minus_onset": -0.037
+      },
+      {
+        "word": "Built",
+        "k": 1,
+        "onset": 0.877,
+        "breath": false,
+        "stt_minus_onset": 0.103,
+        "align_minus_onset": 0.163
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.043
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Pot, built at NEAR Hackathon"
+  },
+  "f0": {
+    "f0_median_hz": 124.1,
+    "st_sd": 3.45,
+    "st_p5_p95": 12.87,
+    "st_p10_p90": 7.99,
+    "st_motion_per_s": 29.1,
+    "voiced_s": 0.66
+  },
+  "loudness": {
+    "I": -24.2,
+    "LRA": 0.0,
+    "TP": -3.7
+  },
+  "threshold_db": -56.7,
+  "times": [
+    [
+      "Pot",
+      0.037,
+      0.416
+    ],
+    [
+      "Built",
+      0.877,
+      1.157
+    ],
+    [
+      "at",
+      1.277,
+      1.417
+    ],
+    [
+      "NEAR",
+      1.477,
+      1.637
+    ],
+    [
+      "Hackathon",
+      1.717,
+      2.364
+    ]
+  ]
+}

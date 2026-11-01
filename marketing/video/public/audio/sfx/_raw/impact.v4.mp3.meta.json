@@ -1,0 +1,22 @@
+{
+  "tool": "eleven.sfx",
+  "endpoint": "POST /v1/sound-generation",
+  "model_id": "eleven_text_to_sound_v2",
+  "request": {
+    "text": "One single punchy cinematic impact for a logo reveal: a sharp hit with a deep sub-bass boom that decays smoothly within one second. Clean, modern, not distorted, no sustained drone.",
+    "duration_seconds": 2,
+    "prompt_influence": 0.55,
+    "model_id": "eleven_text_to_sound_v2",
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "11"
+    },
+    "latency_ms": 1712,
+    "bytes": 33061,
+    "duration_sec": 2
+  },
+  "created_at": "2026-10-22T09:38:28.816Z"
+}

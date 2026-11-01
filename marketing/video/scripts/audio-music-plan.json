@@ -1,0 +1,53 @@
+{
+  "chunks": [
+    {
+      "text": "[Problem]",
+      "duration_ms": 12000,
+      "positive_styles": ["120 BPM", "A minor", "instrumental", "tense minimal modern electronic pulse", "ticking hi-hats", "muted synth plucks", "steady sub bass pulse", "immediate cold open at full energy", "anxious but playful", "polished modern production", "tight dry low end"],
+      "negative_styles": ["vocals", "singing", "lyrics", "spoken word", "choir", "slow intro", "fade in", "ambient pad intro", "distortion", "lo-fi", "dubstep"],
+      "context_adherence": "high"
+    },
+    {
+      "text": "[Build]",
+      "duration_ms": 6000,
+      "positive_styles": ["120 BPM", "A minor", "instrumental", "rising tension", "filter opening", "snare roll crescendo", "rising synth riser", "growing rhythmic density", "abrupt dropout to silence in the last half beat"],
+      "negative_styles": ["vocals", "singing", "lyrics", "drop arriving early", "distortion"],
+      "context_adherence": "high"
+    },
+    {
+      "text": "[Reveal]",
+      "duration_ms": 6000,
+      "positive_styles": ["120 BPM", "C major", "instrumental", "big warm impact hit on the first downbeat", "bright joyful opening major chords", "uplifting", "wide warm synth chords", "rounded kick", "settling into a groove", "glossy modern mix"],
+      "negative_styles": ["vocals", "singing", "lyrics", "minor key", "dark", "distortion", "dubstep wobble", "supersaw lead"],
+      "context_adherence": "high"
+    },
+    {
+      "text": "[Product A]",
+      "duration_ms": 20000,
+      "positive_styles": ["120 BPM", "C major", "instrumental", "upbeat bouncy minimal electronic pop groove", "plucky synth motif", "clean sub bass with light sidechain", "claps on 2 and 4", "voice-over friendly, leaves space in the mids", "steady forward motion", "polished modern tech sheen"],
+      "negative_styles": ["vocals", "singing", "lyrics", "busy lead melody", "loud lead synth", "guitar solo", "distortion"],
+      "context_adherence": "high"
+    },
+    {
+      "text": "[Product B]",
+      "duration_ms": 20000,
+      "positive_styles": ["120 BPM", "C major", "instrumental", "same groove with a small lift", "added shaker and light percussion", "brighter chord voicings", "plucky synth motif", "clean sub bass with light sidechain", "claps on 2 and 4", "voice-over friendly"],
+      "negative_styles": ["vocals", "singing", "lyrics", "busy lead melody", "loud lead synth", "guitar solo", "distortion"],
+      "context_adherence": "high"
+    },
+    {
+      "text": "[Under the hood]",
+      "duration_ms": 14000,
+      "positive_styles": ["120 BPM", "A minor", "instrumental", "filtered deeper technical groove", "tight arpeggiated synths", "darker but confident", "driving rhythm", "controlled low end", "precise clean modern sound"],
+      "negative_styles": ["vocals", "singing", "lyrics", "busy lead melody", "distortion", "dubstep", "horror"],
+      "context_adherence": "high"
+    },
+    {
+      "text": "[Outro]",
+      "duration_ms": 6000,
+      "positive_styles": ["120 BPM", "C major", "instrumental", "final warm resolving chord hit on the first downbeat", "clean ringing tail", "no drums after the hit", "gentle decay to near silence", "bright resolution", "polished finish"],
+      "negative_styles": ["vocals", "singing", "lyrics", "new groove", "drum loop", "abrupt cut", "fade in"],
+      "context_adherence": "high"
+    }
+  ]
+}

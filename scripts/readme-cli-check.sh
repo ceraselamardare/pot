@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# E-11 (test-plan §5.3): the README's J-7 read-only commands, run as written, with the values the README promises.
+# No keys, no signing, read-only RPC (near-cli-rs's default testnet config is FastNEAR's archival RPC).
+#   scripts/readme-cli-check.sh                         # against the preview root potprev.testnet
+#   ROOT=<root>.testnet scripts/readme-cli-check.sh     # another deployment
+#   EXPECT_HUB_LOCKED=1 scripts/readme-cli-check.sh     # after the hub's key is deleted (D-13 lock)
+# Every `near …` line of the README's J-7 block must appear verbatim below (scripts/check-readme-steps.mjs).
+set -uo pipefail
+near() { npx -y near-cli-rs@0.30.1 "$@"; }
+ROOT=${ROOT:-potprev.testnet}; HUB=pots.$ROOT; POT=lisbon-trip.$HUB
+fail=0
+strip() { sed 's/\x1b\[[0-9;]*m//g'; }
+expect() { # expect <label> <output> <substring>…
+  local label=$1 out=$2; shift 2
+  for s in "$@"; do
+    if ! grep -qF -- "$s" <<<"$out"; then echo "FAIL $label: missing $s"; fail=1; return; fi
+  done
+  echo "ok   $label"
+}
+expect_no_keys() { # list-keys prints an empty table
+  if ! grep -qF "| Public Key" <<<"$2"; then echo "FAIL $1: no key table (account missing or RPC error)"; fail=1
+  elif grep -q "ed25519:" <<<"$2"; then echo "FAIL $1: has access keys"; fail=1
+  else echo "ok   $1 (no access keys)"; fi
+}
+
+out=$(near contract call-function as-read-only $POT get_policy json-args '{}' network-config testnet now 2>&1 | strip)
+expect "get_policy: member + rulebot, bond 0, quorum 1" "$out" '"name": "member"' '"name": "rulebot"' '"proposal_bond": "0"' '"quorum": "1"' "\"$HUB\""
+out=$(near contract call-function as-read-only $HUB get_pot json-args "{\"pot\":\"$POT\"}" network-config testnet now 2>&1 | strip)
+expect "get_pot: Lisbon Trip, open, 3 members, \$450 in" "$out" '"name": "Lisbon Trip"' '"status": "open"' '"member_count": 3' '"total_contributed": "450000000"'
+out=$(near contract call-function as-read-only usdc.$ROOT ft_balance_of json-args "{\"account_id\":\"$POT\"}" network-config testnet now 2>&1 | strip)
+expect "ft_balance_of(reference Pot) = \$450" "$out" '"450000000"'
+out=$(near account view-account-summary $POT network-config testnet now 2>&1 | strip)
+expect "the Pot runs the global Sputnik code by hash, no keys" "$out" "c9a502ef08a06cef04e2fce82da60b1fbc78db3066ff41416110f4292fca39ce" "Account is locked"
+out=$(near contract call-function as-read-only $POT get_factory_info json-args '{}' network-config testnet now 2>&1 | strip)
+expect "get_factory_info: the hub is the factory" "$out" "\"factory_id\": \"$HUB\""
+out=$(near account list-keys usdc.$ROOT network-config testnet now 2>&1 | strip)
+expect_no_keys "list-keys usdc (locked token)" "$out"
+out=$(near account list-keys $POT network-config testnet now 2>&1 | strip)
+expect_no_keys "list-keys reference Pot" "$out"
+out=$(near account list-keys $HUB network-config testnet now 2>&1 | strip)
+if [ "${EXPECT_HUB_LOCKED:-0}" = "1" ]; then expect_no_keys "list-keys hub (locked)" "$out"
+else echo "info list-keys hub: $(grep -c 'ed25519:' <<<"$out") key(s) (locked on Nov 12, D-13; set EXPECT_HUB_LOCKED=1 after)"; fi
+
+[ $fail -eq 0 ] && echo "README CLI twins: PASS" || echo "README CLI twins: FAIL"
+exit $fail

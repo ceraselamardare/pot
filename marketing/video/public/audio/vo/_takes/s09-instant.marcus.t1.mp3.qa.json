@@ -1,0 +1,217 @@
+{
+  "take": "s09-instant.marcus.t1.mp3",
+  "line": "s09-instant",
+  "voice": "marcus",
+  "n": 1,
+  "duration": 8.48,
+  "speech_start": 0.01,
+  "speech_end": 8.072,
+  "speech_span": 8.062,
+  "words": 18,
+  "wps_span": 2.23,
+  "wps_articulation": 2.79,
+  "pauses": [
+    {
+      "after": "themselves",
+      "k": 3,
+      "sec": 0.417
+    },
+    {
+      "after": "groceries",
+      "k": 7,
+      "sec": 0.466
+    },
+    {
+      "after": "rules",
+      "k": 11,
+      "sec": 0.352
+    },
+    {
+      "after": "approved",
+      "k": 12,
+      "sec": 0.367
+    }
+  ],
+  "missing_pauses": [],
+  "anchors": [
+    {
+      "word": "Small",
+      "k": 0,
+      "onset": 0.01,
+      "stt": 0.11,
+      "align": -0.01
+    },
+    {
+      "word": "Eighty-four",
+      "k": 4,
+      "onset": 2.371,
+      "stt": 0.009,
+      "align": 0.029
+    },
+    {
+      "word": "Pot",
+      "k": 8,
+      "onset": 4.381,
+      "stt": 0.019,
+      "align": 0.059
+    },
+    {
+      "word": "approved",
+      "k": 12,
+      "onset": 5.721,
+      "stt": 0.039,
+      "align": 0.546
+    },
+    {
+      "word": "and",
+      "k": 13,
+      "onset": 6.594,
+      "stt": 0.026,
+      "align": 0.073
+    },
+    {
+      "word": "in",
+      "k": 16,
+      "onset": 7.33,
+      "stt": 0.03,
+      "align": 0.03
+    }
+  ],
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Small spends approve themselves. $84 for groceries? Pot checks the rules. Approved and paid back in seconds"
+  },
+  "f0": {
+    "f0_median_hz": 176.4,
+    "st_sd": 5.47,
+    "st_p5_p95": 17.49,
+    "st_p10_p90": 14.52,
+    "st_motion_per_s": 42.2,
+    "voiced_s": 2.4
+  },
+  "loudness": {
+    "I": -22.9,
+    "LRA": 1.7,
+    "TP": -4.5
+  },
+  "threshold_db": -54.2,
+  "align_word_count_ok": true,
+  "times": [
+    [
+      "Small",
+      0.12,
+      0.34,
+      "stt"
+    ],
+    [
+      "spends",
+      0.48,
+      0.84,
+      "stt"
+    ],
+    [
+      "approve",
+      0.88,
+      1.22,
+      "stt"
+    ],
+    [
+      "themselves",
+      1.24,
+      1.9,
+      "stt"
+    ],
+    [
+      "Eighty-four",
+      2.38,
+      2.609,
+      "stt-split"
+    ],
+    [
+      "dollars",
+      2.609,
+      2.78,
+      "stt-split"
+    ],
+    [
+      "for",
+      3.16,
+      3.28,
+      "stt"
+    ],
+    [
+      "groceries",
+      3.32,
+      3.86,
+      "stt"
+    ],
+    [
+      "Pot",
+      4.4,
+      4.58,
+      "stt"
+    ],
+    [
+      "checks",
+      4.64,
+      4.84,
+      "stt"
+    ],
+    [
+      "the",
+      4.88,
+      4.96,
+      "stt"
+    ],
+    [
+      "rules",
+      5,
+      5.32,
+      "stt"
+    ],
+    [
+      "approved",
+      5.76,
+      6.2,
+      "stt"
+    ],
+    [
+      "and",
+      6.62,
+      6.76,
+      "stt"
+    ],
+    [
+      "paid",
+      6.8,
+      7,
+      "stt"
+    ],
+    [
+      "back",
+      7.04,
+      7.32,
+      "stt"
+    ],
+    [
+      "in",
+      7.36,
+      7.54,
+      "stt"
+    ],
+    [
+      "seconds",
+      7.62,
+      8.02,
+      "stt"
+    ]
+  ]
+}

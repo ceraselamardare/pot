@@ -1,0 +1,80 @@
+{
+  "name": "q9-recommended-eth",
+  "at": "2026-10-21T12:06:02.862Z",
+  "request": {
+    "method": "POST",
+    "url": "https://1click.chaindefuser.com/v0/quote",
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "dry": true,
+      "swapType": "FLEX_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "150000000",
+      "recipient": "pot.near",
+      "recipientType": "DESTINATION_CHAIN",
+      "refundTo": "pot.near",
+      "refundType": "INTENTS",
+      "deadline": "2026-10-21T14:06:02.315Z",
+      "referral": "pot"
+    }
+  },
+  "response": {
+    "status": 201,
+    "ms": 547,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1197",
+      "x-ratelimit-reset-unauth": "59"
+    },
+    "body": {
+      "quote": {
+        "amountIn": "150000000",
+        "amountInFormatted": "150.0",
+        "amountInUsd": "149.908950000000",
+        "minAmountIn": "148500000",
+        "amountOut": "149964747",
+        "amountOutFormatted": "149.964747",
+        "amountOutUsd": "149.873718398571",
+        "minAmountOut": "148465099",
+        "timeEstimate": 45,
+        "refundFee": "0",
+        "withdrawFee": "6454"
+      },
+      "quoteRequest": {
+        "dry": true,
+        "depositMode": "SIMPLE",
+        "swapType": "FLEX_INPUT",
+        "slippageTolerance": 100,
+        "originAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "depositType": "ORIGIN_CHAIN",
+        "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "amount": "150000000",
+        "refundTo": "pot.near",
+        "refundType": "INTENTS",
+        "recipient": "pot.near",
+        "recipientType": "DESTINATION_CHAIN",
+        "deadline": "2026-10-21T14:06:02.315Z",
+        "confidentiality": "public",
+        "referral": "pot",
+        "quoteWaitingTimeMs": 0,
+        "insured": false,
+        "appFees": [
+          {
+            "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+            "fee": 1
+          }
+        ]
+      },
+      "signature": "ed25519:3aPAPikmN6hGs73VKPKtQU3dwLzSqoEZxApNHyvH5jCKuh4CDjUjiMcf8V9gMLBJRWBvsuosiPHppQ24Uuf8U4HG",
+      "timestamp": "2026-10-21T12:06:02.396Z",
+      "correlationId": "9e59bf10-c871-4e16-b6c2-18817e2446cd"
+    }
+  }
+}

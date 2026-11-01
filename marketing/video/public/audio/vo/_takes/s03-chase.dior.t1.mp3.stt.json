@@ -1,0 +1,135 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s03-chase.dior.t1.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "0",
+      "fiat-cost-before-overages": "0.0"
+    },
+    "latency_ms": 725
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "then spends weeks chasing everyone to pay up",
+    "words": [
+      {
+        "text": "then",
+        "start": 0.1,
+        "end": 0.24,
+        "type": "word",
+        "logprob": -0.07889481633901596
+      },
+      {
+        "text": " ",
+        "start": 0.24,
+        "end": 0.3,
+        "type": "spacing",
+        "logprob": -0.000022053474822314456
+      },
+      {
+        "text": "spends",
+        "start": 0.36,
+        "end": 0.58,
+        "type": "word",
+        "logprob": -0.000022053474822314456
+      },
+      {
+        "text": " ",
+        "start": 0.58,
+        "end": 0.8,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "weeks",
+        "start": 0.8,
+        "end": 1.1,
+        "type": "word",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": " ",
+        "start": 1.1,
+        "end": 1.2,
+        "type": "spacing",
+        "logprob": -0.0000016689286894688848
+      },
+      {
+        "text": "chasing",
+        "start": 1.2,
+        "end": 1.64,
+        "type": "word",
+        "logprob": -0.0000016689286894688848
+      },
+      {
+        "text": " ",
+        "start": 1.64,
+        "end": 1.72,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "everyone",
+        "start": 1.72,
+        "end": 2.1,
+        "type": "word",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": " ",
+        "start": 2.1,
+        "end": 2.14,
+        "type": "spacing",
+        "logprob": -4.768370445162873e-7
+      },
+      {
+        "text": "to",
+        "start": 2.14,
+        "end": 2.24,
+        "type": "word",
+        "logprob": -4.768370445162873e-7
+      },
+      {
+        "text": " ",
+        "start": 2.24,
+        "end": 2.28,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "pay",
+        "start": 2.28,
+        "end": 2.44,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 2.44,
+        "end": 2.52,
+        "type": "spacing",
+        "logprob": -8.344646857949556e-7
+      },
+      {
+        "text": "up",
+        "start": 2.52,
+        "end": 2.7,
+        "type": "word",
+        "logprob": -8.344646857949556e-7
+      }
+    ],
+    "transcription_id": "apDJG6BdVUAzRs8QtJtB",
+    "audio_duration_secs": 2.88
+  },
+  "created_at": "2026-10-22T09:18:40.242Z"
+}

@@ -1,0 +1,31 @@
+{
+  "tool": "eleven.tts",
+  "endpoint": "POST /v1/text-to-speech/{voice_id}/with-timestamps",
+  "model_id": "eleven_v4",
+  "voice_id": "4XLp6ou1JHGgf9xXbHCM",
+  "request": {
+    "text": "What if… the money lived right in the group chat?",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.45,
+      "similarity_boost": 0.75
+    },
+    "previous_text": "Split apps just keep score. Shared accounts hand one person all the money.",
+    "next_text": "Meet Pot. … Group chat money that follows its own rules.",
+    "seed": 2026,
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": "KAOgeV7vRQ8RsmADKedf",
+    "headers": {
+      "character-cost": "11",
+      "history-item-id": "3HVDdFJUwTzkuRtmTXd3",
+      "request-id": "KAOgeV7vRQ8RsmADKedf"
+    },
+    "latency_ms": 1256,
+    "bytes": 53541,
+    "duration_sec": 3.28,
+    "has_alignment": true
+  },
+  "created_at": "2026-10-22T09:24:27.117Z"
+}

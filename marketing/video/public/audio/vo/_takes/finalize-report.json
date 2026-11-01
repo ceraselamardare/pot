@@ -1,0 +1,986 @@
+[
+  {
+    "id": "s01-hook",
+    "take": "s01-hook.dior.t2.mp3",
+    "shift": 0.0024,
+    "duration": 2.745,
+    "words": 7,
+    "syllables": 10,
+    "first_word_at": 0.051,
+    "last_word_end": 2.591,
+    "wps_clip": 2.55,
+    "wps_span": 2.76,
+    "sps_span": 3.94,
+    "pauses": [
+      {
+        "after": "trip",
+        "k": 2,
+        "sec": 0.216
+      }
+    ],
+    "stt_offset": 0.063,
+    "anchors": [
+      {
+        "word": "Every",
+        "k": 0,
+        "onset": 0.053,
+        "breath": false,
+        "stt_minus_onset": 0.047,
+        "align_minus_onset": -0.053
+      },
+      {
+        "word": "has",
+        "k": 3,
+        "onset": 1.44,
+        "breath": true,
+        "stt_minus_onset": 0.08,
+        "align_minus_onset": 0.08
+      }
+    ],
+    "gain_db": 10.7,
+    "dynamics": {
+      "plr_in": 17.9,
+      "plr_after_comp": 17.3,
+      "plr_out": 13.9,
+      "limiter_gr_db": 3.8,
+      "pre_gain_db": 1.3,
+      "makeup_db": 10.7,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=1.30dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=10.70dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.1,
+    "TP": -2.2,
+    "LRA": 0.0,
+    "sample_peak_dbfs": -2.16,
+    "f0": {
+      "f0_median_hz": 126.4,
+      "st_sd": 4.9,
+      "st_p5_p95": 16.04,
+      "st_p10_p90": 13.6,
+      "st_motion_per_s": 28.0,
+      "voiced_s": 1.04
+    }
+  },
+  {
+    "id": "s02-front",
+    "take": "s02-front.dior.t1.mp3",
+    "shift": -0.035,
+    "duration": 1.578,
+    "words": 5,
+    "syllables": 5,
+    "first_word_at": 0.05,
+    "last_word_end": 1.406,
+    "wps_clip": 3.17,
+    "wps_span": 3.69,
+    "sps_span": 3.69,
+    "pauses": [],
+    "stt_offset": 0.085,
+    "anchors": [
+      {
+        "word": "One",
+        "k": 0,
+        "onset": 0.015,
+        "breath": false,
+        "stt_minus_onset": 0.085,
+        "align_minus_onset": -0.015
+      }
+    ],
+    "gain_db": 10.2,
+    "dynamics": {
+      "plr_in": 16.6,
+      "plr_after_comp": 15.7,
+      "plr_out": 13.8,
+      "limiter_gr_db": 1.9,
+      "pre_gain_db": -1.3,
+      "makeup_db": 10.2,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=-1.30dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=10.20dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.0,
+    "TP": -2.2,
+    "LRA": 0.0,
+    "sample_peak_dbfs": -2.16,
+    "f0": {
+      "f0_median_hz": 127.9,
+      "st_sd": 4.35,
+      "st_p5_p95": 11.61,
+      "st_p10_p90": 11.43,
+      "st_motion_per_s": 20.3,
+      "voiced_s": 0.62
+    }
+  },
+  {
+    "id": "s03-chase",
+    "take": "s03-chase.dior.t1.mp3",
+    "shift": -0.0126,
+    "duration": 2.893,
+    "words": 8,
+    "syllables": 11,
+    "first_word_at": 0.05,
+    "last_word_end": 2.688,
+    "wps_clip": 2.77,
+    "wps_span": 3.03,
+    "sps_span": 4.17,
+    "pauses": [],
+    "stt_offset": 0.063,
+    "anchors": [
+      {
+        "word": "then",
+        "k": 0,
+        "onset": 0.037,
+        "breath": false,
+        "stt_minus_onset": 0.063,
+        "align_minus_onset": 0.083
+      }
+    ],
+    "gain_db": 10.3,
+    "dynamics": {
+      "plr_in": 17.8,
+      "plr_after_comp": 16.4,
+      "plr_out": 13.9,
+      "limiter_gr_db": 2.7,
+      "pre_gain_db": 2.3,
+      "makeup_db": 10.3,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=2.30dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=10.30dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.0,
+    "TP": -2.1,
+    "LRA": 0.0,
+    "sample_peak_dbfs": -2.15,
+    "f0": {
+      "f0_median_hz": 131.3,
+      "st_sd": 4.23,
+      "st_p5_p95": 13.75,
+      "st_p10_p90": 12.62,
+      "st_motion_per_s": 53.3,
+      "voiced_s": 1.48
+    }
+  },
+  {
+    "id": "s04-options",
+    "take": "s04-options.dior.t1.mp3",
+    "shift": -0.0425,
+    "duration": 4.881,
+    "words": 13,
+    "syllables": 16,
+    "first_word_at": 0.05,
+    "last_word_end": 4.706,
+    "wps_clip": 2.66,
+    "wps_span": 2.79,
+    "sps_span": 3.44,
+    "pauses": [
+      {
+        "after": "score",
+        "k": 4,
+        "sec": 0.528
+      }
+    ],
+    "stt_offset": 0.093,
+    "anchors": [
+      {
+        "word": "Split",
+        "k": 0,
+        "onset": 0.007,
+        "breath": false,
+        "stt_minus_onset": 0.093,
+        "align_minus_onset": -0.007
+      },
+      {
+        "word": "Shared",
+        "k": 5,
+        "onset": 2.201,
+        "breath": true,
+        "stt_minus_onset": 0.099,
+        "align_minus_onset": 0.159
+      },
+      {
+        "word": "all",
+        "k": 10,
+        "onset": 4.047,
+        "breath": false,
+        "stt_minus_onset": 0.073,
+        "align_minus_onset": 0.033
+      }
+    ],
+    "gain_db": 10.9,
+    "dynamics": {
+      "plr_in": 20.3,
+      "plr_after_comp": 19.1,
+      "plr_out": 13.9,
+      "limiter_gr_db": 5.6,
+      "pre_gain_db": 2.1,
+      "makeup_db": 10.9,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=2.10dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=10.90dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.1,
+    "TP": -2.2,
+    "LRA": 0.6,
+    "sample_peak_dbfs": -2.16,
+    "f0": {
+      "f0_median_hz": 126.8,
+      "st_sd": 4.86,
+      "st_p5_p95": 14.09,
+      "st_p10_p90": 12.51,
+      "st_motion_per_s": 38.8,
+      "voiced_s": 1.86
+    }
+  },
+  {
+    "id": "s05-pivot",
+    "take": "s05-pivot.dior.t2.mp3",
+    "shift": -0.045,
+    "duration": 2.96,
+    "words": 10,
+    "syllables": 11,
+    "first_word_at": 0.05,
+    "last_word_end": 2.788,
+    "wps_clip": 3.38,
+    "wps_span": 3.65,
+    "sps_span": 4.02,
+    "pauses": [
+      {
+        "after": "if",
+        "k": 1,
+        "sec": 0.182
+      }
+    ],
+    "stt_offset": 0.112,
+    "anchors": [
+      {
+        "word": "What",
+        "k": 0,
+        "onset": 0.005,
+        "breath": false,
+        "stt_minus_onset": 0.115,
+        "align_minus_onset": -0.005
+      },
+      {
+        "word": "the",
+        "k": 2,
+        "onset": 0.892,
+        "breath": false,
+        "stt_minus_onset": 0.108,
+        "align_minus_onset": 0.068
+      }
+    ],
+    "gain_db": 10.5,
+    "dynamics": {
+      "plr_in": 17.2,
+      "plr_after_comp": 17.9,
+      "plr_out": 14.0,
+      "limiter_gr_db": 4.4,
+      "pre_gain_db": 2.6,
+      "makeup_db": 10.5,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=2.60dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=10.50dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.1,
+    "TP": -2.1,
+    "LRA": 0.0,
+    "sample_peak_dbfs": -2.16,
+    "f0": {
+      "f0_median_hz": 152.1,
+      "st_sd": 4.82,
+      "st_p5_p95": 15.29,
+      "st_p10_p90": 12.77,
+      "st_motion_per_s": 37.4,
+      "voiced_s": 1.63
+    }
+  },
+  {
+    "id": "s06-reveal",
+    "take": "s06-reveal.dior.t1.mp3",
+    "shift": -0.03,
+    "duration": 3.751,
+    "words": 10,
+    "syllables": 12,
+    "first_word_at": 0.05,
+    "last_word_end": 3.591,
+    "wps_clip": 2.67,
+    "wps_span": 2.82,
+    "sps_span": 3.39,
+    "pauses": [
+      {
+        "after": "Pot",
+        "k": 1,
+        "sec": 0.578
+      },
+      {
+        "after": "its",
+        "k": 7,
+        "sec": 0.109
+      }
+    ],
+    "stt_offset": 0.031,
+    "anchors": [
+      {
+        "word": "Meet",
+        "k": 0,
+        "onset": 0.02,
+        "breath": false,
+        "stt_minus_onset": 0.06,
+        "align_minus_onset": -0.02
+      },
+      {
+        "word": "Group",
+        "k": 2,
+        "onset": 1.278,
+        "breath": false,
+        "stt_minus_onset": 0.022,
+        "align_minus_onset": 0.002
+      },
+      {
+        "word": "follows",
+        "k": 6,
+        "onset": 2.306,
+        "breath": false,
+        "stt_minus_onset": 0.014,
+        "align_minus_onset": 0.014
+      },
+      {
+        "word": "own",
+        "k": 8,
+        "onset": 2.86,
+        "breath": false,
+        "stt_minus_onset": 0.04,
+        "align_minus_onset": 0.02
+      }
+    ],
+    "gain_db": 12.3,
+    "dynamics": {
+      "plr_in": 20.4,
+      "plr_after_comp": 19.3,
+      "plr_out": 14.1,
+      "limiter_gr_db": 6.7,
+      "pre_gain_db": 0.2,
+      "makeup_db": 12.3,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=0.20dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=12.30dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.2,
+    "TP": -2.1,
+    "LRA": 1.1,
+    "sample_peak_dbfs": -2.15,
+    "f0": {
+      "f0_median_hz": 143.7,
+      "st_sd": 4.85,
+      "st_p5_p95": 14.21,
+      "st_p10_p90": 13.49,
+      "st_motion_per_s": 38.2,
+      "voiced_s": 1.27
+    }
+  },
+  {
+    "id": "s07-create",
+    "take": "s07-create.dior.t2.mp3",
+    "shift": -0.04,
+    "duration": 3.903,
+    "words": 13,
+    "syllables": 13,
+    "first_word_at": 0.051,
+    "last_word_end": 3.748,
+    "wps_clip": 3.33,
+    "wps_span": 3.52,
+    "sps_span": 3.52,
+    "pauses": [
+      {
+        "after": "trip",
+        "k": 5,
+        "sec": 0.551
+      }
+    ],
+    "stt_offset": 0.07,
+    "anchors": [
+      {
+        "word": "Start",
+        "k": 0,
+        "onset": 0.011,
+        "breath": false,
+        "stt_minus_onset": 0.129,
+        "align_minus_onset": -0.011
+      },
+      {
+        "word": "and",
+        "k": 6,
+        "onset": 1.81,
+        "breath": false,
+        "stt_minus_onset": 0.01,
+        "align_minus_onset": -0.05
+      }
+    ],
+    "gain_db": 11.7,
+    "dynamics": {
+      "plr_in": 20.5,
+      "plr_after_comp": 18.3,
+      "plr_out": 14.1,
+      "limiter_gr_db": 5.1,
+      "pre_gain_db": 0.5,
+      "makeup_db": 11.7,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=0.50dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=11.70dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.2,
+    "TP": -2.1,
+    "LRA": 1.7,
+    "sample_peak_dbfs": -2.14,
+    "f0": {
+      "f0_median_hz": 138.9,
+      "st_sd": 4.76,
+      "st_p5_p95": 14.96,
+      "st_p10_p90": 12.56,
+      "st_motion_per_s": 32.1,
+      "voiced_s": 1.5
+    }
+  },
+  {
+    "id": "s08-join",
+    "take": "s08-join.dior.t1.mp3",
+    "shift": -0.03,
+    "duration": 7.235,
+    "words": 22,
+    "syllables": 24,
+    "first_word_at": 0.05,
+    "last_word_end": 7.076,
+    "wps_clip": 3.04,
+    "wps_span": 3.13,
+    "sps_span": 3.42,
+    "pauses": [
+      {
+        "after": "chat",
+        "k": 5,
+        "sec": 0.603
+      },
+      {
+        "after": "share",
+        "k": 14,
+        "sec": 0.501
+      },
+      {
+        "after": "wallet",
+        "k": 16,
+        "sec": 0.279
+      },
+      {
+        "after": "phrase",
+        "k": 19,
+        "sec": 0.177
+      }
+    ],
+    "stt_offset": 0.095,
+    "anchors": [
+      {
+        "word": "Drop",
+        "k": 0,
+        "onset": 0.02,
+        "breath": false,
+        "stt_minus_onset": 0.02,
+        "align_minus_onset": -0.02
+      },
+      {
+        "word": "Friends",
+        "k": 6,
+        "onset": 1.642,
+        "breath": true,
+        "stt_minus_onset": 0.098,
+        "align_minus_onset": 0.038
+      },
+      {
+        "word": "No",
+        "k": 15,
+        "onset": 4.304,
+        "breath": false,
+        "stt_minus_onset": 0.076,
+        "align_minus_onset": 0.096
+      },
+      {
+        "word": "No",
+        "k": 17,
+        "onset": 5.165,
+        "breath": false,
+        "stt_minus_onset": 0.095,
+        "align_minus_onset": 0.115
+      },
+      {
+        "word": "No",
+        "k": 20,
+        "onset": 6.294,
+        "breath": false,
+        "stt_minus_onset": 0.106,
+        "align_minus_onset": 0.106
+      }
+    ],
+    "gain_db": 11.2,
+    "dynamics": {
+      "plr_in": 21.8,
+      "plr_after_comp": 18.7,
+      "plr_out": 13.9,
+      "limiter_gr_db": 5.3,
+      "pre_gain_db": 1.4,
+      "makeup_db": 11.2,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=1.40dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=11.20dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.1,
+    "TP": -2.2,
+    "LRA": 1.3,
+    "sample_peak_dbfs": -2.15,
+    "f0": {
+      "f0_median_hz": 152.0,
+      "st_sd": 4.22,
+      "st_p5_p95": 13.29,
+      "st_p10_p90": 12.24,
+      "st_motion_per_s": 25.2,
+      "voiced_s": 3.0
+    }
+  },
+  {
+    "id": "s09-instant",
+    "take": "s09-instant.dior.t1.mp3",
+    "shift": -0.04,
+    "duration": 8.158,
+    "words": 18,
+    "syllables": 27,
+    "first_word_at": 0.05,
+    "last_word_end": 8.001,
+    "wps_clip": 2.21,
+    "wps_span": 2.26,
+    "sps_span": 3.4,
+    "pauses": [
+      {
+        "after": "themselves",
+        "k": 3,
+        "sec": 0.419
+      },
+      {
+        "after": "groceries",
+        "k": 7,
+        "sec": 0.389
+      },
+      {
+        "after": "rules",
+        "k": 11,
+        "sec": 0.399
+      },
+      {
+        "after": "approved",
+        "k": 12,
+        "sec": 0.344
+      }
+    ],
+    "stt_offset": 0.015,
+    "anchors": [
+      {
+        "word": "Small",
+        "k": 0,
+        "onset": 0.01,
+        "breath": false,
+        "stt_minus_onset": 0.09,
+        "align_minus_onset": -0.01
+      },
+      {
+        "word": "Eighty-four",
+        "k": 4,
+        "onset": 2.353,
+        "breath": true,
+        "stt_minus_onset": 0.007,
+        "align_minus_onset": 0.047
+      },
+      {
+        "word": "Pot",
+        "k": 8,
+        "onset": 4.252,
+        "breath": false,
+        "stt_minus_onset": 0.008,
+        "align_minus_onset": 0.068
+      },
+      {
+        "word": "approved",
+        "k": 12,
+        "onset": 5.638,
+        "breath": true,
+        "stt_minus_onset": 0.022,
+        "align_minus_onset": 0.402
+      },
+      {
+        "word": "and",
+        "k": 13,
+        "onset": 6.474,
+        "breath": true,
+        "stt_minus_onset": 0.006,
+        "align_minus_onset": 0.113
+      }
+    ],
+    "gain_db": 12.4,
+    "dynamics": {
+      "plr_in": 22.6,
+      "plr_after_comp": 20.2,
+      "plr_out": 14.1,
+      "limiter_gr_db": 7.7,
+      "pre_gain_db": 1.5,
+      "makeup_db": 12.4,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=1.50dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=12.40dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.2,
+    "TP": -2.1,
+    "LRA": 2.7,
+    "sample_peak_dbfs": -2.14,
+    "f0": {
+      "f0_median_hz": 152.8,
+      "st_sd": 4.8,
+      "st_p5_p95": 15.59,
+      "st_p10_p90": 12.44,
+      "st_motion_per_s": 41.5,
+      "voiced_s": 2.35
+    }
+  },
+  {
+    "id": "s10-group",
+    "take": "s10-group.dior.t1.mp3",
+    "shift": -0.0375,
+    "duration": 7.669,
+    "words": 21,
+    "syllables": 32,
+    "first_word_at": 0.05,
+    "last_word_end": 7.51,
+    "wps_clip": 2.74,
+    "wps_span": 2.82,
+    "sps_span": 4.29,
+    "pauses": [
+      {
+        "after": "group",
+        "k": 5,
+        "sec": 0.546
+      },
+      {
+        "after": "three",
+        "k": 13,
+        "sec": 0.379
+      },
+      {
+        "after": "approves",
+        "k": 16,
+        "sec": 0.227
+      }
+    ],
+    "stt_offset": 0.083,
+    "anchors": [
+      {
+        "word": "Bigger",
+        "k": 0,
+        "onset": 0.012,
+        "breath": false,
+        "stt_minus_onset": 0.088,
+        "align_minus_onset": -0.012
+      },
+      {
+        "word": "The",
+        "k": 6,
+        "onset": 2.096,
+        "breath": true,
+        "stt_minus_onset": -0.016,
+        "align_minus_onset": 0.024
+      },
+      {
+        "word": "so",
+        "k": 14,
+        "onset": 4.91,
+        "breath": false,
+        "stt_minus_onset": 0.09,
+        "align_minus_onset": 0.05
+      },
+      {
+        "word": "right",
+        "k": 17,
+        "onset": 6.262,
+        "breath": false,
+        "stt_minus_onset": 0.078,
+        "align_minus_onset": 0.058
+      }
+    ],
+    "gain_db": 11.4,
+    "dynamics": {
+      "plr_in": 23.1,
+      "plr_after_comp": 20.9,
+      "plr_out": 14.1,
+      "limiter_gr_db": 7.5,
+      "pre_gain_db": 2.4,
+      "makeup_db": 11.4,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=2.40dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=11.40dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.2,
+    "TP": -2.1,
+    "LRA": 1.7,
+    "sample_peak_dbfs": -2.14,
+    "f0": {
+      "f0_median_hz": 145.8,
+      "st_sd": 4.73,
+      "st_p5_p95": 14.35,
+      "st_p10_p90": 12.63,
+      "st_motion_per_s": 35.9,
+      "voiced_s": 3.08
+    }
+  },
+  {
+    "id": "s11-close",
+    "take": "s11-close.dior.t1.mp3",
+    "shift": -0.0201,
+    "duration": 4.327,
+    "words": 13,
+    "syllables": 16,
+    "first_word_at": 0.05,
+    "last_word_end": 4.127,
+    "wps_clip": 3.0,
+    "wps_span": 3.19,
+    "sps_span": 3.92,
+    "pauses": [
+      {
+        "after": "over",
+        "k": 3,
+        "sec": 0.272
+      },
+      {
+        "after": "Pot",
+        "k": 6,
+        "sec": 0.576
+      }
+    ],
+    "stt_offset": 0.042,
+    "anchors": [
+      {
+        "word": "When",
+        "k": 0,
+        "onset": 0.03,
+        "breath": false,
+        "stt_minus_onset": 0.03,
+        "align_minus_onset": -0.03
+      },
+      {
+        "word": "close",
+        "k": 4,
+        "onset": 1.238,
+        "breath": false,
+        "stt_minus_onset": 0.042,
+        "align_minus_onset": 0.042
+      },
+      {
+        "word": "Everyone",
+        "k": 7,
+        "onset": 2.495,
+        "breath": false,
+        "stt_minus_onset": 0.045,
+        "align_minus_onset": 0.185
+      }
+    ],
+    "gain_db": 11.7,
+    "dynamics": {
+      "plr_in": 20.8,
+      "plr_after_comp": 18.7,
+      "plr_out": 14.0,
+      "limiter_gr_db": 5.8,
+      "pre_gain_db": 2.0,
+      "makeup_db": 11.7,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=2.00dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=11.70dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.1,
+    "TP": -2.1,
+    "LRA": 1.0,
+    "sample_peak_dbfs": -2.14,
+    "f0": {
+      "f0_median_hz": 153.5,
+      "st_sd": 4.58,
+      "st_p5_p95": 14.8,
+      "st_p10_p90": 12.48,
+      "st_motion_per_s": 27.0,
+      "voiced_s": 1.66
+    }
+  },
+  {
+    "id": "s12-tech",
+    "take": "s12-tech.dior.t1.mp3",
+    "shift": -0.0201,
+    "duration": 11.323,
+    "words": 32,
+    "syllables": 45,
+    "first_word_at": 0.05,
+    "last_word_end": 11.164,
+    "wps_clip": 2.83,
+    "wps_span": 2.88,
+    "sps_span": 4.05,
+    "pauses": [
+      {
+        "after": "hood",
+        "k": 2,
+        "sec": 0.317
+      },
+      {
+        "after": "NEAR",
+        "k": 10,
+        "sec": 0.488
+      },
+      {
+        "after": "on-chain",
+        "k": 15,
+        "sec": 0.224
+      },
+      {
+        "after": "person",
+        "k": 19,
+        "sec": 0.586
+      },
+      {
+        "after": "gasless",
+        "k": 23,
+        "sec": 0.379
+      }
+    ],
+    "stt_offset": 0.051,
+    "anchors": [
+      {
+        "word": "Under",
+        "k": 0,
+        "onset": 0.03,
+        "breath": false,
+        "stt_minus_onset": 0.03,
+        "align_minus_onset": -0.03
+      },
+      {
+        "word": "every",
+        "k": 3,
+        "onset": 1.009,
+        "breath": false,
+        "stt_minus_onset": 0.051,
+        "align_minus_onset": 0.031
+      },
+      {
+        "word": "Sputnik",
+        "k": 7,
+        "onset": 2.049,
+        "breath": false,
+        "stt_minus_onset": -0.029,
+        "align_minus_onset": -0.089
+      },
+      {
+        "word": "Its",
+        "k": 11,
+        "onset": 3.992,
+        "breath": true,
+        "stt_minus_onset": 0.108,
+        "align_minus_onset": 0.168
+      },
+      {
+        "word": "not",
+        "k": 16,
+        "onset": 5.988,
+        "breath": false,
+        "stt_minus_onset": 0.052,
+        "align_minus_onset": 0.172
+      },
+      {
+        "word": "Every",
+        "k": 20,
+        "onset": 7.457,
+        "breath": true,
+        "stt_minus_onset": 0.063,
+        "align_minus_onset": 0.143
+      },
+      {
+        "word": "And",
+        "k": 24,
+        "onset": 9.385,
+        "breath": true,
+        "stt_minus_onset": 0.015,
+        "align_minus_onset": 0.135
+      }
+    ],
+    "gain_db": 11.6,
+    "dynamics": {
+      "plr_in": 21.6,
+      "plr_after_comp": 19.8,
+      "plr_out": 14.0,
+      "limiter_gr_db": 6.8,
+      "pre_gain_db": 1.8,
+      "makeup_db": 11.6,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=1.80dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=11.60dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.1,
+    "TP": -2.1,
+    "LRA": 2.4,
+    "sample_peak_dbfs": -2.15,
+    "f0": {
+      "f0_median_hz": 128.0,
+      "st_sd": 4.77,
+      "st_p5_p95": 14.64,
+      "st_p10_p90": 12.78,
+      "st_motion_per_s": 30.3,
+      "voiced_s": 4.44
+    }
+  },
+  {
+    "id": "s13-end",
+    "take": "s13-end.dior.t1.mp3",
+    "shift": -0.0126,
+    "duration": 2.548,
+    "words": 5,
+    "syllables": 7,
+    "first_word_at": 0.05,
+    "last_word_end": 2.376,
+    "wps_clip": 1.96,
+    "wps_span": 2.15,
+    "sps_span": 3.01,
+    "pauses": [
+      {
+        "after": "Pot",
+        "k": 0,
+        "sec": 0.461
+      }
+    ],
+    "stt_offset": 0.063,
+    "anchors": [
+      {
+        "word": "Pot",
+        "k": 0,
+        "onset": 0.037,
+        "breath": false,
+        "stt_minus_onset": 0.023,
+        "align_minus_onset": -0.037
+      },
+      {
+        "word": "Built",
+        "k": 1,
+        "onset": 0.877,
+        "breath": false,
+        "stt_minus_onset": 0.103,
+        "align_minus_onset": 0.163
+      }
+    ],
+    "gain_db": 13.0,
+    "dynamics": {
+      "plr_in": 20.5,
+      "plr_after_comp": 20.6,
+      "plr_out": 14.0,
+      "limiter_gr_db": 8.3,
+      "pre_gain_db": 0.2,
+      "makeup_db": 13.0,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=0.20dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=13.00dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.2,
+    "TP": -2.2,
+    "LRA": 0.0,
+    "sample_peak_dbfs": -2.15,
+    "f0": {
+      "f0_median_hz": 124.1,
+      "st_sd": 3.45,
+      "st_p5_p95": 12.87,
+      "st_p10_p90": 7.99,
+      "st_motion_per_s": 29.1,
+      "voiced_s": 0.66
+    }
+  }
+]

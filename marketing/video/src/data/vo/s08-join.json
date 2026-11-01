@@ -1,0 +1,117 @@
+{
+  "id": "s08-join",
+  "file": "audio/vo/s08-join.mp3",
+  "durationSec": 7.235,
+  "words": [
+    {
+      "text": "Drop",
+      "start": 0.05,
+      "end": 0.195
+    },
+    {
+      "text": "the",
+      "start": 0.215,
+      "end": 0.295
+    },
+    {
+      "text": "link",
+      "start": 0.335,
+      "end": 0.495
+    },
+    {
+      "text": "in",
+      "start": 0.535,
+      "end": 0.595
+    },
+    {
+      "text": "the",
+      "start": 0.615,
+      "end": 0.695
+    },
+    {
+      "text": "chat",
+      "start": 0.735,
+      "end": 1.069
+    },
+    {
+      "text": "Friends",
+      "start": 1.672,
+      "end": 1.935
+    },
+    {
+      "text": "join",
+      "start": 1.975,
+      "end": 2.155
+    },
+    {
+      "text": "with",
+      "start": 2.175,
+      "end": 2.315
+    },
+    {
+      "text": "Google",
+      "start": 2.355,
+      "end": 2.635
+    },
+    {
+      "text": "and",
+      "start": 2.795,
+      "end": 2.915
+    },
+    {
+      "text": "chip",
+      "start": 2.955,
+      "end": 3.135
+    },
+    {
+      "text": "in",
+      "start": 3.175,
+      "end": 3.235
+    },
+    {
+      "text": "their",
+      "start": 3.275,
+      "end": 3.415
+    },
+    {
+      "text": "share",
+      "start": 3.455,
+      "end": 3.833
+    },
+    {
+      "text": "No",
+      "start": 4.334,
+      "end": 4.475
+    },
+    {
+      "text": "wallet",
+      "start": 4.495,
+      "end": 4.915
+    },
+    {
+      "text": "No",
+      "start": 5.195,
+      "end": 5.375
+    },
+    {
+      "text": "seed",
+      "start": 5.435,
+      "end": 5.595
+    },
+    {
+      "text": "phrase",
+      "start": 5.655,
+      "end": 6.148
+    },
+    {
+      "text": "No",
+      "start": 6.325,
+      "end": 6.435
+    },
+    {
+      "text": "gas",
+      "start": 6.535,
+      "end": 7.076
+    }
+  ]
+}

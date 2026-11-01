@@ -1,0 +1,29 @@
+{
+  "name": "s4-missing-param",
+  "at": "2026-10-21T11:29:21.039Z",
+  "request": {
+    "method": "GET",
+    "url": "https://1click.chaindefuser.com/v0/status",
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "response": {
+    "status": 400,
+    "ms": 58,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1194",
+      "x-ratelimit-reset-unauth": "59"
+    },
+    "body": {
+      "message": "Deposit address should be not empty",
+      "error": "Bad Request",
+      "statusCode": 400,
+      "timestamp": "2026-10-21T11:29:21.090Z",
+      "path": "/v0/status"
+    }
+  }
+}

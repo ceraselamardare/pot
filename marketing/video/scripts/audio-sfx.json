@@ -1,0 +1,209 @@
+{
+  "_comment": "SFX library spec (audio agent). gen = seconds requested from eleven_text_to_sound_v2 (min 0.5); max = length kept after trimming; kind = expected acoustic profile checked by scripts/audio-tools.py sfx-check (noise: broadband, transient: short hit, tonal: pitched, low: bass-heavy); gate_db = onset threshold relative to the peak (lower keeps soft swells); fade = tail fade-out seconds.",
+  "palette": "premium, clean, modern product-video sound palette: dry, close, no reverb wash, no cartoon, no retro game sounds",
+  "influence": 0.55,
+  "sounds": {
+    "whoosh-fast": {
+      "gen": 0.5,
+      "max": 0.4,
+      "kind": "noise",
+      "gate_db": -45,
+      "fade": 0.1,
+      "prompt": "A very short, clean, airy whoosh for a fast UI swipe transition in a modern product video. Tight and crisp, no reverb tail."
+    },
+    "whoosh-long": {
+      "gen": 1.0,
+      "max": 1.0,
+      "kind": "noise",
+      "gate_db": -45,
+      "fade": 0.2,
+      "prompt": "A smooth, clean, airy whoosh sweeping past the camera for a zoom-through transition in a modern product video. Soft swell up to a peak, then a short clean tail."
+    },
+    "swoosh-up": {
+      "gen": 0.6,
+      "max": 0.6,
+      "kind": "noise",
+      "gate_db": -45,
+      "fade": 0.12,
+      "prompt": "A short rising swoosh, airy and bright, for a phone UI panel sliding up into view. Clean modern product sound, no reverb."
+    },
+    "pop": {
+      "gen": 0.5,
+      "max": 0.3,
+      "kind": "transient",
+      "gate_db": -35,
+      "fade": 0.08,
+      "prompt": "A single short, bright, satisfying bubble pop for a chat message appearing. Clean, modern UI sound."
+    },
+    "pop-soft": {
+      "gen": 0.5,
+      "max": 0.25,
+      "kind": "transient",
+      "gate_db": -35,
+      "fade": 0.07,
+      "prompt": "A single soft, gentle, muted bubble pop for a small chat bubble appearing. Subtle, warm, modern UI sound."
+    },
+    "tap": {
+      "gen": 0.5,
+      "max": 0.2,
+      "kind": "transient",
+      "gate_db": -35,
+      "fade": 0.06,
+      "prompt": "A single soft fingertip tap on a glass phone screen. Subtle, clean, close, modern UI tap.",
+      "regen_prompt": "One single soft tap of a fingertip on a smartphone glass screen. Isolated, very short, clean and close. Only one tap, then silence.",
+      "regen_reason": "v1/v2: several quiet taps (peaks -26/-29 dBFS), not one tap"
+    },
+    "click": {
+      "gen": 0.5,
+      "max": 0.18,
+      "kind": "transient",
+      "gate_db": -35,
+      "fade": 0.05,
+      "prompt": "A single crisp, clean button click for a modern app interface. Short, precise, dry.",
+      "regen_prompt": "One single crisp click of a phone app button, like a tight plastic tick. Isolated, very short, clean, one click then silence.",
+      "regen_reason": "v1: 0.46 s of 14 kHz hiss with the peak at the end; v2: peak -46 dBFS over a noise floor"
+    },
+    "keypad": {
+      "gen": 0.5,
+      "max": 0.16,
+      "kind": "transient",
+      "gate_db": -35,
+      "fade": 0.05,
+      "prompt": "A single soft key tick on a phone number keypad. Very short, clean, subtle UI sound."
+    },
+    "typing": {
+      "gen": 1.2,
+      "max": 1.2,
+      "kind": "noise",
+      "gate_db": -35,
+      "fade": 0.12,
+      "prompt": "Soft, quick typing on a phone touchscreen keyboard, a fast run of gentle taps for about one second. Clean and close, nothing else."
+    },
+    "notif": {
+      "gen": 1.0,
+      "max": 1.0,
+      "kind": "tonal",
+      "gate_db": -35,
+      "fade": 0.25,
+      "prompt": "A friendly, bright two-tone notification chime for a messaging app. Warm, modern, short and clean. An original sound, not any phone's default ringtone."
+    },
+    "buzz": {
+      "gen": 0.6,
+      "max": 0.45,
+      "kind": "buzz",
+      "gate_db": -35,
+      "fade": 0.06,
+      "prompt": "A single short phone vibration buzz on a wooden table. Clean, close, about a third of a second."
+    },
+    "blips": {
+      "gen": 1.0,
+      "max": 1.0,
+      "kind": "tonal",
+      "gate_db": -35,
+      "fade": 0.15,
+      "prompt": "Three soft rising digital blips in quick succession, like the typing dots pulsing in a chat app. Gentle, rounded, clean modern UI sound.",
+      "regen_prompt": "Three short, soft electronic blips, evenly spaced and rising in pitch, like three chat typing dots lighting up one after another. Rounded sine tones, gentle and clean, modern UI.",
+      "regen_reason": "v1: 8-10 kHz ticks; v2: one continuous warble, not three blips"
+    },
+    "success": {
+      "gen": 1.0,
+      "max": 1.0,
+      "kind": "tonal",
+      "gate_db": -35,
+      "fade": 0.3,
+      "prompt": "A warm, bright, positive two-note chime for a payment approved in a modern fintech app. Rising interval, clean and short.",
+      "regen_prompt": "A warm, bright two-note success chime: a short note followed by a higher note, a payment-approved sound in a modern fintech app. Soft bell tone, clean, short, positive.",
+      "regen_reason": "v1/v2: a single pitch (581 / 1055 Hz), not two notes"
+    },
+    "burst": {
+      "gen": 0.8,
+      "max": 0.8,
+      "kind": "noise",
+      "gate_db": -40,
+      "fade": 0.2,
+      "prompt": "A sparkly pop with a quick airy whoosh, like confetti bursting out of a button. Celebratory but short and clean, modern UI."
+    },
+    "riser": {
+      "gen": 2.0,
+      "max": 2.0,
+      "kind": "riser",
+      "gate_db": -60,
+      "fade": 0.0,
+      "prompt": "A two-second rising whoosh riser building tension into a drop. Clean, modern, airy noise with a soft synth swell, louder and higher until it stops at its peak."
+    },
+    "impact": {
+      "gen": 2.0,
+      "max": 2.0,
+      "kind": "low",
+      "gate_db": -35,
+      "fade": 0.6,
+      "prompt": "A deep, clean cinematic bass hit with a short tail for a logo reveal. Modern, warm sub boom, punchy, not distorted.",
+      "regen_prompt": "One single punchy cinematic impact for a logo reveal: a sharp hit with a deep sub-bass boom that decays smoothly within one second. Clean, modern, not distorted, no sustained drone.",
+      "regen_reason": "v1/v2: a sustained sub tone flat at full level for 1.0-1.3 s, not a hit"
+    },
+    "thud": {
+      "gen": 0.5,
+      "max": 0.4,
+      "kind": "low",
+      "gate_db": -35,
+      "fade": 0.1,
+      "prompt": "A soft, solid thud of a card slamming down onto a table. Short, punchy, clean, no reverb."
+    },
+    "scribble": {
+      "gen": 0.6,
+      "max": 0.6,
+      "kind": "noise",
+      "gate_db": -40,
+      "fade": 0.1,
+      "prompt": "One quick marker pen strike-through on paper, a single fast stroke. Close and clean."
+    },
+    "paper": {
+      "gen": 1.0,
+      "max": 1.0,
+      "kind": "noise",
+      "gate_db": -40,
+      "fade": 0.15,
+      "prompt": "A short paper receipt being crumpled in one hand. Close, clean, about one second."
+    },
+    "tick": {
+      "gen": 0.5,
+      "max": 0.12,
+      "kind": "transient",
+      "gate_db": -35,
+      "fade": 0.04,
+      "prompt": "A single crisp clock tick. Short, clean and dry, no reverb."
+    },
+    "swipe": {
+      "gen": 0.5,
+      "max": 0.35,
+      "kind": "noise",
+      "gate_db": -45,
+      "fade": 0.08,
+      "prompt": "A quick, light UI swipe: a soft fast swish of a finger sliding across glass. Clean and short."
+    },
+    "sparkle": {
+      "gen": 0.8,
+      "max": 0.8,
+      "kind": "mixed",
+      "gate_db": -40,
+      "fade": 0.25,
+      "prompt": "A tiny, delicate shimmer: soft high chimes twinkling briefly. Clean, subtle UI highlight sound."
+    },
+    "stamp": {
+      "gen": 0.5,
+      "max": 0.35,
+      "kind": "transient",
+      "gate_db": -35,
+      "fade": 0.08,
+      "prompt": "A soft, satisfying rubber stamp pressed onto paper: one short confirm thunk. Clean, no reverb."
+    },
+    "glitch": {
+      "gen": 0.5,
+      "max": 0.45,
+      "kind": "noise",
+      "gate_db": -40,
+      "fade": 0.05,
+      "prompt": "A short digital glitch stutter: a crunchy, bit-crushed electronic blip. Quick and clean, for a tense error moment."
+    }
+  }
+}

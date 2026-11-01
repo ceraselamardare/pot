@@ -1,0 +1,147 @@
+{
+  "take": "s04-options.dior.t1.mp3",
+  "line": "s04-options",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "Split apps just keep score. Shared accounts hand one person all the money.",
+  "duration": 5.28,
+  "speech_start": 0.007,
+  "speech_end": 5.126,
+  "speech_span": 4.656,
+  "words": 13,
+  "syllables": 16,
+  "wps_span": 2.79,
+  "sps_span": 3.44,
+  "wps_articulation": 3.15,
+  "pauses": [
+    {
+      "after": "score",
+      "k": 4,
+      "sec": 0.528
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.093,
+    "anchors": [
+      {
+        "word": "Split",
+        "k": 0,
+        "onset": 0.007,
+        "breath": false,
+        "stt_minus_onset": 0.093,
+        "align_minus_onset": -0.007
+      },
+      {
+        "word": "Shared",
+        "k": 5,
+        "onset": 2.201,
+        "breath": true,
+        "stt_minus_onset": 0.099,
+        "align_minus_onset": 0.159
+      },
+      {
+        "word": "all",
+        "k": 10,
+        "onset": 4.047,
+        "breath": false,
+        "stt_minus_onset": 0.073,
+        "align_minus_onset": 0.033
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.113
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Split apps just keep score. Shared accounts hand one person all the money"
+  },
+  "f0": {
+    "f0_median_hz": 126.8,
+    "st_sd": 4.86,
+    "st_p5_p95": 14.09,
+    "st_p10_p90": 12.51,
+    "st_motion_per_s": 38.8,
+    "voiced_s": 1.86
+  },
+  "loudness": {
+    "I": -26.3,
+    "LRA": 1.6,
+    "TP": -5.8
+  },
+  "threshold_db": -57.6,
+  "times": [
+    [
+      "Split",
+      0.007,
+      0.227
+    ],
+    [
+      "apps",
+      0.347,
+      0.567
+    ],
+    [
+      "just",
+      0.727,
+      0.907
+    ],
+    [
+      "keep",
+      0.947,
+      1.107
+    ],
+    [
+      "score",
+      1.207,
+      1.673
+    ],
+    [
+      "Shared",
+      2.201,
+      2.407
+    ],
+    [
+      "accounts",
+      2.447,
+      2.867
+    ],
+    [
+      "hand",
+      2.927,
+      3.187
+    ],
+    [
+      "one",
+      3.267,
+      3.367
+    ],
+    [
+      "person",
+      3.467,
+      3.953
+    ],
+    [
+      "all",
+      4.047,
+      4.167
+    ],
+    [
+      "the",
+      4.187,
+      4.267
+    ],
+    [
+      "money",
+      4.307,
+      4.663
+    ]
+  ]
+}

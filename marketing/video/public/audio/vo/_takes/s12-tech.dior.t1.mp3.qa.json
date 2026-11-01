@@ -1,0 +1,294 @@
+{
+  "take": "s12-tech.dior.t1.mp3",
+  "line": "s12-tech",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "Under the hood, every Pot is a Sputnik D-A-O on Near. Its rules are enforced on-chain, not by a person. Every action is gasless. And no one can take money out alone.",
+  "duration": 11.76,
+  "speech_start": 0.03,
+  "speech_end": 11.152,
+  "speech_span": 11.114,
+  "words": 32,
+  "syllables": 45,
+  "wps_span": 2.88,
+  "sps_span": 4.05,
+  "wps_articulation": 3.51,
+  "pauses": [
+    {
+      "after": "hood",
+      "k": 2,
+      "sec": 0.317
+    },
+    {
+      "after": "NEAR",
+      "k": 10,
+      "sec": 0.488
+    },
+    {
+      "after": "on-chain",
+      "k": 15,
+      "sec": 0.224
+    },
+    {
+      "after": "person",
+      "k": 19,
+      "sec": 0.586
+    },
+    {
+      "after": "gasless",
+      "k": 23,
+      "sec": 0.379
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.051,
+    "anchors": [
+      {
+        "word": "Under",
+        "k": 0,
+        "onset": 0.03,
+        "breath": false,
+        "stt_minus_onset": 0.03,
+        "align_minus_onset": -0.03
+      },
+      {
+        "word": "every",
+        "k": 3,
+        "onset": 1.009,
+        "breath": false,
+        "stt_minus_onset": 0.051,
+        "align_minus_onset": 0.031
+      },
+      {
+        "word": "Sputnik",
+        "k": 7,
+        "onset": 2.049,
+        "breath": false,
+        "stt_minus_onset": -0.029,
+        "align_minus_onset": -0.089
+      },
+      {
+        "word": "Its",
+        "k": 11,
+        "onset": 3.992,
+        "breath": true,
+        "stt_minus_onset": 0.108,
+        "align_minus_onset": 0.168
+      },
+      {
+        "word": "not",
+        "k": 16,
+        "onset": 5.988,
+        "breath": false,
+        "stt_minus_onset": 0.052,
+        "align_minus_onset": 0.172
+      },
+      {
+        "word": "Every",
+        "k": 20,
+        "onset": 7.457,
+        "breath": true,
+        "stt_minus_onset": 0.063,
+        "align_minus_onset": 0.143
+      },
+      {
+        "word": "And",
+        "k": 24,
+        "onset": 9.385,
+        "breath": true,
+        "stt_minus_onset": 0.015,
+        "align_minus_onset": 0.135
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.051
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Under the hood, every pot is a Sputnik DAO on NEAR. Its rules are enforced on-chain, not by a person. Every action is gasless, and no one can take money out alone"
+  },
+  "f0": {
+    "f0_median_hz": 128.0,
+    "st_sd": 4.77,
+    "st_p5_p95": 14.64,
+    "st_p10_p90": 12.78,
+    "st_motion_per_s": 30.3,
+    "voiced_s": 4.44
+  },
+  "loudness": {
+    "I": -25.8,
+    "LRA": 3.3,
+    "TP": -4.2
+  },
+  "threshold_db": -57.5,
+  "times": [
+    [
+      "Under",
+      0.03,
+      0.209
+    ],
+    [
+      "the",
+      0.249,
+      0.289
+    ],
+    [
+      "hood",
+      0.349,
+      0.692
+    ],
+    [
+      "every",
+      1.009,
+      1.269
+    ],
+    [
+      "Pot",
+      1.309,
+      1.589
+    ],
+    [
+      "is",
+      1.649,
+      1.709
+    ],
+    [
+      "a",
+      1.769,
+      1.977
+    ],
+    [
+      "Sputnik",
+      2.049,
+      2.289
+    ],
+    [
+      "DAO",
+      2.389,
+      2.929
+    ],
+    [
+      "on",
+      2.989,
+      3.089
+    ],
+    [
+      "NEAR",
+      3.169,
+      3.504
+    ],
+    [
+      "Its",
+      3.992,
+      4.209
+    ],
+    [
+      "rules",
+      4.269,
+      4.529
+    ],
+    [
+      "are",
+      4.569,
+      4.649
+    ],
+    [
+      "enforced",
+      4.669,
+      5.029
+    ],
+    [
+      "on-chain",
+      5.189,
+      5.763
+    ],
+    [
+      "not",
+      5.988,
+      6.189
+    ],
+    [
+      "by",
+      6.209,
+      6.289
+    ],
+    [
+      "a",
+      6.329,
+      6.389
+    ],
+    [
+      "person",
+      6.429,
+      6.871
+    ],
+    [
+      "Every",
+      7.457,
+      7.709
+    ],
+    [
+      "action",
+      7.809,
+      8.149
+    ],
+    [
+      "is",
+      8.189,
+      8.329
+    ],
+    [
+      "gasless",
+      8.369,
+      9.006
+    ],
+    [
+      "And",
+      9.385,
+      9.489
+    ],
+    [
+      "no",
+      9.569,
+      9.649
+    ],
+    [
+      "one",
+      9.749,
+      9.829
+    ],
+    [
+      "can",
+      9.909,
+      10.009
+    ],
+    [
+      "take",
+      10.049,
+      10.229
+    ],
+    [
+      "money",
+      10.269,
+      10.449
+    ],
+    [
+      "out",
+      10.529,
+      10.669
+    ],
+    [
+      "alone",
+      10.729,
+      11.144
+    ]
+  ]
+}

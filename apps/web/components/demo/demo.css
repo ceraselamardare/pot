@@ -1,0 +1,201 @@
+/* The /demo motion (plan/design-direction/06 §7.2, with 04's tokens and effects). Imported by TourPage.tsx and Frame.tsx.
+   Next keeps a page's global CSS after a client navigation, so every rule is scoped under [data-demo] (or a demo-only
+   data attribute) and every keyframe is prefixed pot-demo-. The server HTML is static; nothing is hidden by opacity
+   there. Only transform / opacity move. Back lands with a 120 ms crossfade. Reduced motion: no translate, scale or
+   pop; scenes and captions crossfade in 120 ms. */
+@layer theme, base, components, utilities;
+
+[data-demo] {
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-moderate: 280ms;
+  --duration-slow: 360ms;
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+@supports (animation-timing-function: linear(0, 1)) {
+  [data-demo] {
+    --ease-spring: linear(0, 0.081, 0.262, 0.47, 0.663, 0.818, 0.931, 1.003, 1.042, 1.057, 1.057, 1.048, 1.037, 1.025, 1.015, 1.007, 1.002, 0.998, 1);
+  }
+}
+
+/* the phone's screen and the panes crossfade (200 ms); the beat bar's caption swaps (out 80 / in from 40) */
+[data-demo][data-js="on"] .d-scene,
+[data-demo][data-js="on"] .d-fade {
+  animation: pot-demo-fade var(--duration-base) var(--ease-standard) both;
+}
+[data-demo][data-js="on"] .d-swap {
+  animation: pot-demo-fade 160ms var(--ease-standard) 40ms both;
+}
+/* a seat's check, the persona's avatar: the spring pop from .6 */
+[data-demo][data-js="on"] .d-pop {
+  animation:
+    pot-demo-pop var(--duration-slow) var(--ease-spring) both,
+    pot-demo-fade var(--duration-fast) linear both;
+}
+
+/* the receipt route's marigold trace belonged to the old per-beat player; the decoded cards are static now */
+[data-demo] [data-trace] {
+  display: none;
+}
+
+/* The tour's stage (06 §3). --tour-chrome is everything above and below the phone on phones (header 56, strip 56,
+   caption 72 + gaps, the hood row 44, the controls 56): the phone takes the rest, at least 360 px high. */
+[data-demo] [data-tour-stage] {
+  --tour-chrome: 19rem;
+}
+[data-demo] [data-tour-stage][data-mode="cover"] {
+  --tour-chrome: 27.5rem;
+}
+/* A step's phone below md (polish after QA, F2): its box is a size container and the phone takes all of it at the
+   phone's aspect (min of the box's width, 21rem and the box's height × aspect), so it is as big as the chrome allows
+   at any height. Under 720 px of height the phone is a shorter crop (390/640, an SE's proportions), which keeps it
+   ≥ 240 px wide at 390 × 664. Under 656 px the stage scrolls (Stage.tsx), so the box has no height to measure: the
+   phone is a fixed 15rem. Unlayered, so these win over the cover's utility classes in Stage.tsx. */
+@media (width < 48rem) {
+  [data-demo] [data-tour-stage][data-mode="step"] [data-tour-phone-box] {
+    container-type: size;
+  }
+  [data-demo] [data-tour-stage][data-mode="step"] [data-tour-phone] {
+    --tour-aspect: calc(390 / 720);
+    aspect-ratio: 390 / 720;
+    width: min(100cqw, 21rem, 100cqh * var(--tour-aspect));
+    max-height: none;
+  }
+}
+@media (width < 48rem) and (height < 45rem) {
+  [data-demo] [data-tour-stage][data-mode="step"] [data-tour-phone] {
+    --tour-aspect: calc(390 / 640);
+    aspect-ratio: 390 / 640;
+  }
+}
+@media (width < 48rem) and (height < 41rem) {
+  [data-demo] [data-tour-stage][data-mode="step"] [data-tour-phone-box] {
+    container-type: normal;
+  }
+  [data-demo] [data-tour-stage][data-mode="step"] [data-tour-phone] {
+    width: min(100%, 15rem);
+  }
+}
+
+/* A tap on something inert in the phone rings the way on (polish after QA, F4): the phone's live button, or Next on
+   a step with none. Two soft ink rings (1.2 s, no movement); "a" / "b" alternate so each poke restarts it. Reduced
+   motion: one steady ring for 1.2 s instead of the pulse. */
+[data-demo] [data-tour-stage][data-poke="a"][data-poke-to="phone"] [data-tour-phone] [data-phone-primary],
+[data-demo] [data-tour-stage][data-poke="a"][data-poke-to="next"] [data-tour-next] {
+  animation: pot-demo-ring-a 600ms var(--ease-standard) 2;
+}
+[data-demo] [data-tour-stage][data-poke="b"][data-poke-to="phone"] [data-tour-phone] [data-phone-primary],
+[data-demo] [data-tour-stage][data-poke="b"][data-poke-to="next"] [data-tour-next] {
+  animation: pot-demo-ring-b 600ms var(--ease-standard) 2;
+}
+@keyframes pot-demo-ring-a {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+}
+@keyframes pot-demo-ring-b {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+}
+@keyframes pot-demo-ring-hold-a {
+  from,
+  to {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+}
+@keyframes pot-demo-ring-hold-b {
+  from,
+  to {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-demo] [data-tour-stage][data-poke="a"][data-poke-to="phone"] [data-tour-phone] [data-phone-primary],
+  [data-demo] [data-tour-stage][data-poke="a"][data-poke-to="next"] [data-tour-next] {
+    animation: pot-demo-ring-hold-a 1200ms steps(1) 1;
+  }
+  [data-demo] [data-tour-stage][data-poke="b"][data-poke-to="phone"] [data-tour-phone] [data-phone-primary],
+  [data-demo] [data-tour-stage][data-poke="b"][data-poke-to="next"] [data-tour-next] {
+    animation: pot-demo-ring-hold-b 1200ms steps(1) 1;
+  }
+}
+
+/* The tap hint's pointer taps twice on arrival (1.6 s, then still); none under reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  [data-demo][data-js="on"] [data-tour-tap-hint] .d-point {
+    animation: pot-demo-point 800ms var(--ease-standard) 400ms 2;
+  }
+}
+@keyframes pot-demo-point {
+  40% {
+    transform: translateY(2px) scale(0.92);
+  }
+}
+
+/* The no-JS story list sits under the viewport-high stage: skip its layout and paint until it is scrolled to, so it
+   doesn't delay the stage's first paint and hydration (with JS it is hidden anyway). */
+[data-demo] [data-tour-story] :is([data-tour-list-part], [data-tour-list-end]) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 40rem;
+}
+/* Back lands at once: a 120 ms crossfade, no pop */
+[data-demo][data-js="on"] [data-tour-stage][data-via="back"] :is(.d-scene, .d-fade, .d-swap) {
+  animation: pot-demo-fade var(--duration-fast) linear both;
+}
+[data-demo][data-js="on"] [data-tour-stage]:not([data-via="next"]) .d-pop {
+  animation: none;
+}
+/* in the sheet the hood's own Night panel drops its frame (the sheet is the frame) */
+[data-hood-sheet] > [data-hood] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+/* links and buttons that carry an arrow: it nudges 3 px on hover (--l-nudge for another direction) */
+[data-demo] .d-nudge svg:last-child,
+[data-demo] .d-nudge svg:first-child {
+  transition: translate var(--duration-base) var(--ease-standard);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-demo] .d-nudge:hover svg:last-child {
+    translate: var(--l-nudge, 3px 0);
+  }
+}
+
+@keyframes pot-demo-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pot-demo-pop {
+  from {
+    transform: scale(0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-demo] .d-pop {
+    animation: none !important;
+  }
+  [data-demo][data-js="on"] .d-scene,
+  [data-demo][data-js="on"] .d-fade,
+  [data-demo][data-js="on"] .d-swap {
+    animation: pot-demo-fade var(--duration-fast) linear both;
+  }
+}
+
+/* The collapsed glossary (cards/Misc GlossaryList) fades its terms in when opened. Progressive: browsers without
+   ::details-content drop the rule and just open; reduced motion opens instantly. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-glossary] details::details-content {
+    opacity: 0;
+    transition:
+      opacity var(--duration-base, 200ms) var(--ease-standard),
+      content-visibility var(--duration-base, 200ms) allow-discrete;
+  }
+  [data-glossary] details[open]::details-content {
+    opacity: 1;
+  }
+}

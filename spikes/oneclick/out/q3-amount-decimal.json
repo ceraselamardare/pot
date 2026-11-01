@@ -1,0 +1,43 @@
+{
+  "name": "q3-amount-decimal",
+  "at": "2026-10-21T11:27:23.565Z",
+  "request": {
+    "method": "POST",
+    "url": "https://1click.chaindefuser.com/v0/quote",
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "dry": true,
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "150.5",
+      "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+      "refundType": "ORIGIN_CHAIN",
+      "recipient": "near",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2026-10-21T12:27:12.904Z"
+    }
+  },
+  "response": {
+    "status": 400,
+    "ms": 57,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1180",
+      "x-ratelimit-reset-unauth": "50"
+    },
+    "body": {
+      "message": "amount must be specified in base units (the smallest unit of your asset's chain). The required decimals vary by chain (e.g. 18 for ETH, 24 for NEAR, 8 for BTC). Use an integer string—e.g. \"10000000000000000\" for 0.01 with 18 decimals. Decimal values like \"0.01\" are not accepted.",
+      "error": "Bad Request",
+      "statusCode": 400,
+      "timestamp": "2026-10-21T11:27:23.619Z",
+      "path": "/v0/quote"
+    }
+  }
+}

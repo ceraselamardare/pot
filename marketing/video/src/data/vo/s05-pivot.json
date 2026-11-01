@@ -1,0 +1,57 @@
+{
+  "id": "s05-pivot",
+  "file": "audio/vo/s05-pivot.mp3",
+  "durationSec": 2.96,
+  "words": [
+    {
+      "text": "What",
+      "start": 0.05,
+      "end": 0.193
+    },
+    {
+      "text": "if",
+      "start": 0.273,
+      "end": 0.755
+    },
+    {
+      "text": "the",
+      "start": 0.937,
+      "end": 1.013
+    },
+    {
+      "text": "money",
+      "start": 1.073,
+      "end": 1.313
+    },
+    {
+      "text": "lived",
+      "start": 1.373,
+      "end": 1.573
+    },
+    {
+      "text": "right",
+      "start": 1.773,
+      "end": 1.953
+    },
+    {
+      "text": "in",
+      "start": 1.993,
+      "end": 2.073
+    },
+    {
+      "text": "the",
+      "start": 2.093,
+      "end": 2.173
+    },
+    {
+      "text": "group",
+      "start": 2.213,
+      "end": 2.373
+    },
+    {
+      "text": "chat",
+      "start": 2.453,
+      "end": 2.788
+    }
+  ]
+}

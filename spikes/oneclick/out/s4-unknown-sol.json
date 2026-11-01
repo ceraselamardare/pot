@@ -1,0 +1,29 @@
+{
+  "name": "s4-unknown-sol",
+  "at": "2026-10-21T11:29:20.096Z",
+  "request": {
+    "method": "GET",
+    "url": "https://1click.chaindefuser.com/v0/status?depositAddress=13QkxhNMrTPxoCkRdYdJ65tFuwXPhL5gLS2Z5Nr6gjRK",
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "response": {
+    "status": 404,
+    "ms": 67,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1197",
+      "x-ratelimit-reset-unauth": "60"
+    },
+    "body": {
+      "message": "Deposit address 13QkxhNMrTPxoCkRdYdJ65tFuwXPhL5gLS2Z5Nr6gjRK not found",
+      "error": "Not Found",
+      "statusCode": 404,
+      "timestamp": "2026-10-21T11:29:20.151Z",
+      "path": "/v0/status?depositAddress=13QkxhNMrTPxoCkRdYdJ65tFuwXPhL5gLS2Z5Nr6gjRK"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+[package]
+name = "pot-hub"
+version = "1.0.0"
+edition = "2021"
+publish = false
+description = "Pot Hub: the Rulebot + factory + ledger for every Pot (a Sputnik DAO per Pot)"
+repository.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "=5.29.1"
+
+[dev-dependencies]
+near-sdk = { version = "=5.29.1", features = ["unit-testing"] }
+proptest = "1"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(near)']

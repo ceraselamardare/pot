@@ -1,0 +1,32 @@
+{
+  "id": "s02-front",
+  "file": "audio/vo/s02-front.mp3",
+  "durationSec": 1.578,
+  "words": [
+    {
+      "text": "One",
+      "start": 0.05,
+      "end": 0.19
+    },
+    {
+      "text": "friend",
+      "start": 0.31,
+      "end": 0.53
+    },
+    {
+      "text": "fronts",
+      "start": 0.67,
+      "end": 0.89
+    },
+    {
+      "text": "it",
+      "start": 0.93,
+      "end": 1.01
+    },
+    {
+      "text": "all",
+      "start": 1.09,
+      "end": 1.406
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "tool": "eleven.tts",
+  "endpoint": "POST /v1/text-to-speech/{voice_id}/with-timestamps",
+  "model_id": "eleven_v4",
+  "voice_id": "4XLp6ou1JHGgf9xXbHCM",
+  "request": {
+    "text": "Meet Pot. … Group chat money that follows its own rules.",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.45,
+      "similarity_boost": 0.75
+    },
+    "previous_text": "What if the money lived right in the group chat?",
+    "next_text": "Start a Pot for the trip, and set the rules in plain words.",
+    "seed": 7,
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": "TchCraDhlqURiznzjWwv",
+    "headers": {
+      "character-cost": "12",
+      "history-item-id": "fPSdCxkhYuMuremUlHRH",
+      "request-id": "TchCraDhlqURiznzjWwv"
+    },
+    "latency_ms": 1017,
+    "bytes": 65244,
+    "duration_sec": 4,
+    "has_alignment": true
+  },
+  "created_at": "2026-10-22T09:18:44.573Z"
+}

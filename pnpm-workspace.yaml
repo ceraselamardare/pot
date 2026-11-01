@@ -1,0 +1,18 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 11: every dependency with an install script must be listed here, or `pnpm install`/`pnpm add`
+# fails with ERR_PNPM_IGNORED_BUILDS (kb/frontend-stack.md). true = run its script, false = skip it.
+allowBuilds:
+  sharp: false # next/image optimisation; Pot serves no optimised images
+  unrs-resolver: false # eslint-import-resolver-typescript native resolver; JS fallback is fine
+  esbuild: true # vitest/vite and drizzle-kit need the platform binary
+  msw: false # postinstall only copies mockServiceWorker.js into a public dir; we don't use the browser worker
+  '@swc/core': false # (via workflow) postinstall only verifies the native binding; the platform binary comes as an optional dep
+  browser-tabs-lock: false # (via @auth0/auth0-spa-js) not needed (kb/frontend-stack.md)
+  cbor-extract: false # (via workflow -> cbor-x) optional native speed-up; cbor-x falls back to JS
+
+# minimumReleaseAge stays at the pnpm 11 default (1 day). For an urgent security patch younger than that, add:
+# minimumReleaseAgeExclude:
+#   - next@16.4.3

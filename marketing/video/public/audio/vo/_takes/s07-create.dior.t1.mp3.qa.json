@@ -1,0 +1,139 @@
+{
+  "take": "s07-create.dior.t1.mp3",
+  "line": "s07-create",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "Start a Pot for the trip, and set the rules in plain words.",
+  "duration": 3.44,
+  "speech_start": 0.017,
+  "speech_end": 3.26,
+  "speech_span": 3.243,
+  "words": 13,
+  "syllables": 13,
+  "wps_span": 4.01,
+  "sps_span": 4.01,
+  "wps_articulation": 4.18,
+  "pauses": [
+    {
+      "after": "trip",
+      "k": 5,
+      "sec": 0.13
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.091,
+    "anchors": [
+      {
+        "word": "Start",
+        "k": 0,
+        "onset": 0.017,
+        "breath": false,
+        "stt_minus_onset": 0.123,
+        "align_minus_onset": -0.017
+      },
+      {
+        "word": "and",
+        "k": 6,
+        "onset": 1.421,
+        "breath": false,
+        "stt_minus_onset": 0.059,
+        "align_minus_onset": 0.019
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.051
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Start a pot for the trip and set the rules in plain words"
+  },
+  "f0": {
+    "f0_median_hz": 126.5,
+    "st_sd": 4.3,
+    "st_p5_p95": 14.78,
+    "st_p10_p90": 12.49,
+    "st_motion_per_s": 30.6,
+    "voiced_s": 1.26
+  },
+  "loudness": {
+    "I": -25.6,
+    "LRA": 2.1,
+    "TP": -6.1
+  },
+  "threshold_db": -56.1,
+  "times": [
+    [
+      "Start",
+      0.017,
+      0.229
+    ],
+    [
+      "a",
+      0.269,
+      0.349
+    ],
+    [
+      "Pot",
+      0.389,
+      0.589
+    ],
+    [
+      "for",
+      0.629,
+      0.709
+    ],
+    [
+      "the",
+      0.749,
+      0.829
+    ],
+    [
+      "trip",
+      0.869,
+      1.291
+    ],
+    [
+      "and",
+      1.421,
+      1.509
+    ],
+    [
+      "set",
+      1.569,
+      1.709
+    ],
+    [
+      "the",
+      1.749,
+      1.829
+    ],
+    [
+      "rules",
+      1.889,
+      2.189
+    ],
+    [
+      "in",
+      2.229,
+      2.369
+    ],
+    [
+      "plain",
+      2.429,
+      2.669
+    ],
+    [
+      "words",
+      2.769,
+      3.26
+    ]
+  ]
+}

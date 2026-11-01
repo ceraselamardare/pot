@@ -1,0 +1,35 @@
+node_modules/
+.next/
+.next-*/
+target/
+.keys/
+.env*
+!.env.example
+.DS_Store
+*.log
+
+# --- platform (wave 0) ---
+# keys and credentials (never commit; CLAUDE.md hard rules)
+.near-credentials/
+*.pem
+# build output and caches
+/out/
+dist/
+build/
+.turbo/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+# tests
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+# package manager
+.pnpm-store/
+.pnpm-debug.log*
+# editors / OS
+.idea/
+*.swp
+Thumbs.db

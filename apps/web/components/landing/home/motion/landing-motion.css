@@ -1,0 +1,366 @@
+/* Landing motion toolkit (round 2): the one stylesheet for the landing's motion and interaction details
+   (plan/design-direction/04-landing-motion.md). Imported once from app/page.tsx. Next never unloads a page's global
+   CSS on client navigation, so EVERY rule is scoped under [data-landing] (a display:contents wrapper in page.tsx)
+   and every keyframe name is prefixed pot-seq- / pot-l-, so nothing here can reach another route. Tokens only:
+   --ease-* come from globals.css, colours, radii and shadows from tokens.css, durations are ux-spec §7.6 (below).
+   Grammar: motion explains, answers or guides; the server HTML is the final state; reduced motion = no translate,
+   scale, rotation or scrubbing (sequences are never armed by JS, and the guards at the end back that up).
+   No parallax and no scroll-scrubbed content (04 "No"); the only scroll-driven rule is the header hairline. */
+
+/* Same order as Tailwind's own declaration, so this file can't reorder the layers whichever stylesheet loads first. */
+@layer theme, base, components, utilities;
+
+[data-landing] {
+  /* ux-spec §7.6 durations */
+  --duration-fast: 120ms; /* press in, select, hover colour */
+  --duration-base: 200ms; /* fades, swaps, press release, nudges */
+  --duration-moderate: 280ms; /* fade-up, drop, rows landing */
+  --duration-slow: 360ms; /* entrances, pop, settle */
+  --duration-count: 500ms; /* number rolls, the goal fill */
+  --duration-celebrate: 600ms; /* the burst */
+  /* ease-spring = spring-pop (stiffness 500, damping 30, mass 1: +5.7 % at 190 ms, settled by 360 ms), a fallback… */
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+/* …and the exact curve, sampled at equal steps over 360 ms, where linear() exists (Baseline widely available) */
+@supports (animation-timing-function: linear(0, 1)) {
+  [data-landing] {
+    --ease-spring: linear(0, 0.081, 0.262, 0.47, 0.663, 0.818, 0.931, 1.003, 1.042, 1.057, 1.057, 1.048, 1.037, 1.025, 1.015, 1.007, 1.002, 0.998, 1);
+  }
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   Sequences (sequence.ts). States on the container: data-seq-state="armed" (JS, below the viewport) → "play"
+   (in view) → removed (final). [data-seq-load] is the CSS-only variant that plays on first paint (the hero), with
+   each item's timing from an inline seqVars(). Every effect's keyframes end on the element's own styles, so removing
+   the state lands exactly on the final DOM. Default durations are the var fallbacks here; data-dur overrides.
+   Knobs (vars, set by the engine from data-* or inline): --seq-at, --seq-dur, --seq-y (rise distance), --seq-scale
+   (start scale), --seq-turn (settle's extra turn), --seq-from / --seq-round (fill), --seq-dx / --seq-dy (travel),
+   --seq-lit (ring colour). They inherit, so descendants (a GoalBar's fill, the dots, ::after) read their item's.
+   Effects use `transform`, which composes with Tailwind's translate-/scale-/rotate- utilities and a FloatCard's or
+   Sticker's inline `rotate`. */
+
+/* the "before" pose = each animation held at its start, paused, until the container plays */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="fade-up"] {
+  animation: pot-seq-fade-up var(--seq-dur, 280ms) var(--ease-enter) backwards;
+}
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="fade"] {
+  animation: pot-seq-fade var(--seq-dur, 200ms) var(--ease-standard) backwards;
+}
+/* spring-pop: scale only (never translate) from .5 (icons; .6 avatars and chips), opacity in its own 120 ms */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="pop"] {
+  animation:
+    pot-seq-pop var(--seq-dur, 360ms) var(--ease-spring) backwards,
+    pot-seq-fade 120ms linear backwards;
+}
+/* a sticker pressed down: an extra turn and 1.08 → its own rotate, on the spring */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="settle"] {
+  animation:
+    pot-seq-settle var(--seq-dur, 360ms) var(--ease-spring) backwards,
+    pot-seq-fade 120ms linear backwards;
+}
+/* a notification arriving from the right */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="slide"] {
+  animation: pot-seq-slide var(--seq-dur, 360ms) var(--ease-enter) backwards;
+}
+/* a banner dropping in from above (--seq-y: 8 px, 12 px for the push card) */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="drop"] {
+  animation: pot-seq-drop var(--seq-dur, 280ms) var(--ease-enter) backwards;
+}
+/* connectors and traces drawing from their start edge */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="draw-x"] {
+  transform-origin: 0 50%;
+  animation: pot-seq-draw-x var(--seq-dur, 360ms) var(--ease-standard) backwards;
+}
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="draw-y"] {
+  transform-origin: 50% 0;
+  animation: pot-seq-draw-y var(--seq-dur, 360ms) var(--ease-standard) backwards;
+}
+/* wipe: a highlight block revealed left to right (the H1's brand-soft behind "its own rules"), radius-sm corners */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="wipe"] {
+  animation: pot-seq-wipe var(--seq-dur, 280ms) var(--ease-enter) backwards;
+}
+/* fill: a pill bar filling from its start without squashing its round ends (clip-path, never width or scale).
+   goal: the same on the fill of a GoalBar inside the element (GoalBar is an app component, reached from outside).
+   --seq-from: where it starts, as a share of the bar's own width (default 0%; 66.7% for $300 of $450). */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="fill"],
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="goal"] [data-goalbar] > [aria-hidden] > div {
+  animation: pot-seq-fill var(--seq-dur, 500ms) var(--ease-standard) backwards;
+  animation-delay: calc(var(--seq-at, 0ms) + var(--seq-offset, 0ms));
+}
+[data-landing] :is([data-seq-state="armed"], [data-seq-state="armed"] *)[data-seq="goal"] [data-goalbar] > [aria-hidden] > div {
+  animation-play-state: paused;
+}
+/* dots: ONE cycle of the brand's typing dots (150 ms apart) that starts and ends on the still look (.6), on an
+   element holding a <TypingDots still /> (step 3's "Checking Pot rules…" row). */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="dots"] .pot-dot {
+  animation: pot-seq-dot var(--seq-dur, 1200ms) var(--ease-standard) backwards;
+  animation-delay: calc(var(--seq-at, 0ms) + var(--seq-offset, 0ms));
+}
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="dots"] .pot-dot:nth-child(2) {
+  animation-delay: calc(var(--seq-at, 0ms) + var(--seq-offset, 0ms) + 150ms);
+}
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="dots"] .pot-dot:nth-child(3) {
+  animation-delay: calc(var(--seq-at, 0ms) + var(--seq-offset, 0ms) + 300ms);
+}
+[data-landing] :is([data-seq-state="armed"], [data-seq-state="armed"] *)[data-seq="dots"] .pot-dot {
+  animation-play-state: paused;
+}
+/* out: visible in the "before" state, fades away at data-at; HIDDEN in the final state. For a swap, stack it in the
+   same grid cell as what replaces it; for a trace that draws then fades, wrap the draw-x/-y item in it. */
+[data-landing] [data-seq="out"] {
+  visibility: hidden;
+}
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="out"] {
+  visibility: visible;
+  animation: pot-seq-out var(--seq-dur, 200ms) var(--ease-exit) both;
+}
+/* lit: a 2 px ring at inset -3px that flashes 0 → 1 → 0 ("the spend is here now"); needs a positioned element.
+   --seq-lit: the ring colour (default brand: a surface use of marigold, never text). */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="lit"]::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px var(--seq-lit, var(--pot-brand));
+  pointer-events: none;
+  opacity: 0;
+  animation: pot-seq-lit var(--seq-dur, 600ms) var(--ease-standard) backwards;
+  animation-delay: inherit;
+  animation-play-state: inherit;
+}
+/* travel: a marker that appears, moves by --seq-dx / --seq-dy and fades; hidden in the final state. (04: on the
+   16-24 px tech connectors a draw-x/-y trace reads better; keep this for longer paths.) */
+[data-landing] [data-seq="travel"] {
+  visibility: hidden;
+}
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="travel"] {
+  visibility: visible;
+  animation: pot-seq-travel var(--seq-dur, 500ms) var(--ease-standard) both;
+}
+
+/* timing: after the shorthands above (same specificity, later wins) */
+[data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq] {
+  animation-delay: calc(var(--seq-at, 0ms) + var(--seq-offset, 0ms));
+}
+[data-landing] :is([data-seq-state="armed"], [data-seq-state="armed"] *)[data-seq] {
+  animation-play-state: paused;
+}
+
+@keyframes pot-seq-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--seq-y, 8px)) scale(var(--seq-scale, 1));
+  }
+}
+@keyframes pot-seq-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pot-seq-pop {
+  from {
+    transform: scale(var(--seq-scale, 0.5));
+  }
+}
+@keyframes pot-seq-settle {
+  from {
+    transform: rotate(var(--seq-turn, 6deg)) scale(1.08);
+  }
+}
+@keyframes pot-seq-slide {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+}
+@keyframes pot-seq-drop {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--seq-y, 8px) * -1));
+  }
+}
+@keyframes pot-seq-draw-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes pot-seq-draw-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes pot-seq-wipe {
+  from {
+    clip-path: inset(0 100% 0 0 round var(--seq-round, var(--pot-radius-sm)));
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--seq-round, var(--pot-radius-sm)));
+  }
+}
+@keyframes pot-seq-fill {
+  from {
+    clip-path: inset(0 calc(100% - var(--seq-from, 0%)) 0 0 round var(--seq-round, 999px));
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--seq-round, 999px));
+  }
+}
+@keyframes pot-seq-dot {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: none;
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+@keyframes pot-seq-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes pot-seq-lit {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes pot-seq-travel {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--seq-dx, 0px), var(--seq-dy, 0px));
+  }
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   Interaction (04 "Micro-interaction catalogue"). Every landing link and button has a press or hover state, so the
+   grey tap flash goes; the focus ring (globals.css) is never transitioned. Opt-in classes live in the components
+   layer, so a Tailwind utility on the same element still wins. Buttons from buttonVariants already press (.97,
+   120 ms in / 200 ms out, components/ui/button.tsx); these are for everything else. */
+[data-landing] :is(a, button) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer components {
+  /* press: .97, in 120 ms, released over 200 ms (only for elements with no transition of their own: this sets
+     `transition`, so it would drop theirs) */
+  [data-landing] .l-press {
+    transition: scale var(--duration-base) var(--ease-standard);
+  }
+  [data-landing] .l-press:active {
+    scale: 0.97;
+    transition-duration: var(--duration-fast);
+  }
+
+  /* nudge: the arrow icon (the link's last svg) moves 3 px along its direction on hover, 200 ms. Set --l-nudge for
+     another direction: Back to top uses [--l-nudge:0_-2px]. */
+  [data-landing] .l-nudge svg:last-child {
+    transition: translate var(--duration-base) var(--ease-standard);
+  }
+
+  /* lift: ONLY for a card that is one link (04: a lift on a non-link card promises a click). It rises 2 px and a
+     second shadow-card layer fades in (opacity only). Needs a positioned element (relative/absolute). */
+  [data-landing] .l-lift {
+    transition: transform var(--duration-base) var(--ease-standard);
+  }
+  [data-landing] .l-lift::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: var(--pot-shadow-card);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  /* tilt: hovering a sticker itself gives it 4° more and 1.04 on the spring (a "could"). Stickers ignore the pointer
+     by default, so add pointer-events-auto to that Sticker; the cursor stays default (it promises no click). */
+  [data-landing] .l-tilt {
+    cursor: default;
+    transition: transform var(--duration-slow) var(--ease-spring);
+  }
+
+  @media (hover: hover) {
+    [data-landing] .l-lift:hover::after {
+      opacity: 1;
+    }
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    [data-landing] .l-nudge:hover svg:last-child {
+      translate: var(--l-nudge, 3px 0);
+    }
+    [data-landing] .l-lift:hover {
+      transform: translateY(-2px);
+    }
+    [data-landing] .l-tilt:hover {
+      transform: rotate(4deg) scale(1.04);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-landing] .l-press:active {
+      scale: none;
+    }
+  }
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   Scroll. Smooth in-page jumps only without reduced motion (the sticky-header offset comes from each target's
+   scroll-mt-20, which Section and <main> already have; focus follows natively). The header hairline (.l-hairline on
+   the header, which then carries border-b): transparent at the top, `line` by 48 px of scroll, on a CSS scroll
+   timeline; where scroll timelines are missing (Firefox stable) or motion is reduced, the border is simply on. */
+/* data-smooth-anchors: set by <SmoothAnchors /> (ScrollMarkers.tsx) a frame after load, removed when the page unmounts
+   or Next hides it after a client navigation (it keeps the DOM, so a bare html:has([data-landing]) leaked smooth
+   scrolling into /demo and /pots, and made a cold /#tech load fly through the page). */
+@media (prefers-reduced-motion: no-preference) {
+  html:has([data-landing][data-smooth-anchors]) {
+    scroll-behavior: smooth;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-landing] .l-hairline {
+      animation: pot-l-hairline linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 48px;
+    }
+  }
+}
+@keyframes pot-l-hairline {
+  from {
+    border-bottom-color: transparent;
+  }
+  to {
+    border-bottom-color: var(--pot-line);
+  }
+}
+
+/* -----------------------------------------------------------------------------------------------------------
+   Reduced motion: JS never arms a sequence; these back it up (and stop the CSS-only [data-seq-load] plays). */
+@media (prefers-reduced-motion: reduce) {
+  [data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq],
+  [data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="goal"] [data-goalbar] > [aria-hidden] > div,
+  [data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq="dots"] .pot-dot,
+  [data-landing] :is([data-seq-state], [data-seq-state] *, [data-seq-load], [data-seq-load] *)[data-seq]::after {
+    animation: none !important;
+  }
+  [data-landing] [data-seq="out"],
+  [data-landing] [data-seq="travel"] {
+    visibility: hidden !important;
+  }
+}

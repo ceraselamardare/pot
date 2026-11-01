@@ -1,0 +1,42 @@
+{
+  "name": "q3-amount-0.01usdc",
+  "at": "2026-10-21T11:27:22.943Z",
+  "request": {
+    "method": "POST",
+    "url": "https://1click.chaindefuser.com/v0/quote",
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "dry": true,
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "10000",
+      "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+      "refundType": "ORIGIN_CHAIN",
+      "recipient": "near",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2026-10-21T12:27:12.904Z"
+    }
+  },
+  "response": {
+    "status": 400,
+    "ms": 369,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1182",
+      "x-ratelimit-reset-unauth": "51"
+    },
+    "body": {
+      "message": "Amount is too low for bridge, try at least 150000",
+      "correlationId": "00c2f4b1-e27e-45a8-a056-e076f9500962",
+      "timestamp": "2026-10-21T11:27:22.998Z",
+      "path": "/v0/quote"
+    }
+  }
+}

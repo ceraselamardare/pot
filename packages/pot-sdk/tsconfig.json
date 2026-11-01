@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Node 22.22.2 runs these files directly with built-in type stripping (frontend-architecture §1.4),
+    // so only erasable syntax is allowed (no enum / namespace / parameter properties) and type imports
+    // must be marked `import type`. Relative imports carry an explicit `.ts` extension.
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "types": ["node"]
+  },
+  "include": ["src", "scripts", "*.config.ts"]
+}

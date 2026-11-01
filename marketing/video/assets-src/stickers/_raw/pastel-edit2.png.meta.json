@@ -1,0 +1,45 @@
+{
+  "tool": "openai.editImage",
+  "endpoint": "POST /v1/images/edits",
+  "model": "gpt-image-2.5-sunburst",
+  "request": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A single glossy die-cut vinyl sticker of a Portuguese custard tart (pastel de nata) with a caramelized top. Flat vector illustration with soft, minimal shading and chunky rounded shapes, bold dark eggplant (#2b1b3a) outlines, a limited warm palette of cream (#faf9f6), warm marigold (#ffb320) and light brown, a thick clean white sticker border all around the shape, and a very subtle soft drop shadow. Centered, isolated on a transparent background. No text, no letters, no numbers, no logos, no coins. Draw it as flat and simple as the reference sticker: a simple fluted pastry cup with a few chunky rounded folds in light golden brown, holding a smooth warm marigold custard top with three or four soft caramelized spots in dark eggplant-brown. Flat colour areas with one soft shade each: no texture strokes, no painterly detail, no realistic rendering. Seen from a slight three-quarter angle above. No plate, no cinnamon, no steam. Everything sits inside one single continuous white die-cut outline, with no separate floating pieces, sparkles or crumbs. The sticker fills most of the canvas with a small even margin. Style reference: the attached image is an approved sticker from the same set. Match its style exactly: the same bold eggplant outline weight, the same thick white die-cut border, the same flat colours with soft minimal shading, the same glossy highlight and the same very subtle drop shadow, at a similar size on the canvas. Use it only as a style guide: do not draw a tram or any part of it, and do not copy its colours where they differ from the palette above.",
+    "size": "1024x1024",
+    "quality": "high",
+    "background": "transparent",
+    "output_format": "png",
+    "images": [
+      "public/images/stickers/_raw/tram-a.png"
+    ]
+  },
+  "response": {
+    "request_id": "req_06edc4a0dae2411b9ea6f0d8a75dbca7",
+    "headers": {
+      "openai-processing-ms": "40284",
+      "x-request-id": "req_06edc4a0dae2411b9ea6f0d8a75dbca7"
+    },
+    "created": 1792661029,
+    "background": "transparent",
+    "quality": "high",
+    "size": "1024x1024",
+    "output_format": "png",
+    "usage": {
+      "input_tokens": 1898,
+      "input_tokens_details": {
+        "image_tokens": 1536,
+        "text_tokens": 362
+      },
+      "output_tokens": 1756,
+      "output_tokens_details": {
+        "image_tokens": 1756,
+        "text_tokens": 0
+      },
+      "total_tokens": 3654
+    },
+    "latency_ms": 41586,
+    "bytes": 1054627,
+    "index": 0
+  },
+  "created_at": "2026-10-22T09:23:50.829Z"
+}

@@ -1,0 +1,3 @@
+{"label":"R mints 1.000000 to itself","hash":"CiFAQ9WFCQ2c7GxodrLSBis4FqMH2r71dTcGEePnFvuy","status":"{\"SuccessValue\":\"\"}","r":"1000000","u1":"0"}
+{"label":"R mints 5.000000 to U1 (third-party mint)","hash":"ttM9wnr9aVRaQFyQzpCows9ScChuphqQmNeD28sPmxs","status":"{\"SuccessValue\":\"\"}","r":"1000000","u1":"5000000"}
+{"label":"R burns 1.000000 of U1 (third-party burn!)","hash":"Ehr1JeVHKCXHnT5KqiDNuih7gZrC4FQBXKpss5EkDGR6","status":"{\"SuccessValue\":\"\"}","r":"1000000","u1":"4000000"}

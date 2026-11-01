@@ -1,0 +1,72 @@
+{
+  "id": "s07-create",
+  "file": "audio/vo/s07-create.mp3",
+  "durationSec": 3.903,
+  "words": [
+    {
+      "text": "Start",
+      "start": 0.051,
+      "end": 0.27
+    },
+    {
+      "text": "a",
+      "start": 0.31,
+      "end": 0.39
+    },
+    {
+      "text": "Pot",
+      "start": 0.43,
+      "end": 0.63
+    },
+    {
+      "text": "for",
+      "start": 0.69,
+      "end": 0.79
+    },
+    {
+      "text": "the",
+      "start": 0.83,
+      "end": 0.91
+    },
+    {
+      "text": "trip",
+      "start": 0.95,
+      "end": 1.299
+    },
+    {
+      "text": "and",
+      "start": 1.85,
+      "end": 1.91
+    },
+    {
+      "text": "set",
+      "start": 1.97,
+      "end": 2.13
+    },
+    {
+      "text": "the",
+      "start": 2.15,
+      "end": 2.27
+    },
+    {
+      "text": "rules",
+      "start": 2.31,
+      "end": 2.61
+    },
+    {
+      "text": "in",
+      "start": 2.65,
+      "end": 2.79
+    },
+    {
+      "text": "plain",
+      "start": 2.85,
+      "end": 3.13
+    },
+    {
+      "text": "words",
+      "start": 3.23,
+      "end": 3.748
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "tool": "eleven.tts",
+  "endpoint": "POST /v1/text-to-speech/{voice_id}/with-timestamps",
+  "model_id": "eleven_v4",
+  "voice_id": "4XLp6ou1JHGgf9xXbHCM",
+  "request": {
+    "text": "Split apps just keep score. Shared accounts hand one person all the money.",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.45,
+      "similarity_boost": 0.75
+    },
+    "previous_text": "…then spends weeks chasing everyone to pay up.",
+    "next_text": "What if the money lived right in the group chat?",
+    "seed": 7,
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": "55b6RPcuPZaM4llUTX4y",
+    "headers": {
+      "character-cost": "16",
+      "history-item-id": "X5mHzn2xIBADG7PP67XX",
+      "request-id": "55b6RPcuPZaM4llUTX4y"
+    },
+    "latency_ms": 1375,
+    "bytes": 85724,
+    "duration_sec": 5.28,
+    "has_alignment": true
+  },
+  "created_at": "2026-10-22T09:18:41.639Z"
+}

@@ -1,0 +1,4335 @@
+{
+  "source": "EXPERIMENTAL_tx_status, archival-rpc.testnet.fastnear.com (read-only)",
+  "txs": {
+    "3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY": {
+      "hash": "3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY",
+      "signer": "users.potprev.testnet",
+      "receiver": "maya.users.potprev.testnet",
+      "tokensBurnt": "8480314454148300000000",
+      "gasBurnt": "23342239916483",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "maya.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "maya.users.potprev.testnet",
+                "receiver_id": "pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "create_pot",
+                      "args": {
+                        "slug": "lisbon-trip",
+                        "name": "Lisbon Trip",
+                        "preset": "trip",
+                        "rules": null,
+                        "invite_pk": "ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4",
+                        "emoji": "🇵🇹",
+                        "float": null
+                      },
+                      "gas": "300000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274162701000001",
+                "max_block_height": "274162928",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "516690252415",
+          "tokensBurnt": "51669025241500000000",
+          "result": ""
+        },
+        {
+          "from": "maya.users.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "create_pot",
+                "args": {
+                  "slug": "lisbon-trip",
+                  "name": "Lisbon Trip",
+                  "preset": "trip",
+                  "rules": null,
+                  "invite_pk": "ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4",
+                  "emoji": "🇵🇹",
+                  "float": null
+                },
+                "gas": "300000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "4203968808525",
+          "tokensBurnt": "420396880852500000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-trip.pots.potprev.testnet",
+          "actions": [
+            {
+              "CreateAccount": {}
+            },
+            {
+              "Transfer": {
+                "deposit": "50000000000000000000000"
+              }
+            },
+            {
+              "UseGlobalContract": {
+                "hash": "Ea8tHXFSQVszVwGASyzAfLq65DjcRDhkfab4FcPaRpgD"
+              }
+            },
+            {
+              "FunctionCall": {
+                "method": "new",
+                "args": {
+                  "config": {
+                    "name": "Lisbon Trip",
+                    "purpose": "Pot group fund (trip). Rules enforced by pots.potprev.testnet",
+                    "metadata": ""
+                  },
+                  "policy": {
+                    "roles": [
+                      {
+                        "name": "member",
+                        "kind": {
+                          "Group": [
+                            "maya.users.potprev.testnet"
+                          ]
+                        },
+                        "permissions": [
+                          "*:AddProposal",
+                          "*:VoteApprove",
+                          "*:VoteReject",
+                          "*:Finalize"
+                        ],
+                        "vote_policy": {}
+                      },
+                      {
+                        "name": "rulebot",
+                        "kind": {
+                          "Group": [
+                            "pots.potprev.testnet"
+                          ]
+                        },
+                        "permissions": [
+                          "transfer:AddProposal",
+                          "transfer:VoteApprove",
+                          "transfer:Finalize",
+                          "add_member_to_role:AddProposal",
+                          "add_member_to_role:VoteApprove",
+                          "call:AddProposal"
+                        ],
+                        "vote_policy": {
+                          "transfer": {
+                            "weight_kind": "RoleWeight",
+                            "quorum": "1",
+                            "threshold": [
+                              1,
+                              1
+                            ]
+                          },
+                          "add_member_to_role": {
+                            "weight_kind": "RoleWeight",
+                            "quorum": "1",
+                            "threshold": [
+                              1,
+                              1
+                            ]
+                          }
+                        }
+                      }
+                    ],
+                    "default_vote_policy": {
+                      "weight_kind": "RoleWeight",
+                      "quorum": "1",
+                      "threshold": [
+                        1,
+                        2
+                      ]
+                    },
+                    "proposal_bond": "0",
+                    "proposal_period": "604800000000000",
+                    "bounty_bond": "0",
+                    "bounty_forgiveness_period": "86400000000000"
+                  }
+                },
+                "gas": "20000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "Contract state version: V2"
+          ],
+          "gasBurnt": "9713029114254",
+          "tokensBurnt": "7251302911425400000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "21140726311816600000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_pot_created",
+                "args": {
+                  "dao": "lisbon-trip.pots.potprev.testnet",
+                  "slug": "lisbon-trip",
+                  "name": "Lisbon Trip",
+                  "emoji": "🇵🇹",
+                  "preset": "trip",
+                  "rules": {
+                    "instant_cap": "100000000",
+                    "member_budget": "200000000",
+                    "instant_payees": "members",
+                    "payee_allowlist": []
+                  },
+                  "creator": "maya.users.potprev.testnet",
+                  "invite_pk": "ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4",
+                  "float": "50000000000000000000000",
+                  "sponsored": true,
+                  "day": 20747
+                },
+                "gas": "40000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"pot_created\",\"data\":{\"pot\":\"lisbon-trip.pots.potprev.testnet\",\"slug\":\"lisbon-trip\",\"name\":\"Lisbon Trip\",\"emoji\":\"🇵🇹\",\"preset\":\"trip\",\"creator\":\"maya.users.potprev.testnet\",\"rules\":{\"instant_cap\":\"100000000\",\"member_budget\":\"200000000\",\"instant_payees\":\"members\",\"payee_allowlist\":[]},\"float\":\"50000000000000000000000\"}}",
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"invite_added\",\"data\":{\"pot\":\"lisbon-trip.pots.potprev.testnet\",\"invite_pk\":\"ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4\",\"by\":\"maya.users.potprev.testnet\",\"expires_at_ms\":1793228853008,\"max_uses\":10}}"
+          ],
+          "gasBurnt": "3809296002040",
+          "tokensBurnt": "380929600204000000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "storage_deposit",
+                "args": {
+                  "account_id": "lisbon-trip.pots.potprev.testnet",
+                  "registration_only": true
+                },
+                "gas": "10000000000000",
+                "deposit": "1250000000000000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1543533265074",
+          "tokensBurnt": "154353326507400000000",
+          "result": "{\"total\":\"1250000000000000000000\",\"available\":\"0\"}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10733905171618600000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_dao_registered",
+                "args": {
+                  "dao": "lisbon-trip.pots.potprev.testnet",
+                  "slug": "lisbon-trip",
+                  "float": "50000000000000000000000"
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1699936846760",
+          "tokensBurnt": "169993684676000000000",
+          "result": "{\"ok\":true,\"pot\":\"lisbon-trip.pots.potprev.testnet\",\"slug\":\"lisbon-trip\",\"float\":\"50000000000000000000000\",\"usdc_registered\":true}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10718320711800000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "18731482681870000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "231187052923283500000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "465021227173500000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "A3FUQBRNzPewHgnJwaVz96zCUVNAU39gfr5EZC1MgzG9": {
+      "hash": "A3FUQBRNzPewHgnJwaVz96zCUVNAU39gfr5EZC1MgzG9",
+      "signer": "users.potprev.testnet",
+      "receiver": "sam.users.potprev.testnet",
+      "tokensBurnt": "1733479012333200000000",
+      "gasBurnt": "19120250623332",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "sam.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "sam.users.potprev.testnet",
+                "receiver_id": "pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "join",
+                      "args": {
+                        "pot": "lisbon-trip.pots.potprev.testnet",
+                        "invite_pk": "ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4",
+                        "signature": "fjZKekiq8OHoacuelRNY+xCdt0Xgk4IaylR5NE5XICu7Q/jBXaae/bd94mGerev3KEwV9nJXbswLb1CcnBlLCQ=="
+                      },
+                      "gas": "100000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274162704000001",
+                "max_block_height": "274162937",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "518359182440",
+          "tokensBurnt": "51835918244000000000",
+          "result": ""
+        },
+        {
+          "from": "sam.users.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "join",
+                "args": {
+                  "pot": "lisbon-trip.pots.potprev.testnet",
+                  "invite_pk": "ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4",
+                  "signature": "fjZKekiq8OHoacuelRNY+xCdt0Xgk4IaylR5NE5XICu7Q/jBXaae/bd94mGerev3KEwV9nJXbswLb1CcnBlLCQ=="
+                },
+                "gas": "100000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3700890982196",
+          "tokensBurnt": "370089098219600000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-trip.pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5060000000000000000000"
+              }
+            },
+            {
+              "FunctionCall": {
+                "method": "add_proposal",
+                "args": {
+                  "proposal": {
+                    "description": "Pot join via invite",
+                    "kind": {
+                      "AddMemberToRole": {
+                        "member_id": "sam.users.potprev.testnet",
+                        "role": "member"
+                      }
+                    }
+                  }
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2100693606709",
+          "tokensBurnt": "210069360670900000000",
+          "result": "0"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10793441884127100000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_join_added",
+                "args": {
+                  "pot": "lisbon-trip.pots.potprev.testnet",
+                  "member": "sam.users.potprev.testnet"
+                },
+                "gas": "60000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3493070809757",
+          "tokensBurnt": "349307080975700000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-trip.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "act_proposal",
+                "args": {
+                  "id": 0,
+                  "action": "VoteApprove",
+                  "proposal": {
+                    "AddMemberToRole": {
+                      "member_id": "sam.users.potprev.testnet",
+                      "role": "member"
+                    }
+                  },
+                  "memo": "auto: valid Pot invite"
+                },
+                "gas": "20000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "Memo: auto: valid Pot invite"
+          ],
+          "gasBurnt": "2656820444452",
+          "tokensBurnt": "265682044445200000000",
+          "result": ""
+        },
+        {
+          "from": "lisbon-trip.pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "22318256250000000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "200864306250000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "20399561586230800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-trip.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "get_proposal",
+                "args": {
+                  "id": 0
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1639873806417",
+          "tokensBurnt": "163987380641700000000",
+          "result": "{\"id\":0,\"proposer\":\"pots.potprev.testnet\",\"description\":\"Pot join via invite\",\"kind\":{\"AddMemberToRole\":{\"member_id\":\"sam.users.potprev.testnet\",\"role\":\"member\"}},\"status\":\"Approved\",\"vote_counts\":{\"rulebot\":[\"1\",\"0\",\"0\"]},\"votes\":{\"pots.potprev.testnet\":\"Approve\"},\"submission_time\":\"1792624057943652145\",\"last_actions_log\":[{\"block_height\":\"274162745\"},{\"block_height\":\"274162747\"}]}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10724116838038300000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_join_status",
+                "args": {
+                  "pot": "lisbon-trip.pots.potprev.testnet",
+                  "member": "sam.users.potprev.testnet"
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"member_joined\",\"data\":{\"pot\":\"lisbon-trip.pots.potprev.testnet\",\"member\":\"sam.users.potprev.testnet\",\"proposal_id\":0,\"invite_pk\":\"ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4\"}}"
+          ],
+          "gasBurnt": "2483539546421",
+          "tokensBurnt": "248353954642100000000",
+          "result": "{\"ok\":true,\"status\":\"active\",\"proposal_id\":0}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10639913487219900000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "17874160271234300000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "28626676912798400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "466523264196000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "E5f2JRgzUZHiRwUvyPrXk1rVXXPRaTC7NB2GxH6L5ASS": {
+      "hash": "E5f2JRgzUZHiRwUvyPrXk1rVXXPRaTC7NB2GxH6L5ASS",
+      "signer": "users.potprev.testnet",
+      "receiver": "sam.users.potprev.testnet",
+      "tokensBurnt": "1179748067635500000000",
+      "gasBurnt": "13136576051355",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "sam.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "sam.users.potprev.testnet",
+                "receiver_id": "usdc.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "ft_transfer_call",
+                      "args": {
+                        "receiver_id": "pots.potprev.testnet",
+                        "amount": "150000000",
+                        "msg": "{\"pot\":\"lisbon-trip.pots.potprev.testnet\"}"
+                      },
+                      "gas": "100000000000000",
+                      "deposit": "1"
+                    }
+                  }
+                ],
+                "nonce": "274162704000002",
+                "max_block_height": "274162947",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "514258382950",
+          "tokensBurnt": "51425838295000000000",
+          "result": ""
+        },
+        {
+          "from": "sam.users.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer_call",
+                "args": {
+                  "receiver_id": "pots.potprev.testnet",
+                  "amount": "150000000",
+                  "msg": "{\"pot\":\"lisbon-trip.pots.potprev.testnet\"}"
+                },
+                "gas": "100000000000000",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"sam.users.potprev.testnet\",\"new_owner_id\":\"pots.potprev.testnet\",\"amount\":\"150000000\"}]}"
+          ],
+          "gasBurnt": "2597393579927",
+          "tokensBurnt": "259739357992700000000"
+        },
+        {
+          "from": "usdc.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_on_transfer",
+                "args": {
+                  "sender_id": "sam.users.potprev.testnet",
+                  "amount": "150000000",
+                  "msg": "{\"pot\":\"lisbon-trip.pots.potprev.testnet\"}"
+                },
+                "gas": "91514280843927",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2770298611428",
+          "tokensBurnt": "277029861142800000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer",
+                "args": {
+                  "receiver_id": "lisbon-trip.pots.potprev.testnet",
+                  "amount": "150000000",
+                  "memo": "Pot contribution"
+                },
+                "gas": "10000000000000",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"pots.potprev.testnet\",\"new_owner_id\":\"lisbon-trip.pots.potprev.testnet\",\"amount\":\"150000000\",\"memo\":\"Pot contribution\"}]}"
+          ],
+          "gasBurnt": "1820527912898",
+          "tokensBurnt": "182052791289800000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10706248189582200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_contribution_forwarded",
+                "args": {
+                  "pot": "lisbon-trip.pots.potprev.testnet",
+                  "sender_id": "sam.users.potprev.testnet",
+                  "amount": "150000000"
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"contribution\",\"data\":{\"pot\":\"lisbon-trip.pots.potprev.testnet\",\"member\":\"sam.users.potprev.testnet\",\"amount\":\"150000000\",\"member_total\":\"150000000\",\"pot_total\":\"150000000\"}}"
+          ],
+          "gasBurnt": "2248261046606",
+          "tokensBurnt": "224826104660600000000",
+          "result": "\"0\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10663519594891400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "70348956709714200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "usdc.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_resolve_transfer",
+                "args": {
+                  "sender_id": "sam.users.potprev.testnet",
+                  "receiver_id": "pots.potprev.testnet",
+                  "amount": "150000000"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1332482759596",
+          "tokensBurnt": "133248275959600000000",
+          "result": "\"150000000\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5755075064252400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "2337654221934300000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "462832544655000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "HM56jUM6Eghp37iPq7tuJBynUcRKisipZGpchnqc3GVy": {
+      "hash": "HM56jUM6Eghp37iPq7tuJBynUcRKisipZGpchnqc3GVy",
+      "signer": "users.potprev.testnet",
+      "receiver": "maya.users.potprev.testnet",
+      "tokensBurnt": "1180016863670500000000",
+      "gasBurnt": "13139264011705",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "maya.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "maya.users.potprev.testnet",
+                "receiver_id": "usdc.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "ft_transfer_call",
+                      "args": {
+                        "receiver_id": "pots.potprev.testnet",
+                        "amount": "150000000",
+                        "msg": "{\"pot\":\"lisbon-trip.pots.potprev.testnet\"}"
+                      },
+                      "gas": "100000000000000",
+                      "deposit": "1"
+                    }
+                  }
+                ],
+                "nonce": "274162701000002",
+                "max_block_height": "274162956",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "514258382950",
+          "tokensBurnt": "51425838295000000000",
+          "result": ""
+        },
+        {
+          "from": "maya.users.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer_call",
+                "args": {
+                  "receiver_id": "pots.potprev.testnet",
+                  "amount": "150000000",
+                  "msg": "{\"pot\":\"lisbon-trip.pots.potprev.testnet\"}"
+                },
+                "gas": "100000000000000",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"maya.users.potprev.testnet\",\"new_owner_id\":\"pots.potprev.testnet\",\"amount\":\"150000000\"}]}"
+          ],
+          "gasBurnt": "2593526793101",
+          "tokensBurnt": "259352679310100000000"
+        },
+        {
+          "from": "usdc.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_on_transfer",
+                "args": {
+                  "sender_id": "maya.users.potprev.testnet",
+                  "amount": "150000000",
+                  "msg": "{\"pot\":\"lisbon-trip.pots.potprev.testnet\"}"
+                },
+                "gas": "91518143158885",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2775330151586",
+          "tokensBurnt": "277533015158600000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer",
+                "args": {
+                  "receiver_id": "lisbon-trip.pots.potprev.testnet",
+                  "amount": "150000000",
+                  "memo": "Pot contribution"
+                },
+                "gas": "10000000000000",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"pots.potprev.testnet\",\"new_owner_id\":\"lisbon-trip.pots.potprev.testnet\",\"amount\":\"150000000\",\"memo\":\"Pot contribution\"}]}"
+          ],
+          "gasBurnt": "1820527912898",
+          "tokensBurnt": "182052791289800000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10706248189582200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_contribution_forwarded",
+                "args": {
+                  "pot": "lisbon-trip.pots.potprev.testnet",
+                  "sender_id": "maya.users.potprev.testnet",
+                  "amount": "150000000"
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"contribution\",\"data\":{\"pot\":\"lisbon-trip.pots.potprev.testnet\",\"member\":\"maya.users.potprev.testnet\",\"amount\":\"150000000\",\"member_total\":\"150000000\",\"pot_total\":\"300000000\"}}"
+          ],
+          "gasBurnt": "2249685401172",
+          "tokensBurnt": "224968540117200000000",
+          "result": "\"0\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10663379395368800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "70352315870656400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "usdc.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_resolve_transfer",
+                "args": {
+                  "sender_id": "maya.users.potprev.testnet",
+                  "receiver_id": "pots.potprev.testnet",
+                  "amount": "150000000"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1332581612048",
+          "tokensBurnt": "133258161204800000000",
+          "result": "\"150000000\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5755067414941200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "2334174113790900000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "462832544655000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "CA6KoGzoun9HLNho1561roToRerrLChySLwnyMUtoowd": {
+      "hash": "CA6KoGzoun9HLNho1561roToRerrLChySLwnyMUtoowd",
+      "signer": "users.potprev.testnet",
+      "receiver": "leo.users.potprev.testnet",
+      "tokensBurnt": "1743484301658500000000",
+      "gasBurnt": "19220303516585",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "leo.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "leo.users.potprev.testnet",
+                "receiver_id": "pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "join",
+                      "args": {
+                        "pot": "lisbon-trip.pots.potprev.testnet",
+                        "invite_pk": "ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4",
+                        "signature": "ecimM7ON2qPKpJq6M43PHXjVSqbJUKSt0IOwo6SPXmm+Vlks750jP7EpZT6j+cjqkjDdeaqQql1bDEr7UG+yDg=="
+                      },
+                      "gas": "100000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274162707000001",
+                "max_block_height": "274162965",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "518359182440",
+          "tokensBurnt": "51835918244000000000",
+          "result": ""
+        },
+        {
+          "from": "leo.users.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "join",
+                "args": {
+                  "pot": "lisbon-trip.pots.potprev.testnet",
+                  "invite_pk": "ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4",
+                  "signature": "ecimM7ON2qPKpJq6M43PHXjVSqbJUKSt0IOwo6SPXmm+Vlks750jP7EpZT6j+cjqkjDdeaqQql1bDEr7UG+yDg=="
+                },
+                "gas": "100000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3713702094938",
+          "tokensBurnt": "371370209493800000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-trip.pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5060000000000000000000"
+              }
+            },
+            {
+              "FunctionCall": {
+                "method": "add_proposal",
+                "args": {
+                  "proposal": {
+                    "description": "Pot join via invite",
+                    "kind": {
+                      "AddMemberToRole": {
+                        "member_id": "leo.users.potprev.testnet",
+                        "role": "member"
+                      }
+                    }
+                  }
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2123934812413",
+          "tokensBurnt": "212393481241300000000",
+          "result": "1"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10791117763556700000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_join_added",
+                "args": {
+                  "pot": "lisbon-trip.pots.potprev.testnet",
+                  "member": "leo.users.potprev.testnet"
+                },
+                "gas": "60000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3505895086595",
+          "tokensBurnt": "350589508659500000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-trip.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "act_proposal",
+                "args": {
+                  "id": 1,
+                  "action": "VoteApprove",
+                  "proposal": {
+                    "AddMemberToRole": {
+                      "member_id": "leo.users.potprev.testnet",
+                      "role": "member"
+                    }
+                  },
+                  "memo": "auto: valid Pot invite"
+                },
+                "gas": "20000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "Memo: auto: valid Pot invite"
+          ],
+          "gasBurnt": "2685335952079",
+          "tokensBurnt": "268533595207900000000",
+          "result": ""
+        },
+        {
+          "from": "lisbon-trip.pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "22318256250000000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "200864306250000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "20396710035468100000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-trip.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "get_proposal",
+                "args": {
+                  "id": 1
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1647249313601",
+          "tokensBurnt": "164724931360100000000",
+          "result": "{\"id\":1,\"proposer\":\"pots.potprev.testnet\",\"description\":\"Pot join via invite\",\"kind\":{\"AddMemberToRole\":{\"member_id\":\"leo.users.potprev.testnet\",\"role\":\"member\"}},\"status\":\"Approved\",\"vote_counts\":{\"rulebot\":[\"1\",\"0\",\"0\"]},\"votes\":{\"pots.potprev.testnet\":\"Approve\"},\"submission_time\":\"1792624074848545560\",\"last_actions_log\":[{\"block_height\":\"274162773\"},{\"block_height\":\"274162775\"}]}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10723379287319900000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_join_status",
+                "args": {
+                  "pot": "lisbon-trip.pots.potprev.testnet",
+                  "member": "leo.users.potprev.testnet"
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"member_joined\",\"data\":{\"pot\":\"lisbon-trip.pots.potprev.testnet\",\"member\":\"leo.users.potprev.testnet\",\"proposal_id\":1,\"invite_pk\":\"ed25519:JBtcefWsdU51feAd2PLJ4Ry33RkfXQAvG1qVjNWMESX4\"}}"
+          ],
+          "gasBurnt": "2498824829579",
+          "tokensBurnt": "249882482957900000000",
+          "result": "{\"ok\":true,\"status\":\"active\",\"proposal_id\":1}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10638384958904100000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "17872877843550500000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "28625395801524200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "466523264196000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "HFy2Vfzie3zk9LGoa2XAzR67Ahv4VKR7z1ZAYgWBf3Hy": {
+      "hash": "HFy2Vfzie3zk9LGoa2XAzR67Ahv4VKR7z1ZAYgWBf3Hy",
+      "signer": "users.potprev.testnet",
+      "receiver": "leo.users.potprev.testnet",
+      "tokensBurnt": "1181235661718700000000",
+      "gasBurnt": "13151451992187",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "leo.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "leo.users.potprev.testnet",
+                "receiver_id": "usdc.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "ft_transfer_call",
+                      "args": {
+                        "receiver_id": "pots.potprev.testnet",
+                        "amount": "150000000",
+                        "msg": "{\"pot\":\"lisbon-trip.pots.potprev.testnet\"}"
+                      },
+                      "gas": "100000000000000",
+                      "deposit": "1"
+                    }
+                  }
+                ],
+                "nonce": "274162707000002",
+                "max_block_height": "274162975",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "514258382950",
+          "tokensBurnt": "51425838295000000000",
+          "result": ""
+        },
+        {
+          "from": "leo.users.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer_call",
+                "args": {
+                  "receiver_id": "pots.potprev.testnet",
+                  "amount": "150000000",
+                  "msg": "{\"pot\":\"lisbon-trip.pots.potprev.testnet\"}"
+                },
+                "gas": "100000000000000",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"leo.users.potprev.testnet\",\"new_owner_id\":\"pots.potprev.testnet\",\"amount\":\"150000000\"}]}"
+          ],
+          "gasBurnt": "2597393579927",
+          "tokensBurnt": "259739357992700000000"
+        },
+        {
+          "from": "usdc.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_on_transfer",
+                "args": {
+                  "sender_id": "leo.users.potprev.testnet",
+                  "amount": "150000000",
+                  "msg": "{\"pot\":\"lisbon-trip.pots.potprev.testnet\"}"
+                },
+                "gas": "91514280843927",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2776157006598",
+          "tokensBurnt": "277615700659800000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer",
+                "args": {
+                  "receiver_id": "lisbon-trip.pots.potprev.testnet",
+                  "amount": "150000000",
+                  "memo": "Pot contribution"
+                },
+                "gas": "10000000000000",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"pots.potprev.testnet\",\"new_owner_id\":\"lisbon-trip.pots.potprev.testnet\",\"amount\":\"150000000\",\"memo\":\"Pot contribution\"}]}"
+          ],
+          "gasBurnt": "1820527912898",
+          "tokensBurnt": "182052791289800000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10706248189582200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_contribution_forwarded",
+                "args": {
+                  "pot": "lisbon-trip.pots.potprev.testnet",
+                  "sender_id": "leo.users.potprev.testnet",
+                  "amount": "150000000"
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"contribution\",\"data\":{\"pot\":\"lisbon-trip.pots.potprev.testnet\",\"member\":\"leo.users.potprev.testnet\",\"amount\":\"150000000\",\"member_total\":\"150000000\",\"pot_total\":\"450000000\"}}"
+          ],
+          "gasBurnt": "2257278592268",
+          "tokensBurnt": "225727859226800000000",
+          "result": "\"0\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10662617840325200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "70348370870197200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "usdc.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_resolve_transfer",
+                "args": {
+                  "sender_id": "leo.users.potprev.testnet",
+                  "receiver_id": "pots.potprev.testnet",
+                  "amount": "150000000"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1332482759596",
+          "tokensBurnt": "133248275959600000000",
+          "result": "\"150000000\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5755075064252400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "2337654221934300000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "462832544655000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk": {
+      "hash": "Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk",
+      "signer": "users.potprev.testnet",
+      "receiver": "maya-fhq8.users.potprev.testnet",
+      "tokensBurnt": "3048416048687400000000",
+      "gasBurnt": "33608716361874",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "maya-fhq8.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "maya-fhq8.users.potprev.testnet",
+                "receiver_id": "pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "request_spend",
+                      "args": {
+                        "pot": "lisbon-fhq8.pots.potprev.testnet",
+                        "amount": "20000000",
+                        "receiver_id": "maya-fhq8.users.potprev.testnet",
+                        "category": "groceries",
+                        "request_ref": "3vmaxppe3kr1p87m"
+                      },
+                      "gas": "150000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274162915000003",
+                "max_block_height": "274168386",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "516594884985",
+          "tokensBurnt": "51659488498500000000",
+          "result": ""
+        },
+        {
+          "from": "maya-fhq8.users.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "request_spend",
+                "args": {
+                  "pot": "lisbon-fhq8.pots.potprev.testnet",
+                  "amount": "20000000",
+                  "receiver_id": "maya-fhq8.users.potprev.testnet",
+                  "category": "groceries",
+                  "request_ref": "3vmaxppe3kr1p87m"
+                },
+                "gas": "150000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3964084054364",
+          "tokensBurnt": "396408405436400000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_balance_of",
+                "args": {
+                  "account_id": "lisbon-fhq8.pots.potprev.testnet"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1238144046472",
+          "tokensBurnt": "123814404647200000000",
+          "result": "\"450000000\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5764383723260800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "storage_balance_of",
+                "args": {
+                  "account_id": "maya-fhq8.users.potprev.testnet"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1233193342726",
+          "tokensBurnt": "123319334272600000000",
+          "result": "{\"total\":\"1250000000000000000000\",\"available\":\"0\"}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5764887737371400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "get_policy",
+                "args": {},
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1778155767112",
+          "tokensBurnt": "177815576711200000000",
+          "result": "{\"roles\":[{\"name\":\"member\",\"kind\":{\"Group\":[\"leo-fhq8.users.potprev.testnet\",\"sam-fhq8.users.potprev.testnet\",\"maya-fhq8.users.potprev.testnet\"]},\"permissions\":[\"*:VoteApprove\",\"*:Finalize\",\"*:VoteReject\",\"*:AddProposal\"],\"vote_policy\":{}},{\"name\":\"rulebot\",\"kind\":{\"Group\":[\"pots.potprev.testnet\"]},\"permissions\":[\"add_member_to_role:VoteApprove\",\"transfer:Finalize\",\"transfer:VoteApprove\",\"call:AddProposal\",\"transfer:AddProposal\",\"add_member_to_role:AddProposal\"],\"vote_policy\":{\"add_member_to_role\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]},\"transfer\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]}}}],\"default_vote_policy\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,2]},\"proposal_bond\":\"0\",\"proposal_period\":\"604800000000000\",\"bounty_bond\":\"0\",\"bounty_forgiveness_period\":\"86400000000000\"}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10710266282628800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_spend_checked",
+                "args": {
+                  "pot": "lisbon-fhq8.pots.potprev.testnet",
+                  "request_id": 0,
+                  "prepay": "5850000000000000000000"
+                },
+                "gas": "105000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3388306968529",
+          "tokensBurnt": "338830696852900000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5850000000000000000000"
+              }
+            },
+            {
+              "FunctionCall": {
+                "method": "add_proposal",
+                "args": {
+                  "proposal": {
+                    "description": "Pot request #0: groceries (ref 3vmaxppe3kr1p87m)",
+                    "kind": {
+                      "Transfer": {
+                        "token_id": "usdc.potprev.testnet",
+                        "receiver_id": "maya-fhq8.users.potprev.testnet",
+                        "amount": "20000000",
+                        "msg": null
+                      }
+                    }
+                  }
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2169540154439",
+          "tokensBurnt": "216954015443900000000",
+          "result": "2"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10786733868140100000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_spend_added",
+                "args": {
+                  "pot": "lisbon-fhq8.pots.potprev.testnet",
+                  "request_id": 0
+                },
+                "gas": "80000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"spend_requested\",\"data\":{\"pot\":\"lisbon-fhq8.pots.potprev.testnet\",\"request_id\":0,\"proposal_id\":2,\"requester\":\"maya-fhq8.users.potprev.testnet\",\"receiver_id\":\"maya-fhq8.users.potprev.testnet\",\"amount\":\"20000000\",\"category\":\"groceries\",\"request_ref\":\"3vmaxppe3kr1p87m\",\"path\":\"instant\",\"reason\":\"within_rules\",\"approvals_needed\":2}}"
+          ],
+          "gasBurnt": "3915129536922",
+          "tokensBurnt": "391512953692200000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "act_proposal",
+                "args": {
+                  "id": 2,
+                  "action": "VoteApprove",
+                  "proposal": {
+                    "Transfer": {
+                      "token_id": "usdc.potprev.testnet",
+                      "receiver_id": "maya-fhq8.users.potprev.testnet",
+                      "amount": "20000000",
+                      "msg": null
+                    }
+                  },
+                  "memo": "auto: within Pot rules"
+                },
+                "gas": "40000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "Memo: auto: within Pot rules"
+          ],
+          "gasBurnt": "3065115165766",
+          "tokensBurnt": "306511516576600000000",
+          "result": ""
+        },
+        {
+          "from": "lisbon-fhq8.pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer",
+                "args": {
+                  "receiver_id": "maya-fhq8.users.potprev.testnet",
+                  "amount": "20000000",
+                  "memo": "Pot request #0: groceries (ref 3vmaxppe3kr1p87m)"
+                },
+                "gas": "18023456267830",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"lisbon-fhq8.pots.potprev.testnet\",\"new_owner_id\":\"maya-fhq8.users.potprev.testnet\",\"amount\":\"20000000\",\"memo\":\"Pot request #0: groceries (ref 3vmaxppe3kr1p87m)\"}]}"
+          ],
+          "gasBurnt": "1862955936830",
+          "tokensBurnt": "186295593683000000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "18725528733039000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "lisbon-fhq8.pots.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_proposal_callback",
+                "args": {
+                  "proposal_id": 2
+                },
+                "gas": "18023456267830",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2371491402943",
+          "tokensBurnt": "237149140294300000000"
+        },
+        {
+          "from": "lisbon-fhq8.pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "22318256250000000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "200864306250000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "18451266794593700000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "2758603649189400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "get_proposal",
+                "args": {
+                  "id": 2
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1667914524678",
+          "tokensBurnt": "166791452467800000000",
+          "result": "{\"id\":2,\"proposer\":\"pots.potprev.testnet\",\"description\":\"Pot request #0: groceries (ref 3vmaxppe3kr1p87m)\",\"kind\":{\"Transfer\":{\"token_id\":\"usdc.potprev.testnet\",\"receiver_id\":\"maya-fhq8.users.potprev.testnet\",\"amount\":\"20000000\",\"msg\":null}},\"status\":\"Approved\",\"vote_counts\":{\"rulebot\":[\"1\",\"0\",\"0\"]},\"votes\":{\"pots.potprev.testnet\":\"Approve\"},\"submission_time\":\"1792627205393388502\",\"last_actions_log\":[{\"block_height\":\"274168196\"},{\"block_height\":\"274168198\"}]}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10721312766212200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_spend_status",
+                "args": {
+                  "pot": "lisbon-fhq8.pots.potprev.testnet",
+                  "request_id": 0
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"spend_auto_approved\",\"data\":{\"pot\":\"lisbon-fhq8.pots.potprev.testnet\",\"request_id\":0,\"proposal_id\":2,\"requester\":\"maya-fhq8.users.potprev.testnet\",\"receiver_id\":\"maya-fhq8.users.potprev.testnet\",\"amount\":\"20000000\",\"budget_used\":\"20000000\",\"budget_left\":\"180000000\"}}"
+          ],
+          "gasBurnt": "2573757253623",
+          "tokensBurnt": "257375725362300000000",
+          "result": "{\"request_id\":0,\"proposal_id\":2,\"path\":\"instant\",\"reason\":\"within_rules\",\"status\":\"approved\",\"refusal\":null,\"approvals_needed\":2}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10630844761885700000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "17831842601817800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "13657561913187100000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "21939265522919600000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "464935396486500000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "BXy7NYUUGt3SDGxL6Q2on5tBXh914SAHTDmsU52c7Fke": {
+      "hash": "BXy7NYUUGt3SDGxL6Q2on5tBXh914SAHTDmsU52c7Fke",
+      "signer": "users.potprev.testnet",
+      "receiver": "u-7z0fw6zr.users.potprev.testnet",
+      "tokensBurnt": "3056825793953600000000",
+      "gasBurnt": "33692813814536",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "u-7z0fw6zr.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "u-7z0fw6zr.users.potprev.testnet",
+                "receiver_id": "pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "request_spend",
+                      "args": {
+                        "pot": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+                        "amount": "20000000",
+                        "receiver_id": "u-7z0fw6zr.users.potprev.testnet",
+                        "category": "groceries",
+                        "request_ref": "g7byk4mbd810gg6m"
+                      },
+                      "gas": "150000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274167663000003",
+                "max_block_height": "274167929",
+                "public_key": "ed25519:CxP7oaGLZhcLzUEa6XoitT635DBNGLeq1r776u7RRBbj"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "517167089565",
+          "tokensBurnt": "51716708956500000000",
+          "result": ""
+        },
+        {
+          "from": "u-7z0fw6zr.users.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "request_spend",
+                "args": {
+                  "pot": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+                  "amount": "20000000",
+                  "receiver_id": "u-7z0fw6zr.users.potprev.testnet",
+                  "category": "groceries",
+                  "request_ref": "g7byk4mbd810gg6m"
+                },
+                "gas": "150000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3976412497555",
+          "tokensBurnt": "397641249755500000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_balance_of",
+                "args": {
+                  "account_id": "testnet-trip-jh6z-t95i.pots.potprev.testnet"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1239187528362",
+          "tokensBurnt": "123918752836200000000",
+          "result": "\"250000000\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5764303970345800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "storage_balance_of",
+                "args": {
+                  "account_id": "u-7z0fw6zr.users.potprev.testnet"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1233290586092",
+          "tokensBurnt": "123329058609200000000",
+          "result": "{\"total\":\"1250000000000000000000\",\"available\":\"0\"}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5764880248968800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "get_policy",
+                "args": {},
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1761323603028",
+          "tokensBurnt": "176132360302800000000",
+          "result": "{\"roles\":[{\"name\":\"member\",\"kind\":{\"Group\":[\"u-2za95mp9.users.potprev.testnet\",\"u-7z0fw6zr.users.potprev.testnet\"]},\"permissions\":[\"*:AddProposal\",\"*:Finalize\",\"*:VoteApprove\",\"*:VoteReject\"],\"vote_policy\":{}},{\"name\":\"rulebot\",\"kind\":{\"Group\":[\"pots.potprev.testnet\"]},\"permissions\":[\"add_member_to_role:AddProposal\",\"transfer:VoteApprove\",\"add_member_to_role:VoteApprove\",\"transfer:AddProposal\",\"transfer:Finalize\",\"call:AddProposal\"],\"vote_policy\":{\"add_member_to_role\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]},\"transfer\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]}}}],\"default_vote_policy\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,2]},\"proposal_bond\":\"0\",\"proposal_period\":\"604800000000000\",\"bounty_bond\":\"0\",\"bounty_forgiveness_period\":\"86400000000000\"}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10711949499037200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_spend_checked",
+                "args": {
+                  "pot": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+                  "request_id": 0,
+                  "prepay": "5860000000000000000000"
+                },
+                "gas": "105000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3395046106172",
+          "tokensBurnt": "339504610617200000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5860000000000000000000"
+              }
+            },
+            {
+              "FunctionCall": {
+                "method": "add_proposal",
+                "args": {
+                  "proposal": {
+                    "description": "Pot request #0: groceries (ref g7byk4mbd810gg6m)",
+                    "kind": {
+                      "Transfer": {
+                        "token_id": "usdc.potprev.testnet",
+                        "receiver_id": "u-7z0fw6zr.users.potprev.testnet",
+                        "amount": "20000000",
+                        "msg": null
+                      }
+                    }
+                  }
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2183573507003",
+          "tokensBurnt": "218357350700300000000",
+          "result": "1"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10785332768817700000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_spend_added",
+                "args": {
+                  "pot": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+                  "request_id": 0
+                },
+                "gas": "80000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"spend_requested\",\"data\":{\"pot\":\"testnet-trip-jh6z-t95i.pots.potprev.testnet\",\"request_id\":0,\"proposal_id\":1,\"requester\":\"u-7z0fw6zr.users.potprev.testnet\",\"receiver_id\":\"u-7z0fw6zr.users.potprev.testnet\",\"amount\":\"20000000\",\"category\":\"groceries\",\"request_ref\":\"g7byk4mbd810gg6m\",\"path\":\"instant\",\"reason\":\"within_rules\",\"approvals_needed\":2}}"
+          ],
+          "gasBurnt": "3931939739860",
+          "tokensBurnt": "393193973986000000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "act_proposal",
+                "args": {
+                  "id": 1,
+                  "action": "VoteApprove",
+                  "proposal": {
+                    "Transfer": {
+                      "token_id": "usdc.potprev.testnet",
+                      "receiver_id": "u-7z0fw6zr.users.potprev.testnet",
+                      "amount": "20000000",
+                      "msg": null
+                    }
+                  },
+                  "memo": "auto: within Pot rules"
+                },
+                "gas": "40000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "Memo: auto: within Pot rules"
+          ],
+          "gasBurnt": "3084566723207",
+          "tokensBurnt": "308456672320700000000",
+          "result": ""
+        },
+        {
+          "from": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer",
+                "args": {
+                  "receiver_id": "u-7z0fw6zr.users.potprev.testnet",
+                  "amount": "20000000",
+                  "memo": "Pot request #0: groceries (ref g7byk4mbd810gg6m)"
+                },
+                "gas": "18013730489109",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"testnet-trip-jh6z-t95i.pots.potprev.testnet\",\"new_owner_id\":\"u-7z0fw6zr.users.potprev.testnet\",\"amount\":\"20000000\",\"memo\":\"Pot request #0: groceries (ref g7byk4mbd810gg6m)\"}]}"
+          ],
+          "gasBurnt": "1870127677440",
+          "tokensBurnt": "187012767744000000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "18715088016191000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "to": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_proposal_callback",
+                "args": {
+                  "proposal_id": 1
+                },
+                "gas": "18013730489110",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2388721247138",
+          "tokensBurnt": "238872124713800000000"
+        },
+        {
+          "from": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "22318256250000000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "200864306250000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "18439818031454200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "2776110050886300000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "get_proposal",
+                "args": {
+                  "id": 1
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1660630645283",
+          "tokensBurnt": "166063064528300000000",
+          "result": "{\"id\":1,\"proposer\":\"pots.potprev.testnet\",\"description\":\"Pot request #0: groceries (ref g7byk4mbd810gg6m)\",\"kind\":{\"Transfer\":{\"token_id\":\"usdc.potprev.testnet\",\"receiver_id\":\"u-7z0fw6zr.users.potprev.testnet\",\"amount\":\"20000000\",\"msg\":null}},\"status\":\"Approved\",\"vote_counts\":{\"rulebot\":[\"1\",\"0\",\"0\"]},\"votes\":{\"pots.potprev.testnet\":\"Approve\"},\"submission_time\":\"1792626937699436271\",\"last_actions_log\":[{\"block_height\":\"274167738\"},{\"block_height\":\"274167740\"}]}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10722041154151700000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_spend_status",
+                "args": {
+                  "pot": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+                  "request_id": 0
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"spend_auto_approved\",\"data\":{\"pot\":\"testnet-trip-jh6z-t95i.pots.potprev.testnet\",\"request_id\":0,\"proposal_id\":1,\"requester\":\"u-7z0fw6zr.users.potprev.testnet\",\"receiver_id\":\"u-7z0fw6zr.users.potprev.testnet\",\"amount\":\"20000000\",\"budget_used\":\"20000000\",\"budget_left\":\"180000000\"}}"
+          ],
+          "gasBurnt": "2585921336766",
+          "tokensBurnt": "258592133676600000000",
+          "result": "{\"request_id\":0,\"proposal_id\":1,\"path\":\"instant\",\"reason\":\"within_rules\",\"status\":\"approved\",\"refusal\":null,\"approvals_needed\":2}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10629652948845400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "17830159345590000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "13656885763488800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "21938008083326500000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "465450380608500000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b": {
+      "hash": "9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b",
+      "signer": "users.potprev.testnet",
+      "receiver": "maya-fhq8.users.potprev.testnet",
+      "tokensBurnt": "1757099747149300000000",
+      "gasBurnt": "19356457971493",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "maya-fhq8.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "maya-fhq8.users.potprev.testnet",
+                "receiver_id": "pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "request_spend",
+                      "args": {
+                        "pot": "lisbon-fhq8.pots.potprev.testnet",
+                        "amount": "300000000",
+                        "receiver_id": "maya-fhq8.users.potprev.testnet",
+                        "category": "tickets",
+                        "request_ref": "2zxmaente774ywby"
+                      },
+                      "gas": "150000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274162915000004",
+                "max_block_height": "274168407",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "516547201270",
+          "tokensBurnt": "51654720127000000000",
+          "result": ""
+        },
+        {
+          "from": "maya-fhq8.users.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "request_spend",
+                "args": {
+                  "pot": "lisbon-fhq8.pots.potprev.testnet",
+                  "amount": "300000000",
+                  "receiver_id": "maya-fhq8.users.potprev.testnet",
+                  "category": "tickets",
+                  "request_ref": "2zxmaente774ywby"
+                },
+                "gas": "150000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3966471713668",
+          "tokensBurnt": "396647171366800000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_balance_of",
+                "args": {
+                  "account_id": "lisbon-fhq8.pots.potprev.testnet"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1238144046472",
+          "tokensBurnt": "123814404647200000000",
+          "result": "\"430000000\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5764383723260800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "storage_balance_of",
+                "args": {
+                  "account_id": "maya-fhq8.users.potprev.testnet"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1233193342726",
+          "tokensBurnt": "123319334272600000000",
+          "result": "{\"total\":\"1250000000000000000000\",\"available\":\"0\"}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5764887737371400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "get_policy",
+                "args": {},
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1785366723096",
+          "tokensBurnt": "178536672309600000000",
+          "result": "{\"roles\":[{\"name\":\"member\",\"kind\":{\"Group\":[\"sam-fhq8.users.potprev.testnet\",\"leo-fhq8.users.potprev.testnet\",\"maya-fhq8.users.potprev.testnet\"]},\"permissions\":[\"*:AddProposal\",\"*:VoteApprove\",\"*:Finalize\",\"*:VoteReject\"],\"vote_policy\":{}},{\"name\":\"rulebot\",\"kind\":{\"Group\":[\"pots.potprev.testnet\"]},\"permissions\":[\"call:AddProposal\",\"transfer:AddProposal\",\"transfer:Finalize\",\"add_member_to_role:AddProposal\",\"transfer:VoteApprove\",\"add_member_to_role:VoteApprove\"],\"vote_policy\":{\"transfer\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]},\"add_member_to_role\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]}}}],\"default_vote_policy\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,2]},\"proposal_bond\":\"0\",\"proposal_period\":\"604800000000000\",\"bounty_bond\":\"0\",\"bounty_forgiveness_period\":\"86400000000000\"}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10709545187030400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_spend_checked",
+                "args": {
+                  "pot": "lisbon-fhq8.pots.potprev.testnet",
+                  "request_id": 1,
+                  "prepay": "8840000000000000000000"
+                },
+                "gas": "105000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3392038801817",
+          "tokensBurnt": "339203880181700000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "8840000000000000000000"
+              }
+            },
+            {
+              "FunctionCall": {
+                "method": "add_proposal",
+                "args": {
+                  "proposal": {
+                    "description": "Pot request #1: tickets (ref 2zxmaente774ywby)",
+                    "kind": {
+                      "Transfer": {
+                        "token_id": "usdc.potprev.testnet",
+                        "receiver_id": "maya-fhq8.users.potprev.testnet",
+                        "amount": "300000000",
+                        "msg": null
+                      }
+                    }
+                  }
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2185386254553",
+          "tokensBurnt": "218538625455300000000",
+          "result": "3"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10785147022194700000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_spend_added",
+                "args": {
+                  "pot": "lisbon-fhq8.pots.potprev.testnet",
+                  "request_id": 1
+                },
+                "gas": "80000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"spend_requested\",\"data\":{\"pot\":\"lisbon-fhq8.pots.potprev.testnet\",\"request_id\":1,\"proposal_id\":3,\"requester\":\"maya-fhq8.users.potprev.testnet\",\"receiver_id\":\"maya-fhq8.users.potprev.testnet\",\"amount\":\"300000000\",\"category\":\"tickets\",\"request_ref\":\"2zxmaente774ywby\",\"path\":\"vote\",\"reason\":\"over_cap\",\"approvals_needed\":2}}"
+          ],
+          "gasBurnt": "2737302186621",
+          "tokensBurnt": "273730218662100000000",
+          "result": "{\"request_id\":1,\"proposal_id\":3,\"path\":\"vote\",\"reason\":\"over_cap\",\"status\":\"pending\",\"refusal\":null,\"approvals_needed\":2}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "80614488032651900000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "13657190965792300000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "21939024521055200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "464892481143000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa": {
+      "hash": "H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa",
+      "signer": "users.potprev.testnet",
+      "receiver": "maya-fhq8.users.potprev.testnet",
+      "tokensBurnt": "332283742560100000000",
+      "gasBurnt": "3769202550601",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "maya-fhq8.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "maya-fhq8.users.potprev.testnet",
+                "receiver_id": "lisbon-fhq8.pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "act_proposal",
+                      "args": {
+                        "id": 3,
+                        "action": "VoteApprove",
+                        "proposal": {
+                          "Transfer": {
+                            "token_id": "usdc.potprev.testnet",
+                            "receiver_id": "maya-fhq8.users.potprev.testnet",
+                            "amount": "300000000",
+                            "msg": null
+                          }
+                        }
+                      },
+                      "gas": "100000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274162915000005",
+                "max_block_height": "274168418",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "516785619845",
+          "tokensBurnt": "51678561984500000000",
+          "result": ""
+        },
+        {
+          "from": "maya-fhq8.users.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "act_proposal",
+                "args": {
+                  "id": 3,
+                  "action": "VoteApprove",
+                  "proposal": {
+                    "Transfer": {
+                      "token_id": "usdc.potprev.testnet",
+                      "receiver_id": "maya-fhq8.users.potprev.testnet",
+                      "amount": "300000000",
+                      "msg": null
+                    }
+                  }
+                },
+                "gas": "100000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2289266185911",
+          "tokensBurnt": "228926618591100000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "100659542057330900000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "465107057860500000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH": {
+      "hash": "6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH",
+      "signer": "users.potprev.testnet",
+      "receiver": "leo-fhq8.users.potprev.testnet",
+      "tokensBurnt": "863892769179100000000",
+      "gasBurnt": "9754840504291",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "leo-fhq8.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "leo-fhq8.users.potprev.testnet",
+                "receiver_id": "lisbon-fhq8.pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "act_proposal",
+                      "args": {
+                        "id": 3,
+                        "action": "VoteApprove",
+                        "proposal": {
+                          "Transfer": {
+                            "token_id": "usdc.potprev.testnet",
+                            "receiver_id": "maya-fhq8.users.potprev.testnet",
+                            "amount": "300000000",
+                            "msg": null
+                          }
+                        }
+                      },
+                      "gas": "100000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274162921000003",
+                "max_block_height": "274168448",
+                "public_key": "ed25519:64FNmrBPMwr3SCx1qqYU3tceamuoMGerTGBE7iCrabHq"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "516785619845",
+          "tokensBurnt": "51678561984500000000",
+          "result": ""
+        },
+        {
+          "from": "leo-fhq8.users.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "act_proposal",
+                "args": {
+                  "id": 3,
+                  "action": "VoteApprove",
+                  "proposal": {
+                    "Transfer": {
+                      "token_id": "usdc.potprev.testnet",
+                      "receiver_id": "maya-fhq8.users.potprev.testnet",
+                      "amount": "300000000",
+                      "msg": null
+                    }
+                  }
+                },
+                "gas": "100000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3105824257570",
+          "tokensBurnt": "310582425757000000000",
+          "result": ""
+        },
+        {
+          "from": "lisbon-fhq8.pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer",
+                "args": {
+                  "receiver_id": "maya-fhq8.users.potprev.testnet",
+                  "amount": "300000000",
+                  "memo": "Pot request #1: tickets (ref 2zxmaente774ywby)"
+                },
+                "gas": "48003068182918",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"lisbon-fhq8.pots.potprev.testnet\",\"new_owner_id\":\"maya-fhq8.users.potprev.testnet\",\"amount\":\"300000000\",\"memo\":\"Pot request #1: tickets (ref 2zxmaente774ywby)\"}]}"
+          ],
+          "gasBurnt": "1862732801119",
+          "tokensBurnt": "186273280111900000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "48705160725764100000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "lisbon-fhq8.pots.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_proposal_callback",
+                "args": {
+                  "proposal_id": 3
+                },
+                "gas": "48003068182918",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2413616830912",
+          "tokensBurnt": "241361683091200000000"
+        },
+        {
+          "from": "lisbon-fhq8.pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "22318256250000000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "200864306250000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "48426666166884800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "2795241831813000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "465107057860500000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU": {
+      "hash": "BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU",
+      "signer": "users.potprev.testnet",
+      "receiver": "pots.potprev.testnet",
+      "tokensBurnt": "719996868326300000000",
+      "gasBurnt": "7869516370763",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "sync",
+                "args": {
+                  "pot": "lisbon-fhq8.pots.potprev.testnet",
+                  "proposal_id": 3
+                },
+                "gas": "50000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2569193261228",
+          "tokensBurnt": "256919326122800000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "lisbon-fhq8.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "get_proposal",
+                "args": {
+                  "id": 3
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1701544652619",
+          "tokensBurnt": "170154465261900000000",
+          "result": "{\"id\":3,\"proposer\":\"pots.potprev.testnet\",\"description\":\"Pot request #1: tickets (ref 2zxmaente774ywby)\",\"kind\":{\"Transfer\":{\"token_id\":\"usdc.potprev.testnet\",\"receiver_id\":\"maya-fhq8.users.potprev.testnet\",\"amount\":\"300000000\",\"msg\":null}},\"status\":\"Approved\",\"vote_counts\":{\"member\":[\"2\",\"0\",\"0\"]},\"votes\":{\"leo-fhq8.users.potprev.testnet\":\"Approve\",\"maya-fhq8.users.potprev.testnet\":\"Approve\"},\"submission_time\":\"1792627217676549683\",\"last_actions_log\":[{\"block_height\":\"274168217\"},{\"block_height\":\"274168226\"},{\"block_height\":\"274168255\"}]}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10717949753418100000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_sync",
+                "args": {
+                  "pot": "lisbon-fhq8.pots.potprev.testnet",
+                  "proposal_id": 3
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"proposal_synced\",\"data\":{\"pot\":\"lisbon-fhq8.pots.potprev.testnet\",\"proposal_id\":3,\"subject\":\"spend\",\"request_id\":1,\"member\":null,\"dao_status\":\"Approved\",\"hub_status\":\"approved\"}}"
+          ],
+          "gasBurnt": "2618214879086",
+          "tokensBurnt": "261821487908600000000",
+          "result": "{\"proposal_id\":3,\"subject\":\"spend\",\"dao_status\":\"Approved\",\"hub_status\":\"approved\",\"changed\":true}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10626383347801400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "28854969747395200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "CfC4hZgLtceLYmH4fEQWEUwv7kSM6oyvxJfJa8dvX6uG": {
+      "hash": "CfC4hZgLtceLYmH4fEQWEUwv7kSM6oyvxJfJa8dvX6uG",
+      "signer": "users.potprev.testnet",
+      "receiver": "u-2za95mp9.users.potprev.testnet",
+      "tokensBurnt": "1341124946573100000000",
+      "gasBurnt": "14750344840731",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "u-2za95mp9.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "u-2za95mp9.users.potprev.testnet",
+                "receiver_id": "pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "propose_close",
+                      "args": {
+                        "pot": "testnet-trip-jh6z-t95i.pots.potprev.testnet"
+                      },
+                      "gas": "150000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274167644000006",
+                "max_block_height": "274168060",
+                "public_key": "ed25519:7vsucuTG6jusUmakw95CPwWXsk5pvtBo6Pv6SyHQJzwD"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "511206625190",
+          "tokensBurnt": "51120662519000000000",
+          "result": ""
+        },
+        {
+          "from": "u-2za95mp9.users.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "propose_close",
+                "args": {
+                  "pot": "testnet-trip-jh6z-t95i.pots.potprev.testnet"
+                },
+                "gas": "150000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3150528322017",
+          "tokensBurnt": "315052832201700000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_balance_of",
+                "args": {
+                  "account_id": "testnet-trip-jh6z-t95i.pots.potprev.testnet"
+                },
+                "gas": "5000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "1239187528362",
+          "tokensBurnt": "123918752836200000000",
+          "result": "\"110000000\""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "5764303970345800000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_close_balance",
+                "args": {
+                  "pot": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+                  "by": "u-2za95mp9.users.potprev.testnet",
+                  "prepay": "11440000000000000000000"
+                },
+                "gas": "60000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3161685583455",
+          "tokensBurnt": "316168558345500000000"
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "11440000000000000000000"
+              }
+            },
+            {
+              "FunctionCall": {
+                "method": "add_proposal",
+                "args": {
+                  "proposal": {
+                    "description": "Pot close-out: refund 110000000 to 2 members",
+                    "kind": {
+                      "FunctionCall": {
+                        "receiver_id": "usdc.potprev.testnet",
+                        "actions": [
+                          {
+                            "method_name": "ft_transfer",
+                            "args": "eyJyZWNlaXZlcl9pZCI6InUtMnphOTVtcDkudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNDQwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                            "deposit": "1",
+                            "gas": "5000000000000"
+                          },
+                          {
+                            "method_name": "ft_transfer",
+                            "args": "eyJyZWNlaXZlcl9pZCI6InUtN3owZnc2enIudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNjYwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                            "deposit": "1",
+                            "gas": "5000000000000"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "gas": "20000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2275325792848",
+          "tokensBurnt": "227532579284800000000",
+          "result": "3"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "20776888690651200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_close_added",
+                "args": {
+                  "pot": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+                  "by": "u-2za95mp9.users.potprev.testnet",
+                  "balance": "110000000",
+                  "payouts": [
+                    {
+                      "account_id": "u-2za95mp9.users.potprev.testnet",
+                      "amount": "44000000"
+                    },
+                    {
+                      "account_id": "u-7z0fw6zr.users.potprev.testnet",
+                      "amount": "66000000"
+                    }
+                  ],
+                  "dust": "0",
+                  "dust_to": "u-2za95mp9.users.potprev.testnet"
+                },
+                "gas": "10000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"pot\",\"version\":\"1.0.0\",\"event\":\"close_proposed\",\"data\":{\"pot\":\"testnet-trip-jh6z-t95i.pots.potprev.testnet\",\"proposal_id\":3,\"by\":\"u-2za95mp9.users.potprev.testnet\",\"balance\":\"110000000\",\"payouts\":[{\"account_id\":\"u-2za95mp9.users.potprev.testnet\",\"amount\":\"44000000\"},{\"account_id\":\"u-7z0fw6zr.users.potprev.testnet\",\"amount\":\"66000000\"}],\"dust\":\"0\",\"dust_to\":\"u-2za95mp9.users.potprev.testnet\"}}"
+          ],
+          "gasBurnt": "2562108988669",
+          "tokensBurnt": "256210898866900000000",
+          "result": "{\"ok\":true,\"proposal_id\":3,\"balance\":\"110000000\",\"payouts\":[{\"account_id\":\"u-2za95mp9.users.potprev.testnet\",\"amount\":\"44000000\"},{\"account_id\":\"u-7z0fw6zr.users.potprev.testnet\",\"amount\":\"66000000\"}],\"dust\":\"0\",\"dust_to\":\"u-2za95mp9.users.potprev.testnet\",\"approvals_needed\":2}"
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "10632602110891100000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "28678978636456500000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "83796550041764300000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "460085962671000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK": {
+      "hash": "3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK",
+      "signer": "users.potprev.testnet",
+      "receiver": "u-2za95mp9.users.potprev.testnet",
+      "tokensBurnt": "347079308664800000000",
+      "gasBurnt": "3917158211648",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "u-2za95mp9.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "u-2za95mp9.users.potprev.testnet",
+                "receiver_id": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "act_proposal",
+                      "args": {
+                        "id": 3,
+                        "action": "VoteApprove",
+                        "proposal": {
+                          "FunctionCall": {
+                            "receiver_id": "usdc.potprev.testnet",
+                            "actions": [
+                              {
+                                "method_name": "ft_transfer",
+                                "args": "eyJyZWNlaXZlcl9pZCI6InUtMnphOTVtcDkudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNDQwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                                "deposit": "1",
+                                "gas": "5000000000000"
+                              },
+                              {
+                                "method_name": "ft_transfer",
+                                "args": "eyJyZWNlaXZlcl9pZCI6InUtN3owZnc2enIudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNjYwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                                "deposit": "1",
+                                "gas": "5000000000000"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "gas": "300000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274167644000007",
+                "max_block_height": "274168072",
+                "public_key": "ed25519:7vsucuTG6jusUmakw95CPwWXsk5pvtBo6Pv6SyHQJzwD"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "532568929510",
+          "tokensBurnt": "53256892951000000000",
+          "result": ""
+        },
+        {
+          "from": "u-2za95mp9.users.potprev.testnet",
+          "to": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "act_proposal",
+                "args": {
+                  "id": 3,
+                  "action": "VoteApprove",
+                  "proposal": {
+                    "FunctionCall": {
+                      "receiver_id": "usdc.potprev.testnet",
+                      "actions": [
+                        {
+                          "method_name": "ft_transfer",
+                          "args": "eyJyZWNlaXZlcl9pZCI6InUtMnphOTVtcDkudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNDQwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                          "deposit": "1",
+                          "gas": "5000000000000"
+                        },
+                        {
+                          "method_name": "ft_transfer",
+                          "args": "eyJyZWNlaXZlcl9pZCI6InUtN3owZnc2enIudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNjYwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                          "deposit": "1",
+                          "gas": "5000000000000"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "gas": "300000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2405655227628",
+          "tokensBurnt": "240565522762800000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "300648643247313200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "479312036559000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    },
+    "MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK": {
+      "hash": "MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK",
+      "signer": "users.potprev.testnet",
+      "receiver": "u-7z0fw6zr.users.potprev.testnet",
+      "tokensBurnt": "1070582562847700000000",
+      "gasBurnt": "11821738440977",
+      "receipts": [
+        {
+          "from": "users.potprev.testnet",
+          "to": "u-7z0fw6zr.users.potprev.testnet",
+          "actions": [
+            {
+              "Delegate": {
+                "sender_id": "u-7z0fw6zr.users.potprev.testnet",
+                "receiver_id": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+                "actions": [
+                  {
+                    "FunctionCall": {
+                      "method": "act_proposal",
+                      "args": {
+                        "id": 3,
+                        "action": "VoteApprove",
+                        "proposal": {
+                          "FunctionCall": {
+                            "receiver_id": "usdc.potprev.testnet",
+                            "actions": [
+                              {
+                                "method_name": "ft_transfer",
+                                "args": "eyJyZWNlaXZlcl9pZCI6InUtMnphOTVtcDkudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNDQwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                                "deposit": "1",
+                                "gas": "5000000000000"
+                              },
+                              {
+                                "method_name": "ft_transfer",
+                                "args": "eyJyZWNlaXZlcl9pZCI6InUtN3owZnc2enIudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNjYwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                                "deposit": "1",
+                                "gas": "5000000000000"
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "gas": "300000000000000",
+                      "deposit": "0"
+                    }
+                  }
+                ],
+                "nonce": "274167663000005",
+                "max_block_height": "274168080",
+                "public_key": "ed25519:CxP7oaGLZhcLzUEa6XoitT635DBNGLeq1r776u7RRBbj"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "532568929510",
+          "tokensBurnt": "53256892951000000000",
+          "result": ""
+        },
+        {
+          "from": "u-7z0fw6zr.users.potprev.testnet",
+          "to": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "act_proposal",
+                "args": {
+                  "id": 3,
+                  "action": "VoteApprove",
+                  "proposal": {
+                    "FunctionCall": {
+                      "receiver_id": "usdc.potprev.testnet",
+                      "actions": [
+                        {
+                          "method_name": "ft_transfer",
+                          "args": "eyJyZWNlaXZlcl9pZCI6InUtMnphOTVtcDkudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNDQwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                          "deposit": "1",
+                          "gas": "5000000000000"
+                        },
+                        {
+                          "method_name": "ft_transfer",
+                          "args": "eyJyZWNlaXZlcl9pZCI6InUtN3owZnc2enIudXNlcnMucG90cHJldi50ZXN0bmV0IiwiYW1vdW50IjoiNjYwMDAwMDAiLCJtZW1vIjoicG90IHJlZnVuZCJ9",
+                          "deposit": "1",
+                          "gas": "5000000000000"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "gas": "300000000000000",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "3427251541298",
+          "tokensBurnt": "342725154129800000000",
+          "result": ""
+        },
+        {
+          "from": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "to": "usdc.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "ft_transfer",
+                "args": {
+                  "receiver_id": "u-2za95mp9.users.potprev.testnet",
+                  "amount": "44000000",
+                  "memo": "pot refund"
+                },
+                "gas": "5000000000000",
+                "deposit": "1"
+              }
+            },
+            {
+              "FunctionCall": {
+                "method": "ft_transfer",
+                "args": {
+                  "receiver_id": "u-7z0fw6zr.users.potprev.testnet",
+                  "amount": "66000000",
+                  "memo": "pot refund"
+                },
+                "gas": "5000000000000",
+                "deposit": "1"
+              }
+            }
+          ],
+          "logs": [
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"testnet-trip-jh6z-t95i.pots.potprev.testnet\",\"new_owner_id\":\"u-2za95mp9.users.potprev.testnet\",\"amount\":\"44000000\",\"memo\":\"pot refund\"}]}",
+            "EVENT_JSON:{\"standard\":\"nep141\",\"version\":\"1.0.0\",\"event\":\"ft_transfer\",\"data\":[{\"old_owner_id\":\"testnet-trip-jh6z-t95i.pots.potprev.testnet\",\"new_owner_id\":\"u-7z0fw6zr.users.potprev.testnet\",\"amount\":\"66000000\",\"memo\":\"pot refund\"}]}"
+          ],
+          "gasBurnt": "3497022311596",
+          "tokensBurnt": "349702231159600000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "11318808927508400000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "to": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "actions": [
+            {
+              "FunctionCall": {
+                "method": "on_proposal_callback",
+                "args": {
+                  "proposal_id": 3
+                },
+                "gas": "284905303840552",
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "2493231354063",
+          "tokensBurnt": "249323135406300000000"
+        },
+        {
+          "from": "testnet-trip-jh6z-t95i.pots.potprev.testnet",
+          "to": "pots.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "0"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "22318256250000000000",
+          "result": ""
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "200864306250000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "285320940372203700000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "3084526387168200000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        },
+        {
+          "from": "system",
+          "to": "users.potprev.testnet",
+          "actions": [
+            {
+              "Transfer": {
+                "deposit": "479312036559000000000"
+              }
+            }
+          ],
+          "logs": [],
+          "gasBurnt": "223182562500",
+          "tokensBurnt": "0",
+          "result": "",
+          "refund": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,4 @@
+{"step":"create-u1","hash":"F1Kbe6W5iVApt4qmzzb6nDjanCTVeErLX94eLm4RvxXb","gas":"8573077937500","burnt":"7114989537500000000000","ms":3834}
+{"step":"storage-u1.potspike-relay-yoqw.testnet","hash":"DDdvK3bghvD5MUifk4J6QgRYRrZ88d53VuUvYjfT6VMr","gas":"2120247939728","burnt":"189706537722800000000","ms":4151}
+{"step":"storage-potspike-relay-yoqw.testnet","hash":"FJENcms35aLuKKcFcaAeiQikSyswG93q6D8p37VKW75d","gas":"2121533689403","burnt":"189835112690300000000","ms":3541}
+{"step":"u1-near-deposit","hash":"SeFF1ZYCdx4ndGwkzV24qL7XGXzwuz6qUNaWv5pRVDD","gas":"2162611905828","burnt":"193942934332800000000","ms":3532}

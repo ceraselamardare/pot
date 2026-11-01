@@ -1,0 +1,45 @@
+{
+  "tool": "openai.editImage",
+  "endpoint": "POST /v1/images/edits",
+  "model": "gpt-image-2.5-sunburst",
+  "request": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A single glossy die-cut vinyl sticker of a long curled paper receipt with abstract lines instead of text. Flat vector illustration with soft, minimal shading and chunky rounded shapes, bold dark eggplant (#2b1b3a) outlines, a limited warm palette of white and cream (#faf9f6) paper with dark eggplant (#2b1b3a) lines only, a thick clean white sticker border all around the shape, and a very subtle soft drop shadow. Centered, isolated on a transparent background. No text, no letters, no numbers, no logos, no coins. Absolutely no yellow, orange, gold or marigold anywhere. The printed lines are plain rounded eggplant bars of different lengths: no characters, no digits, no currency symbols. A zigzag torn edge at the bottom and a gentle curl. Everything sits inside one single continuous white die-cut outline, with no separate floating pieces, sparkles or crumbs. The sticker fills most of the canvas with a small even margin. Style reference: the attached image is an approved sticker from the same set. Match its style exactly: the same bold eggplant outline weight, the same thick white die-cut border, the same flat colours with soft minimal shading, the same glossy highlight and the same very subtle drop shadow, at a similar size on the canvas. Use it only as a style guide: do not draw a tram or any part of it, and do not copy its colours where they differ from the palette above.",
+    "size": "1024x1024",
+    "quality": "high",
+    "background": "transparent",
+    "output_format": "png",
+    "images": [
+      "public/images/stickers/_raw/tram-a.png"
+    ]
+  },
+  "response": {
+    "request_id": "req_1a8c0140b25348bfbb0e8648fbd6d629",
+    "headers": {
+      "openai-processing-ms": "38571",
+      "x-request-id": "req_1a8c0140b25348bfbb0e8648fbd6d629"
+    },
+    "created": 1792660835,
+    "background": "transparent",
+    "quality": "high",
+    "size": "1024x1024",
+    "output_format": "png",
+    "usage": {
+      "input_tokens": 1854,
+      "input_tokens_details": {
+        "image_tokens": 1536,
+        "text_tokens": 318
+      },
+      "output_tokens": 1756,
+      "output_tokens_details": {
+        "image_tokens": 1756,
+        "text_tokens": 0
+      },
+      "total_tokens": 3610
+    },
+    "latency_ms": 40394,
+    "bytes": 959044,
+    "index": 0
+  },
+  "created_at": "2026-10-22T09:20:36.358Z"
+}

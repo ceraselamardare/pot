@@ -1,0 +1,29 @@
+{
+  "name": "s4-unknown-evm",
+  "at": "2026-10-21T11:29:19.458Z",
+  "request": {
+    "method": "GET",
+    "url": "https://1click.chaindefuser.com/v0/status?depositAddress=0x000000000000000000000000000000000000dEaD",
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "response": {
+    "status": 404,
+    "ms": 90,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1199",
+      "x-ratelimit-reset-unauth": "60"
+    },
+    "body": {
+      "message": "Deposit address 0x000000000000000000000000000000000000dEaD not found",
+      "error": "Not Found",
+      "statusCode": 404,
+      "timestamp": "2026-10-21T11:29:19.511Z",
+      "path": "/v0/status?depositAddress=0x000000000000000000000000000000000000dEaD"
+    }
+  }
+}

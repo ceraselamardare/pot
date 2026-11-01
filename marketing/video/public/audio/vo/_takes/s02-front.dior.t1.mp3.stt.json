@@ -1,0 +1,93 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s02-front.dior.t1.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "0",
+      "fiat-cost-before-overages": "0.0"
+    },
+    "latency_ms": 399
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "One friend fronts it all",
+    "words": [
+      {
+        "text": "One",
+        "start": 0.1,
+        "end": 0.24,
+        "type": "word",
+        "logprob": -0.029768353328108788
+      },
+      {
+        "text": " ",
+        "start": 0.24,
+        "end": 0.36,
+        "type": "spacing",
+        "logprob": -0.000011920858014491387
+      },
+      {
+        "text": "friend",
+        "start": 0.36,
+        "end": 0.58,
+        "type": "word",
+        "logprob": -0.000011920858014491387
+      },
+      {
+        "text": " ",
+        "start": 0.58,
+        "end": 0.72,
+        "type": "spacing",
+        "logprob": -0.00006568216485902667
+      },
+      {
+        "text": "fronts",
+        "start": 0.72,
+        "end": 0.94,
+        "type": "word",
+        "logprob": -0.00006568216485902667
+      },
+      {
+        "text": " ",
+        "start": 0.94,
+        "end": 0.98,
+        "type": "spacing",
+        "logprob": -0.000016093124941107817
+      },
+      {
+        "text": "it",
+        "start": 0.98,
+        "end": 1.06,
+        "type": "word",
+        "logprob": -0.000016093124941107817
+      },
+      {
+        "text": " ",
+        "start": 1.06,
+        "end": 1.14,
+        "type": "spacing",
+        "logprob": -8.344646857949556e-7
+      },
+      {
+        "text": "all",
+        "start": 1.14,
+        "end": 1.32,
+        "type": "word",
+        "logprob": -8.344646857949556e-7
+      }
+    ],
+    "transcription_id": "YctG4TbEFSUSbrMvrhfT",
+    "audio_duration_secs": 1.76
+  },
+  "created_at": "2026-10-22T09:18:38.525Z"
+}

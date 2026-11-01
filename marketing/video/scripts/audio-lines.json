@@ -1,0 +1,32 @@
+{
+  "_comment": "VO source of truth for the audio scripts (mirrors brief/02-script.md v2). `text` = the script line (word list for captions/sync); `tts` = what is sent to ElevenLabs when it differs (pronunciation only: D-A-O spelled, NEAR as the word 'Near' so v4 never spells it N-E-A-R). Word order and count must stay identical between text and tts.",
+  "version": "v2",
+  "model": "eleven_v4",
+  "outputFormat": "mp3_44100_128",
+  "voiceSettings": { "stability": 0.45, "similarity_boost": 0.75 },
+  "seeds": [7, 2026, 31],
+  "voices": {
+    "emma": "YEENOUza6MPsbkc1De9E",
+    "dior": "4XLp6ou1JHGgf9xXbHCM",
+    "marcus": "y0s2ExEMuum3muUnA6Zd"
+  },
+  "lines": [
+    { "id": "s01-hook", "text": "Every group trip has a money problem." },
+    { "id": "s02-front", "text": "One friend fronts it all…" },
+    { "id": "s03-chase", "text": "…then spends weeks chasing everyone to pay up." },
+    { "id": "s04-options", "text": "Split apps just keep score. Shared accounts hand one person all the money." },
+    { "id": "s05-pivot", "text": "What if the money lived right in the group chat?" },
+    { "id": "s06-reveal", "text": "Meet Pot. … Group chat money that follows its own rules." },
+    { "id": "s07-create", "text": "Start a Pot for the trip, and set the rules in plain words." },
+    { "id": "s08-join", "text": "Drop the link in the chat. Friends join with Google and chip in their share. No wallet. No seed phrase. No gas." },
+    { "id": "s09-instant", "text": "Small spends approve themselves. Eighty-four dollars for groceries? Pot checks the rules… approved, and paid back in seconds." },
+    { "id": "s10-group", "text": "Bigger spends go to the group. The three-hundred-dollar boat trip needs two of three… so Leo approves, right from a notification." },
+    { "id": "s11-close", "text": "When the trip's over, close the Pot. Everyone gets their fair share back." },
+    {
+      "id": "s12-tech",
+      "text": "Under the hood, every Pot is a Sputnik DAO on NEAR. Its rules are enforced on-chain, not by a person. Every action is gasless. And no one can take money out alone.",
+      "tts": "Under the hood, every Pot is a Sputnik D-A-O on Near. Its rules are enforced on-chain, not by a person. Every action is gasless. And no one can take money out alone."
+    },
+    { "id": "s13-end", "text": "Pot. Built at NEAR Hackathon.", "tts": "Pot. Built at Near Hackathon." }
+  ]
+}

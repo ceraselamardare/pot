@@ -1,0 +1,42 @@
+{
+  "tool": "openai.generateImage",
+  "endpoint": "POST /v1/images/generations",
+  "model": "gpt-image-2.5-sunburst",
+  "request": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A single glossy die-cut vinyl sticker of a small sailboat with a white sail on a little stylized wave. Flat vector illustration with soft, minimal shading and chunky rounded shapes, bold dark eggplant (#2b1b3a) outlines, a limited warm palette of soft periwinkle (#b8c7ff) wave, cream (#faf9f6) sail and a pink (#f5b3c8) hull stripe, a thick clean white sticker border all around the shape, and a very subtle soft drop shadow. Centered, isolated on a transparent background. No text, no letters, no numbers, no logos, no coins. The sail is plain, with no sail number, no emblem and no flag. Everything sits inside one single continuous white die-cut outline, with no separate floating pieces, sparkles or crumbs. The sticker fills most of the canvas with a small even margin.",
+    "size": "1024x1024",
+    "quality": "high",
+    "background": "transparent",
+    "output_format": "png"
+  },
+  "response": {
+    "request_id": "req_a081f6d718394552b706185a070f8a5b",
+    "headers": {
+      "openai-processing-ms": "38465",
+      "x-request-id": "req_a081f6d718394552b706185a070f8a5b"
+    },
+    "created": 1792660461,
+    "background": "transparent",
+    "quality": "high",
+    "size": "1024x1024",
+    "output_format": "png",
+    "usage": {
+      "input_tokens": 190,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 190
+      },
+      "output_tokens": 1756,
+      "output_tokens_details": {
+        "image_tokens": 1756,
+        "text_tokens": 0
+      },
+      "total_tokens": 1946
+    },
+    "latency_ms": 39625,
+    "bytes": 974299,
+    "index": 0
+  },
+  "created_at": "2026-10-22T09:14:22.605Z"
+}

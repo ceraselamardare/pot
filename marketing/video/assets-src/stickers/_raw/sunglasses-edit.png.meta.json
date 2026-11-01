@@ -1,0 +1,45 @@
+{
+  "tool": "openai.editImage",
+  "endpoint": "POST /v1/images/edits",
+  "model": "gpt-image-2.5-sunburst",
+  "request": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A single glossy die-cut vinyl sticker of a pair of round sunglasses. Flat vector illustration with soft, minimal shading and chunky rounded shapes, bold dark eggplant (#2b1b3a) outlines, a limited warm palette of dark eggplant (#2b1b3a) frame, soft periwinkle (#b8c7ff) lenses with a soft pink (#f5b3c8) reflection, a thick clean white sticker border all around the shape, and a very subtle soft drop shadow. Centered, isolated on a transparent background. No text, no letters, no numbers, no logos, no coins. Front view, slightly tilted, temple arms folded behind the lenses. Everything sits inside one single continuous white die-cut outline, with no separate floating pieces, sparkles or crumbs. The sticker fills most of the canvas with a small even margin. Style reference: the attached image is an approved sticker from the same set. Match its style exactly: the same bold eggplant outline weight, the same thick white die-cut border, the same flat colours with soft minimal shading, the same glossy highlight and the same very subtle drop shadow, at a similar size on the canvas. Use it only as a style guide: do not draw a tram or any part of it, and do not copy its colours where they differ from the palette above.",
+    "size": "1024x1024",
+    "quality": "high",
+    "background": "transparent",
+    "output_format": "png",
+    "images": [
+      "public/images/stickers/_raw/tram-a.png"
+    ]
+  },
+  "response": {
+    "request_id": "req_ac03c163733b4666862d1a0265984bc3",
+    "headers": {
+      "openai-processing-ms": "38224",
+      "x-request-id": "req_ac03c163733b4666862d1a0265984bc3"
+    },
+    "created": 1792660835,
+    "background": "transparent",
+    "quality": "high",
+    "size": "1024x1024",
+    "output_format": "png",
+    "usage": {
+      "input_tokens": 1826,
+      "input_tokens_details": {
+        "image_tokens": 1536,
+        "text_tokens": 290
+      },
+      "output_tokens": 1756,
+      "output_tokens_details": {
+        "image_tokens": 1756,
+        "text_tokens": 0
+      },
+      "total_tokens": 3582
+    },
+    "latency_ms": 40085,
+    "bytes": 904887,
+    "index": 0
+  },
+  "created_at": "2026-10-22T09:20:36.091Z"
+}

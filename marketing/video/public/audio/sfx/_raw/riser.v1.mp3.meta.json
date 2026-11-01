@@ -1,0 +1,22 @@
+{
+  "tool": "eleven.sfx",
+  "endpoint": "POST /v1/sound-generation",
+  "model_id": "eleven_text_to_sound_v2",
+  "request": {
+    "text": "A two-second rising whoosh riser building tension into a drop. Clean, modern, airy noise with a soft synth swell, louder and higher until it stops at its peak.",
+    "duration_seconds": 2,
+    "prompt_influence": 0.55,
+    "model_id": "eleven_text_to_sound_v2",
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "11"
+    },
+    "latency_ms": 1580,
+    "bytes": 33061,
+    "duration_sec": 2
+  },
+  "created_at": "2026-10-22T09:34:27.317Z"
+}

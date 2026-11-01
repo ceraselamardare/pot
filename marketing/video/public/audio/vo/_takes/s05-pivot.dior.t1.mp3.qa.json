@@ -1,0 +1,110 @@
+{
+  "take": "s05-pivot.dior.t1.mp3",
+  "line": "s05-pivot",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "What if the money lived right in the group chat?",
+  "duration": 2.56,
+  "speech_start": 0.007,
+  "speech_end": 2.043,
+  "speech_span": 2.035,
+  "words": 10,
+  "syllables": 11,
+  "wps_span": 4.91,
+  "sps_span": 5.4,
+  "wps_articulation": 4.91,
+  "pauses": [],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.073,
+    "anchors": [
+      {
+        "word": "What",
+        "k": 0,
+        "onset": 0.007,
+        "breath": false,
+        "stt_minus_onset": 0.073,
+        "align_minus_onset": -0.007
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.073
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "What if the money lived right in the group chat?"
+  },
+  "f0": {
+    "f0_median_hz": 145.6,
+    "st_sd": 4.25,
+    "st_p5_p95": 14.29,
+    "st_p10_p90": 10.52,
+    "st_motion_per_s": 35.5,
+    "voiced_s": 1.23
+  },
+  "loudness": {
+    "I": -26.8,
+    "LRA": 0.0,
+    "TP": -7.9
+  },
+  "threshold_db": -58.5,
+  "times": [
+    [
+      "What",
+      0.007,
+      0.087
+    ],
+    [
+      "if",
+      0.147,
+      0.247
+    ],
+    [
+      "the",
+      0.287,
+      0.367
+    ],
+    [
+      "money",
+      0.407,
+      0.627
+    ],
+    [
+      "lived",
+      0.687,
+      0.887
+    ],
+    [
+      "right",
+      1.047,
+      1.227
+    ],
+    [
+      "in",
+      1.247,
+      1.327
+    ],
+    [
+      "the",
+      1.347,
+      1.427
+    ],
+    [
+      "group",
+      1.467,
+      1.647
+    ],
+    [
+      "chat",
+      1.727,
+      2.043
+    ]
+  ]
+}

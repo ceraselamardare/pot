@@ -1,0 +1,352 @@
+/* frontend-architecture §7.1-§7.3 (rev6): brand tokens -> generated --pot-* variables (Day + Night)
+   -> Tailwind v4 @theme inline -> utilities, plus the shadcn base-nova variable names. Never invent colours. */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "./tokens.css";
+
+/* shadcn's dark: classes follow Night (data-theme on <html>, set before first paint), not a .dark class */
+@custom-variant dark (&:where([data-theme="night"], [data-theme="night"] *));
+
+/* after the shadcn import, so these radii win over its calc(var(--radius)) ones */
+@theme inline {
+  /* brand colour roles */
+  --color-ground: var(--pot-ground);
+  --color-surface: var(--pot-surface);
+  --color-surface-sunken: var(--pot-surface-sunken);
+  --color-line: var(--pot-line);
+  --color-line-strong: var(--pot-line-strong);
+  --color-ink: var(--pot-ink);
+  --color-ink-muted: var(--pot-ink-muted);
+  --color-brand: var(--pot-brand);
+  --color-brand-soft: var(--pot-brand-soft);
+  --color-brand-deep: var(--pot-brand-deep);
+  --color-on-brand: var(--pot-on-brand);
+  --color-link: var(--pot-link);
+  --color-focus: var(--pot-focus);
+  --color-approved: var(--pot-approved);
+  --color-waiting: var(--pot-waiting);
+  --color-declined: var(--pot-declined);
+  --color-member-1: var(--pot-member-1);
+  --color-member-2: var(--pot-member-2);
+  --color-member-3: var(--pot-member-3);
+  --color-member-4: var(--pot-member-4);
+  --color-member-5: var(--pot-member-5);
+  --color-member-6: var(--pot-member-6);
+
+  /* shadcn base-nova colour names (generated components use bg-background, bg-primary, ...) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* type (D-45): next/font defines --font-display / --font-sans on <html> (app/fonts.ts) */
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-display);
+  --text-balance-hero: var(--pot-text-balance-hero);
+  --text-balance-hero--line-height: var(--pot-text-balance-hero-line-height);
+  --text-balance-hero--font-weight: var(--pot-text-balance-hero-font-weight);
+  --text-balance-hero--letter-spacing: var(--pot-text-balance-hero-letter-spacing);
+  --text-title: var(--pot-text-title);
+  --text-title--line-height: var(--pot-text-title-line-height);
+  --text-title--font-weight: var(--pot-text-title-font-weight);
+  --text-title--letter-spacing: var(--pot-text-title-letter-spacing);
+  --text-heading: var(--pot-text-heading);
+  --text-heading--line-height: var(--pot-text-heading-line-height);
+  --text-heading--font-weight: var(--pot-text-heading-font-weight);
+  --text-body: var(--pot-text-body);
+  --text-body--line-height: var(--pot-text-body-line-height);
+  --text-body-sm: var(--pot-text-body-sm);
+  --text-body-sm--line-height: var(--pot-text-body-sm-line-height);
+  --text-label: var(--pot-text-label);
+  --text-label--line-height: var(--pot-text-label-line-height);
+  --text-label--font-weight: var(--pot-text-label-font-weight);
+  --text-amount: var(--pot-text-amount);
+  --text-amount--line-height: var(--pot-text-amount-line-height);
+  --text-amount--font-weight: var(--pot-text-amount-font-weight);
+
+  /* shape, elevation, layout (spacing: the brand's space-N = Tailwind's default N x 0.25rem, no override) */
+  --radius-sm: var(--pot-radius-sm);
+  --radius-md: var(--pot-radius-md);
+  --radius-lg: var(--pot-radius-lg);
+  --radius-pill: var(--pot-radius-pill);
+  --shadow-card: var(--pot-shadow-card);
+  --shadow-sheet: var(--pot-shadow-sheet);
+  --container-flow: var(--pot-container-flow);
+  --container-app: var(--pot-container-app);
+  /* brand bp-sm 360px (max-xs:). Tailwind's md 48rem and lg 64rem already equal bp-md and bp-lg; sm stays for shadcn */
+  --breakpoint-xs: 22.5rem;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+/* shadcn base-nova names -> brand roles; they resolve against <html>'s data-theme, so generated components
+   follow both themes */
+:root {
+  --background: var(--pot-ground);
+  --foreground: var(--pot-ink);
+  --card: var(--pot-surface);
+  --card-foreground: var(--pot-ink);
+  --popover: var(--pot-surface);
+  --popover-foreground: var(--pot-ink);
+  --primary: var(--pot-brand);
+  --primary-foreground: var(--pot-on-brand);
+  --secondary: var(--pot-surface);
+  --secondary-foreground: var(--pot-ink);
+  --muted: var(--pot-surface-sunken);
+  --muted-foreground: var(--pot-ink-muted);
+  --accent: var(--pot-surface-sunken);
+  --accent-foreground: var(--pot-ink);
+  --destructive: var(--pot-declined);
+  --border: var(--pot-line);
+  --input: var(--pot-line-strong);
+  --ring: var(--pot-focus);
+  --radius: 1rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  /* Safari 26 samples the body colour for the toolbar tint (kb/pwa-push.md) */
+  html,
+  body {
+    background: var(--pot-ground);
+    color: var(--pot-ink);
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    position: relative; /* Base UI drawer on iOS (shadcn docs) */
+  }
+  /* the brand focus ring on every interactive element (brand README §8) */
+  :focus-visible {
+    outline: 2px solid var(--pot-focus);
+    outline-offset: 2px;
+  }
+  /* Tailwind v4's preflight gives buttons the default arrow; enabled ones (chips, radios, Spend) show a hand like
+     links do (design-direction 04). cursor-not-allowed / cursor-progress utilities still win. */
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  label:has(> input:is([type="radio"], [type="checkbox"]):not(:disabled)) {
+    cursor: pointer;
+  }
+  /* text selection in the brand's highlight (tokens, so it follows Day, Night and the Night-scoped bands) */
+  ::selection {
+    background: var(--pot-brand-soft);
+    color: var(--pot-ink);
+  }
+}
+
+/* D-45: iOS Dynamic Type. The root follows the iOS Text Size setting (17 px at the default size).
+   macOS Safari also supports -apple-system-body, where it is 13 px (the whole site at 81 %), so the rule is gated
+   to iOS with -webkit-touch-callout, which only iOS WebKit supports (landing QA, 2026-10-22). */
+@supports (font: -apple-system-body) and (-webkit-touch-callout: none) {
+  html {
+    font: -apple-system-body;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    line-height: 1.5;
+  }
+}
+
+/* The lockup swaps only its wordmark file by theme (brand README §7); the mark never changes. */
+.pot-lockup-night {
+  display: none;
+}
+[data-theme="night"] .pot-lockup-day {
+  display: none;
+}
+[data-theme="night"] .pot-lockup-night {
+  display: inline;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .pot-lockup-day {
+    display: none;
+  }
+  :root:not([data-theme]) .pot-lockup-night {
+    display: inline;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------------------
+   F-04/F-06 (frontend): brand motion and helpers. Durations from ux-spec §7.6 / brand README §8. */
+
+/* The logo glyph for empty states: eggplant on Day, marigold on Night (the two brand files, never another colour). */
+.pot-glyph {
+  fill: #2b1b3a;
+}
+[data-theme="night"] .pot-glyph {
+  fill: #ffb320;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .pot-glyph {
+    fill: #ffb320;
+  }
+}
+
+/* Typing dots, the brand's one motif: opacity .35 → 1 → .35 with a 2 px rise, 150 ms stagger, 1200 ms loop.
+   4 iterations = 4.8 s, so the pulse stops before 5 s (WCAG 2.2.2) and the dots rest. */
+@keyframes pot-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+.pot-dot {
+  opacity: 0.35;
+  animation: pot-dot 1200ms var(--ease-standard) 4 both;
+}
+.pot-dot:nth-child(2) {
+  animation-delay: 150ms;
+}
+.pot-dot:nth-child(3) {
+  animation-delay: 300ms;
+}
+.pot-dots-still .pot-dot {
+  animation: none;
+  opacity: 0.6;
+}
+
+/* The one celebration: 600 ms marigold burst from the button, once (brand README §8). Three tracks on three
+   properties (design-direction 04 §4): the travel (`translate`) decelerates on ease-enter, the shrink (`scale` 1 → .4)
+   runs on ease-standard, and the fade (`opacity`) holds at 1 until 40 % and then goes linearly to 0, so the
+   particles are seen in flight, not only at the button (landing QA 2026-10-22: with one curve for all of them they
+   were ~9 % opaque by 150-200 ms; verified at 30 fps). */
+@keyframes pot-burst {
+  from {
+    translate: -50% -50%;
+  }
+  to {
+    translate: calc(-50% + var(--dx)) calc(-50% + var(--dy));
+  }
+}
+@keyframes pot-burst-scale {
+  to {
+    scale: 0.4;
+  }
+}
+@keyframes pot-burst-fade {
+  0%,
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.pot-particle {
+  animation:
+    pot-burst 600ms var(--ease-enter) 1 both,
+    pot-burst-scale 600ms var(--ease-standard) 1 both,
+    pot-burst-fade 600ms linear 1 both;
+}
+
+/* Check icon pop (spring-pop approximated in CSS) and the brand-soft tint swap */
+@keyframes pot-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.pot-pop {
+  animation: pot-pop 320ms var(--ease-enter) both;
+}
+
+/* Feed insert (280 ms) and the inline-approve Undo hairline (4 s) */
+@keyframes pot-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.pot-enter {
+  animation: pot-enter 280ms var(--ease-enter) both;
+}
+/* push pre-prompt: the example notifications drop in once (280 ms, 80 ms stagger); static with reduced motion */
+@keyframes pot-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+.pot-drop {
+  animation: pot-drop 280ms var(--ease-enter) both;
+}
+.pot-drop + .pot-drop {
+  animation-delay: 80ms;
+}
+@keyframes pot-drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.pot-drain {
+  transform-origin: left;
+  animation: pot-drain 4000ms linear both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pot-dot,
+  .pot-pop,
+  .pot-enter,
+  .pot-drop,
+  .pot-drain {
+    animation: none !important;
+  }
+  .pot-particle {
+    display: none;
+  }
+}
+
+/* Primary actions and focused fields never hide behind the tab bar or a sticky CTA (WCAG 2.4.11) */
+html {
+  scroll-padding-bottom: 7rem;
+}
+
+/* The amount keypad and chips: no double-tap zoom, no text selection */
+.pot-touch {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* F-25: long words (names, emails, a label at 200 % text) break instead of pushing the page sideways */
+body {
+  overflow-wrap: break-word;
+}

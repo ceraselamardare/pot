@@ -1,0 +1,32 @@
+{
+  "id": "s13-end",
+  "file": "audio/vo/s13-end.mp3",
+  "durationSec": 2.548,
+  "words": [
+    {
+      "text": "Pot",
+      "start": 0.05,
+      "end": 0.428
+    },
+    {
+      "text": "Built",
+      "start": 0.889,
+      "end": 1.17
+    },
+    {
+      "text": "at",
+      "start": 1.29,
+      "end": 1.43
+    },
+    {
+      "text": "NEAR",
+      "start": 1.49,
+      "end": 1.65
+    },
+    {
+      "text": "Hackathon",
+      "start": 1.73,
+      "end": 2.376
+    }
+  ]
+}

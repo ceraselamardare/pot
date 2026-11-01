@@ -1,0 +1,29 @@
+{
+  "name": "s4-garbage",
+  "at": "2026-10-21T11:29:20.413Z",
+  "request": {
+    "method": "GET",
+    "url": "https://1click.chaindefuser.com/v0/status?depositAddress=not-an-address",
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "response": {
+    "status": 404,
+    "ms": 65,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1196",
+      "x-ratelimit-reset-unauth": "60"
+    },
+    "body": {
+      "message": "Deposit address not-an-address not found",
+      "error": "Not Found",
+      "statusCode": 404,
+      "timestamp": "2026-10-21T11:29:20.466Z",
+      "path": "/v0/status?depositAddress=not-an-address"
+    }
+  }
+}

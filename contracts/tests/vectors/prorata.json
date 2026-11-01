@@ -1,0 +1,247 @@
+{
+ "source": "contracts-spec \u00a73.9 (V1-V7); shared by pot-hub prorata.rs and @pot/sdk prorata.ts (test-plan \u00a74.2)",
+ "units": "USDC base units (6 dp), strings",
+ "vectors": [
+  {
+   "id": "V1",
+   "note": "demo (D-61): $66 left, $150 each",
+   "balance": "66000000",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "150000000"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "150000000"
+    },
+    {
+     "account_id": "leo.near",
+     "contributed": "150000000"
+    }
+   ],
+   "last_contributor": "leo.near",
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "maya.near",
+      "amount": "22000000"
+     },
+     {
+      "account_id": "sam.near",
+      "amount": "22000000"
+     },
+     {
+      "account_id": "leo.near",
+      "amount": "22000000"
+     }
+    ],
+    "dust": "0",
+    "dust_to": "leo.near"
+   }
+  },
+  {
+   "id": "V2",
+   "note": "unequal; dust 1 to Leo",
+   "balance": "66000000",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "200000000"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "150000000"
+    },
+    {
+     "account_id": "leo.near",
+     "contributed": "100000000"
+    }
+   ],
+   "last_contributor": "leo.near",
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "maya.near",
+      "amount": "29333333"
+     },
+     {
+      "account_id": "sam.near",
+      "amount": "22000000"
+     },
+     {
+      "account_id": "leo.near",
+      "amount": "14666667"
+     }
+    ],
+    "dust": "1",
+    "dust_to": "leo.near"
+   }
+  },
+  {
+   "id": "V3",
+   "balance": "187200000",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "200000000"
+    },
+    {
+     "account_id": "leo.near",
+     "contributed": "150000000"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "100000000"
+    }
+   ],
+   "last_contributor": "sam.near",
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "maya.near",
+      "amount": "83200000"
+     },
+     {
+      "account_id": "leo.near",
+      "amount": "62400000"
+     },
+     {
+      "account_id": "sam.near",
+      "amount": "41600000"
+     }
+    ],
+    "dust": "0",
+    "dust_to": "sam.near"
+   }
+  },
+  {
+   "id": "V4",
+   "balance": "100",
+   "contributions": [
+    {
+     "account_id": "a.near",
+     "contributed": "1"
+    },
+    {
+     "account_id": "b.near",
+     "contributed": "1"
+    },
+    {
+     "account_id": "c.near",
+     "contributed": "1"
+    }
+   ],
+   "last_contributor": "c.near",
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "a.near",
+      "amount": "33"
+     },
+     {
+      "account_id": "b.near",
+      "amount": "33"
+     },
+     {
+      "account_id": "c.near",
+      "amount": "34"
+     }
+    ],
+    "dust": "1",
+    "dust_to": "c.near"
+   }
+  },
+  {
+   "id": "V5",
+   "note": "A's floor share is 0; the dust makes it 1",
+   "balance": "10",
+   "contributions": [
+    {
+     "account_id": "a.near",
+     "contributed": "1"
+    },
+    {
+     "account_id": "b.near",
+     "contributed": "1000000"
+    }
+   ],
+   "last_contributor": "a.near",
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "a.near",
+      "amount": "1"
+     },
+     {
+      "account_id": "b.near",
+      "amount": "9"
+     }
+    ],
+    "dust": "1",
+    "dust_to": "a.near"
+   }
+  },
+  {
+   "id": "V6",
+   "note": "balance 0",
+   "balance": "0",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "150000000"
+    }
+   ],
+   "last_contributor": "maya.near",
+   "expected": {
+    "nothing_to_refund": true
+   }
+  },
+  {
+   "id": "V7",
+   "note": "late contributor (rev4, M-6): Ana put in after $384 was spent",
+   "balance": "216000000",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "150000000"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "150000000"
+    },
+    {
+     "account_id": "leo.near",
+     "contributed": "150000000"
+    },
+    {
+     "account_id": "ana.near",
+     "contributed": "150000000"
+    }
+   ],
+   "last_contributor": "ana.near",
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "maya.near",
+      "amount": "54000000"
+     },
+     {
+      "account_id": "sam.near",
+      "amount": "54000000"
+     },
+     {
+      "account_id": "leo.near",
+      "amount": "54000000"
+     },
+     {
+      "account_id": "ana.near",
+      "amount": "54000000"
+     }
+    ],
+    "dust": "0",
+    "dust_to": "ana.near"
+   }
+  }
+ ]
+}

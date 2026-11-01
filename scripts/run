@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Runs a TypeScript script from scripts/ with tsx (testnet ops; never mainnet):
+#   scripts/run <name> [args…]        e.g. scripts/run seed-demo --kind reference
+# - scripts/tsconfig.json maps `@/…` to apps/web/… (as inside the app), `@pot/sdk[/…]` to the workspace
+#   package source and `near-api-js` to the app's copy; the backend modules resolve their own imports.
+# - `--conditions react-server` turns the backend's `server-only` guard into a no-op.
+# - env: apps/web/.env.local, then apps/web/.keys/preview.env (keys; gitignored) are loaded by scripts/lib/env.ts.
+set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+name="$1"; shift
+exec "$here/../apps/web/node_modules/.bin/tsx" --tsconfig "$here/tsconfig.run.json" --conditions react-server "$here/${name%.ts}.ts" "$@"

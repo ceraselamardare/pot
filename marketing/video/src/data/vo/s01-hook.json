@@ -1,0 +1,42 @@
+{
+  "id": "s01-hook",
+  "file": "audio/vo/s01-hook.mp3",
+  "durationSec": 2.745,
+  "words": [
+    {
+      "text": "Every",
+      "start": 0.051,
+      "end": 0.274
+    },
+    {
+      "text": "group",
+      "start": 0.374,
+      "end": 0.574
+    },
+    {
+      "text": "trip",
+      "start": 0.634,
+      "end": 1.221
+    },
+    {
+      "text": "has",
+      "start": 1.438,
+      "end": 1.594
+    },
+    {
+      "text": "a",
+      "start": 1.634,
+      "end": 1.674
+    },
+    {
+      "text": "money",
+      "start": 1.794,
+      "end": 1.974
+    },
+    {
+      "text": "problem",
+      "start": 2.074,
+      "end": 2.591
+    }
+  ]
+}

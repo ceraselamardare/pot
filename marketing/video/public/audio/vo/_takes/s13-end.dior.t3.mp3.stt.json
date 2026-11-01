@@ -1,0 +1,93 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s13-end.dior.t3.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "0",
+      "fiat-cost-before-overages": "0.0"
+    },
+    "latency_ms": 700
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "Hot. Built at NEAR Hackathon",
+    "words": [
+      {
+        "text": "Hot.",
+        "start": 0.16,
+        "end": 0.52,
+        "type": "word",
+        "logprob": -0.030353453941643238
+      },
+      {
+        "text": " ",
+        "start": 0.52,
+        "end": 0.52,
+        "type": "spacing",
+        "logprob": -0.000052689116273541003
+      },
+      {
+        "text": "Built",
+        "start": 1.12,
+        "end": 1.4,
+        "type": "word",
+        "logprob": -0.000052689116273541003
+      },
+      {
+        "text": " ",
+        "start": 1.4,
+        "end": 1.56,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "at",
+        "start": 1.58,
+        "end": 1.68,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 1.68,
+        "end": 1.76,
+        "type": "spacing",
+        "logprob": -0.28162938356399536
+      },
+      {
+        "text": "NEAR",
+        "start": 1.76,
+        "end": 1.96,
+        "type": "word",
+        "logprob": -0.28162938356399536
+      },
+      {
+        "text": " ",
+        "start": 1.96,
+        "end": 2.02,
+        "type": "spacing",
+        "logprob": -0.009290085174143314
+      },
+      {
+        "text": "Hackathon",
+        "start": 2.02,
+        "end": 2.6,
+        "type": "word",
+        "logprob": -0.004129721472092267
+      }
+    ],
+    "transcription_id": "tl5e3dXWe3H9hKPYBC4s",
+    "audio_duration_secs": 2.8
+  },
+  "created_at": "2026-10-22T09:25:05.940Z"
+}

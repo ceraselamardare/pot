@@ -1,0 +1,42 @@
+{
+  "name": "q3-any-input-unauth",
+  "at": "2026-10-21T11:27:28.529Z",
+  "request": {
+    "method": "POST",
+    "url": "https://1click.chaindefuser.com/v0/quote",
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "dry": true,
+      "swapType": "ANY_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "1cs_v1:any",
+      "depositType": "INTENTS",
+      "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "0",
+      "refundTo": "near",
+      "refundType": "INTENTS",
+      "recipient": "near",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2026-10-21T12:27:12.904Z"
+    }
+  },
+  "response": {
+    "status": 400,
+    "ms": 57,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1169",
+      "x-ratelimit-reset-unauth": "45"
+    },
+    "body": {
+      "message": "Swap type is not available for unauthorized requests",
+      "correlationId": "f57a2c43-b3b4-42c4-8d3f-d4e41e6cf567",
+      "timestamp": "2026-10-21T11:27:28.585Z",
+      "path": "/v0/quote"
+    }
+  }
+}

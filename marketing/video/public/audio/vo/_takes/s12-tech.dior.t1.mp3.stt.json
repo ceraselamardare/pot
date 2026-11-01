@@ -1,0 +1,471 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s12-tech.dior.t1.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "2",
+      "fiat-cost-before-overages": "0.000728"
+    },
+    "latency_ms": 1031
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "Under the hood, every pot is a Sputnik DAO on NEAR. Its rules are enforced on-chain, not by a person. Every action is gasless, and no one can take money out alone",
+    "words": [
+      {
+        "text": "Under",
+        "start": 0.06,
+        "end": 0.26,
+        "type": "word",
+        "logprob": -0.00001168244216387393
+      },
+      {
+        "text": " ",
+        "start": 0.26,
+        "end": 0.3,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "the",
+        "start": 0.3,
+        "end": 0.34,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 0.34,
+        "end": 0.4,
+        "type": "spacing",
+        "logprob": -0.000019788545614574105
+      },
+      {
+        "text": "hood,",
+        "start": 0.4,
+        "end": 0.64,
+        "type": "word",
+        "logprob": -0.00013562413514591753
+      },
+      {
+        "text": " ",
+        "start": 0.64,
+        "end": 1.06,
+        "type": "spacing",
+        "logprob": -0.00003766942609217949
+      },
+      {
+        "text": "every",
+        "start": 1.06,
+        "end": 1.32,
+        "type": "word",
+        "logprob": -0.00003766942609217949
+      },
+      {
+        "text": " ",
+        "start": 1.32,
+        "end": 1.36,
+        "type": "spacing",
+        "logprob": -0.002678499324247241
+      },
+      {
+        "text": "pot",
+        "start": 1.36,
+        "end": 1.64,
+        "type": "word",
+        "logprob": -0.002678499324247241
+      },
+      {
+        "text": " ",
+        "start": 1.64,
+        "end": 1.7,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "is",
+        "start": 1.7,
+        "end": 1.76,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 1.76,
+        "end": 1.82,
+        "type": "spacing",
+        "logprob": -8.344646857949556e-7
+      },
+      {
+        "text": "a",
+        "start": 1.82,
+        "end": 1.88,
+        "type": "word",
+        "logprob": -8.344646857949556e-7
+      },
+      {
+        "text": " ",
+        "start": 1.88,
+        "end": 1.94,
+        "type": "spacing",
+        "logprob": -0.000028609820219571702
+      },
+      {
+        "text": "Sputnik",
+        "start": 2.02,
+        "end": 2.34,
+        "type": "word",
+        "logprob": -0.000028609820219571702
+      },
+      {
+        "text": " ",
+        "start": 2.34,
+        "end": 2.44,
+        "type": "spacing",
+        "logprob": -0.28483346104621887
+      },
+      {
+        "text": "DAO",
+        "start": 2.44,
+        "end": 2.98,
+        "type": "word",
+        "logprob": -0.28483346104621887
+      },
+      {
+        "text": " ",
+        "start": 2.98,
+        "end": 3.04,
+        "type": "spacing",
+        "logprob": -0.0000046491513785440475
+      },
+      {
+        "text": "on",
+        "start": 3.04,
+        "end": 3.14,
+        "type": "word",
+        "logprob": -0.0000046491513785440475
+      },
+      {
+        "text": " ",
+        "start": 3.14,
+        "end": 3.22,
+        "type": "spacing",
+        "logprob": -0.06229473650455475
+      },
+      {
+        "text": "NEAR.",
+        "start": 3.22,
+        "end": 3.48,
+        "type": "word",
+        "logprob": -0.04984074824860727
+      },
+      {
+        "text": " ",
+        "start": 3.48,
+        "end": 3.48,
+        "type": "spacing",
+        "logprob": -0.0000027418097943154862
+      },
+      {
+        "text": "Its",
+        "start": 4.1,
+        "end": 4.26,
+        "type": "word",
+        "logprob": -0.0000027418097943154862
+      },
+      {
+        "text": " ",
+        "start": 4.26,
+        "end": 4.32,
+        "type": "spacing",
+        "logprob": -4.768370445162873e-7
+      },
+      {
+        "text": "rules",
+        "start": 4.32,
+        "end": 4.58,
+        "type": "word",
+        "logprob": -4.768370445162873e-7
+      },
+      {
+        "text": " ",
+        "start": 4.58,
+        "end": 4.62,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "are",
+        "start": 4.62,
+        "end": 4.7,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 4.7,
+        "end": 4.72,
+        "type": "spacing",
+        "logprob": -0.000002264974000354414
+      },
+      {
+        "text": "enforced",
+        "start": 4.72,
+        "end": 5.08,
+        "type": "word",
+        "logprob": -0.000002264974000354414
+      },
+      {
+        "text": " ",
+        "start": 5.08,
+        "end": 5.24,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "on-chain,",
+        "start": 5.24,
+        "end": 5.72,
+        "type": "word",
+        "logprob": -0.006150219069441378
+      },
+      {
+        "text": " ",
+        "start": 5.72,
+        "end": 6.04,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "not",
+        "start": 6.04,
+        "end": 6.24,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 6.24,
+        "end": 6.26,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "by",
+        "start": 6.26,
+        "end": 6.34,
+        "type": "word",
+        "logprob": 0
+      },
+      {
+        "text": " ",
+        "start": 6.34,
+        "end": 6.38,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "a",
+        "start": 6.38,
+        "end": 6.44,
+        "type": "word",
+        "logprob": 0
+      },
+      {
+        "text": " ",
+        "start": 6.44,
+        "end": 6.48,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "person.",
+        "start": 6.48,
+        "end": 6.84,
+        "type": "word",
+        "logprob": -0.0000051599765648851255
+      },
+      {
+        "text": " ",
+        "start": 6.84,
+        "end": 7.52,
+        "type": "spacing",
+        "logprob": -0.000006437280717364047
+      },
+      {
+        "text": "Every",
+        "start": 7.52,
+        "end": 7.76,
+        "type": "word",
+        "logprob": -0.000006437280717364047
+      },
+      {
+        "text": " ",
+        "start": 7.76,
+        "end": 7.86,
+        "type": "spacing",
+        "logprob": -0.0000016689286894688848
+      },
+      {
+        "text": "action",
+        "start": 7.86,
+        "end": 8.2,
+        "type": "word",
+        "logprob": -0.0000016689286894688848
+      },
+      {
+        "text": " ",
+        "start": 8.2,
+        "end": 8.24,
+        "type": "spacing",
+        "logprob": -0.0000010728830375228426
+      },
+      {
+        "text": "is",
+        "start": 8.24,
+        "end": 8.38,
+        "type": "word",
+        "logprob": -0.0000010728830375228426
+      },
+      {
+        "text": " ",
+        "start": 8.38,
+        "end": 8.42,
+        "type": "spacing",
+        "logprob": -0.00004470248313737102
+      },
+      {
+        "text": "gasless,",
+        "start": 8.42,
+        "end": 8.94,
+        "type": "word",
+        "logprob": -0.0004219215802550025
+      },
+      {
+        "text": " ",
+        "start": 8.94,
+        "end": 9.4,
+        "type": "spacing",
+        "logprob": -0.000013112935448589269
+      },
+      {
+        "text": "and",
+        "start": 9.4,
+        "end": 9.54,
+        "type": "word",
+        "logprob": -0.000013112935448589269
+      },
+      {
+        "text": " ",
+        "start": 9.54,
+        "end": 9.62,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "no",
+        "start": 9.62,
+        "end": 9.7,
+        "type": "word",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": " ",
+        "start": 9.7,
+        "end": 9.8,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "one",
+        "start": 9.8,
+        "end": 9.88,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 9.88,
+        "end": 9.96,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "can",
+        "start": 9.96,
+        "end": 10.06,
+        "type": "word",
+        "logprob": 0
+      },
+      {
+        "text": " ",
+        "start": 10.06,
+        "end": 10.1,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "take",
+        "start": 10.1,
+        "end": 10.28,
+        "type": "word",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": " ",
+        "start": 10.28,
+        "end": 10.32,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "money",
+        "start": 10.32,
+        "end": 10.5,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 10.5,
+        "end": 10.58,
+        "type": "spacing",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": "out",
+        "start": 10.58,
+        "end": 10.72,
+        "type": "word",
+        "logprob": -2.3841855067985307e-7
+      },
+      {
+        "text": " ",
+        "start": 10.72,
+        "end": 10.78,
+        "type": "spacing",
+        "logprob": -0.000012159273865108844
+      },
+      {
+        "text": "alone",
+        "start": 10.78,
+        "end": 11.1,
+        "type": "word",
+        "logprob": -0.000012159273865108844
+      }
+    ],
+    "transcription_id": "2IC5isoQ6zuyCWwH56MI",
+    "audio_duration_secs": 11.76
+  },
+  "created_at": "2026-10-22T09:18:58.241Z"
+}

@@ -1,0 +1,163 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s05-pivot.dior.t2.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "1",
+      "fiat-cost-before-overages": "0.000364"
+    },
+    "latency_ms": 626
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "What if the money lived right in the group chat?",
+    "words": [
+      {
+        "text": "What",
+        "start": 0.12,
+        "end": 0.26,
+        "type": "word",
+        "logprob": -0.00009619726915843785
+      },
+      {
+        "text": " ",
+        "start": 0.26,
+        "end": 0.34,
+        "type": "spacing",
+        "logprob": -0.0000019073468138230965
+      },
+      {
+        "text": "if",
+        "start": 0.34,
+        "end": 0.64,
+        "type": "word",
+        "logprob": -0.0000019073468138230965
+      },
+      {
+        "text": " ",
+        "start": 0.64,
+        "end": 1,
+        "type": "spacing",
+        "logprob": -0.0000029802276912960224
+      },
+      {
+        "text": "the",
+        "start": 1,
+        "end": 1.08,
+        "type": "word",
+        "logprob": -0.0000029802276912960224
+      },
+      {
+        "text": " ",
+        "start": 1.08,
+        "end": 1.14,
+        "type": "spacing",
+        "logprob": -0.000003933898824470816
+      },
+      {
+        "text": "money",
+        "start": 1.14,
+        "end": 1.38,
+        "type": "word",
+        "logprob": -0.000003933898824470816
+      },
+      {
+        "text": " ",
+        "start": 1.38,
+        "end": 1.44,
+        "type": "spacing",
+        "logprob": -0.0000015497195136049413
+      },
+      {
+        "text": "lived",
+        "start": 1.44,
+        "end": 1.64,
+        "type": "word",
+        "logprob": -0.0000015497195136049413
+      },
+      {
+        "text": " ",
+        "start": 1.64,
+        "end": 1.84,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "right",
+        "start": 1.84,
+        "end": 2.02,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 2.02,
+        "end": 2.06,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "in",
+        "start": 2.06,
+        "end": 2.14,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 2.14,
+        "end": 2.16,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "the",
+        "start": 2.16,
+        "end": 2.24,
+        "type": "word",
+        "logprob": 0
+      },
+      {
+        "text": " ",
+        "start": 2.24,
+        "end": 2.28,
+        "type": "spacing",
+        "logprob": -0.000012993727978027891
+      },
+      {
+        "text": "group",
+        "start": 2.28,
+        "end": 2.44,
+        "type": "word",
+        "logprob": -0.000012993727978027891
+      },
+      {
+        "text": " ",
+        "start": 2.44,
+        "end": 2.52,
+        "type": "spacing",
+        "logprob": -0.000001311301275563892
+      },
+      {
+        "text": "chat?",
+        "start": 2.52,
+        "end": 2.82,
+        "type": "word",
+        "logprob": -0.00283538438307005
+      }
+    ],
+    "transcription_id": "uI7IyUfaEYHFoglmB1tD",
+    "audio_duration_secs": 3.28
+  },
+  "created_at": "2026-10-22T09:24:27.745Z"
+}

@@ -1,0 +1,47 @@
+{
+  "id": "s03-chase",
+  "file": "audio/vo/s03-chase.mp3",
+  "durationSec": 2.893,
+  "words": [
+    {
+      "text": "then",
+      "start": 0.05,
+      "end": 0.19
+    },
+    {
+      "text": "spends",
+      "start": 0.31,
+      "end": 0.53
+    },
+    {
+      "text": "weeks",
+      "start": 0.75,
+      "end": 1.05
+    },
+    {
+      "text": "chasing",
+      "start": 1.15,
+      "end": 1.59
+    },
+    {
+      "text": "everyone",
+      "start": 1.67,
+      "end": 2.05
+    },
+    {
+      "text": "to",
+      "start": 2.09,
+      "end": 2.19
+    },
+    {
+      "text": "pay",
+      "start": 2.23,
+      "end": 2.39
+    },
+    {
+      "text": "up",
+      "start": 2.47,
+      "end": 2.688
+    }
+  ]
+}

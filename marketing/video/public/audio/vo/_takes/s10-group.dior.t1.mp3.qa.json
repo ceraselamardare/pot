@@ -1,0 +1,205 @@
+{
+  "take": "s10-group.dior.t1.mp3",
+  "line": "s10-group",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "Bigger spends go to the group. The three-hundred-dollar boat trip needs two of three\u2026 so Leo approves, right from a notification.",
+  "duration": 8.0,
+  "speech_start": 0.012,
+  "speech_end": 7.481,
+  "speech_span": 7.46,
+  "words": 21,
+  "syllables": 32,
+  "wps_span": 2.82,
+  "sps_span": 4.29,
+  "wps_articulation": 3.33,
+  "pauses": [
+    {
+      "after": "group",
+      "k": 5,
+      "sec": 0.546
+    },
+    {
+      "after": "three",
+      "k": 13,
+      "sec": 0.379
+    },
+    {
+      "after": "approves",
+      "k": 16,
+      "sec": 0.227
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.083,
+    "anchors": [
+      {
+        "word": "Bigger",
+        "k": 0,
+        "onset": 0.012,
+        "breath": false,
+        "stt_minus_onset": 0.088,
+        "align_minus_onset": -0.012
+      },
+      {
+        "word": "The",
+        "k": 6,
+        "onset": 2.096,
+        "breath": true,
+        "stt_minus_onset": -0.016,
+        "align_minus_onset": 0.024
+      },
+      {
+        "word": "so",
+        "k": 14,
+        "onset": 4.91,
+        "breath": false,
+        "stt_minus_onset": 0.09,
+        "align_minus_onset": 0.05
+      },
+      {
+        "word": "right",
+        "k": 17,
+        "onset": 6.262,
+        "breath": false,
+        "stt_minus_onset": 0.078,
+        "align_minus_onset": 0.058
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.063
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Bigger spends go to the group. The three hundred dollar boat trip needs two of three. So Leo approves right from a notification"
+  },
+  "f0": {
+    "f0_median_hz": 145.8,
+    "st_sd": 4.73,
+    "st_p5_p95": 14.35,
+    "st_p10_p90": 12.63,
+    "st_motion_per_s": 35.9,
+    "voiced_s": 3.08
+  },
+  "loudness": {
+    "I": -26.5,
+    "LRA": 2.4,
+    "TP": -3.3
+  },
+  "threshold_db": -58.8,
+  "times": [
+    [
+      "Bigger",
+      0.012,
+      0.217
+    ],
+    [
+      "spends",
+      0.357,
+      0.737
+    ],
+    [
+      "go",
+      0.777,
+      0.917
+    ],
+    [
+      "to",
+      0.957,
+      1.017
+    ],
+    [
+      "the",
+      1.057,
+      1.117
+    ],
+    [
+      "group",
+      1.157,
+      1.55
+    ],
+    [
+      "The",
+      2.096,
+      2.137
+    ],
+    [
+      "three-hundred-dollar",
+      2.157,
+      2.817
+    ],
+    [
+      "boat",
+      2.937,
+      3.097
+    ],
+    [
+      "trip",
+      3.137,
+      3.397
+    ],
+    [
+      "needs",
+      3.457,
+      3.717
+    ],
+    [
+      "two",
+      3.797,
+      3.936
+    ],
+    [
+      "of",
+      3.997,
+      4.137
+    ],
+    [
+      "three",
+      4.157,
+      4.531
+    ],
+    [
+      "so",
+      4.91,
+      5.157
+    ],
+    [
+      "Leo",
+      5.217,
+      5.397
+    ],
+    [
+      "approves",
+      5.437,
+      6.035
+    ],
+    [
+      "right",
+      6.262,
+      6.437
+    ],
+    [
+      "from",
+      6.477,
+      6.577
+    ],
+    [
+      "a",
+      6.597,
+      6.637
+    ],
+    [
+      "notification",
+      6.677,
+      7.472
+    ]
+  ]
+}

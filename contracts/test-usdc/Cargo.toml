@@ -1,0 +1,21 @@
+[package]
+name = "test-usdc"
+version = "1.0.0"
+edition = "2018"   # upstream edition kept to avoid edition churn (contracts-spec §1.1)
+publish = false
+repository.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "=5.29.1"
+near-contract-standards = "=5.29.1"
+
+[dev-dependencies]
+near-sdk = { version = "=5.29.1", features = ["unit-testing"] }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(near)']

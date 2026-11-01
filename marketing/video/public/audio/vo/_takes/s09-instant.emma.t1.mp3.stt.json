@@ -1,0 +1,261 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s09-instant.emma.t1.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "2",
+      "fiat-cost-before-overages": "0.000728"
+    },
+    "latency_ms": 645
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "Small spends approve themselves. $84 for groceries? Pot checks the rules. Approved and paid back in seconds",
+    "words": [
+      {
+        "text": "Small",
+        "start": 0.12,
+        "end": 0.34,
+        "type": "word",
+        "logprob": -0.000052927523938706145
+      },
+      {
+        "text": " ",
+        "start": 0.34,
+        "end": 0.5,
+        "type": "spacing",
+        "logprob": -0.004163763951510191
+      },
+      {
+        "text": "spends",
+        "start": 0.5,
+        "end": 0.92,
+        "type": "word",
+        "logprob": -0.004163763951510191
+      },
+      {
+        "text": " ",
+        "start": 0.92,
+        "end": 0.98,
+        "type": "spacing",
+        "logprob": -0.00021526881027966738
+      },
+      {
+        "text": "approve",
+        "start": 0.98,
+        "end": 1.32,
+        "type": "word",
+        "logprob": -0.00021526881027966738
+      },
+      {
+        "text": " ",
+        "start": 1.32,
+        "end": 1.34,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "themselves.",
+        "start": 1.34,
+        "end": 2.04,
+        "type": "word",
+        "logprob": -0.000010706531280778687
+      },
+      {
+        "text": " ",
+        "start": 2.04,
+        "end": 2.04,
+        "type": "spacing",
+        "logprob": -0.0005977750988677144
+      },
+      {
+        "text": "$84",
+        "start": 2.52,
+        "end": 3.02,
+        "type": "word",
+        "logprob": -0.0002007286111596803
+      },
+      {
+        "text": " ",
+        "start": 3.02,
+        "end": 3.46,
+        "type": "spacing",
+        "logprob": -0.000003576272320060525
+      },
+      {
+        "text": "for",
+        "start": 3.46,
+        "end": 3.54,
+        "type": "word",
+        "logprob": -0.000003576272320060525
+      },
+      {
+        "text": " ",
+        "start": 3.54,
+        "end": 3.64,
+        "type": "spacing",
+        "logprob": -0.000016927575416048057
+      },
+      {
+        "text": "groceries?",
+        "start": 3.64,
+        "end": 4.26,
+        "type": "word",
+        "logprob": -0.000015485157064176747
+      },
+      {
+        "text": " ",
+        "start": 4.26,
+        "end": 4.28,
+        "type": "spacing",
+        "logprob": -0.5470159649848938
+      },
+      {
+        "text": "Pot",
+        "start": 4.76,
+        "end": 4.94,
+        "type": "word",
+        "logprob": -0.5470159649848938
+      },
+      {
+        "text": " ",
+        "start": 4.94,
+        "end": 5,
+        "type": "spacing",
+        "logprob": -0.00005864924969500862
+      },
+      {
+        "text": "checks",
+        "start": 5,
+        "end": 5.24,
+        "type": "word",
+        "logprob": -0.00005864924969500862
+      },
+      {
+        "text": " ",
+        "start": 5.24,
+        "end": 5.28,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "the",
+        "start": 5.28,
+        "end": 5.38,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 5.38,
+        "end": 5.42,
+        "type": "spacing",
+        "logprob": -0.0000016689286894688848
+      },
+      {
+        "text": "rules.",
+        "start": 5.42,
+        "end": 5.84,
+        "type": "word",
+        "logprob": -0.00032564231158479134
+      },
+      {
+        "text": " ",
+        "start": 5.84,
+        "end": 5.84,
+        "type": "spacing",
+        "logprob": -0.00021371940965764225
+      },
+      {
+        "text": "Approved",
+        "start": 6.26,
+        "end": 6.8,
+        "type": "word",
+        "logprob": -0.00021371940965764225
+      },
+      {
+        "text": " ",
+        "start": 6.8,
+        "end": 7.1,
+        "type": "spacing",
+        "logprob": -0.00016330339713022113
+      },
+      {
+        "text": "and",
+        "start": 7.1,
+        "end": 7.2,
+        "type": "word",
+        "logprob": -0.00016330339713022113
+      },
+      {
+        "text": " ",
+        "start": 7.2,
+        "end": 7.34,
+        "type": "spacing",
+        "logprob": -0.000006079655122448457
+      },
+      {
+        "text": "paid",
+        "start": 7.34,
+        "end": 7.56,
+        "type": "word",
+        "logprob": -0.000006079655122448457
+      },
+      {
+        "text": " ",
+        "start": 7.56,
+        "end": 7.62,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "back",
+        "start": 7.62,
+        "end": 7.94,
+        "type": "word",
+        "logprob": 0
+      },
+      {
+        "text": " ",
+        "start": 7.94,
+        "end": 8,
+        "type": "spacing",
+        "logprob": 0
+      },
+      {
+        "text": "in",
+        "start": 8,
+        "end": 8.2,
+        "type": "word",
+        "logprob": 0
+      },
+      {
+        "text": " ",
+        "start": 8.2,
+        "end": 8.28,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "seconds",
+        "start": 8.28,
+        "end": 8.78,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      }
+    ],
+    "transcription_id": "y4wr4ce9izJ8dADWCfos",
+    "audio_duration_secs": 9.28
+  },
+  "created_at": "2026-10-22T09:10:32.173Z"
+}

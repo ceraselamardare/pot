@@ -1,0 +1,85 @@
+{
+  "take": "s02-front.dior.t1.mp3",
+  "line": "s02-front",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "One friend fronts it all\u2026",
+  "duration": 1.76,
+  "speech_start": 0.015,
+  "speech_end": 1.392,
+  "speech_span": 1.356,
+  "words": 5,
+  "syllables": 5,
+  "wps_span": 3.69,
+  "sps_span": 3.69,
+  "wps_articulation": 3.69,
+  "pauses": [],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.085,
+    "anchors": [
+      {
+        "word": "One",
+        "k": 0,
+        "onset": 0.015,
+        "breath": false,
+        "stt_minus_onset": 0.085,
+        "align_minus_onset": -0.015
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.055
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "One friend fronts it all"
+  },
+  "f0": {
+    "f0_median_hz": 127.9,
+    "st_sd": 4.35,
+    "st_p5_p95": 11.61,
+    "st_p10_p90": 11.43,
+    "st_motion_per_s": 20.3,
+    "voiced_s": 0.62
+  },
+  "loudness": {
+    "I": -22.8,
+    "LRA": 0.0,
+    "TP": -6.1
+  },
+  "threshold_db": -54.5,
+  "times": [
+    [
+      "One",
+      0.015,
+      0.155
+    ],
+    [
+      "friend",
+      0.275,
+      0.495
+    ],
+    [
+      "fronts",
+      0.635,
+      0.855
+    ],
+    [
+      "it",
+      0.895,
+      0.975
+    ],
+    [
+      "all",
+      1.055,
+      1.371
+    ]
+  ]
+}

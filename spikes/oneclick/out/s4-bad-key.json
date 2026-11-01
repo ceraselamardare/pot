@@ -1,0 +1,30 @@
+{
+  "name": "s4-bad-key",
+  "at": "2026-10-21T11:29:21.345Z",
+  "request": {
+    "method": "GET",
+    "url": "https://1click.chaindefuser.com/v0/status?depositAddress=0x000000000000000000000000000000000000dEaD",
+    "headers": {
+      "content-type": "application/json",
+      "X-API-Key": "<redacted>"
+    }
+  },
+  "response": {
+    "status": 401,
+    "ms": 55,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1193",
+      "x-ratelimit-reset-unauth": "59"
+    },
+    "body": {
+      "message": "Invalid token",
+      "error": "Unauthorized",
+      "statusCode": 401,
+      "timestamp": "2026-10-21T11:29:21.399Z",
+      "path": "/v0/status?depositAddress=0x000000000000000000000000000000000000dEaD"
+    }
+  }
+}

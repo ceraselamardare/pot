@@ -1,0 +1,10 @@
+import { defineProject } from "vitest/config"
+
+export default defineProject({
+  test: {
+    name: "sdk",
+    environment: "node",
+    include: ["src/**/*.test.ts"],
+    exclude: ["src/**/*.node.test.ts"],
+  },
+})

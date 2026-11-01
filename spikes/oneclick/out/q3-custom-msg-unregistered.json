@@ -1,0 +1,80 @@
+{
+  "name": "q3-custom-msg-unregistered",
+  "at": "2026-10-21T11:27:19.227Z",
+  "request": {
+    "method": "POST",
+    "url": "https://1click.chaindefuser.com/v0/quote",
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "dry": true,
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "amount": "150000000",
+      "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+      "refundType": "ORIGIN_CHAIN",
+      "recipient": "pot.near",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2026-10-21T12:27:12.904Z",
+      "customRecipientMsg": "{\"pot\":\"lisbon-trip\"}"
+    }
+  },
+  "response": {
+    "status": 201,
+    "ms": 575,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "x-ratelimit-limit-unauth": "1200",
+      "x-ratelimit-remaining-unauth": "1189",
+      "x-ratelimit-reset-unauth": "55"
+    },
+    "body": {
+      "quote": {
+        "amountIn": "150000000",
+        "amountInFormatted": "150.0",
+        "amountInUsd": "149.914950000000",
+        "minAmountIn": "150000000",
+        "amountOut": "149968615",
+        "amountOutFormatted": "149.968615",
+        "amountOutUsd": "149.883582795295",
+        "minAmountOut": "148468928",
+        "timeEstimate": 35,
+        "refundFee": "2400",
+        "withdrawFee": "6467"
+      },
+      "quoteRequest": {
+        "dry": true,
+        "depositMode": "SIMPLE",
+        "swapType": "EXACT_INPUT",
+        "slippageTolerance": 100,
+        "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "depositType": "ORIGIN_CHAIN",
+        "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "amount": "150000000",
+        "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+        "refundType": "ORIGIN_CHAIN",
+        "recipient": "pot.near",
+        "customRecipientMsg": "{\"pot\":\"lisbon-trip\"}",
+        "recipientType": "DESTINATION_CHAIN",
+        "deadline": "2026-10-21T12:27:12.904Z",
+        "confidentiality": "public",
+        "quoteWaitingTimeMs": 0,
+        "insured": false,
+        "appFees": [
+          {
+            "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+            "fee": 1
+          }
+        ]
+      },
+      "signature": "ed25519:3ZcXhKu7cubM5Mc39HmcJyBUUdGR3w7exiYT7m6AECd2QK1mdkuQYuPsw2HqGhbCNB3ugCEr8Pw22HF2Kf6ZDKTU",
+      "timestamp": "2026-10-21T11:27:18.769Z",
+      "correlationId": "eef09d09-0e4a-487a-b5c5-1556291d75da"
+    }
+  }
+}

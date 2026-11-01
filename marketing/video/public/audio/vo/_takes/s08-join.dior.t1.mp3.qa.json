@@ -1,0 +1,223 @@
+{
+  "take": "s08-join.dior.t1.mp3",
+  "line": "s08-join",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "Drop the link in the chat. Friends join with Google and chip in their share. No wallet. No seed phrase. No gas.",
+  "duration": 7.44,
+  "speech_start": 0.02,
+  "speech_end": 7.433,
+  "speech_span": 7.026,
+  "words": 22,
+  "syllables": 24,
+  "wps_span": 3.13,
+  "sps_span": 3.42,
+  "wps_articulation": 4.03,
+  "pauses": [
+    {
+      "after": "chat",
+      "k": 5,
+      "sec": 0.603
+    },
+    {
+      "after": "share",
+      "k": 14,
+      "sec": 0.501
+    },
+    {
+      "after": "wallet",
+      "k": 16,
+      "sec": 0.279
+    },
+    {
+      "after": "phrase",
+      "k": 19,
+      "sec": 0.177
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.095,
+    "anchors": [
+      {
+        "word": "Drop",
+        "k": 0,
+        "onset": 0.02,
+        "breath": false,
+        "stt_minus_onset": 0.02,
+        "align_minus_onset": -0.02
+      },
+      {
+        "word": "Friends",
+        "k": 6,
+        "onset": 1.642,
+        "breath": true,
+        "stt_minus_onset": 0.098,
+        "align_minus_onset": 0.038
+      },
+      {
+        "word": "No",
+        "k": 15,
+        "onset": 4.304,
+        "breath": false,
+        "stt_minus_onset": 0.076,
+        "align_minus_onset": 0.096
+      },
+      {
+        "word": "No",
+        "k": 17,
+        "onset": 5.165,
+        "breath": false,
+        "stt_minus_onset": 0.095,
+        "align_minus_onset": 0.115
+      },
+      {
+        "word": "No",
+        "k": 20,
+        "onset": 6.294,
+        "breath": false,
+        "stt_minus_onset": 0.106,
+        "align_minus_onset": 0.106
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.095
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Drop the link in the chat. Friends join with Google and chip in their share. No wallet, no seed phrase, no gas"
+  },
+  "f0": {
+    "f0_median_hz": 152.0,
+    "st_sd": 4.22,
+    "st_p5_p95": 13.29,
+    "st_p10_p90": 12.24,
+    "st_motion_per_s": 25.2,
+    "voiced_s": 3.0
+  },
+  "loudness": {
+    "I": -25.4,
+    "LRA": 2.1,
+    "TP": -3.6
+  },
+  "threshold_db": -57.6,
+  "times": [
+    [
+      "Drop",
+      0.02,
+      0.165
+    ],
+    [
+      "the",
+      0.185,
+      0.265
+    ],
+    [
+      "link",
+      0.305,
+      0.465
+    ],
+    [
+      "in",
+      0.505,
+      0.565
+    ],
+    [
+      "the",
+      0.585,
+      0.665
+    ],
+    [
+      "chat",
+      0.705,
+      1.039
+    ],
+    [
+      "Friends",
+      1.642,
+      1.905
+    ],
+    [
+      "join",
+      1.945,
+      2.125
+    ],
+    [
+      "with",
+      2.145,
+      2.285
+    ],
+    [
+      "Google",
+      2.325,
+      2.605
+    ],
+    [
+      "and",
+      2.765,
+      2.885
+    ],
+    [
+      "chip",
+      2.925,
+      3.105
+    ],
+    [
+      "in",
+      3.145,
+      3.205
+    ],
+    [
+      "their",
+      3.245,
+      3.385
+    ],
+    [
+      "share",
+      3.425,
+      3.803
+    ],
+    [
+      "No",
+      4.304,
+      4.445
+    ],
+    [
+      "wallet",
+      4.465,
+      4.885
+    ],
+    [
+      "No",
+      5.165,
+      5.345
+    ],
+    [
+      "seed",
+      5.405,
+      5.565
+    ],
+    [
+      "phrase",
+      5.625,
+      6.118
+    ],
+    [
+      "No",
+      6.294,
+      6.405
+    ],
+    [
+      "gas",
+      6.505,
+      7.046
+    ]
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "take": "s05-pivot.dior.t2.mp3",
+  "line": "s05-pivot",
+  "voice": "dior",
+  "n": 2,
+  "tts_text": "What if\u2026 the money lived right in the group chat?",
+  "duration": 3.28,
+  "speech_start": 0.005,
+  "speech_end": 2.764,
+  "speech_span": 2.738,
+  "words": 10,
+  "syllables": 11,
+  "wps_span": 3.65,
+  "sps_span": 4.02,
+  "wps_articulation": 3.91,
+  "pauses": [
+    {
+      "after": "if",
+      "k": 1,
+      "sec": 0.182
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.112,
+    "anchors": [
+      {
+        "word": "What",
+        "k": 0,
+        "onset": 0.005,
+        "breath": false,
+        "stt_minus_onset": 0.115,
+        "align_minus_onset": -0.005
+      },
+      {
+        "word": "the",
+        "k": 2,
+        "onset": 0.892,
+        "breath": false,
+        "stt_minus_onset": 0.108,
+        "align_minus_onset": 0.068
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.102
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "What if the money lived right in the group chat?"
+  },
+  "f0": {
+    "f0_median_hz": 152.1,
+    "st_sd": 4.82,
+    "st_p5_p95": 15.29,
+    "st_p10_p90": 12.77,
+    "st_motion_per_s": 37.4,
+    "voiced_s": 1.63
+  },
+  "loudness": {
+    "I": -26.9,
+    "LRA": 20.4,
+    "TP": -9.4
+  },
+  "threshold_db": -58.9,
+  "times": [
+    [
+      "What",
+      0.005,
+      0.148
+    ],
+    [
+      "if",
+      0.228,
+      0.71
+    ],
+    [
+      "the",
+      0.892,
+      0.968
+    ],
+    [
+      "money",
+      1.028,
+      1.268
+    ],
+    [
+      "lived",
+      1.328,
+      1.528
+    ],
+    [
+      "right",
+      1.728,
+      1.908
+    ],
+    [
+      "in",
+      1.948,
+      2.028
+    ],
+    [
+      "the",
+      2.048,
+      2.128
+    ],
+    [
+      "group",
+      2.168,
+      2.328
+    ],
+    [
+      "chat",
+      2.408,
+      2.743
+    ]
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../apps/web/*"],
+      "@pot/sdk": ["../packages/pot-sdk/src/index.ts"],
+      "@pot/sdk/sign": ["../packages/pot-sdk/src/sign/index.ts"],
+      "@pot/sdk/api": ["../packages/pot-sdk/src/types/api.ts"],
+      "@pot/sdk/testing": ["../packages/pot-sdk/src/testing/index.ts"],
+      "pg": ["../apps/web/node_modules/@types/pg"],
+      "web-push": ["../apps/web/node_modules/@types/web-push"],
+      "*": ["../apps/web/node_modules/*", "../apps/web/node_modules/@types/*"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

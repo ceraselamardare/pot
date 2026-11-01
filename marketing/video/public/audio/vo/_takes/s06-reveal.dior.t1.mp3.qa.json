@@ -1,0 +1,145 @@
+{
+  "take": "s06-reveal.dior.t1.mp3",
+  "line": "s06-reveal",
+  "voice": "dior",
+  "n": 1,
+  "tts_text": "Meet Pot. \u2026 Group chat money that follows its own rules.",
+  "duration": 4.0,
+  "speech_start": 0.02,
+  "speech_end": 3.569,
+  "speech_span": 3.541,
+  "words": 10,
+  "syllables": 12,
+  "wps_span": 2.82,
+  "sps_span": 3.39,
+  "wps_articulation": 3.5,
+  "pauses": [
+    {
+      "after": "Pot",
+      "k": 1,
+      "sec": 0.578
+    },
+    {
+      "after": "its",
+      "k": 7,
+      "sec": 0.109
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.031,
+    "anchors": [
+      {
+        "word": "Meet",
+        "k": 0,
+        "onset": 0.02,
+        "breath": false,
+        "stt_minus_onset": 0.06,
+        "align_minus_onset": -0.02
+      },
+      {
+        "word": "Group",
+        "k": 2,
+        "onset": 1.278,
+        "breath": false,
+        "stt_minus_onset": 0.022,
+        "align_minus_onset": 0.002
+      },
+      {
+        "word": "follows",
+        "k": 6,
+        "onset": 2.306,
+        "breath": false,
+        "stt_minus_onset": 0.014,
+        "align_minus_onset": 0.014
+      },
+      {
+        "word": "own",
+        "k": 8,
+        "onset": 2.86,
+        "breath": false,
+        "stt_minus_onset": 0.04,
+        "align_minus_onset": 0.02
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.011
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Meet Pot, group chat money that follows its own rules"
+  },
+  "f0": {
+    "f0_median_hz": 143.7,
+    "st_sd": 4.85,
+    "st_p5_p95": 14.21,
+    "st_p10_p90": 13.49,
+    "st_motion_per_s": 38.2,
+    "voiced_s": 1.27
+  },
+  "loudness": {
+    "I": -24.1,
+    "LRA": 1.6,
+    "TP": -3.8
+  },
+  "threshold_db": -54.7,
+  "times": [
+    [
+      "Meet",
+      0.02,
+      0.149
+    ],
+    [
+      "Pot",
+      0.349,
+      0.7
+    ],
+    [
+      "Group",
+      1.278,
+      1.469
+    ],
+    [
+      "chat",
+      1.509,
+      1.689
+    ],
+    [
+      "money",
+      1.749,
+      2.029
+    ],
+    [
+      "that",
+      2.069,
+      2.221
+    ],
+    [
+      "follows",
+      2.306,
+      2.569
+    ],
+    [
+      "its",
+      2.609,
+      2.75
+    ],
+    [
+      "own",
+      2.86,
+      3.029
+    ],
+    [
+      "rules",
+      3.109,
+      3.561
+    ]
+  ]
+}

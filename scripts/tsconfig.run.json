@@ -1,0 +1,14 @@
+{
+  "//": "tsx runtime resolution for scripts/run (scripts/tsconfig.json is the typecheck config: `pnpm exec tsc -p scripts`)",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["../apps/web/*"],
+      "@pot/sdk": ["../packages/pot-sdk/src/index.ts"],
+      "@pot/sdk/sign": ["../packages/pot-sdk/src/sign/index.ts"],
+      "@pot/sdk/api": ["../packages/pot-sdk/src/types/api.ts"],
+      "@pot/sdk/testing": ["../packages/pot-sdk/src/testing/index.ts"],
+      "near-api-js": ["../apps/web/node_modules/near-api-js/lib/index.js"]
+    }
+  }
+}

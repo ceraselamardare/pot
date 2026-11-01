@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- THROWAWAY Phase 0 spike (NEAR Auth testnet). Never copy into the product. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>NEAR Auth spike</title>
+    <style>
+      body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; max-width: 760px; }
+      button { font-size: 15px; padding: 10px 14px; margin: 4px 4px 4px 0; min-height: 44px; }
+      input { font-size: 14px; padding: 8px; width: 100%; box-sizing: border-box; margin: 2px 0 8px; }
+      fieldset { margin: 12px 0; border-radius: 8px; }
+      pre { background: #f4f4f4; padding: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+      .muted { color: #666; }
+    </style>
+  </head>
+  <body>
+    <h2>NEAR Auth testnet spike</h2>
+    <p class="muted">Origin must be <b>http://localhost:3000</b> (the only allowed callback on the shared testnet client). Mode: <span id="mode"></span></p>
+    <fieldset><legend>1. Login (Auth0 Universal Login: Google / email+password / passkey)</legend>
+      <button id="loginPopup">Log in (popup)</button>
+      <button id="loginRedirect">Log in (redirect)</button>
+      <button id="logout">Log out</button>
+    </fieldset>
+    <fieldset><legend>2. Account</legend>
+      <label>Sender account (implicit by default; or the named account created by <code>relay.mjs create</code>)</label>
+      <input id="sender" placeholder="u-xxxx.potspike-auth-xxxx.testnet" />
+      <label>Receiver (any existing testnet account, e.g. your relayer)</label>
+      <input id="receiver" placeholder="potspike-auth-xxxx.testnet" />
+    </fieldset>
+    <fieldset><legend>3. Delegate action (1 yoctoNEAR transfer)</legend>
+      <button id="prepare">Prepare (fetch nonce + block)</button>
+      <button id="sign">Approve in NEAR Auth (popup)</button>
+      <button id="relay">Relay via localhost:3001</button>
+    </fieldset>
+    <fieldset><legend>4. Fallback: "I have a NEAR wallet" (NEAR Connect, testnet, wallets with signDelegateActions)</legend>
+      <button id="wcConnect">Connect wallet</button>
+      <button id="wcSign">Wallet signs delegate (1 yocto)</button>
+      <button id="wcRelay">Relay wallet delegate</button>
+    </fieldset>
+    <pre id="out"></pre>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

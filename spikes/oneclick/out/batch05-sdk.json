@@ -1,0 +1,69 @@
+[
+  {
+    "name": "sdk-getTokens",
+    "ok": true,
+    "ms": 170,
+    "result": "205 tokens"
+  },
+  {
+    "name": "sdk-getQuote-dry-base-exact-input",
+    "ok": true,
+    "ms": 582,
+    "result": {
+      "quote": {
+        "amountIn": "150000000",
+        "amountInFormatted": "150.0",
+        "amountInUsd": "149.917650000000",
+        "minAmountIn": "150000000",
+        "amountOut": "149968000",
+        "amountOutFormatted": "149.968",
+        "amountOutUsd": "149.885667568000",
+        "minAmountOut": "148468320",
+        "timeEstimate": 35,
+        "refundFee": "0",
+        "withdrawFee": "6467"
+      },
+      "signature": "ed25519:4H8Vu7hhRYSoHs1L4dq4sTecK6ebheqRzJg9qooqknFL6SUwHuXYzYmeSPvCnTfxRgZmDzfzGNZDCN3Cg8yh4SwJ",
+      "timestamp": "2026-10-21T11:30:14.239Z",
+      "correlationId": "6c8c763b-dcc1-4bc1-9512-50b4f8999838"
+    }
+  },
+  {
+    "name": "sdk-verifyQuoteSignature(sdk dry quote)",
+    "ok": true,
+    "ms": 23,
+    "result": {
+      "valid": true,
+      "hash": "FqUBNemNfNAPZh5kfpEp1jne3W21oSD1PDrijCNmaLt6"
+    }
+  },
+  {
+    "name": "sdk-verifyQuoteSignature(tampered amountOut)",
+    "ok": true,
+    "ms": 3,
+    "result": {
+      "valid": false
+    }
+  },
+  {
+    "name": "sdk-getExecutionStatus-unknown",
+    "ok": false,
+    "ms": 103,
+    "error": {
+      "status": 404,
+      "body": {
+        "message": "Deposit address 0x000000000000000000000000000000000000dEaD not found",
+        "error": "Not Found",
+        "statusCode": 404,
+        "timestamp": "2026-10-21T11:30:14.887Z",
+        "path": "/v0/status?depositAddress=0x000000000000000000000000000000000000dEaD"
+      },
+      "message": "Deposit address not found"
+    }
+  },
+  {
+    "name": "raw-dry-quote-signatures",
+    "valid": 47,
+    "invalid": 0
+  }
+]

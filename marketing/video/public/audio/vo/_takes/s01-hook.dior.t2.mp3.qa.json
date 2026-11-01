@@ -1,0 +1,109 @@
+{
+  "take": "s01-hook.dior.t2.mp3",
+  "line": "s01-hook",
+  "voice": "dior",
+  "n": 2,
+  "tts_text": "Every group trip\u2026 has a money problem.",
+  "duration": 2.8,
+  "speech_start": 0.053,
+  "speech_end": 2.597,
+  "speech_span": 2.54,
+  "words": 7,
+  "syllables": 10,
+  "wps_span": 2.76,
+  "sps_span": 3.94,
+  "wps_articulation": 3.01,
+  "pauses": [
+    {
+      "after": "trip",
+      "k": 2,
+      "sec": 0.216
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.063,
+    "anchors": [
+      {
+        "word": "Every",
+        "k": 0,
+        "onset": 0.053,
+        "breath": false,
+        "stt_minus_onset": 0.047,
+        "align_minus_onset": -0.053
+      },
+      {
+        "word": "has",
+        "k": 3,
+        "onset": 1.44,
+        "breath": true,
+        "stt_minus_onset": 0.08,
+        "align_minus_onset": 0.08
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.043
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Every group trip has a money problem"
+  },
+  "f0": {
+    "f0_median_hz": 126.4,
+    "st_sd": 4.9,
+    "st_p5_p95": 16.04,
+    "st_p10_p90": 13.6,
+    "st_motion_per_s": 28.0,
+    "voiced_s": 1.04
+  },
+  "loudness": {
+    "I": -25.2,
+    "LRA": 0.0,
+    "TP": -7.4
+  },
+  "threshold_db": -57.5,
+  "times": [
+    [
+      "Every",
+      0.053,
+      0.277
+    ],
+    [
+      "group",
+      0.377,
+      0.577
+    ],
+    [
+      "trip",
+      0.637,
+      1.224
+    ],
+    [
+      "has",
+      1.44,
+      1.597
+    ],
+    [
+      "a",
+      1.637,
+      1.677
+    ],
+    [
+      "money",
+      1.797,
+      1.977
+    ],
+    [
+      "problem",
+      2.077,
+      2.593
+    ]
+  ]
+}
