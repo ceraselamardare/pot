@@ -249,6 +249,36 @@ export const note = pgTable(
   ],
 )
 
+/**
+ * Comments on a spend request (off-chain, never on chain): a short thread per (Pot, hub request id) so the group
+ * can talk about a spend inside Pot. Members only (checked against hub.get_members on every call). A delete is
+ * soft: `deleted_at` is set and the body is wiped (''), so the thread keeps a "Comment removed" line.
+ * `client_key` (the composer's op id) makes a retried send idempotent per author.
+ */
+export const requestComment = pgTable(
+  "request_comment",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    potId: text("pot_id")
+      .notNull()
+      .references(() => pot.daoId),
+    requestId: bigint("request_id", { mode: "number" }).notNull(),
+    authorAccount: text("author_account").notNull(),
+    body: text("body").notNull(),
+    clientKey: text("client_key"),
+    createdAt: createdAt(),
+    deletedAt: ts("deleted_at"),
+  },
+  (t) => [
+    index("request_comment_thread_idx").on(t.potId, t.requestId, t.createdAt),
+    uniqueIndex("request_comment_client_key_uq").on(t.authorAccount, t.clientKey).where(sql`${t.clientKey} is not null`),
+    check(
+      "request_comment_body_ck",
+      sql`(${t.deletedAt} is null and char_length(${t.body}) between 1 and 280) or (${t.deletedAt} is not null and ${t.body} = '')`,
+    ),
+  ],
+)
+
 // ---------------------------------------------------------------------------------------------
 // 2.3 Relay log, feed cache, quotas, leases, alerts, errors
 // ---------------------------------------------------------------------------------------------

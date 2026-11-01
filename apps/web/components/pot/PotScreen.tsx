@@ -3,7 +3,7 @@
 // the Pot, and what's needed from me?". Phones: header, hero, Activity · Members · Rules, "Waiting on you"
 // pinned above the feed. From bp-lg (1024 px): two columns, the Pot on the left (Activity · Rules) and
 // Waiting on you, your requests and Members on the right (sticky).
-// Sheets are URL state: ?sheet=add|spend|share|close|rules and ?r=<id> (PotSheetHost). A push opens
+// Sheets are URL state: ?sheet=add|spend|share|close|rules|refund and ?r=<id> (PotSheetHost). A push opens
 // ?pid=<proposal id> (the SW maps the notification's proposal to it); it resolves here to the request, the close
 // or the rules change behind that proposal.
 import { Check, Clock } from "lucide-react"
@@ -22,6 +22,7 @@ import { AddFlow } from "@/components/sheets/AddFlow"
 import { ApproveSheet } from "@/components/sheets/ApproveSheet"
 import { ClosedMoment, CloseSheet } from "@/components/sheets/CloseSheet"
 import { RulesSheet } from "@/components/sheets/RulesSheet"
+import { RefundSheet } from "@/components/sheets/RefundSheet"
 import { PersonActivitySheet } from "@/components/activity/PersonActivitySheet"
 import { CoachCard } from "@/components/pwa/Coach"
 import { ShareSheet } from "@/components/sheets/ShareSheet"
@@ -150,6 +151,7 @@ function PotLoaded({ pot }: { pot: PotVM }) {
             onAdd={() => openSheet("add")}
             onSpend={() => openSheet("spend")}
             addVariant={arrived ? "secondary" : "primary"}
+            onShare={() => openSheet("refund")}
           />
           <div className="mt-6">
             {/* phones: three tabs; desktop: Activity · Rules (Members live in the right column) */}
@@ -236,6 +238,7 @@ function PotLoaded({ pot }: { pot: PotVM }) {
       <ApproveSheet pot={pot} requestId={requestId} onClose={closeSheet} />
       <CloseSheet pot={pot} open={sheet === "close"} onClose={closeSheet} />
       <RulesSheet pot={pot} open={sheet === "rules"} onClose={closeSheet} />
+      <RefundSheet pot={pot} open={sheet === "refund"} onClose={closeSheet} />
       <PersonActivitySheet pot={pot} who={params.get("who")} open={sheet === "person" && !!params.get("who")} onClose={closeSheet} />
     </>
   )

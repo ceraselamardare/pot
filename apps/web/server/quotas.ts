@@ -22,6 +22,8 @@ const DEFAULTS: Record<string, [bigint, bigint]> = {
   user_vote: [100n, 100n],
   user_test: [20n, 50n],
   user_notes: [60n, 60n],
+  user_comments: [200n, 200n], // comments on requests, per day
+  user_comment_burst: [10n, 10n], // per minute
   user_burst: [20n, 20n], // per minute
   // per Pot per day
   pot_contribute: [200n, 200n],

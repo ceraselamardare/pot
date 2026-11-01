@@ -145,6 +145,7 @@ export type QuotaFamily =
   | "pairing"
   | "faucet"
   | "notes"
+  | "comments"
   | "xc"
   | "budget"
   | "finalize"
@@ -531,8 +532,46 @@ export interface FeedRes extends Ok {
   memos?: Record<string, string>
   /** proposalId → account → text; members only */
   declineReasons?: Record<string, Record<AccountId, string>>
+  /** hub request id (decimal string) → comments not removed; members only, requests with ≥ 1 comment */
+  commentCounts?: Record<string, number>
   nextCursor?: string
   syncedAt: IsoTime
+}
+
+// ---------------------------------------------------------------- comments on requests (off-chain)
+
+/** One comment in a request's thread. A removed one keeps its place with `body: null`, `deleted: true`. */
+export interface RequestComment {
+  /** decimal string (bigserial) */
+  id: string
+  author: AccountId
+  /** 1-280 code points after NFC + trim; null once removed */
+  body: string | null
+  createdAt: IsoTime
+  deleted: boolean
+}
+/** GET /api/pots/[pot]/requests/[id]/comments: members only; oldest first (newest at the bottom), the last 200 */
+export interface CommentsRes extends Ok {
+  pot: DaoId
+  /** the hub's request id (the envelope's `requestId` is the API request's id) */
+  hubRequestId: number
+  comments: RequestComment[]
+  /** display names and avatars of the authors */
+  profiles: Record<AccountId, { name: string; avatar?: AvatarId | null }>
+}
+/** POST /api/pots/[pot]/requests/[id]/comments */
+export interface CommentPostReq {
+  /** 1-280 code points after NFC + trim; line breaks allowed (≤ 2 in a row), no other control characters */
+  body: string
+  /** the composer's op id: a retried send with the same key returns the first comment (replayed) */
+  idempotencyKey?: OpKey
+}
+export interface CommentPostRes extends Ok {
+  comment: RequestComment
+}
+/** DELETE /api/pots/[pot]/requests/[id]/comments/[commentId]: the author only; soft (idempotent) */
+export interface CommentDeleteRes extends Ok {
+  comment: RequestComment
 }
 
 export interface PotMeta {
@@ -583,7 +622,7 @@ export interface PushUnsubReq {
 export type PushUnsubRes = Ok
 
 /** §6.2 Declarative Web Push payload (≤ 2,500 bytes as JSON). */
-export type NotificationType = "approval_needed" | "request_resolved" | "money_arrived" | "member_joined" | "deposit_status" | "pot_closed" | "nudge"
+export type NotificationType = "approval_needed" | "request_resolved" | "money_arrived" | "member_joined" | "deposit_status" | "pot_closed" | "nudge" | "comment"
 export interface PushPayload {
   web_push: 8030
   notification: {
@@ -735,6 +774,9 @@ export interface ApiRoutes {
   "POST /api/notes": Route<NoteReq, NoteRes>
   "POST /api/nudges": Route<NudgeReq, NudgeRes>
   "GET /api/pots/[pot]/feed": Route<FeedQuery, FeedRes>
+  "GET /api/pots/[pot]/requests/[id]/comments": Route<void, CommentsRes>
+  "POST /api/pots/[pot]/requests/[id]/comments": Route<CommentPostReq, CommentPostRes>
+  "DELETE /api/pots/[pot]/requests/[id]/comments/[commentId]": Route<void, CommentDeleteRes>
   "GET /api/pots/meta": Route<PotsMetaQuery, PotsMetaRes>
   "PATCH /api/pots/[pot]/meta": Route<PotMetaPatch, PotMetaRes>
   "POST /api/push/subscription": Route<PushSubReq, PushSubRes>

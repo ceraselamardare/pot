@@ -52,6 +52,13 @@ export const noteReq = z.strictObject({
   idempotencyKey: opKey.optional(),
 })
 
+/** POST /api/pots/[pot]/requests/[id]/comments: the text is cleaned and length-checked in server/features/comments.ts
+ *  (cleanComment: 1-280 code points after NFC + trim); the raw cap here only bounds the work. */
+export const commentPostReq = z.strictObject({
+  body: z.string().min(1).max(2000),
+  idempotencyKey: opKey.optional(),
+})
+
 // X-06 push subscriptions (api-spec §2.6): shapes here; the endpoint host allowlist and key lengths are checked
 // in server/notify/subscriptions.ts (→ args_invalid, not bad_request)
 export const pushSubReq = z.strictObject({

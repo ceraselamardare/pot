@@ -6,6 +6,7 @@
 // Pending ops render on top with "Sending…"; a failed one fades out (the toast says what happened).
 import { Check, DoorClosed, Hand, PartyPopper, Scale, UserPlus } from "lucide-react"
 import { Fragment } from "react"
+import { CommentCount } from "@/components/comments/RequestComments"
 import { Avatar } from "@/components/pot/Avatar"
 import { MoneyText } from "@/components/money/MoneyText"
 import { StatusChip } from "@/components/pot/StatusChip"
@@ -139,7 +140,12 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
           avatar={r.requester}
           onOpen={open}
           main={t("feed.pending", { name: r.requester.name, amount: amountWhole, reason })}
-          sub={<span>{t("approve.expires", { relativeTime: inWords(r.expiresAt, now) })}</span>}
+          sub={
+            <>
+              <span>{t("approve.expires", { relativeTime: inWords(r.expiresAt, now) })}</span>
+              <CommentCount n={r.comments} />
+            </>
+          }
           chip={<StatusChip status="needs">{t("approve.progress", { count: r.approvals.length, k: r.k })}</StatusChip>}
           amount={<MoneyText micro={r.amount} className="text-ink" />}
         />
@@ -151,7 +157,12 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
           avatar={r.receiver}
           onOpen={open}
           main={t("feed.approved", { amount: amountWhole, name: r.receiver.name, reason })}
-          sub={<span>{t("feed.approved.sub", { names: names(r.approvals) })}</span>}
+          sub={
+            <>
+              <span>{t("feed.approved.sub", { names: names(r.approvals) })}</span>
+              <CommentCount n={r.comments} />
+            </>
+          }
           chip={<StatusChip status={sentKey ? "sent" : "approved"} />}
           amount={<MoneyText micro={r.amount} sign="out" className="text-ink" />}
         />
@@ -163,7 +174,12 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
           avatar={r.requester}
           onOpen={open}
           main={t("feed.declined", { name: r.requester.name, amount: amountWhole })}
-          sub={<span>{t("feed.declined.sub", { names: names(r.declines) })}</span>}
+          sub={
+            <>
+              <span>{t("feed.declined.sub", { names: names(r.declines) })}</span>
+              <CommentCount n={r.comments} />
+            </>
+          }
           chip={<StatusChip status="declined" />}
           amount={<NotSent r={r} />}
         />
@@ -175,7 +191,12 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
           avatar={r.requester}
           onOpen={open}
           main={t("feed.expired", { name: r.requester.name, amount: amountWhole })}
-          sub={<span>{t("feed.expired.sub", { date: formatDate(r.expiresAt) })}</span>}
+          sub={
+            <>
+              <span>{t("feed.expired.sub", { date: formatDate(r.expiresAt) })}</span>
+              <CommentCount n={r.comments} />
+            </>
+          }
           chip={<StatusChip status="expired" />}
           amount={<NotSent r={r} />}
         />
@@ -187,7 +208,12 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
           avatar={r.receiver}
           onOpen={open}
           main={t("feed.failed", { amount: amountWhole })}
-          sub={<span>{t("feed.failed.sub")}</span>}
+          sub={
+            <>
+              <span>{t("feed.failed.sub")}</span>
+              <CommentCount n={r.comments} />
+            </>
+          }
           chip={<StatusChip status="failed" />}
           amount={<MoneyText micro={r.amount} className="text-ink-muted" />}
         />

@@ -1,3 +1,48 @@
+> **2026-11-01: Comments on requests.** A short thread on every spend request that opens the request sheet (waiting,
+> your own, approved, declined, expired, failed; instant spends don't open a sheet, so they have none), so the group
+> talks about a spend inside Pot. `components/comments/RequestComments.tsx` at the end of `ApproveSheet`: "Comments · N",
+> avatar (`Avatar`, brand pictures) + name ("You" for mine) + relative time + text (pre-wrap, React-escaped), oldest
+> first; empty state; a labelled one-line composer that grows to 4 lines (Enter sends, Shift+Enter breaks a line),
+> 280 code points with a counter from 40 left ("n characters too many" + `aria-invalid`, Send disabled), hint "Everyone
+> in {Pot} can read it."; [Send] is **secondary** (Approve / Done keep the one-marigold rule). Optimistic: the row shows
+> "Sending…" at once, "Not sent." + [Try again] (same op key → never posted twice) / [Discard] on failure; the author
+> deletes their own (soft → "Comment removed", focus back to the composer). The section's own `role=status` region (the
+> app's region is outside the modal) says "Comment sent." / "Comment deleted." / the failure. Cards: `CommentCount`
+> (Lucide `MessageCircle` + number + sr-only "n comments") on `RequestCard`, feed `RequestRow` sub-lines and the
+> Requests "Your requests" rows, only when > 0. **Layout change:** Approve's action buttons moved from a `sticky`
+> div inside the scroll body into the `Sheet` footer (portalled from `ApproveBody`, same look): with a thread at the
+> end of the body, the sticky bar sat over the composer and axe failed `target-size` in `avatars`/`screens`.
+> Data: `lib/client/comments.ts` (`useComments`, `sendComment`, `deleteComment`) — mock: `World.comments`
+> (`CommentRec`), `world.commentsOf/addComment/removeComment`, `store.postComment/deleteComment` (fail hook
+> `pot.mock.fail = "comment"`), `RequestVM.comments`; the seed now has a **declined $120 "Wine tasting" ask by Sam in
+> Porto Weekend (id 11, Maya declined, balance unchanged) with two comments**, so Maya's/Sam's Requests show a
+> "Decided" row. Live: React Query `['pot', dao, 'comments', id]` polled every 10 s while the sheet is open (visible
+> tab), writes update it in place and `refreshQuery` the bundle; counts come from the feed's `commentCounts`
+> (`live/vm.ts`). Text rule shared with the server: `lib/comment-text.ts`. i18n `comments.*`, `notif.comment.*`.
+> Tests: `components/__tests__/comments.test.tsx` (10), `lib/client/mock/comments.test.ts` (4),
+> `e2e/mock/comments.spec.ts` (4 × 3 projects, 320 px in mobile-day; axe + brand checks), testnet
+> `e2e/testnet/comments.testnet.ts` (**written, not run yet**: needs the human's OK; run it against a private DB with
+> 0003, see its header). Screens: `notes/screens/comments-{day,night}.png`.
+
+> **2026-11-01: Refund preview (R-33 M-6).** "What would I get back if this Pot closed now?" in three places. (1) The
+> hero's "Your share $122 · You put in $150" is now a quiet ink-muted button with a Lucide Info icon (≥ 44 px, hidden
+> words "What you'd get back if the Pot closed now") → `?sheet=refund` (`components/sheets/RefundSheet.tsx`): "If the
+> Pot closed now, you'd get back $122.00", You put in − Your part of the spending = You'd get back, one plain
+> "how it's worked out" sentence, the rounding line; [Got it] secondary (no marigold); closing / closed variants.
+> "Your share" was already would_get_back (mock `closeMath`; live preview_close → get_members → local floor). (2) Add
+> sheet: "After this, you'd get back $166.40 if the Pot closed." (`data-add-refund`). (3) Spend sheet, only when the
+> rules would take the spend: "Once it's paid, you'd get back $140 if the Pot closed. It comes out of everyone's
+> part, by what each person put in." (`data-spend-refund`). Members already showed "Gets back" per person: unchanged.
+> Math: `lib/client/refund.ts` = the hub's `prorata.rs` through the sdk twin (`floor(B × c_i / C)` over active members
+> in join order, remainder to the last contributor, else the last in join order with c > 0; B = live
+> `ft_balance_of(dao)`); Add = B + a, c_me + a, last = me; Spend = B − s. `PotVM.moneyUnit` (new): the mock's close
+> runs in cents, so the preview does too (absent = 1 micro, testnet). Mock `potView.lastContributor` now uses the
+> same fallback as `closeMath` (`lastContributorOf`). Tests: `lib/client/refund.test.ts` (contract vectors V1-V7,
+> edges, mock and live-VM parity: predicted-before == shown-after), `lib/client/refund.live.test.ts` (read-only views,
+> `LIVE_TESTNET=1` under the lock: hero share == get_members.would_get_back and the Spend preview == the hub's own
+> preview_close at B − s on 5 preview Pots, dust included), `e2e/mock/refund-preview.spec.ts`. Screens:
+> `notes/screens/refund-preview-{day,night}.png`.
+
 > **2026-11-01: Your balance, your history, receipts.** You → "Your Pot dollars" (`components/activity/YourBalance.tsx`,
 > token `ft_balance_of(me)` on the 10 s heartbeat; mock = spends paid to you + close refunds − own-dollar adds,
 > `world.ownDollarsOf`) and "Your activity" (`YourActivity.tsx`, by day, 30 a page). Data: `GET /api/me/activity`

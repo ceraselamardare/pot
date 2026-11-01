@@ -13,6 +13,7 @@ import { ApiError } from "../http/errors"
 import type { SessionCtx } from "../session/store"
 import { b64url, fromB64url } from "../util/crypto"
 import { daoSlug, SLUG_RE } from "../util/ids"
+import { commentCounts } from "./comments"
 import { ensurePot, isMember } from "./notes"
 import { avatarOrNull } from "@/lib/avatars"
 
@@ -176,6 +177,12 @@ export async function getFeed(
       }
     }
     body.declineReasons = declineReasons
+    // comments on requests (off-chain): how many each request has, for the cards' count
+    // (never fails the feed: a DB without migration 0003 just shows no counts)
+    body.commentCounts = await commentCounts(db, potId).catch((e: unknown) => {
+      console.error(JSON.stringify({ level: "error", where: "feed.commentCounts", err: String(e).slice(0, 200) }))
+      return {}
+    })
   }
 
   const cacheControl = s ? "private, no-store" : "public, s-maxage=5, stale-while-revalidate=30"

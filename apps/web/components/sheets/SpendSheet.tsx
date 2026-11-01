@@ -36,6 +36,7 @@ import {
 import { CATEGORIES } from "@/lib/client/mock/fixtures"
 import type { Category, PotVM } from "@/lib/client/mock/types"
 import { formatUsd, parseKeypad, type Micro } from "@/lib/client/money"
+import { refundAfterSpend } from "@/lib/client/refund"
 import { previewSpend } from "@/lib/client/rules"
 import { RulePreview } from "@/components/sheets/RulePreview"
 import { cn } from "@/lib/client/cn"
@@ -88,6 +89,8 @@ export function SpendSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
     receiverIsMember: pot.members.some((m) => m.person.id === to),
   })
   const canSubmit = (preview.path === "instant" || preview.path === "vote") && online
+  // R-33 M-6: once it's paid, what you'd get back if the Pot closed (only for a spend the rules would take)
+  const refundAfter = amount > 0n && (preview.path === "instant" || preview.path === "vote") ? refundAfterSpend(pot, amount) : null
   const amountWhole = formatUsd(amount, "whole")
   const cta =
     preview.path === "empty"
@@ -218,6 +221,11 @@ export function SpendSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
           )}
           <AmountDisplay value={value} label={t("spend.amount.label")} />
           <RulePreview preview={preview} pot={pot} used={me.spentInstant} />
+          {refundAfter !== null && (
+            <p className="-mt-2 text-body-sm text-ink-muted tabular-nums" data-spend-refund>
+              {t("spend.refund_after", { refund: formatUsd(refundAfter, "whole") })}
+            </p>
+          )}
           <div>
             <p className="mb-2 text-body-sm text-ink-muted" id="reason-label">
               {t("spend.reason.label")}

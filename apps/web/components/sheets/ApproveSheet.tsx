@@ -6,7 +6,9 @@
 // A group approval gets a calm check and `approve.final`, never the burst (brand: one celebration only).
 import { Check, Clock, Hourglass, X } from "lucide-react"
 import { useReducer, useState } from "react"
+import { createPortal } from "react-dom"
 import { toast } from "sonner"
+import { RequestComments } from "@/components/comments/RequestComments"
 import { Bone } from "@/components/feedback/States"
 import { MoneyText } from "@/components/money/MoneyText"
 import { Avatar } from "@/components/pot/Avatar"
@@ -46,12 +48,15 @@ export function ApproveSheet({ pot, requestId, onClose }: { pot: PotVM; requestI
   const open = requestId !== null
   // keep showing the last request while the sheet animates out
   const [lastId, setLastId] = useState(requestId)
+  const [actions, setActions] = useState<HTMLDivElement | null>(null)
   if (requestId !== null && requestId !== lastId) setLastId(requestId)
   const r = useRequest(pot.slug, requestId ?? lastId)
   const req = r ?? null
   const title = req ? t("approve.title", { name: req.requester.name, amount: formatUsd(req.amount, "whole") }) : t("approve.dialog.label")
   return (
-    <Sheet open={open} onClose={onClose} title={title} label={title}>
+    // the decision buttons live in the sheet's footer (outside the scrolling body, so the comment thread at the end of
+    // the body is never under them); ApproveBody portals them there to keep its own state
+    <Sheet open={open} onClose={onClose} title={title} label={title} footer={req ? <div ref={setActions} className="flex flex-col gap-2" data-approve-actions /> : undefined}>
       {r === undefined ? (
         <div className="flex flex-col gap-3 pt-2" aria-hidden>
           <Bone className="h-11 w-40" />
@@ -59,7 +64,7 @@ export function ApproveSheet({ pot, requestId, onClose }: { pot: PotVM; requestI
           <Bone className="h-24 w-full rounded-md" />
         </div>
       ) : req ? (
-        <ApproveBody key={req.id} pot={pot} r={req} onClose={onClose} />
+        <ApproveBody key={req.id} pot={pot} r={req} onClose={onClose} actions={actions} />
       ) : (
         <p className="py-6 text-body text-ink-muted">{t("approve.not_found")}</p>
       )}
@@ -67,7 +72,7 @@ export function ApproveSheet({ pot, requestId, onClose }: { pot: PotVM; requestI
   )
 }
 
-function ApproveBody({ pot, r, onClose }: { pot: PotVM; r: RequestVM; onClose: () => void }) {
+function ApproveBody({ pot, r, onClose, actions }: { pot: PotVM; r: RequestVM; onClose: () => void; actions: HTMLElement | null }) {
   const now = useNow()
   const online = useOnline()
   const me = pot.me?.person.id ?? null
@@ -161,39 +166,46 @@ function ApproveBody({ pot, r, onClose }: { pot: PotVM; r: RequestVM; onClose: (
         </label>
       )}
 
-      <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-surface px-4 pt-3 pb-[calc(4px+env(safe-area-inset-bottom))] md:-mx-6 md:px-6">
-        {canDecide && phase.tag === "declining" ? (
+      {/* the group's thread about this spend (off-chain); its [Send] is secondary, so Approve stays the one marigold */}
+      <RequestComments pot={pot} r={r} />
+
+      {actions &&
+        createPortal(
           <>
-            <Button className="w-full" onClick={() => cast("Reject")}>
-              {t("approve.decline.confirm")}
-            </Button>
-            <Button variant="ghost" className="w-full" onClick={() => dispatch({ type: "reset" })}>
-              {t("approve.decline.cancel")}
-            </Button>
-          </>
-        ) : canDecide ? (
-          <>
-            {!online && <p className="text-body-sm text-ink-muted">{t("approve.offline")}</p>}
-            <Button
-              variant="primary"
-              className="w-full"
-              aria-disabled={!online || undefined}
-              disabled={phase.tag === "voting"}
-              aria-busy={phase.tag === "voting" || undefined}
-              onClick={() => cast("Approve")}
-            >
-              {phase.tag === "voting" && phase.v === "Approve" ? t("approve.cta.approving") : t("approve.cta.approve", { amount: amountWhole })}
-            </Button>
-            <Button className="w-full" disabled={phase.tag === "voting"} onClick={() => dispatch({ type: "set", phase: { tag: "declining" } })}>
-              {t("approve.cta.decline")}
-            </Button>
-          </>
-        ) : (
-          <Button variant={phase.tag === "done" ? "primary" : "secondary"} className="w-full" onClick={onClose}>
-            {t("spend.done")}
-          </Button>
+            {canDecide && phase.tag === "declining" ? (
+              <>
+                <Button className="w-full" onClick={() => cast("Reject")}>
+                  {t("approve.decline.confirm")}
+                </Button>
+                <Button variant="ghost" className="w-full" onClick={() => dispatch({ type: "reset" })}>
+                  {t("approve.decline.cancel")}
+                </Button>
+              </>
+            ) : canDecide ? (
+              <>
+                {!online && <p className="text-body-sm text-ink-muted">{t("approve.offline")}</p>}
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  aria-disabled={!online || undefined}
+                  disabled={phase.tag === "voting"}
+                  aria-busy={phase.tag === "voting" || undefined}
+                  onClick={() => cast("Approve")}
+                >
+                  {phase.tag === "voting" && phase.v === "Approve" ? t("approve.cta.approving") : t("approve.cta.approve", { amount: amountWhole })}
+                </Button>
+                <Button className="w-full" disabled={phase.tag === "voting"} onClick={() => dispatch({ type: "set", phase: { tag: "declining" } })}>
+                  {t("approve.cta.decline")}
+                </Button>
+              </>
+            ) : (
+              <Button variant={phase.tag === "done" ? "primary" : "secondary"} className="w-full" onClick={onClose}>
+                {t("spend.done")}
+              </Button>
+            )}
+          </>,
+          actions,
         )}
-      </div>
     </div>
   )
 }

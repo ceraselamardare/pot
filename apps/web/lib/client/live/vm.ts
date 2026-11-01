@@ -150,6 +150,7 @@ export function liveRequestVM(b: LiveBundle, r: RequestView, ctx: LiveContext, p
     instantCap: v.rules.instantCap,
     memberBudget: v.rules.memberBudget,
     balanceAfter: b.balance > r.amount ? b.balance - r.amount : 0n,
+    comments: b.feed?.commentCounts?.[String(r.id)] ?? 0,
     ...receiptOfRequest(b, r),
   }
 }

@@ -5,6 +5,7 @@
 // "Approved · Undo" for 4 s and sends nothing until the window ends (WCAG 3.3.4). Decline opens the sheet,
 // where the optional reason lives. The sentence button opens the sheet for review.
 import { Check } from "lucide-react"
+import { CommentCount } from "@/components/comments/RequestComments"
 import { Avatar } from "@/components/pot/Avatar"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { MoneyText } from "@/components/money/MoneyText"
@@ -66,6 +67,7 @@ export function RequestCard({
           <span className="mt-2 flex flex-wrap items-center gap-2">
             <StatusChip status="needs">{t("approve.progress", { count: r.approvals.length, k: r.k })}</StatusChip>
             <span className="text-body-sm text-ink-muted">{t("approve.expires", { relativeTime: inWords(r.expiresAt, now) })}</span>
+            <CommentCount n={r.comments} />
           </span>
         </span>
         <MoneyText micro={r.amount} className="pt-0.5 text-ink" />

@@ -27,6 +27,9 @@ export function cleanDisplayName(input: string): TextCheck {
 
 export const cleanNote = (input: string) => cleanText(input, { min: 1, max: 140 })
 
+// comments on requests: the same cleaner runs in the browser (lib/comment-text.ts)
+export { cleanComment, COMMENT_MAX } from "@/lib/comment-text"
+
 /** Default display name for a new NEAR Auth user (api-spec §2.1): never derived from the email. */
 export function defaultDisplayName(given?: unknown, name?: unknown): string {
   for (const c of [given, name]) {

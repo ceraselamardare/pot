@@ -4,7 +4,9 @@
 // when it changes (instant under reduced motion; never animated on first paint: it's the LCP element).
 // Pending money shows on its own line ("+$150 on the way") and is never added to the big number.
 // [Add money] is the Pot screen's one marigold button; [Spend] is secondary (design-direction fix).
-import { ArrowUpRight, Clock, Plus } from "lucide-react"
+// "You'd get back $122 · You put in $150" is a quiet button (R-33 M-6): it opens ?sheet=refund, what you'd get back if the
+// Pot closed now and how it's worked out (components/sheets/RefundSheet.tsx).
+import { ArrowUpRight, Clock, Info, Plus } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -52,6 +54,7 @@ export function BalanceHero({
   closing,
   closedAt,
   addVariant = "primary",
+  onShare,
 }: {
   balance: Micro
   share: Micro
@@ -67,6 +70,8 @@ export function BalanceHero({
   closedAt?: number | null
   /** integrations (D-50): "secondary" while an arrived deposit card holds the screen's one marigold button */
   addVariant?: "primary" | "secondary"
+  /** R-33 M-6: "You'd get back" opens the refund explainer (?sheet=refund); without it the line is plain text */
+  onShare?: () => void
 }) {
   const shown = useCountUp(balance)
   const online = useOnline()
@@ -86,9 +91,24 @@ export function BalanceHero({
       <p className="mt-1">
         <MoneyText micro={shown} variant="hero" className="text-ink" />
       </p>
-      <p className="mt-1 text-body-sm text-ink-muted">
-        {t("pot.hero.share", { share: formatUsd(share, "whole"), contributed: formatUsd(contributed, "whole") })}
-      </p>
+      {onShare ? (
+        // the whole line is the tap target (≥ 44 px), quiet ink-muted with an info icon; the hidden words say where it goes
+        <button
+          type="button"
+          onClick={onShare}
+          aria-haspopup="dialog"
+          data-hero-share
+          className="-mx-1 mt-0.5 inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-sm px-1 text-left text-body-sm text-ink-muted tabular-nums underline-offset-4 hover:text-ink hover:underline"
+        >
+          <span>{t("pot.hero.share", { share: formatUsd(share, "whole"), contributed: formatUsd(contributed, "whole") })}</span>
+          <span className="sr-only"> · {t("pot.hero.share.more")}</span>
+          <Info aria-hidden className="size-4 shrink-0" strokeWidth={2} />
+        </button>
+      ) : (
+        <p className="mt-1 text-body-sm text-ink-muted">
+          {t("pot.hero.share", { share: formatUsd(share, "whole"), contributed: formatUsd(contributed, "whole") })}
+        </p>
+      )}
       {pendingIn > 0n && (
         <p className="pot-enter mt-2 inline-flex items-center gap-1.5 text-body-sm text-ink-muted" data-pending-in>
           <Clock aria-hidden className="size-4" strokeWidth={2} />

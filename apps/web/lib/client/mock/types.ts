@@ -121,12 +121,27 @@ export interface PotRec {
   lastContributor?: string | null
 }
 
+/** A comment on a request (the mock's stand-in for the request_comment table). */
+export interface CommentRec {
+  id: string
+  /** Pot slug */
+  pot: string
+  requestId: number
+  author: string
+  /** '' once removed */
+  body: string
+  createdAt: number
+  deletedAt?: number
+}
+
 export interface World {
   v: 1
   pots: Record<string, PotRec>
   nextRequestId: number
   /** person id → chosen brand avatar (the mock's stand-in for app_user.avatar); absent = initials */
   avatars?: Record<string, AvatarId>
+  /** comments on requests, oldest first; absent in worlds saved before comments */
+  comments?: CommentRec[]
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -179,6 +194,19 @@ export interface RequestVM {
   txHash?: string
   /** when each member approved/declined (mock only; the chain doesn't keep vote times) */
   voteAt?: Record<string, number>
+  /** comments on this request that aren't removed (the feed's commentCounts on testnet) */
+  comments?: number
+}
+
+/** One comment in a request's thread (newest at the bottom). */
+export interface CommentVM {
+  id: string
+  author: PersonVM
+  /** null once removed ("Comment removed") */
+  body: string | null
+  createdAt: number
+  deleted: boolean
+  mine: boolean
 }
 
 /** `txHash`: the settled transaction behind the item (its receipt); absent when unknown or still pending. */
@@ -286,6 +314,8 @@ export interface PotVM {
   closingInFlight?: boolean
   /** who added money last (the close's tiny remainder goes to them) */
   lastContributor?: PersonVM | null
+  /** the close math's smallest amount: absent = 1 micro (testnet); the mock world keeps cents (lib/client/refund.ts) */
+  moneyUnit?: Micro
   /** null on testnet when this device doesn't hold a live link's secret (make a new one) */
   invite: { pk: string; secret: string; expiresAt: number; usesLeft: number; createdBy: PersonVM } | null
 }

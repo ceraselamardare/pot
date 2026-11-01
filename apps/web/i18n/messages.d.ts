@@ -49,6 +49,7 @@ export interface Messages {
   "add.finish_pending.title": { amount: string | number }
   "add.offline": undefined
   "add.range": { max: string | number }
+  "add.refund_after": { refund: string | number }
   "add.sending": { amount: string | number }
   "add.source.demo": undefined
   "add.source.label": undefined
@@ -250,6 +251,32 @@ export interface Messages {
   "coach.ios_other.step1": undefined
   "coach.ios_other.step2": undefined
   "coach.title": undefined
+  "comments.composer.hint": { potName: string | number }
+  "comments.composer.label": undefined
+  "comments.composer.placeholder": undefined
+  "comments.count": { n: number }
+  "comments.delete": undefined
+  "comments.delete.label": { time: string | number }
+  "comments.deleted": undefined
+  "comments.discard": undefined
+  "comments.empty": undefined
+  "comments.error.delete": undefined
+  "comments.error.load": undefined
+  "comments.error.offline": undefined
+  "comments.error.retry": undefined
+  "comments.error.send": undefined
+  "comments.failed": undefined
+  "comments.heading": undefined
+  "comments.heading.count": { n: string | number }
+  "comments.left": { n: number }
+  "comments.loading": undefined
+  "comments.over": { n: number }
+  "comments.removed": undefined
+  "comments.retry": undefined
+  "comments.send": undefined
+  "comments.sending": undefined
+  "comments.sent": undefined
+  "comments.you": undefined
   "confirm.blocked": undefined
   "confirm.body": { actionSummary: string | number }
   "confirm.body.add_device": undefined
@@ -991,6 +1018,9 @@ export interface Messages {
   "notif.closed.body": { refund: string | number }
   "notif.closed.body_plain": undefined
   "notif.closed.title": { potName: string | number }
+  "notif.comment.body": { amount: string | number; reason: string | number; potName: string | number }
+  "notif.comment.thread.title": { name: string | number; requester: string | number }
+  "notif.comment.title": { name: string | number }
   "notif.contribution.body": { potName: string | number }
   "notif.contribution.title": { name: string | number; amount: string | number }
   "notif.declined.body": { amount: string | number; reason: string | number }
@@ -1023,6 +1053,7 @@ export interface Messages {
   "pot.hero.label": undefined
   "pot.hero.pending": { amount: string | number }
   "pot.hero.share": { share: string | number; contributed: string | number }
+  "pot.hero.share.more": undefined
   "pot.menu.close": undefined
   "pot.menu.label": { potName: string | number }
   "pot.menu.share": undefined
@@ -1081,6 +1112,17 @@ export interface Messages {
   "receipt.link": undefined
   "receipt.link.label": { what: string | number }
   "receipt.title": undefined
+  "refund.gets_back": undefined
+  "refund.got_back": undefined
+  "refund.how": { mine: string | number; total: string | number; left: string | number }
+  "refund.how.closed": undefined
+  "refund.how.none": undefined
+  "refund.lead": undefined
+  "refund.lead.closed": undefined
+  "refund.lead.closing": undefined
+  "refund.part_of_spending": undefined
+  "refund.put_in": undefined
+  "refund.title": { potName: string | number }
   "relayer.cap": undefined
   "relayer.down.banner": undefined
   "requests.badge.a11y": { n: number }
@@ -1213,6 +1255,7 @@ export interface Messages {
   "spend.reason.word.stay": undefined
   "spend.reason.word.tickets": undefined
   "spend.reason.word.transport": undefined
+  "spend.refund_after": { refund: string | number }
   "spend.refused": undefined
   "spend.see_rule": undefined
   "spend.sending": { amount: string | number }

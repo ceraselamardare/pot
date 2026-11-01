@@ -20,7 +20,7 @@ export interface Session {
 }
 
 /** Relay-like latencies (ms). The spend machine adds its own 1.2 s minimum on top. */
-export const LATENCY = { relay: 700, setup: 1400, join: 1100, create: 1600, add: 900, profile: 300 } as const
+export const LATENCY = { relay: 700, setup: 1400, join: 1100, create: 1600, add: 900, profile: 300, comment: 350 } as const
 
 let world: World | null = null
 let session: Session | null | undefined
@@ -267,4 +267,34 @@ export async function setRules(slug: string, rules: RulesRec): Promise<void> {
   maybeFail("rules")
   const w = await hubCall(() => W.setRules(ensureWorld(), slug, me(), rules, Date.now()))
   commit(w)
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// comments on requests (the mock's GET/POST/DELETE …/requests/[id]/comments). Fault hook: 'comment' (the next send
+// or delete fails like an unreachable server, so the composer's retry can be tested).
+
+function commentCall<T>(fn: () => T): T {
+  try {
+    return fn()
+  } catch (e) {
+    if (e instanceof W.CommentWorldError) throw new MockRelayError(e.code === "not_member" ? "not_a_member" : e.code === "invalid" ? "bad_request" : "not_found")
+    throw e
+  }
+}
+
+/** Post a comment; the same key twice returns the first one (like the API's idempotency key). */
+export async function postComment(slug: string, requestId: number, body: string, key: string): Promise<string> {
+  await sleep(LATENCY.comment)
+  maybeFail("comment")
+  const id = `m-${key}`
+  const w = ensureWorld()
+  if ((w.comments ?? []).some((c) => c.id === id)) return id
+  commit(commentCall(() => W.addComment(w, slug, requestId, me(), body, Date.now(), id)))
+  return id
+}
+
+export async function deleteComment(slug: string, requestId: number, id: string): Promise<void> {
+  await sleep(LATENCY.comment)
+  maybeFail("comment")
+  commit(commentCall(() => W.removeComment(ensureWorld(), slug, requestId, id, me(), Date.now())))
 }

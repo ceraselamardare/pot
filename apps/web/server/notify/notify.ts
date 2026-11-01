@@ -31,6 +31,19 @@ export type NotifyEvent =
   | { type: "request_resolved"; pot: string; proposalId: number; requester: string; status: "approved" | "declined" | "expired"; amount?: string; category?: string }
   | { type: "money_arrived"; pot: string; actor: string; amount: string; txHash: string }
   | { type: "pot_closed"; pot: string; recipients: string[] }
+  /** a comment on a request: `requester` audience = the requester; `thread` = earlier commenters (never the author) */
+  | {
+      type: "comment"
+      audience: "requester" | "thread"
+      pot: string
+      requestId: number
+      commentId: string
+      actor: string
+      requester: string
+      recipients: string[]
+      amount?: string
+      category?: string
+    }
 
 export interface NotifyReport {
   eventKey: string
@@ -54,6 +67,8 @@ export function eventKey(ev: NotifyEvent): string {
       return `contribution:${ev.txHash}`
     case "pot_closed":
       return `closed:${ev.pot}`
+    case "comment":
+      return `comment:${ev.pot}:${ev.requestId}:${ev.commentId}:${ev.audience}`
   }
 }
 
@@ -64,6 +79,11 @@ const reasonWord = (c: string | undefined) =>
 /** Recipients' accounts per event (api-spec §6.1). */
 async function recipientAccounts(deps: NotifyDeps, ev: NotifyEvent): Promise<string[]> {
   if (ev.type === "pot_closed") return ev.recipients
+  if (ev.type === "comment") {
+    // only people still in the Pot, never the author
+    const active = new Set((await deps.hub.getMembers(ev.pot, { fresh: true }).catch(() => [])).filter((m) => m.status === "active").map((m) => m.account_id))
+    return ev.recipients.filter((a) => a !== ev.actor && active.has(a))
+  }
   if (ev.type === "request_resolved") return [ev.requester]
   const members = (await deps.hub.getMembers(ev.pot, { fresh: true }).catch(() => [])).filter((m) => m.status === "active").map((m) => m.account_id)
   if (ev.type === "money_arrived") return members.filter((a) => a !== ev.actor)
@@ -137,6 +157,20 @@ function render(ev: NotifyEvent, names: Map<string, string>, potName: string, sl
         push: { ttl: 6 * 3600, urgency: "low", topic: topic(ev.pot, "c") },
         data: { pot: ev.pot },
       }
+    case "comment": {
+      // lock-screen safe: who and which request, never the comment's text
+      const title =
+        ev.audience === "requester"
+          ? t("notif.comment.title", { name: name(ev.actor) })
+          : t("notif.comment.thread.title", { name: name(ev.actor), requester: name(ev.requester) })
+      return {
+        title,
+        body: t("notif.comment.body", { amount: money(ev.amount), reason: reasonWord(ev.category), potName }),
+        path: `/p/${slug}?r=${ev.requestId}`,
+        push: { ttl: DAY, urgency: "normal", topic: topic(ev.pot, `comment:${ev.requestId}`) },
+        data: { pot: ev.pot, requestId: ev.requestId, subject: "comment" },
+      }
+    }
     case "pot_closed":
       return {
         title: t("notif.closed.title", { potName }),
@@ -177,6 +211,10 @@ export async function notify(deps: NotifyDeps, ev: NotifyEvent): Promise<NotifyR
   const extra: { approvers?: string[]; expiresInSec?: number } = {}
   const nameAccounts = new Set<string>()
   if (ev.type === "approval_needed" || ev.type === "money_arrived") nameAccounts.add(ev.actor)
+  if (ev.type === "comment") {
+    nameAccounts.add(ev.actor)
+    nameAccounts.add(ev.requester)
+  }
   if ((ev.type === "approval_needed" && ev.subject === "spend") || (ev.type === "request_resolved" && ev.status === "approved")) {
     const p = await hub.getProposal(ev.pot, ev.proposalId).catch(() => null)
     if (p && ev.type === "request_resolved") {
@@ -262,6 +300,31 @@ async function setLog(db: Db, key: string, userId: string, status: "sent" | "fai
     .update(notificationLog)
     .set({ status, sentAt: status === "sent" ? new Date() : null, detail })
     .where(and(eq(notificationLog.eventKey, key), eq(notificationLog.userId, userId), eq(notificationLog.channel, "push")))
+}
+
+/**
+ * A new comment → push to the requester ("Maya commented on your request") and to earlier commenters ("Maya also
+ * commented on Sam's request"), never to the author, only to active members with push on. Never throws.
+ */
+export async function notifyComment(
+  deps: NotifyDeps,
+  c: { pot: string; requestId: number; commentId: string; actor: string; requester: string; amount?: string; category?: string; earlier: string[] },
+): Promise<NotifyReport[]> {
+  if (!deps.sender) return []
+  const base = { type: "comment" as const, pot: c.pot, requestId: c.requestId, commentId: c.commentId, actor: c.actor, requester: c.requester, amount: c.amount, category: c.category }
+  const out: NotifyReport[] = []
+  const thread = c.earlier.filter((a) => a !== c.requester && a !== c.actor)
+  for (const ev of [
+    ...(c.requester !== c.actor ? [{ ...base, audience: "requester" as const, recipients: [c.requester] }] : []),
+    ...(thread.length ? [{ ...base, audience: "thread" as const, recipients: thread }] : []),
+  ]) {
+    try {
+      out.push(await notify(deps, ev))
+    } catch (e) {
+      console.error(JSON.stringify({ level: "error", where: "notify", event: "comment", err: String(e).slice(0, 200) }))
+    }
+  }
+  return out
 }
 
 // ---------------------------------------------------------------------------------------------

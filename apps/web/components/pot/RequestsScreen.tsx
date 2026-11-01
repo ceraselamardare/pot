@@ -8,6 +8,7 @@ import { RequestRow, reasonWord } from "@/components/pot/Feed"
 import { RequestCard } from "@/components/pot/RequestCard"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { Avatar } from "@/components/pot/Avatar"
+import { CommentCount } from "@/components/comments/RequestComments"
 import { MoneyText } from "@/components/money/MoneyText"
 import { ApproveSheet } from "@/components/sheets/ApproveSheet"
 import { pageTitle, t } from "@/i18n/t"
@@ -74,6 +75,7 @@ export function RequestsScreen() {
                           <span className="mt-2 flex flex-wrap items-center gap-2">
                             <StatusChip status="needs">{t("approve.progress", { count: r.approvals.length, k: r.k })}</StatusChip>
                             <span className="text-body-sm text-ink-muted">{t("approve.expires", { relativeTime: inTime(r.expiresAt, now) })}</span>
+                            <CommentCount n={r.comments} />
                           </span>
                         </span>
                         <MoneyText micro={r.amount} className="pt-0.5 text-ink" />

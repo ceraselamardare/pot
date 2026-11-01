@@ -342,3 +342,37 @@ The tail is the per-persona queue (10 sessions share 3 personas; a persona signs
 - `rules_change_proposed` pushes reuse `rules.change.pending` + `notif.close.body_plain` (no `notif.rules.*` keys in ux-spec yet).
 - Demo-push subscriptions need `FLAG_DEMO_PUSH=true` (off by default; R-15 decision at G4).
 - 1Click `deposit_intent` retention and the `deposit_status` push are left to the integrations owner (`watchDeposit`).
+
+
+---
+
+# Comments on requests (2026-11-01)
+
+- **Table** `request_comment` (**migration `db/migrations/0003_request_comment.sql`**, drizzle-kit generated, journal +
+  snapshot): `id` bigserial, `pot_id` → pot, `request_id` (hub request id), `author_account`, `body`, `client_key`,
+  `created_at`, `deleted_at`; index (pot, request, created_at); unique (author, client_key) where set; CHECK
+  `request_comment_body_ck` (live: 1-280 chars; removed: `body = ''`). Off-chain only, no transactions.
+  **Apply it to the local `pot` DB (and preview/prod) before running a build with this code**:
+  `DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot pnpm --filter web exec drizzle-kit migrate`. Without it
+  the comment routes 500; the feed route survives (its `commentCounts` is caught and logged).
+- **Routes** (`app/api/pots/[pot]/requests/[id]/comments/route.ts`, `…/comments/[commentId]/route.ts`; logic in
+  `server/features/comments.ts`): `GET` (session; the last 200, oldest first, `profiles` for the authors), `POST`
+  `{body, idempotencyKey?}` (CSRF/Origin, strict zod `commentPostReq`, active device; 201, a replay 200 `replayed`,
+  another body under the same key 409 `idempotency_conflict`; the request must exist on the hub → else 404), `DELETE`
+  (author only; someone else's or a missing one → 404 `not_found`; soft + idempotent). Every call checks membership
+  with `isMember` (hub `get_members`, active only), like notes and the feed's member fields → 403 `not_a_member`.
+  Text: `cleanComment` (`lib/comment-text.ts`): NFC, CRLF → LF, tabs → space, trailing spaces cut, ≤ 1 blank line,
+  trimmed, 1-280 code points, no Cc but `\n`, no Cf but ZWJ/VS16 → 400 `bad_request {field: body, why}`. No HTML
+  handling: stored verbatim, React escapes it. Quotas: `user_comment_burst` 10/min (→ 429 `rate_limited` +
+  `retryAfterMs`) and `user_comments` 200/day (→ 429 `quota_exceeded {family: comments}`).
+- **Feed:** members get `commentCounts` (request id → comments not removed). SDK types: `RequestComment`,
+  `CommentsRes` (`hubRequestId`: `requestId` is the envelope's), `CommentPostReq/Res`, `CommentDeleteRes`,
+  `FeedRes.commentCounts`, `QuotaFamily "comments"`, `NotificationType "comment"`, three `ApiRoutes` rows.
+- **Push** (`notifyComment` in `server/notify/notify.ts`, in `after()` from the POST route, only with VAPID set): the
+  requester gets "{name} commented on your request", earlier commenters "{name} also commented on {requester}'s
+  request"; never the author, only active members (fresh `get_members`), only people with a push subscription (the
+  existing preference: push on/off); body "{amount} for {reason} · {potName}" (never the comment text);
+  `navigate /p/<slug>?r=<requestId>` with no `proposalId` (the SW leaves `?r=` alone); topic per request; deduped
+  per comment and audience in `notification_log`.
+- Tests: `server/features/comments.test.ts` (22: members only incl. joining, validation, delete-own-only + the DB
+  CHECK, idempotency, burst/daily quotas, feed counts, onPosted recipients, push fan-out, route gates).

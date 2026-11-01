@@ -5,11 +5,13 @@ import { prorata, type Rules as SdkRules } from "@pot/sdk"
 import { sha256 } from "@noble/hashes/sha2.js"
 import { base58 } from "@scure/base"
 import { avatarOrNull, type AvatarId } from "@/lib/avatars"
-import { cents, type Micro } from "../money"
+import { cents, MICRO_PER_CENT, type Micro } from "../money"
 import { approvalsNeeded, expiresAt, previewSpend, type Rules } from "../rules"
 import { DAY, HOUR, LISBON_INVITE, MIN, PEOPLE, PORTO_INVITE } from "./fixtures"
 import type {
   Category,
+  CommentRec,
+  CommentVM,
   ClosePreviewVM,
   CloseRec,
   CloseVM,
@@ -78,7 +80,24 @@ export function seedWorld(now: number): World {
     rules: TRIP,
     balance: 30_000,
     members: [member("maya", 0, 15_000, now - 2 * DAY), member("sam", 1, 15_000, now - 1 * DAY)],
-    requests: [],
+    // a settled ask with a short thread, so the demo shows comments on a request (declined: the balance is unchanged)
+    requests: [
+      {
+        id: 11,
+        requester: "sam",
+        receiver: "sam",
+        amount: 12_000,
+        category: "food",
+        note: "Wine tasting",
+        path: "vote",
+        reason: "over_cap",
+        status: "rejected",
+        votes: { sam: "Approve", maya: "Reject" },
+        voteAt: { sam: now - 20 * HOUR, maya: now - 19 * HOUR },
+        createdAt: now - 20 * HOUR,
+        decidedAt: now - 19 * HOUR,
+      },
+    ],
     events: [
       { id: "p1", kind: "created", actor: "maya", at: now - 2 * DAY },
       { id: "p2", kind: "contribution", actor: "maya", amount: 15_000, at: now - 2 * DAY + 3 * MIN },
@@ -87,7 +106,11 @@ export function seedWorld(now: number): World {
     ],
     invite: { ...PORTO_INVITE, createdBy: "maya", expiresAt: now + 5 * DAY, maxUses: 10, uses: 1 },
   }
-  return { v: 1, pots: { [lisbon.slug]: lisbon, [porto.slug]: porto }, nextRequestId: 12 }
+  const comments: CommentRec[] = [
+    { id: "c1", pot: "porto-weekend", requestId: 11, author: "maya", body: "Love it, but can we book it once we're there? It's cheaper on the day.", createdAt: now - 19 * HOUR + 2 * MIN },
+    { id: "c2", pot: "porto-weekend", requestId: 11, author: "sam", body: "Fair. I'll ask again on Saturday 🍷", createdAt: now - 18 * HOUR },
+  ]
+  return { v: 1, pots: { [lisbon.slug]: lisbon, [porto.slug]: porto }, nextRequestId: 12, comments }
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -105,8 +128,12 @@ export const initialsOf = (name: string): string =>
 // The view being built reads avatars from its world. Views are synchronous, so each exported view sets this on
 // entry (withAvatars) instead of threading `w` through every helper that builds a PersonVM.
 let viewAvatars: Record<string, AvatarId> = {}
+// comments not removed, per "slug:requestId" (RequestVM.comments)
+let viewCommentCounts: Record<string, number> = {}
 function withAvatars(w: World) {
   viewAvatars = w.avatars ?? {}
+  viewCommentCounts = {}
+  for (const c of w.comments ?? []) if (!c.deletedAt) viewCommentCounts[`${c.pot}:${c.requestId}`] = (viewCommentCounts[`${c.pot}:${c.requestId}`] ?? 0) + 1
 }
 
 function person(pot: PotRec, id: string): PersonVM {
@@ -345,10 +372,15 @@ function tally(pot: PotRec, p: ProposalRec): "approved" | "rejected" | "proposed
   return yes >= k ? "approved" : no > n - k ? "rejected" : "proposed"
 }
 
+/** Who added money last (worlds saved before `lastContributor` existed: the newest contribution event). */
+export function lastContributorOf(pot: PotRec): string | null {
+  return pot.lastContributor ?? [...pot.events].reverse().find((e) => e.kind === "contribution")?.actor ?? null
+}
+
 /** The hub's close math over this Pot (cents): pro-rata by what each person put in, the remainder to the last contributor. */
 export function closeMath(pot: PotRec): { payouts: { account: string; amount: number }[]; dust: number; dustTo: string | null } {
   const contributions = [...pot.members].sort((a, b) => a.joinIndex - b.joinIndex).map((m) => ({ account: m.id, contributed: BigInt(m.contributed) }))
-  const last = pot.lastContributor ?? [...pot.events].reverse().find((e) => e.kind === "contribution")?.actor ?? null
+  const last = lastContributorOf(pot)
   const r = prorata(BigInt(Math.max(0, pot.balance)), contributions, last)
   if (!r) return { payouts: [], dust: 0, dustTo: null }
   return { payouts: r.payouts.map((p) => ({ account: p.account, amount: Number(p.amount) })), dust: Number(r.dust), dustTo: r.dustTo }
@@ -606,6 +638,7 @@ function requestVM(pot: PotRec, r: RequestRec, me: string | null, now: number): 
     balanceAfter: cents(Math.max(0, pot.balance - r.amount)),
     txHash: mockTxHash(`${pot.slug}:request:${r.id}`),
     voteAt: { ...r.voteAt },
+    comments: viewCommentCounts[`${pot.slug}:${r.id}`] ?? 0,
   }
 }
 
@@ -756,7 +789,9 @@ export function potView(w: World, slug: string, me: string | null, now: number):
     rulesPending: !!pot.rulesProposal && pot.rulesProposal.status === "proposed" && !proposalExpired(pot, pot.rulesProposal, now),
     closePreview: math ? closePreviewVM(pot, math) : null,
     closingInFlight: false,
-    lastContributor: pot.lastContributor ? person(pot, pot.lastContributor) : null,
+    lastContributor: lastContributorOf(pot) ? person(pot, lastContributorOf(pot)!) : null,
+    // the mock's money is whole cents, so its close math runs in cents (the refund preview mirrors that)
+    moneyUnit: MICRO_PER_CENT,
     invite: {
       pk: pot.invite.pk,
       secret: pot.invite.secret,
@@ -820,6 +855,48 @@ export function requestView(w: World, slug: string, id: number, me: string | nul
   const pot = w.pots[slug]
   const r = pot?.requests.find((x) => x.id === id)
   return pot && r ? requestVM(pot, r, me, now) : null
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// comments on requests (the mock's request_comment table): members only, the author removes their own
+
+export type CommentError = "not_member" | "not_found" | "not_author" | "invalid"
+
+export class CommentWorldError extends Error {
+  constructor(readonly code: CommentError) {
+    super(code)
+  }
+}
+
+/** One request's thread for `me` (oldest first, newest at the bottom); null when `me` isn't a member. */
+export function commentsOf(w: World, slug: string, requestId: number, me: string | null): CommentVM[] | null {
+  withAvatars(w)
+  const pot = w.pots[slug]
+  if (!pot || !me || !isMember(pot, me)) return null
+  return (w.comments ?? [])
+    .filter((c) => c.pot === slug && c.requestId === requestId)
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .map((c) => ({ id: c.id, author: person(pot, c.author), body: c.deletedAt ? null : c.body, createdAt: c.createdAt, deleted: !!c.deletedAt, mine: c.author === me }))
+}
+
+/** Add a comment (the text is already cleaned: lib/comment-text.ts). */
+export function addComment(w: World, slug: string, requestId: number, who: string, body: string, now: number, id: string): World {
+  const pot = w.pots[slug]
+  if (!pot || !isMember(pot, who)) throw new CommentWorldError("not_member")
+  if (!pot.requests.some((r) => r.id === requestId)) throw new CommentWorldError("not_found")
+  if (!body) throw new CommentWorldError("invalid")
+  return { ...w, comments: [...(w.comments ?? []), { id, pot: slug, requestId, author: who, body, createdAt: now }] }
+}
+
+/** Soft-remove the author's own comment (idempotent). */
+export function removeComment(w: World, slug: string, requestId: number, id: string, who: string, now: number): World {
+  const pot = w.pots[slug]
+  if (!pot || !isMember(pot, who)) throw new CommentWorldError("not_member")
+  const c = (w.comments ?? []).find((x) => x.id === id && x.pot === slug && x.requestId === requestId)
+  if (!c) throw new CommentWorldError("not_found")
+  if (c.author !== who) throw new CommentWorldError("not_author")
+  if (c.deletedAt) return w
+  return { ...w, comments: (w.comments ?? []).map((x) => (x === c ? { ...x, body: "", deletedAt: now } : x)) }
 }
 
 export type { Micro }

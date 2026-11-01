@@ -19,6 +19,7 @@ import { formatUsd, parseKeypad, toKeypad, type Micro } from "@/lib/client/money
 import type { PotVM } from "@/lib/client/mock/types"
 import { cn } from "@/lib/client/cn"
 import type { AddSource } from "@/lib/client/machines/add-flow"
+import { refundAfterAdd } from "@/lib/client/refund"
 import { pushSheetStep } from "@/lib/client/sheet"
 
 const NOTE_KEY = "pot.usdcNote.seen"
@@ -74,6 +75,8 @@ export function AddMoneySheet({
   const short = source === "pot_dollars" && amount > ownDollars
   const valid = amount > 0n && !short
   const after = pot.balance + amount
+  // R-33 M-6: what you'd get back if the Pot closed right after this (the hub's close math over the new numbers)
+  const refundAfter = amount > 0n ? refundAfterAdd(pot, amount) : null
   const reachesGoal = pot.goal !== null && pot.totalIn < pot.goal && pot.totalIn + amount >= pot.goal
   const showNote = open && !hideNote && !noteSeen()
 
@@ -181,6 +184,11 @@ export function AddMoneySheet({
           {reachesGoal
             ? t("add.after.goal", { potName: pot.name, balance: formatUsd(after) })
             : t("add.after", { potName: pot.name, balance: formatUsd(after) })}
+        </p>
+      )}
+      {refundAfter !== null && (
+        <p className="mt-1 text-center text-body-sm text-ink-muted tabular-nums" data-add-refund>
+          {t("add.refund_after", { refund: formatUsd(refundAfter, "whole") })}
         </p>
       )}
     </Sheet>
