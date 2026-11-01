@@ -25,16 +25,14 @@ const createdAt = () => ts("created_at").notNull().defaultNow()
 /** USDC base units or yocto; a string in TS. */
 const u128 = (name: string) => numeric(name, { precision: 40, scale: 0 })
 
-export const SESSION_KINDS = ["near-auth", "wallet", "demo", "dev"] as const
+export const SESSION_KINDS = ["near-auth", "wallet"] as const
 export const TINTS = ["peach", "sand", "sage", "mist", "lilac", "rose"] as const
-export const PERSONAS = ["maya", "sam", "leo"] as const
 export const PROOF_PURPOSES = [
   "session",
   "device_login",
   "device_add",
   "device_pair",
   "wallet",
-  "dev_session",
   "auth_challenge",
 ] as const
 export const RELAY_OPS = [
@@ -47,7 +45,6 @@ export const RELAY_OPS = [
   "sync",
   "retry_payout",
   "dao_topup",
-  "demo_seed",
   "sim_delivery",
   "report",
 ] as const
@@ -88,7 +85,6 @@ export const appUser = pgTable(
     displayName: text("display_name").notNull(),
     avatarTint: text("avatar_tint", { enum: TINTS }).notNull(),
     notifyEmail: boolean("notify_email").notNull().default(true),
-    persona: text("persona", { enum: PERSONAS }),
     onboardState: text("onboard_state", { enum: ["creating", "ready", "failed"] }).notNull().default("ready"),
     onboardLeaseUntil: ts("onboard_lease_until"),
     usdcRegistered: boolean("usdc_registered").notNull().default(false),
@@ -100,6 +96,8 @@ export const appUser = pgTable(
     uniqueIndex("app_user_near_account_uq").on(t.nearAccount),
     index("app_user_email_hash_idx").on(t.emailHash),
     check("app_user_sub_ck", sql`(${t.kind} = 'near-auth') = (${t.authSub} is not null)`),
+    // Rev 9: only real sign-ins (NEAR Auth, NEAR wallets); the demo/dev kinds are gone
+    check("app_user_kind_ck", sql`${t.kind} in ('near-auth', 'wallet')`),
     check("app_user_name_ck", sql`char_length(${t.displayName}) between 1 and 40`),
   ],
 )
@@ -156,8 +154,6 @@ export const session = pgTable(
       .references(() => appUser.id, { onDelete: "cascade" }),
     kind: text("kind", { enum: SESSION_KINDS }).notNull(),
     deviceId: uuid("device_id").references(() => device.id),
-    demoPotId: uuid("demo_pot_id").references(() => demoPot.id),
-    visitorHash: text("visitor_hash"),
     ipHash: text("ip_hash"),
     userAgent: text("user_agent"),
     createdAt: createdAt(),
@@ -166,7 +162,11 @@ export const session = pgTable(
     lastSeenAt: ts("last_seen_at").notNull().defaultNow(),
     revokedAt: ts("revoked_at"),
   },
-  (t) => [index("session_user_idx").on(t.userId), index("session_expires_idx").on(t.expiresAt)],
+  (t) => [
+    index("session_user_idx").on(t.userId),
+    index("session_expires_idx").on(t.expiresAt),
+    check("session_kind_ck", sql`${t.kind} in ('near-auth', 'wallet')`),
+  ],
 )
 
 export const usedProof = pgTable(
@@ -197,7 +197,6 @@ export const pot = pgTable(
     status: text("status", { enum: ["open", "closing", "closed"] })
       .notNull()
       .default("open"),
-    isDemo: boolean("is_demo").notNull().default(false),
     createdTxHash: text("created_tx_hash"),
     lastProposalId: bigint("last_proposal_id", { mode: "number" }),
     lastSyncedAt: ts("last_synced_at"),
@@ -257,7 +256,6 @@ export const relayLog = pgTable(
     id: text("id").primaryKey(),
     requestId: text("request_id").notNull(),
     userId: uuid("user_id").references(() => appUser.id),
-    visitorHash: text("visitor_hash"),
     idempotencyKey: text("idempotency_key"),
     bodyHash: text("body_hash"),
     op: text("op", { enum: RELAY_OPS }).notNull(),
@@ -374,7 +372,7 @@ export const errorLog = pgTable(
 )
 
 // ---------------------------------------------------------------------------------------------
-// 2.4 Deposits, notifications, Telegram, demo
+// 2.4 Deposits, notifications, Telegram
 // ---------------------------------------------------------------------------------------------
 
 const XC_STATUS = [
@@ -452,7 +450,6 @@ export const pushSubscription = pgTable(
     expirationTime: ts("expiration_time"),
     standalone: boolean("standalone").notNull().default(false),
     platform: text("platform"),
-    demoPotId: uuid("demo_pot_id").references(() => demoPot.id, { onDelete: "cascade" }),
     createdAt: createdAt(),
     lastOkAt: ts("last_ok_at"),
     failCount: integer("fail_count").notNull().default(0),
@@ -528,25 +525,4 @@ export const telegramPost = pgTable(
     messageId: bigint("message_id", { mode: "number" }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.potId, t.proposalId, t.chatId] })],
-)
-
-export const demoPot = pgTable(
-  "demo_pot",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    kind: text("kind", { enum: ["pool", "shared", "reference"] }).notNull(),
-    slug: text("slug").notNull(),
-    potId: text("pot_id"),
-    personas: jsonb("personas").notNull(),
-    state: text("state", { enum: ["seeding", "ready", "leased", "retired", "failed"] }).notNull(),
-    seedStep: smallint("seed_step").notNull().default(0),
-    seedError: text("seed_error"),
-    leasedTo: text("leased_to"),
-    leasedAt: ts("leased_at"),
-    leaseUntil: ts("lease_until"),
-    seededAt: ts("seeded_at"),
-    retiredAt: ts("retired_at"),
-    createdAt: createdAt(),
-  },
-  (t) => [uniqueIndex("demo_pot_slug_uq").on(t.slug), index("demo_pot_lease_idx").on(t.kind, t.state, t.seededAt)],
 )

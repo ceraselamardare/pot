@@ -117,7 +117,7 @@ export function YouScreen() {
           <div className="min-w-0">
             <p className="font-display text-heading text-ink">{me.name}</p>
             {me.emailHint && <p className="text-body-sm [overflow-wrap:anywhere] text-ink-muted">{me.emailHint}</p>}
-            {me.kind === "demo" && <p className="text-body-sm text-ink-muted">{t("you.profile.demo")}</p>}
+            {me.kind === "mock" && <p className="text-body-sm text-ink-muted">{t("you.profile.demo")}</p>}
           </div>
         </section>
 

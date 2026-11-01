@@ -13,6 +13,5 @@ export const POST = route("POST /api/oneclick/simulate", async (ctx) => {
   checkCsrf(ctx.req)
   const { value } = await readJson(ctx.req, simulateReq)
   const s = await requireSession(getDb(), ctx.req, getConfig(), { activeDevice: true })
-  if (s.kind === "demo") ctx.demo = true
   return ctx.json(await simulate(oneclickDeps(), s, value))
 })

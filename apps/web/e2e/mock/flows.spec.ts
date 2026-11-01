@@ -2,7 +2,7 @@
 // Playwright project: mobile Day, mobile Night (390×844) and desktop (1280×800, the bp-lg two-column Pot).
 import { fileURLToPath } from "node:url"
 import { expect, test } from "@playwright/test"
-import { asPersona, brandChecks, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
+import { asPerson, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -47,7 +47,7 @@ test("(a) invite landing → join → You're in → add $150 → the balance upd
 })
 
 test("(b) instant spend $84 → Checking Pot rules ≥ 1.2 s → the burst → feed shows Approved by Pot rules", async ({ page }, info) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
   await expect(page.getByRole("heading", { level: 1, name: "Lisbon Trip" })).toBeVisible()
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$450.00")
@@ -95,7 +95,7 @@ test("(b) instant spend $84 → Checking Pot rules ≥ 1.2 s → the burst → f
 })
 
 test("(c) $300 → needs 2 of 3 → switch to Leo → approve → executed", async ({ page }) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
   await page.getByRole("button", { name: "Spend" }).click()
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
@@ -108,10 +108,8 @@ test("(c) $300 → needs 2 of 3 → switch to Leo → approve → executed", asy
   await expect(sheet.getByText("Approvals · 1 of 2")).toBeVisible()
   await sheet.getByRole("button", { name: "Done" }).click()
 
-  // switch persona on the demo banner
-  await page.getByRole("button", { name: "You're Maya" }).click()
-  await page.getByRole("menuitem", { name: "Switch to Leo" }).click()
-  await expect(page.getByRole("button", { name: "You're Leo" })).toBeVisible()
+  // Leo, on the same phone
+  await becomePerson(page, "leo")
   // the Requests badge counts what waits on Leo (ink, not red)
   const requestsLink = page.getByRole("link", { name: "Requests, 1 request waiting on you" }).locator("visible=true")
   await expect(requestsLink).toBeVisible()
@@ -142,7 +140,7 @@ test("(c) $300 → needs 2 of 3 → switch to Leo → approve → executed", asy
 
 test("(d) Create Pot → the share link", async ({ page, context, browserName }) => {
   if (browserName === "chromium") await context.grantPermissions(["clipboard-read", "clipboard-write"])
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/pots")
   await expect(page.getByRole("heading", { level: 1, name: "Pots" })).toBeVisible()
   await page.getByRole("button", { name: "Start a Pot" }).first().click()

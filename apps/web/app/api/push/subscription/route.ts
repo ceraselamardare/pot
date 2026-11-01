@@ -13,7 +13,6 @@ export const POST = route("POST /api/push/subscription", async (ctx) => {
   const { value } = await readJson(ctx.req, pushSubReq)
   // not pending_device (rev4): device_not_registered / device_revoked
   const s = await requireSession(getDb(), ctx.req, getConfig(), { activeDevice: true })
-  if (s.kind === "demo") ctx.demo = true
   return ctx.json(await saveSubscription(getDb(), s, value))
 })
 
@@ -21,7 +20,6 @@ export const DELETE = route("DELETE /api/push/subscription", async (ctx) => {
   checkCsrf(ctx.req)
   const { value } = await readJson(ctx.req, pushUnsubReq)
   const s = await requireSession(getDb(), ctx.req, getConfig())
-  if (s.kind === "demo") ctx.demo = true
   await deleteSubscription(getDb(), s, value.endpoint)
   return ctx.json({})
 })

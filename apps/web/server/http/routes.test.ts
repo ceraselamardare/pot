@@ -5,8 +5,8 @@ vi.mock("server-only", () => ({}))
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { setDbForTests } from "@/db/client"
 import { createTestDb, type TestDb } from "@/db/testing"
+import { existsSync } from "node:fs"
 import { testConfig } from "../testing/env"
-import { ipNet } from "./context"
 
 let t: TestDb
 beforeAll(async () => {
@@ -96,45 +96,14 @@ describe("envelope and CSRF (A-19)", () => {
     expect(res.headers.get("cache-control")).toBe("no-store")
   })
 
-  it("POST /api/session/dev → 404 on production whatever the flag (A-21)", async () => {
-    testConfig({ VERCEL_ENV: "production", FLAG_DEV_SESSION: "true" })
-    const { POST } = await import("@/app/api/session/dev/route")
-    await expectErr(await POST(post("/api/session/dev", {})), 404, "not_found")
+  it("Rev 9: the test-account and live-demo routes are gone (sign-in is NEAR Auth or a NEAR wallet only)", () => {
+    for (const dir of ["api/session/dev", "api/demo", "api/cron/demo-pool", "demo/live"])
+      expect(existsSync(new URL(`../../app/${dir}`, import.meta.url)), dir).toBe(false)
   })
 
   it("GET /api/relay/[relayId] rejects malformed ids before any lookup", async () => {
     const { GET } = await import("@/app/api/relay/[relayId]/route")
     await expectErr(await GET(new Request(`${ORIGIN}/api/relay/x`), { params: Promise.resolve({ relayId: "x" }) }), 404, "not_found")
-  })
-})
-
-describe("POST /api/demo/session login-CSRF guard (A-13)", () => {
-  it("Sec-Fetch-Site: cross-site → 403", async () => {
-    const { POST } = await import("@/app/api/demo/session/route")
-    await expectErr(await POST(post("/api/demo/session", {}, { "sec-fetch-site": "cross-site" })), 403, "forbidden_origin")
-  })
-  it("a foreign Origin → 403, a form from our origin passes the guard", async () => {
-    const { POST } = await import("@/app/api/demo/session/route")
-    await expectErr(await POST(post("/api/demo/session", {}, { origin: "https://evil.example" })), 403, "forbidden_origin")
-    const form = new Request(`${ORIGIN}/api/demo/session`, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", origin: ORIGIN, accept: "text/html" },
-      body: "persona=maya",
-    })
-    const res = await POST(form)
-    // no pool and no shared Pot in this DB: the guard passed and the route answered 503 maintenance
-    const body = (await res.json()) as { reason: string; detail: { cause: string } }
-    expect(body).toMatchObject({ reason: "service_unavailable", detail: { cause: "maintenance" } })
-    expect(res.headers.get("x-pot-demo")).toBe("1")
-  })
-})
-
-describe("IP nets", () => {
-  it("IPv4 keeps the address; IPv6 collapses to its /64", () => {
-    expect(ipNet("203.0.113.7")).toBe("203.0.113.7")
-    expect(ipNet("2001:db8:1:2:aaaa::1")).toBe("2001:db8:1:2::/64")
-    expect(ipNet("2001:db8:1:2:bbbb:cccc:dddd:eeee")).toBe("2001:db8:1:2::/64")
-    expect(ipNet("::ffff:198.51.100.4")).toBe("198.51.100.4")
   })
 })
 

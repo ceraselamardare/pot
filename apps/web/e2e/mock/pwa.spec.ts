@@ -3,7 +3,7 @@
 // mocked POST /api/push/subscription, the app badge, the service worker file, and the per-invite link preview.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPersona, axe, brandChecks, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 const UA = {
@@ -26,7 +26,7 @@ test.describe("install coach", () => {
     test.use({ userAgent: UA.ios26 })
     test("appears after the first contribution, with 4 steps and the 'Don't see it?' line", async ({ page }, info) => {
       test.skip(info.project.name === "desktop", "never on desktop")
-      await asPersona(page, "maya")
+      await asPerson(page, "maya")
       await page.goto("/p/lisbon-trip?sheet=add")
       const add = await openedSheet(page, "Add money to Lisbon Trip")
       await typeAmount(page, "20")
@@ -60,7 +60,7 @@ test.describe("install coach", () => {
 
     test("Not now snoozes it", async ({ page }, info) => {
       test.skip(info.project.name === "desktop", "never on desktop")
-      await asPersona(page, "leo")
+      await asPerson(page, "leo")
       await page.addInitScript(() => localStorage.setItem("pot.coach", JSON.stringify({ shows: 0, snoozedUntil: 0, pending: "lisbon-trip" })))
       await page.goto("/p/lisbon-trip")
       await page.locator("[data-coach-card]").getByRole("button", { name: "Not now" }).click()
@@ -74,7 +74,7 @@ test.describe("install coach", () => {
   test.describe("iOS 27 Safari", () => {
     test.use({ userAgent: UA.ios27 })
     test("You → Add Pot to your Home Screen names the page menu", async ({ page }) => {
-      await asPersona(page, "maya")
+      await asPerson(page, "maya")
       await page.goto("/you")
       await page.getByRole("button", { name: /Add Pot to your Home Screen/ }).click()
       const sheet = await openedSheet(page, "Add Pot to your Home Screen")
@@ -86,7 +86,7 @@ test.describe("install coach", () => {
   test.describe("Android Chrome", () => {
     test.use({ userAgent: UA.android })
     test("with Chrome's install prompt: [Install Pot] opens it", async ({ page }) => {
-      await asPersona(page, "maya")
+      await asPerson(page, "maya")
       await page.goto("/you")
       // Chrome fires beforeinstallprompt once the app is installable; simulate it
       await page.evaluate(() => {
@@ -109,7 +109,7 @@ test.describe("install coach", () => {
     })
 
     test("without it: the menu steps", async ({ page }) => {
-      await asPersona(page, "maya")
+      await asPerson(page, "maya")
       await page.goto("/you?sheet=coach")
       const sheet = await openedSheet(page, "Add Pot to your Home Screen")
       await expect(sheet.locator("ol > li")).toHaveCount(3)
@@ -137,7 +137,7 @@ test.describe("install coach", () => {
     })
 
     test("the coach explains the escape inside the app", async ({ page }) => {
-      await asPersona(page, "maya")
+      await asPerson(page, "maya")
       await page.goto("/you?sheet=coach")
       const sheet = await openedSheet(page, "Open Pot in Safari first")
       await expect(sheet.getByText("Instagram can't add apps to your Home Screen.", { exact: false })).toBeVisible()
@@ -147,7 +147,7 @@ test.describe("install coach", () => {
   })
 
   test("desktop and already-installed: no card", async ({ page }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.addInitScript(() => localStorage.setItem("pot.coach", JSON.stringify({ shows: 0, snoozedUntil: 0, pending: "lisbon-trip" })))
     await page.goto("/p/lisbon-trip")
     await expect(page.locator("[data-hero]")).toBeVisible()
@@ -211,7 +211,7 @@ test.describe("push permission (after install, with a reason; D-42)", () => {
   test.use({ reducedMotion: "reduce" })
 
   test("first Home Screen launch: the pre-prompt, then the system dialog from the tap, then the subscription is saved", async ({ page }, info) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await standalone(page, { permission: "granted" })
     const posted: unknown[] = []
     await page.route("**/api/push/subscription", async (route) => {
@@ -252,7 +252,7 @@ test.describe("push permission (after install, with a reason; D-42)", () => {
   })
 
   test("denied: says how to fix it; Not now: never by itself again", async ({ page }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await standalone(page, { permission: "denied" })
     await page.goto("/pots")
     const sheet = await openedSheet(page, "Get told when friends need your OK")
@@ -266,13 +266,13 @@ test.describe("push permission (after install, with a reason; D-42)", () => {
   })
 
   test("a browser tab never prompts by itself; an iOS tab is told to install first", async ({ page, browser }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/pots")
     await page.waitForTimeout(500)
     await expect(page.getByRole("dialog")).toHaveCount(0)
     const ios = await browser.newContext({ userAgent: UA.ios26, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
     const p2 = await ios.newPage()
-    await asPersona(p2, "maya")
+    await asPerson(p2, "maya")
     await p2.goto("/you")
     const row = p2.locator("[data-you-push]")
     await expect(row).toHaveAttribute("data-you-push", "needs_install")
@@ -283,7 +283,7 @@ test.describe("push permission (after install, with a reason; D-42)", () => {
   })
 
   test("the badge counts what waits on you (installed app)", async ({ page }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await standalone(page, { permission: "granted" })
     await page.addInitScript(() => localStorage.setItem("pot.push", JSON.stringify({ prompted: true, snoozedUntil: 0, subscribed: true })))
     await page.goto("/p/lisbon-trip?sheet=spend")
@@ -292,8 +292,7 @@ test.describe("push permission (after install, with a reason; D-42)", () => {
     await sheet.getByRole("button", { name: "Ask the group" }).click()
     await expect(sheet.getByText("Sent to the group")).toBeVisible()
     await sheet.getByRole("button", { name: "Done" }).click()
-    await page.getByRole("button", { name: "You're Maya" }).click()
-    await page.getByRole("menuitem", { name: "Switch to Sam" }).click()
+    await becomePerson(page, "sam")
     await expect.poll(() => page.evaluate(() => (window as unknown as { badgeLog: (number | null)[] }).badgeLog.at(-1))).toBe(1)
   })
 })

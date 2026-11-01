@@ -14,7 +14,6 @@ export const POST = route("POST /api/notes", async (ctx) => {
   const { value } = await readJson(ctx.req, noteReq)
   const cfg = getConfig()
   const s = await requireSession(getDb(), ctx.req, cfg, { activeDevice: true })
-  if (s.kind === "demo") ctx.demo = true
   const r = await postNote({ db: getDb(), hub: getHub(), cfg }, s, value)
   return ctx.json(r.body, r.status)
 })

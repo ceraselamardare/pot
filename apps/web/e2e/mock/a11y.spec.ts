@@ -2,7 +2,7 @@
 // and approve, keyboard-only paths on desktop, 320 px reflow, 200 % zoom, reduced motion. axe runs per screen in
 // screens.spec / p2.spec; these are the checks axe can't do.
 import { expect, test, type Page } from "@playwright/test"
-import { asPersona, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
+import { asPerson, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
 
 /** No horizontal scrolling (WCAG 1.4.10): the page is never wider than the viewport. */
 async function noHorizontalScroll(page: Page, what: string) {
@@ -61,7 +61,7 @@ test.describe("reflow and zoom", () => {
     await noHorizontalScroll(page, "/j")
     await page.goto("/")
     await noHorizontalScroll(page, "/")
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     for (const url of SCREENS_320) {
       await page.goto(url)
       await expect(page.locator("main, [role=dialog]").first()).toBeVisible()
@@ -73,7 +73,7 @@ test.describe("reflow and zoom", () => {
   test("200 % zoom on a desktop browser (1280 px at 200 % = 640 CSS px): reflows, nothing cut off (1.4.4)", async ({ page }, info) => {
     test.skip(info.project.name !== "desktop", "desktop zoom")
     await page.setViewportSize({ width: 640, height: 400 })
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     for (const url of ["/p/lisbon-trip", "/p/lisbon-trip?sheet=close", "/p/lisbon-trip?sheet=rules", "/you/advanced"]) {
       await page.goto(url)
       await page.waitForTimeout(450)
@@ -88,7 +88,7 @@ test.describe("reflow and zoom", () => {
 
   test("200 % text size on a phone (Safari text zoom): the Pot and the Close sheet still fit the width", async ({ page }, info) => {
     test.skip(info.project.name !== "mobile-day", "phone text zoom")
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.addInitScript(() => {
       document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"))
     })
@@ -132,13 +132,13 @@ test.describe("VoiceOver-style order", () => {
   })
 
   test("approve: a deep link opens the sheet with focus on 'Maya asks for $300', then why, timeline, after, expires, Approve", async ({ page }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?sheet=spend")
     const spend = await openedSheet(page, "Spend from Lisbon Trip")
     await typeAmount(page, "300")
     await spend.getByRole("button", { name: "Ask the group" }).click()
     await expect(spend.getByText("Sent to the group")).toBeVisible()
-    await page.evaluate(() => localStorage.setItem("pot.mock.session", JSON.stringify({ persona: "leo", kind: "demo" })))
+    await page.evaluate(() => localStorage.setItem("pot.mock.session", JSON.stringify({ persona: "leo", kind: "mock" })))
     await page.goto("/p/lisbon-trip?r=12")
     const sheet = await openedSheet(page, "Maya asks for $300")
     await expect(sheet.getByRole("heading", { name: "Maya asks for $300" })).toBeFocused()
@@ -161,7 +161,7 @@ test.describe("VoiceOver-style order", () => {
 test.describe("keyboard only (desktop)", () => {
   test("skip link, then approve a request with Tab / Enter, Esc closes and focus returns", async ({ page }, info) => {
     test.skip(info.project.name !== "desktop", "desktop keyboard path")
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?sheet=spend")
     const spend = await openedSheet(page, "Spend from Lisbon Trip")
     await page.keyboard.type("300") // the keypad takes physical digits
@@ -171,7 +171,7 @@ test.describe("keyboard only (desktop)", () => {
     await expect(spend.getByText("Sent to the group")).toBeVisible()
     await page.keyboard.press("Escape")
     await expect(page.getByRole("dialog")).toBeHidden()
-    await page.evaluate(() => localStorage.setItem("pot.mock.session", JSON.stringify({ persona: "sam", kind: "demo" })))
+    await page.evaluate(() => localStorage.setItem("pot.mock.session", JSON.stringify({ persona: "sam", kind: "mock" })))
     await page.goto("/p/lisbon-trip")
     await expect(page.locator("[data-hero]")).toBeVisible()
 
@@ -202,7 +202,7 @@ test.describe("keyboard only (desktop)", () => {
 
   test("the rules change sheet works from the keyboard (radio cards + physical digits)", async ({ page }, info) => {
     test.skip(info.project.name !== "desktop", "desktop keyboard path")
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?tab=rules")
     const open = page.getByRole("button", { name: "Ask the group to change a rule" })
     await open.focus()
@@ -223,7 +223,7 @@ test.describe("keyboard only (desktop)", () => {
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" })
   test("sheets fade (no slide), the push examples don't animate, the tab indicator doesn't glide", async ({ page }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?sheet=close")
     const popup = page.getByRole("dialog")
     await expect(popup).toBeVisible()

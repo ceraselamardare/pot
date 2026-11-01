@@ -22,8 +22,6 @@ const env: Record<string, string> = {
   NEXT_PUBLIC_APP_URL: BASE_URL,
   NEXT_PUBLIC_RPC_URLS: `http://127.0.0.1:${RPC}`,
   SERVER_RPC_URLS: `http://127.0.0.1:${RPC}`,
-  NEXT_PUBLIC_FLAG_DEV_SESSION: "false",
-  FLAG_DEV_SESSION: "false",
   NEXT_PUBLIC_FLAG_NEAR_AUTH: "true",
   NEXT_PUBLIC_NEAR_AUTH_CLIENT_ID: "e2e-client",
   NEXT_PUBLIC_NEAR_AUTH_BASE_URL: `http://127.0.0.1:${ISSUER}`,

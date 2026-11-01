@@ -15,6 +15,5 @@ export const GET = route<{ id: string }>("GET /api/oneclick/status/[id]", async 
   const relayId = new URL(ctx.req.url).searchParams.get("relayId") ?? undefined
   if (relayId !== undefined && !RELAY_ID_RE.test(relayId)) throw new ApiError("bad_request", { detail: { field: "relayId" } })
   const s = await requireSession(getDb(), ctx.req, getConfig())
-  if (s.kind === "demo") ctx.demo = true
   return ctx.json(await depositStatus(oneclickDeps(), s, id, { relayId }))
 })

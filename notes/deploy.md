@@ -3,6 +3,25 @@
 > Owner: the deploy + backend-integration engineer. Written 2026-10-22. **Testnet only.** The frontend agent reads
 > this file for the account ids and env. Status: **deployed, verified, seeded; live tests and the HTTP E2E pass.**
 
+> **Rev 9 (2026-11-01, plan/decisions.md): the live demo and the test-account sign-in are removed.** Gone: `/demo/live`,
+> `POST /api/demo/session`, `GET /api/demo/state`, `GET /api/cron/demo-pool` (and its `vercel.json` cron), the demo Pot pool and
+> seeding (`scripts/run seed-demo`, `demo-pool`, `load-demo`, `scripts/lib/backend.ts`), the relay's server-signed demo intents,
+> `POST /api/session/dev`, and the env `FLAG_DEMO*`, `FLAG_DEV_SESSION`/`NEXT_PUBLIC_FLAG_DEV_SESSION`, `DEMO_REFERENCE_POT`,
+> `DEMO_POOL_TARGET`, `QUOTA_GLOBAL_DEMO_YOCTO`, `QUOTA_*_DEV_ACCOUNTS` and the `DEMO_PERSONA_KEY` secret (`scripts/run keys init`/`env`
+> no longer write it). Why: nothing may act on chain without the person's own sign-in. Migration
+> `apps/web/db/migrations/0001_remove_demo_and_dev_sessions.sql` (applied to the local dev DB 2026-11-01; Neon gets it with the
+> others). The demo Pots and persona accounts below still exist on chain but nothing uses them; the sections about them are history.
+>
+> **How tests get accounts now:** `apps/web/e2e/testnet/accounts.ts` creates a run parent `e2e-<run>.pot-funds-65k8.testnet`
+> (funded `0.004 + 0.0085 × people` NEAR by the holding account through near-cli-rs `sign-with-legacy-keychain`; the holding key is
+> never read) and one 0-NEAR `<name>.e2e-<run>.pot-funds-65k8.testnet` per person with one in-memory full-access key (one creation
+> burns ≈ 0.0070 NEAR on testnet). People sign in with NEP-413 (`POST /api/session/wallet`); the relayer registers them on the token
+> and pays every relayed action. At the end the parent is deleted and its rest goes back to the holding account. In the browser the
+> e2e mock wallet (`NEXT_PUBLIC_E2E_MOCK_WALLET=1`, local builds only) holds those keys and signs `signDelegateActions`.
+> Commands (each under `scripts/with-testnet-lock.sh`): `scripts/run e2e-chain --base http://localhost:3418` against `next start`;
+> `E2E_TESTNET=1 E2E_PORT=3427 NEXT_DIST_DIR=.next-<name> pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts
+> flows.testnet.ts p2.testnet.ts deposit.testnet.ts`; `LIVE_TESTNET=1 pnpm --filter web exec vitest run server/live`.
+
 ## Account map (root `potprev.testnet`)
 
 | Account | Role | Keys |
@@ -14,8 +33,9 @@
 | `treasury.potprev.testnet` | hot demo-dollar float (≈ $992k test) for the faucet and seeding | recovery FAK + 2 pool keys = `TREASURY_KEYS` |
 | `reserve.potprev.testnet` | cold supply ($999,000,000 test) | 1 FAK (legacy keychain) |
 | `<slug>.pots.potprev.testnet` | one Sputnik DAO per Pot | none, ever |
-| `u-<8>.users.potprev.testnet` | dev-session / NEAR Auth users (0 NEAR) | the user's device key |
-| `maya` / `sam` / `leo` `[-<k>].users.potprev.testnet` | demo personas | `DEMO_PERSONA_KEY` (kept on preview, also for the reference personas) |
+| `u-<8>.users.potprev.testnet` | NEAR Auth users (0 NEAR); before Rev 9 also test (dev-session) accounts | the user's device key |
+| `maya` / `sam` / `leo` `[-<k>].users.potprev.testnet` | the removed live demo's accounts (Rev 9: unused) | the old demo key, no longer in any env |
+| `<name>.e2e-<run>.pot-funds-65k8.testnet` | Rev 9: throwaway test people (0 NEAR) for the testnet e2e, live tests and `e2e-chain` | an in-memory key per run |
 
 Hub `get_config`: `version 1.0.0`, `owner potprev.testnet`, `usdc usdc.potprev.testnet`,
 `dao_code_hash Ea8tHXFSQVszVwGASyzAfLq65DjcRDhkfab4FcPaRpgD` (testnet global Sputnik), `dao_float = min_dao_float = 0.05 NEAR`,
@@ -32,7 +52,7 @@ Deploy txs: root `2QDtLgqCnuaiPjiUCd5FnyygK1ZHD4grHiFP8nyCqzsC` (testnet registr
 keys `JCoDGJAw…` `Gv7F9yh9…` · top-ups from the holding account: hub `BH4xz46qdP5rsBkK3h1dP9EYjHW4t5uLgtVj79Yjm76d`, relayer
 `ELrApdfugvvRTKZUzDNwqVjeHYu4jhAQ6wrCh1yWYCDg`.
 
-## Demo Pots (seeded through the relayer path: personas sign delegates with `DEMO_PERSONA_KEY`, the relayer submits, the hub sponsors)
+## Demo Pots (history: removed from the app in Rev 9; seeded through the relayer path with the old demo key)
 
 | Pot | Kind | State |
 |---|---|---|
@@ -58,18 +78,14 @@ NEXT_PUBLIC_USDC_ID=usdc.potprev.testnet
 NEXT_PUBLIC_RPC_URLS=https://rpc.testnet.fastnear.com,https://near-testnet.drpc.org
 NEXT_PUBLIC_TX_API=https://tx.test.fastnear.com
 NEXT_PUBLIC_EXPLORER=https://testnet.nearblocks.io
-NEXT_PUBLIC_FLAG_DEV_SESSION=true      FLAG_DEV_SESSION=true
-NEXT_PUBLIC_FLAG_DEMO=true             FLAG_DEMO=true
 RELAYER_ACCOUNT_ID=users.potprev.testnet
 TREASURY_ACCOUNT_ID=treasury.potprev.testnet
-DEMO_REFERENCE_POT=lisbon-trip.pots.potprev.testnet
-DEMO_POOL_TARGET=3
 MPC_SIGN_DEPOSIT_YOCTO=1
 RELAYER_FLOOR_NEAR=0.3  RELAYER_CRITICAL_NEAR=0.6  RELAYER_WARN_NEAR=1        (scaled to the ≈ 2 NEAR preview relayer)
-QUOTA_GLOBAL_POTS_CREATED=40  QUOTA_GLOBAL_DEV_ACCOUNTS=60  QUOTA_IP_DEV_ACCOUNTS=60  QUOTA_IP_FAUCET_USD=20000000000
+QUOTA_GLOBAL_POTS_CREATED=40  QUOTA_IP_FAUCET_USD=20000000000
                                                                               (local headroom: one laptop runs live tests, E2E, Playwright)
 DATABASE_URL / DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot   DATABASE_URL_TEST=…/pot_test
-[secret] RELAYER_KEYS (4), TREASURY_KEYS (2), DEMO_PERSONA_KEY, APP_HMAC_SECRET
+[secret] RELAYER_KEYS (4), TREASURY_KEYS (2), APP_HMAC_SECRET
 ```
 
 Not set by the script (frontend-owned): `NEXT_PUBLIC_DATA_SOURCE=testnet`, `NEXT_PUBLIC_RELAY_MODE=live`. Add them, or anything else,
@@ -87,15 +103,14 @@ with `--conditions react-server` so the backend modules' `server-only` guard is 
 | `scripts/run deploy fund <account> <NEAR>` | top up from the root |
 | `scripts/run keys init \| onchain \| show` | generate the hot key pools into `apps/web/.keys/preview.env` (0600, prints public keys only), add them on chain |
 | `scripts/run env` | (re)write `apps/web/.env.local` |
-| `scripts/run seed-demo --kind reference \| pool [--count n] \| shared` · `--status` | D-61 seeded Pots through the relay pipeline (resumable); `--status` lists `demo_pot` rows and the reference Pot on chain |
 | `scripts/run invite new \| sign <secret> <pot> <joiner> \| link <slug> <secret> \| verify …` | invite keys and join signatures (C-10 O5) |
-| `scripts/run e2e-chain [--base http://localhost:3418]` | the MVP story over HTTP against `next start` (below) |
+| `scripts/run e2e-chain [--base http://localhost:3418]` | the MVP story over HTTP against `next start` (below): 3 throwaway wallet accounts (Rev 9) |
 
 E2E: `cd apps/web && NEXT_DIST_DIR=.next-backend pnpm exec next build && NEXT_DIST_DIR=.next-backend pnpm exec next start -p 3418`, then
 `scripts/run e2e-chain --base http://localhost:3418` (all under `scripts/with-testnet-lock.sh`; the own distDir keeps other agents' `.next`
 intact). Live tests: `scripts/with-testnet-lock.sh env LIVE_TESTNET=1 pnpm --filter web exec vitest run server/live --reporter=verbose`
-(≈ 0.2 NEAR per full run; they use the `*_LIVE` key pools only). Ops: `scripts/run demo-pool`, `scripts/run load-demo --base …`,
-`curl -H "authorization: Bearer $CRON_SECRET" localhost:3418/api/cron/reconcile`.
+(≈ 0.2 NEAR per full run; they use the `*_LIVE` key pools only). Ops: `curl -H "authorization: Bearer $CRON_SECRET"
+localhost:3418/api/cron/reconcile`. (`scripts/run demo-pool` and `load-demo` were removed in Rev 9.)
 
 ## NEAR spent (budget ≤ 18 NEAR from `pot-funds-65k8.testnet`)
 
@@ -143,7 +158,7 @@ Playwright runs), mostly DAO floats (0.05 each, which stay in the DAOs) plus acc
   for the demo-pool refills, the B-19 load test and the final live runs (≤ 8 NEAR allowed). Balances right after: relayer 4.22,
   hub 10.41, treasury 0.59.
 
-## Demo pool (B-12, wave 3)
+## Demo pool (B-12, wave 3) — removed in Rev 9, kept as history
 
 `scripts/with-testnet-lock.sh scripts/run demo-pool` (= `GET /api/cron/demo-pool`, = step 6 of `GET /api/cron/reconcile`) retires expired
 leases, keeps tonight's shared Pot (`lisbon-<yyyymmdd>`, reseeded below $300 or not open) and refills the pool to `DEMO_POOL_TARGET` (3).
@@ -161,8 +176,19 @@ the pool was back at 3 ready at the end of the wave.
 | `QUOTA_GLOBAL_DEMO_YOCTO=3 NEAR` | local headroom: the preview's 1 NEAR/day demo budget was used up by seeding + load tests (it stops refills, by design) |
 | optional: `HUB_WARN_NEAR` (5 prod / 1 preview), `HUB_FLOOR_NEAR` (1), `TREASURY_WARN_USD` (100000), `TREASURY_CRITICAL_USD` (1000), `FLAG_DEMO_PUSH`, `DEMO_POOL_TARGET` | B-11 thresholds, R-15 demo push, pool size |
 
-`apps/web/vercel.json` holds the crons (`/api/cron/reconcile` 04:00 UTC, `/api/cron/demo-pool` 04:30 UTC; Hobby = daily). **Not deployed.**
+`apps/web/vercel.json` holds the cron `/api/cron/reconcile` (04:00 UTC; Hobby = daily); the `/api/cron/demo-pool` one was removed in
+Rev 9. **Not deployed.**
 
 ## QA wave 4 spend (2026-10-22, 04:12-05:12 local)
 No top-up from `pot-funds-65k8.testnet` (still 45.0596 NEAR). Preview funds consumed ≈ 1.71 NEAR: hub 9.0880 → 8.0532,
 relayer 3.4189 → 2.7459, treasury 0.5821 → 0.5755. Hub `pot_count` 59. Details: notes/qa-report.md §7.
+
+## Rev 9 spend (2026-11-01, removal of the live demo and test-account sign-in; budget ≤ 3 NEAR)
+All runs under `scripts/with-testnet-lock.sh`, accounts from `apps/web/e2e/testnet/accounts.ts`. Balances before → after:
+`pot-funds-65k8.testnet` 45.0596 → 44.8592 (−0.200: run parents, ≈ 0.0070 NEAR burnt per throwaway account; the parents'
+rest came back on delete), relayer `users.potprev.testnet` 2.7459 → 2.5521 (−0.194), hub `pots.potprev.testnet`
+8.0533 → 7.6001 (−0.453: 7 Pots' float + sponsorship), treasury 0.5755 → 0.5734 (−0.002). **Total ≈ 0.85 NEAR.**
+Runs: `scripts/run e2e-chain` ×2 (the first stopped at account 3: the parent was under-funded, fixed; its parent
+`e2e-nwzxtb.pot-funds-65k8.testnet` keeps ≈ 0.006 NEAR, key gone), testnet Playwright flows + p2 + deposit (deposit ×3: a
+seconds-old account's key wasn't on every RPC node yet, fixed with a settle), `server/live` ×2 (the first collided on the
+holding key's nonce, fixed with a retry). No key was printed or written to disk.

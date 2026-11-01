@@ -259,8 +259,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter web exec playwright install --with-deps chromium
-      - name: README judge script (E-10) and the flows (E-a…E-f), rules + close, the 1Click simulator
-        run: pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts demo.testnet.ts flows.testnet.ts p2.testnet.ts deposit.testnet.ts
+      # Rev 9: the signing testnet suites (flows, rules + close, the 1Click simulator) sign in through the e2e mock
+      # wallet, which a Vercel build refuses, and create their accounts from the holding account's legacy keychain:
+      # they run locally only (notes/deploy.md). Against a deployed preview, CI runs the read-only checks.
       - name: README CLI twins (E-11, read-only)
         run: scripts/readme-cli-check.sh

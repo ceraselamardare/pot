@@ -619,11 +619,6 @@ test("the stage fits one viewport at 390 × 664 (a phone browser's tab), in ever
   }
 })
 
-test("/demo/live is a 404 while FLAG_DEMO_LIVE is off", async ({ request }) => {
-  test.skip(process.env.FLAG_DEMO_LIVE === "true", "the live demo is on in this build")
-  expect((await request.get("/demo/live")).status()).toBe(404)
-})
-
 /** axe (0 serious or critical) at the cover, steps 1, 5, 7, 10 and 14, the end, an open hood with every disclosure in
  *  it open, and a glossary word's popover. */
 test("axe: the cover, the steps, step 7, the end and the open hood", async ({ page }) => {

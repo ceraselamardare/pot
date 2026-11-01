@@ -1,13 +1,11 @@
 // Signers (frontend-architecture §4.1-4.2, §4.6-4.7) and `send()`: intent → prepare → sign → POST /api/relay.
-//  - DeviceKeySigner (dev / near-auth sessions): the non-extractable device key signs a NEP-366 delegate.
+//  - DeviceKeySigner (near-auth sessions): the non-extractable device key signs a NEP-366 delegate.
 //    nonce = max(view_access_key(optimistic).nonce, last used) + 1, max_block_height = that block + 200.
 //    Sign + relay run inside the SigningQueue (FIFO per account:key, one in flight), so nonces land in order.
 //    `expired` / `nonce_used` → re-read the nonce, re-sign and retry once with the same idempotencyKey.
-//  - DemoSigner (/demo personas): no key in the browser; the body is `{demo: {intent}}` and the server signs
-//    with the persona key after the same validation.
+//  - Wallet sessions sign in their wallet (lib/signing/near-connect/wallet.ts).
 import {
   buildCall,
-  intentToWire,
   newOpKey,
   type AccountId,
   type ActionIntent,
@@ -68,28 +66,9 @@ export class DeviceKeySigner implements PotSigner {
   }
 }
 
-export class DemoSigner implements PotSigner {
-  readonly kind = "demo" as const
-  readonly needsGesture = false
-  readonly relayed = true
-  readonly publicKey = null
-  constructor(readonly accountId: AccountId) {}
-  async readiness(): Promise<Readiness> {
-    return "ready"
-  }
-  async prepare(intent: ActionIntent, opId?: string): Promise<Prepared> {
-    return { intent, call: buildCall(intent, sdkConfig()), senderId: this.accountId, opId: opId ?? (intent.type === "request_spend" ? intent.requestRef : newOpKey()) }
-  }
-  async sign(p: Prepared): Promise<SignedPayload> {
-    if (p.intent.type === "add_device_key") throw new ActionError("bug", "action_not_allowed")
-    return { via: "relay", body: { demo: { intent: intentToWire(p.intent) as Api.RelayDemoReq["demo"]["intent"] }, idempotencyKey: p.opId } }
-  }
-}
-
-/** frontend-architecture §4.1 resolveSigner: the session kind picks the adapter. */
-export async function resolveSigner(s: SessionInfo | null): Promise<DeviceKeySigner | DemoSigner> {
+/** frontend-architecture §4.1 resolveSigner: a NEAR Auth session signs with this browser's device key. */
+export async function resolveSigner(s: SessionInfo | null): Promise<DeviceKeySigner> {
   if (!s) throw new ActionError("session", "not_signed_in")
-  if (s.kind === "demo") return new DemoSigner(s.accountId as AccountId)
   const key = await deviceKeys()?.get("current")
   if (!key || (key.accountId && key.accountId !== s.accountId)) throw new ActionError("needs_device", "key_not_found")
   return new DeviceKeySigner(s.accountId as AccountId, key.publicKey)
@@ -121,12 +100,6 @@ async function sendOnce(intent: ActionIntent, opts: SendOptions, session: Sessio
   const signer = await resolveSigner(session)
   const opId = opts.opId ?? (intent.type === "request_spend" ? intent.requestRef : newOpKey())
   const withContext = (body: Api.RelayReq): Api.RelayReq => (opts.context ? { ...body, context: opts.context } : body)
-
-  if (signer instanceof DemoSigner) {
-    const s = await signer.sign(await signer.prepare(intent, opId))
-    if (s.via !== "relay") throw new ActionError("bug", "via")
-    return postRelay(withContext(s.body))
-  }
 
   const engine = await loadEngine()
   return engine.queue.run(`${signer.accountId}:${signer.publicKey}`, async () => {

@@ -1,14 +1,16 @@
 // Shared harness for the LIVE testnet tests (*.live.test.ts, gated by LIVE_TESTNET=1): the real preview hub
 // and token (notes/deploy.md), the preview key pools from apps/web/.keys/preview.env, a per-file schema in
-// pot_test, real dev accounts (B-04) and real signed delegates through the relay pipeline. Testnet only.
-// Never imported by app code.
+// pot_test, real NEAR-wallet users (Rev 9: throwaway 0-NEAR accounts from e2e/testnet/accounts.ts that sign in
+// with NEP-413 like any wallet) and real signed delegates through the relay pipeline. Testnet only. Run under
+// scripts/with-testnet-lock.sh. Never imported by app code.
 import { existsSync, readFileSync } from "node:fs"
 import { eq } from "drizzle-orm"
 import { createChainViews, createRpcClient, testnetConfig, type ActionIntent, type SdkConfig } from "@pot/sdk"
 import { KeyPairPotSigner, NonceTracker } from "@pot/sdk/sign"
-import { KeyPair } from "near-api-js"
-import { appUser, device } from "@/db/schema"
+import type { KeyPair } from "near-api-js"
+import { appUser } from "@/db/schema"
 import { createTestDb, type TestDb } from "@/db/testing"
+import { createTestAccounts, nep413SignIn } from "@/e2e/testnet/accounts"
 import { createHubReader, type HubReader } from "../chain/hub"
 import { loadKeys, resetKeyCacheForTests } from "../chain/keys"
 import { createRpc, type RpcClient } from "../chain/rpc"
@@ -16,10 +18,9 @@ import { createSubmitter, type Submitter } from "../chain/submitter"
 import { resetBalanceCacheForTests } from "../chain/balance"
 import { loadConfig, setConfigForTests, type Config } from "../config"
 import { ApiError } from "../http/errors"
+import { walletLogin } from "../features/wallet/service"
 import { relay, type Actor, type RelayDeps, type RelayResponse } from "../relay/pipeline"
-import { popMessages } from "../session/pop"
-import { devLogin } from "../session/service"
-import { b64url, sha256Hex } from "../util/crypto"
+import { sha256Hex } from "../util/crypto"
 
 const WEB = new URL("../../", import.meta.url)
 export const KEYS_FILE = new URL(".keys/preview.env", WEB)
@@ -54,11 +55,13 @@ export interface Live {
   /** after() work, started immediately (as Next does after the response) and awaited by drain() */
   drain: () => Promise<void>
   hashes: Record<string, string>
+  /** the throwaway accounts' parents to delete on close (their unspent NEAR goes back to the holding account) */
+  releases: (() => Promise<void>)[]
   close: () => Promise<void>
 }
 
 /** The live files that run in parallel, each with a disjoint slice of the *_LIVE pools. */
-const LIVE_SLOTS = ["live_hub", "live_demo"]
+const LIVE_SLOTS = ["live_hub"]
 export function liveSlice(csv: string, name: string): string {
   const keys = csv.split(",").filter(Boolean)
   const slots = Math.min(LIVE_SLOTS.length, keys.length)
@@ -75,7 +78,7 @@ export async function setupLive(name: string): Promise<Live> {
     throw new Error("RELAYER_KEYS_LIVE / TREASURY_KEYS_LIVE missing: scripts/run keys init-live, then scripts/with-testnet-lock.sh scripts/run keys onchain")
   process.env.RELAYER_KEYS = liveSlice(env.RELAYER_KEYS_LIVE, name)
   process.env.TREASURY_KEYS = liveSlice(env.TREASURY_KEYS_LIVE, name)
-  for (const k of ["DEMO_PERSONA_KEY", "APP_HMAC_SECRET"]) if (env[k]) process.env[k] = env[k]
+  if (env.APP_HMAC_SECRET) process.env.APP_HMAC_SECRET = env.APP_HMAC_SECRET
   for (const [k, v] of Object.entries(env)) if (k.startsWith("QUOTA_")) process.env[k] = v
   resetKeyCacheForTests()
   resetBalanceCacheForTests()
@@ -94,6 +97,7 @@ export async function setupLive(name: string): Promise<Live> {
   const root = cfg.hubId.replace(/^pots\./, "").replace(/\.testnet$/, "")
   const sdkCfg = testnetConfig(root, { hubId: cfg.hubId, usdcId: cfg.usdcId })
   const hashes: Record<string, string> = {}
+  const releases: (() => Promise<void>)[] = []
   return {
     t,
     cfg,
@@ -103,11 +107,13 @@ export async function setupLive(name: string): Promise<Live> {
     submitter,
     deps,
     hashes,
+    releases,
     async drain() {
       while (pending.length) await pending.shift()
     },
     async close() {
       while (pending.length) await pending.shift()
+      for (const r of releases) await r()
       await t.close()
     },
   }
@@ -120,26 +126,29 @@ function views(cfg: SdkConfig) {
   return v
 }
 
-/** B-04: a dev session → a 0-NEAR `u-<8>.users.<root>` account whose only key is the device key. */
-export async function devUser(L: Live, name: string): Promise<LiveUser> {
-  const key = KeyPair.fromRandom("ed25519")
-  const pk = key.getPublicKey().toString()
-  const ts = Date.now()
-  const sig = key.sign(new TextEncoder().encode(popMessages.dev_session(pk, ts))).signature
-  const login = await devLogin(
-    { db: L.t.db, rpc: L.rpc, submitter: L.submitter, cfg: L.cfg, defer: L.deps.defer },
-    { devicePublicKey: pk, keyKind: "fallback", pop: { ts, sig: b64url(sig) }, displayName: name },
-    { ipHash: `live-${name}`, userAgent: "vitest-live" },
-  )
-  const accountId = String(login.body.accountId)
-  L.hashes[`create ${name}`] = String(login.body.createTxHash ?? "")
-  const user = (await L.t.db.select().from(appUser).where(eq(appUser.nearAccount, accountId)))[0]!
-  const dev = (await L.t.db.select().from(device).where(eq(device.userId, user.id)))[0]!
-  const actor: Actor = { userId: user.id, accountId, kind: "dev", device: { publicKey: dev.publicKey, status: "active" } }
-  const signer = new KeyPairPotSigner({ accountId, secretKey: key, chain: views(L.sdkCfg), cfg: L.sdkCfg, nonces: new NonceTracker() })
-  // the access key must be visible before the first prepare()
-  await eventually(() => views(L.sdkCfg).account.accessKey(accountId as never, pk as never), (v) => !!v.value)
-  return { name, accountId, key, actor, signer }
+/**
+ * Rev 9: NEAR-wallet users. Throwaway 0-NEAR accounts `<name>.e2e-<run>.<funds>` (e2e/testnet/accounts.ts), each
+ * signed in through POST /api/session/wallet's core (NEP-413 "Sign in to Pot" with its full-access key); the
+ * relayer pays the token registration after the response (drained here) and every relayed action.
+ */
+export async function walletUsers(L: Live, names: string[]): Promise<LiveUser[]> {
+  const accounts = await createTestAccounts(names, (line) => console.log(line))
+  L.releases.push(() => accounts.release())
+  const recipient = new URL(L.cfg.appUrl).host
+  const out: LiveUser[] = []
+  for (const p of accounts.people) {
+    await walletLogin(
+      { db: L.t.db, rpc: L.rpc, submitter: L.submitter, cfg: L.cfg, defer: L.deps.defer },
+      nep413SignIn(p, recipient),
+      { ipHash: `live-${p.name}`, userAgent: "vitest-live" },
+    )
+    const user = (await L.t.db.select().from(appUser).where(eq(appUser.nearAccount, p.accountId)))[0]!
+    const actor: Actor = { userId: user.id, accountId: p.accountId, kind: "wallet", device: null }
+    const signer = new KeyPairPotSigner({ accountId: p.accountId, secretKey: p.keyPair, chain: views(L.sdkCfg), cfg: L.sdkCfg, nonces: new NonceTracker() })
+    out.push({ name: p.name, accountId: p.accountId, key: p.keyPair, actor, signer })
+  }
+  await L.drain() // the relayer's token registrations (registerOnce, after the login response)
+  return out
 }
 
 /** Sign `intent` with the user's device key (@pot/sdk) and run the relay pipeline (POST /api/relay's core). */

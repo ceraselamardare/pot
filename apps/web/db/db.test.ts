@@ -42,9 +42,15 @@ describe("migrations", () => {
       await migrate(db, { migrationsFolder: folder })
       await migrate(db, { migrationsFolder: folder }) // second run is a no-op
       const res = await client.query(
-        "SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('relay_log','quota_usage','lease','session','app_user','demo_pot')",
+        "SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('relay_log','quota_usage','lease','session','app_user')",
       )
-      expect(res.rows[0].n).toBe(6)
+      expect(res.rows[0].n).toBe(5)
+      // Rev 9 (0001): the demo Pot pool is gone; only NEAR Auth and wallet sessions can be stored
+      const demo = await client.query("SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'demo_pot'")
+      expect(demo.rows[0].n).toBe(0)
+      await expect(
+        client.query("INSERT INTO app_user (kind, near_account, display_name, avatar_tint) VALUES ('dev', 'u-x.users.p.testnet', 'X', 'peach')"),
+      ).rejects.toThrow(/app_user_kind_ck/)
     } finally {
       await client.query("SELECT pg_advisory_unlock(424242)")
       client.release()

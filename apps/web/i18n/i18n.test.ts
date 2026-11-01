@@ -24,7 +24,7 @@ describe("en.json", () => {
     for (const k of [
       "landing.title", "landing.trust", "setup.success.title", "pot.hero.label", "pot.cta.add", "spend.checking",
       "spend.approved", "spend.sent", "approve.final", "share.expiry", "create.progress", "offline.banner",
-      "members.header", "requests.badge.a11y", "demo.banner", "add.usdc_note", "xc.warning", "notif.approval.title",
+      "members.header", "requests.badge.a11y", "add.usdc_note", "xc.warning", "notif.approval.title",
     ])
       expect(hasKey(k), k).toBe(true)
   })

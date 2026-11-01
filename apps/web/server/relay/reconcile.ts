@@ -18,10 +18,8 @@ export type RelayRow = typeof relayLog.$inferSelect
 export const IN_FLIGHT = ["validated", "signed", "submitted", "pending"] as const
 
 /** The yocto subjects a relay row pre-charged (pipeline step 12). */
-export function yoctoOf(row: Pick<RelayRow, "visitorHash" | "userId">) {
-  return row.visitorHash
-    ? { action: "demo_yocto", subjects: ["global"] }
-    : { action: "relay_yocto", subjects: ["global", ...(row.userId ? [`user:${row.userId}`] : [])] }
+export function yoctoOf(row: Pick<RelayRow, "userId">) {
+  return { action: "relay_yocto", subjects: ["global", ...(row.userId ? [`user:${row.userId}`] : [])] }
 }
 
 export type ReconcileVerdict =

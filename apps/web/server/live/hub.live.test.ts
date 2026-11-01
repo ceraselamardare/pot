@@ -1,7 +1,7 @@
 // LIVE testnet: the relay pipeline against the deployed preview hub (notes/deploy.md), wave 2.
-//   LIVE_TESTNET=1 pnpm --filter web exec vitest run server/live/hub.live.test.ts
+//   LIVE_TESTNET=1 scripts/with-testnet-lock.sh pnpm --filter web exec vitest run server/live/hub.live.test.ts
 // Skipped unless LIVE_TESTNET=1 and apps/web/.keys/preview.env + .env.local exist. Spends real testnet NEAR
-// (≈ 0.2 NEAR per run: 3 dev accounts, 2 Pots, ~30 relayed txs). Covers R1-R9 + R11 end to end, the two-phase
+// (≈ 0.2 NEAR per run: 3 throwaway wallet accounts from the holding account, 2 Pots, ~30 relayed txs). Covers R1-R9 + R11 end to end, the two-phase
 // request_spend timing (≤ 4 s early, ≤ 10 s final), the B-05 follow-ups (receipt scan + sync, also after
 // retry_payout; retry_payout after a contribution), close payee registration and the pro-rata payouts,
 // and the faucet with the real token.
@@ -19,7 +19,7 @@ import { claimFaucet } from "../features/faucet"
 import { getRelay } from "../relay/status"
 import { registerToken } from "../session/onboard"
 import type { SessionCtx } from "../session/store"
-import { act, devUser, eventually, liveEnabled, setupLive, sleep, type Live, type LiveUser } from "./harness"
+import { act, eventually, liveEnabled, setupLive, sleep, walletUsers, type Live, type LiveUser } from "./harness"
 
 const $ = (n: number) => BigInt(Math.round(n * 1e6))
 const NEAR = 10n ** 24n
@@ -50,15 +50,15 @@ describe.skipIf(!liveEnabled)("LIVE preview hub: R1-R11 through the relayer", ()
     console.log("LIVE hub tx hashes:", JSON.stringify(L?.hashes, null, 2))
   })
 
-  it("dev accounts + faucet with the real token (B-04, X-09)", { timeout: 180_000 }, async () => {
-    ;[maya, sam, leo] = [await devUser(L, "Maya"), await devUser(L, "Sam"), await devUser(L, "Leo")]
+  it("NEAR-wallet users (0 NEAR, registered by the relayer) + faucet with the real token (B-10, X-09)", { timeout: 240_000 }, async () => {
+    ;[maya, sam, leo] = (await walletUsers(L, ["Maya", "Sam", "Leo"])) as [LiveUser, LiveUser, LiveUser]
     for (const u of [maya, sam, leo]) {
       expect(await L.hub.storageBalanceOf(L.cfg.usdcId, u.accountId)).not.toBeNull()
       expect((await L.rpc.call<{ amount: string }>("query", { request_type: "view_account", finality: "optimistic", account_id: u.accountId })).amount).toBe("0")
     }
     for (const [u, amount] of [[maya, "300000000"], [sam, "200000000"]] as const) {
       const user = (await L.t.db.select().from(appUser).where(eq(appUser.nearAccount, u.accountId)))[0]!
-      const ctx: SessionCtx = { idHash: "live", kind: "dev", expiresAt: new Date(Date.now() + 3600_000), user, device: null, pendingDevice: false, visitorHash: null, demo: null }
+      const ctx: SessionCtx = { idHash: "live", kind: "wallet", expiresAt: new Date(Date.now() + 3600_000), user, device: null, pendingDevice: false }
       const f = await claimFaucet({ db: L.t.db, rpc: L.rpc, submitter: L.submitter, cfg: L.cfg }, ctx, { amount, idempotencyKey: `faucet${k}${u.name}`.toLowerCase().padEnd(16, "0").slice(0, 16) }, { ipHash: "live", requestId: `req_f_${u.name}` })
       L.hashes[`faucet ${u.name}`] = String(f.body.txHash)
       expect(f.status).toBe(200)

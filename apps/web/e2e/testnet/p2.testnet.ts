@@ -3,10 +3,12 @@
 //         from the Pot → the DAO applies set_rules → get_rules and preview_spend reflect the new limit.
 //   P2-b  a full close of the same Pot: the RefundTable equals preview_close, propose_close (ERR_POT_BUSY → Try
 //         again), B approves closing → payouts verified on chain (each account's dollars, the Pot at 0, closed).
+// Both people sign in with a NEAR wallet (the e2e mock wallet) holding a throwaway 0-NEAR account (accounts.ts; Rev 9).
 //   E2E_TESTNET=1 scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts p2.testnet.ts
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 import { typeAmount } from "../fixtures/pot"
-import { accountOf, chain, dao, eventually, potBalance, usd, usdcOf } from "./chain"
+import { createTestAccounts, type TestAccounts } from "./accounts"
+import { accountOf, chain, dao, eventually, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
 const RUN = Math.random().toString(36).slice(2, 6)
 const POT_NAME = `Rules Trip ${RUN}`
@@ -20,15 +22,9 @@ let B: Page
 let slug = ""
 let accA = ""
 let accB = ""
+let accounts: TestAccounts
 
 const hero = (p: Page) => p.locator("[data-hero] [data-money]").first()
-
-async function devSignIn(page: Page, name: string) {
-  const form = page.locator("[data-dev-signin]")
-  await expect(form).toBeVisible()
-  await form.getByRole("textbox", { name: "Your first name" }).fill(name)
-  await form.getByRole("button", { name: "Continue with a test account" }).click()
-}
 
 async function addMoney(page: Page, amount: number) {
   await page.getByRole("button", { name: "Add money" }).first().click()
@@ -41,6 +37,8 @@ async function addMoney(page: Page, amount: number) {
 }
 
 test.beforeAll(async ({ browser }) => {
+  test.setTimeout(180_000)
+  accounts = await createTestAccounts(["Ana", "Ben"])
   const opts = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
   ctxA = await browser.newContext(opts)
   ctxB = await browser.newContext(opts)
@@ -51,16 +49,19 @@ test.beforeAll(async ({ browser }) => {
       if (m.type() === "error") console.log(`[${who} error] ${m.text().slice(0, 300)}`)
     })
   }
+  await useWallet(A, accounts.people[0]!)
+  await useWallet(B, accounts.people[1]!)
 })
 
 test.afterAll(async () => {
   await ctxA?.close()
   await ctxB?.close()
+  await accounts?.release()
 })
 
 test("setup: A creates one Pot, B joins, both add money", async () => {
   await A.goto("/pots")
-  await devSignIn(A, "Ana")
+  await walletSignIn(A)
   await expect(A.getByRole("heading", { level: 1, name: "Pots" })).toBeVisible({ timeout: 30_000 })
   accA = await accountOf(A.request)
   await A.getByRole("button", { name: "Start a Pot" }).first().click()
@@ -76,9 +77,7 @@ test("setup: A creates one Pot, B joins, both add money", async () => {
 
   const u = new URL(link)
   await B.goto(`${u.pathname}${u.search}${u.hash}`)
-  const form = B.locator("[data-dev-join]")
-  await form.getByRole("textbox", { name: "Your first name" }).fill("Ben")
-  await form.getByRole("button", { name: "Join with a test account" }).click()
+  await walletSignIn(B)
   const youreIn = B.getByRole("dialog", { name: "You're in!" })
   await expect(youreIn).toBeVisible({ timeout: 60_000 })
   accB = await accountOf(B.request)

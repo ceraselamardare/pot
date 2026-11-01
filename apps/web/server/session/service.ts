@@ -1,5 +1,5 @@
 // Session flows (api-spec §2.1): NEAR Auth login with first-login account creation (B-07), device-key
-// re-login (K-2), the preview-only dev session (B-04), logout. Route handlers stay thin: they parse, call
+// re-login (K-2), logout. (Wallet sessions: features/wallet/service.ts.) Route handlers stay thin: they parse, call
 // these, and set the cookies returned here.
 import "server-only"
 import { and, eq, sql } from "drizzle-orm"
@@ -291,7 +291,7 @@ export async function deviceLogin(
     .where(and(eq(device.publicKey, body.devicePublicKey), eq(appUser.nearAccount, body.accountId)))
     .limit(1)
   const r = rows[0]
-  if (!r || (r.u.kind !== "near-auth" && r.u.kind !== "dev")) throw new ApiError("device_not_registered")
+  if (!r || r.u.kind !== "near-auth") throw new ApiError("device_not_registered")
   if (r.d.status === "revoked") throw new ApiError("device_revoked")
   if (r.d.status !== "active") throw new ApiError("device_not_registered")
   const ak = await viewAccessKey(rpc, body.accountId, body.devicePublicKey, "optimistic")
@@ -299,83 +299,9 @@ export async function deviceLogin(
     await db.update(device).set({ status: "revoked", revokedAt: new Date() }).where(eq(device.id, r.d.id))
     throw new ApiError("device_not_registered")
   }
-  const s = await createSession(db, { userId: r.u.id, kind: r.u.kind, deviceId: r.d.id, userAgent: meta.userAgent })
-  const info = sessionInfo({ kind: r.u.kind, user: r.u, device: r.d, expiresAt: s.expiresAt })
+  const s = await createSession(db, { userId: r.u.id, kind: "near-auth", deviceId: r.d.id, userAgent: meta.userAgent })
+  const info = sessionInfo({ kind: "near-auth", user: r.u, device: r.d, expiresAt: s.expiresAt })
   return { status: 200, cookies: cookiesFor(cfg, s.cookieValue, info), body: { session: info } }
-}
-
-// ---------------------------------------------------------------------------------------------
-// POST /api/session/dev: preview-only test account (rev3, B-04)
-
-export function devSessionEnabled(cfg: Config): boolean {
-  return cfg.flags.devSession && !cfg.isProd && cfg.network === "testnet"
-}
-
-export async function devLogin(
-  deps: SessionDeps,
-  body: { devicePublicKey: string; keyKind: KeyKind; pop: Pop; displayName: string },
-  meta: { ipHash: string; userAgent: string | null },
-): Promise<SessionResult> {
-  const { db, cfg } = deps
-  if (!devSessionEnabled(cfg)) throw new ApiError("not_found")
-  await verifyPop(db, {
-    purpose: "dev_session",
-    message: popMessages.dev_session(body.devicePublicKey, body.pop.ts),
-    publicKey: body.devicePublicKey,
-    pop: body.pop,
-  })
-  const name = cleanDisplayName(body.displayName)
-  if (!name.ok) throw new ApiError("bad_request", { detail: { field: "displayName", why: name.why } })
-
-  // the same browser key again (e.g. a cleared cookie): a new session for the existing test account
-  const existing = (
-    await db
-      .select({ d: device, u: appUser })
-      .from(device)
-      .innerJoin(appUser, eq(appUser.id, device.userId))
-      .where(eq(device.publicKey, body.devicePublicKey))
-      .limit(1)
-  )[0]
-  if (existing) {
-    if (existing.u.kind !== "dev" || existing.d.status !== "active") throw new ApiError("device_not_registered")
-    const s = await createSession(db, { userId: existing.u.id, kind: "dev", deviceId: existing.d.id, ipHash: meta.ipHash, userAgent: meta.userAgent })
-    const info = sessionInfo({ kind: "dev", user: existing.u, device: existing.d, expiresAt: s.expiresAt })
-    return { status: 200, cookies: cookiesFor(cfg, s.cookieValue, info), body: { accountId: existing.u.nearAccount, isNew: false, session: info } }
-  }
-
-  await chargeOrQuota(
-    db,
-    [
-      { subject: "global", action: "dev_accounts", amount: 1n, limit: limit("global_dev_accounts") },
-      { subject: `ip:${meta.ipHash}`, action: "dev_accounts", amount: 1n, limit: limit("ip_dev_accounts") },
-    ],
-    "accounts",
-  )
-  await heavyOpAllowed(deps)
-  const accountId = await drawAccountId(deps)
-  // one full-access key (the device key), registration in parallel
-  const regP = deps.cfg.usdcId ? registerToken(deps, accountId).catch(() => ({ ok: false, txHash: "" })) : Promise.resolve({ ok: false, txHash: "" })
-  const createTxHash = await createAccount(deps, accountId, [body.devicePublicKey])
-  const reg = await regP
-  const [user] = await db
-    .insert(appUser)
-    .values({
-      kind: "dev",
-      nearAccount: accountId,
-      displayName: name.value,
-      avatarTint: tintFor(accountId),
-      onboardState: "ready",
-      usdcRegistered: reg.ok,
-    })
-    .returning()
-  const dev = await upsertDevice(db, user!.id, body.devicePublicKey, body.keyKind, "active", meta.userAgent)
-  const s = await createSession(db, { userId: user!.id, kind: "dev", deviceId: dev.id, ipHash: meta.ipHash, userAgent: meta.userAgent })
-  const info = sessionInfo({ kind: "dev", user: user!, device: dev, expiresAt: s.expiresAt })
-  return {
-    status: 200,
-    cookies: cookiesFor(cfg, s.cookieValue, info),
-    body: { accountId, isNew: true, session: info, createTxHash, usdcRegistered: reg.ok },
-  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -394,7 +320,5 @@ export async function logout(
       .where(and(eq(pushSubscription.endpoint, body.pushEndpoint), eq(pushSubscription.userId, s.user.id)))
   if (body.forgetDevice && s.device)
     await db.update(device).set({ status: "revoked", revokedAt: new Date() }).where(eq(device.id, s.device.id))
-  const cookies = [clearCookie(cfg, sessionCookieName(cfg)), clearCookie(cfg, "pot_hint")]
-  if (s.kind === "demo") cookies.push(clearCookie(cfg, "pot_demo_visitor"))
-  return cookies
+  return [clearCookie(cfg, sessionCookieName(cfg)), clearCookie(cfg, "pot_hint")]
 }

@@ -116,7 +116,7 @@ type Result = { status: number; body: Record<string, unknown>; cookies: string[]
 export async function addDevice(deps: DevicesDeps, s: SessionCtx, body: DevicesBody, meta: { requestId: string }): Promise<Result> {
   const { db, cfg, rpc } = deps
   const now = deps.now?.() ?? Date.now()
-  // 1. only NEAR Auth sessions hold an MPC key (dev sessions: a new browser is a new test account)
+  // 1. only NEAR Auth sessions hold an MPC key (a wallet session signs with its own wallet)
   if (s.kind !== "near-auth") throw new ApiError("demo_forbidden", { detail: { why: "not_near_auth" } })
   const account = s.user.nearAccount
   const key = `devices:${body.idempotencyKey}`

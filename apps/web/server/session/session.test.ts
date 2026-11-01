@@ -17,7 +17,7 @@ import { USDC } from "../testing/delegates"
 import { b64url, sha256Hex } from "../util/crypto"
 import { checkChallenge, makeChallenge, nonceFor, SUB_RE, verifyIdToken } from "./idtoken"
 import { popMessages } from "./pop"
-import { devLogin, deviceLogin, logout, nearAuthLogin, type SessionDeps } from "./service"
+import { deviceLogin, logout, nearAuthLogin, type SessionDeps } from "./service"
 import { loadSession, requireSession } from "./store"
 
 let t: TestDb
@@ -269,6 +269,18 @@ describe("POST /api/session (B-07)", () => {
     await expect(
       nearAuthLogin(deps, { idToken: token, devicePublicKey: key.getPublicKey().toString(), keyKind: "fallback", pop: pop(key, popMessages.session(token, ts), ts), displayName: "Admin" }, { ipHash: "ip", userAgent: null }),
     ).rejects.toMatchObject({ reason: "bad_request", detail: { field: "displayName" } })
+    // bidi overrides are refused too (U-11)
+    const key2 = KeyPair.fromRandom("ed25519")
+    const token2 = await idToken({ sub: "auth0|n3" })
+    await expect(
+      nearAuthLogin(deps, { idToken: token2, devicePublicKey: key2.getPublicKey().toString(), keyKind: "fallback", pop: pop(key2, popMessages.session(token2, ts), ts), displayName: "Le\u202Eo" }, { ipHash: "ip", userAgent: null }),
+    ).rejects.toMatchObject({ reason: "bad_request", detail: { field: "displayName" } })
+  })
+
+  it("relayer below critical → sponsor_low, no account (a new person needs an account creation)", async () => {
+    chain.accounts.get(RELAYER)!.amount = NEAR
+    await expect(login()).rejects.toMatchObject({ reason: "service_unavailable", detail: { cause: "sponsor_low" } })
+    expect(sub.submitted.filter((x) => methodOf(x.spec) === "createAccount")).toHaveLength(0)
   })
 })
 
@@ -337,6 +349,14 @@ describe("POST /api/session/device (K-2, A-08)", () => {
     await expect(relogin(key, account, Date.now() + 1)).rejects.toMatchObject({ reason: "device_revoked" })
   })
 
+  it("a wallet user can't device-relogin (only NEAR Auth accounts hold Pot device keys)", async () => {
+    const key = KeyPair.fromRandom("ed25519")
+    const [u] = await t.db.insert(appUser).values({ kind: "wallet", nearAccount: "alice.testnet", displayName: "Alice", avatarTint: "peach" }).returning()
+    await t.db.insert(device).values({ userId: u!.id, publicKey: key.getPublicKey().toString(), keyKind: "fallback", status: "active" })
+    chain.account("alice.testnet", { keys: { [key.getPublicKey().toString()]: 0n } })
+    await expect(relogin(key, "alice.testnet")).rejects.toMatchObject({ reason: "device_not_registered" })
+  })
+
   it("unknown device → device_not_registered", async () => {
     const { account } = await setup()
     await expect(relogin(KeyPair.fromRandom("ed25519"), account)).rejects.toMatchObject({ reason: "device_not_registered" })
@@ -351,67 +371,5 @@ describe("POST /api/session/device (K-2, A-08)", () => {
     expect(cookies.some((c) => c.startsWith("__Host-pot_session=;") && c.includes("Max-Age=0"))).toBe(true)
     expect(await loadSession(t.db, req, cfg)).toBeNull()
     await expect(relogin(key, account, Date.now() + 2)).rejects.toMatchObject({ reason: "device_revoked" })
-  })
-})
-
-describe("POST /api/session/dev (B-04, A-21)", () => {
-  const dev = async (key = KeyPair.fromRandom("ed25519"), name = "Leo", ip = "ip1") => {
-    const ts = Date.now()
-    return devLogin(
-      deps,
-      { devicePublicKey: key.getPublicKey().toString(), keyKind: "fallback", pop: pop(key, popMessages.dev_session(key.getPublicKey().toString(), ts), ts), displayName: name },
-      { ipHash: ip, userAgent: null },
-    )
-  }
-
-  it("creates u-<8> with exactly ONE full-access key (the device key) and a dev session", async () => {
-    const key = KeyPair.fromRandom("ed25519")
-    const r = await dev(key)
-    expect(r.body).toMatchObject({ isNew: true, usdcRegistered: true })
-    const create = sub.submitted.find((s) => methodOf(s.spec) === "createAccount")!
-    expect(create.spec.actions).toHaveLength(2) // CreateAccount + one AddKey
-    const u = (await t.db.select().from(appUser))[0]!
-    expect(u).toMatchObject({ kind: "dev", authSub: null, displayName: "Leo" })
-    const s = (await loadSession(t.db, reqWith(cookieOf(r.cookies)), cfg))!
-    expect(s).toMatchObject({ kind: "dev", pendingDevice: false })
-    // the same browser key later: a new session for the same account, no new account
-    const again = await dev(key)
-    expect(again.body).toMatchObject({ isNew: false, accountId: r.body.accountId })
-    expect(sub.submitted.filter((x) => methodOf(x.spec) === "createAccount")).toHaveLength(1)
-  })
-
-  it("404 on production whatever the flag; 404 when the flag is off; 404 on mainnet", async () => {
-    const envs: Record<string, string>[] = [{ VERCEL_ENV: "production", FLAG_DEV_SESSION: "true" }, { FLAG_DEV_SESSION: "false" }, { NEXT_PUBLIC_NETWORK: "mainnet" }]
-    for (const env of envs) {
-      deps.cfg = testConfig(env)
-      await expect(dev()).rejects.toMatchObject({ reason: "not_found", status: 404 })
-    }
-  })
-
-  it("a replayed pop → device_proof_invalid", async () => {
-    const key = KeyPair.fromRandom("ed25519")
-    const ts = Date.now()
-    const body = { devicePublicKey: key.getPublicKey().toString(), keyKind: "fallback" as const, pop: pop(key, popMessages.dev_session(key.getPublicKey().toString(), ts), ts), displayName: "Leo" }
-    await devLogin(deps, body, { ipHash: "ip", userAgent: null })
-    await expect(devLogin(deps, body, { ipHash: "ip", userAgent: null })).rejects.toMatchObject({ reason: "device_proof_invalid" })
-  })
-
-  it("the dev_accounts quota (global 20/day, 10/day per IP) → quota_exceeded family accounts", async () => {
-    process.env.QUOTA_IP_DEV_ACCOUNTS = "2"
-    await dev()
-    await dev()
-    await expect(dev()).rejects.toMatchObject({ reason: "quota_exceeded", detail: { family: "accounts" } })
-    await dev(undefined, "Sam", "ip2") // another network is fine
-    delete process.env.QUOTA_IP_DEV_ACCOUNTS
-  })
-
-  it("relayer below critical → sponsor_low, no account", async () => {
-    chain.accounts.get(RELAYER)!.amount = NEAR
-    await expect(dev()).rejects.toMatchObject({ reason: "service_unavailable", detail: { cause: "sponsor_low" } })
-    expect(sub.submitted).toHaveLength(0)
-  })
-
-  it("display names reject bidi overrides (U-11)", async () => {
-    await expect(dev(undefined, "Le‮o")).rejects.toMatchObject({ reason: "bad_request", detail: { field: "displayName" } })
   })
 })

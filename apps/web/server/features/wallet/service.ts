@@ -78,7 +78,7 @@ export async function walletLogin(
   if (!isAccountId(body.accountId)) throw bad("accountId")
   if (body.message !== SIGN_IN_MESSAGE) throw bad("message")
   if (!allowedRecipients(cfg).includes(body.recipient)) throw bad("recipient")
-  // rev4: never for our own accounts (NEAR Auth users, personas, the hub/token/relayer/treasury)
+  // rev4: never for our own accounts (NEAR Auth users, the hub/token/relayer/treasury)
   const root = rootOf(cfg)
   if (body.accountId === root || body.accountId.endsWith(`.${root}`)) throw bad("accountId", "own_account")
 

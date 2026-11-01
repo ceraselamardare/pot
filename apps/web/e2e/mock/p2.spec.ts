@@ -4,7 +4,7 @@
 // The mobile projects save review screenshots to notes/screens/p2-*.png (Day and Night).
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPersona, axe, brandChecks, openedSheet, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, typeAmount, type MockPerson } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -14,10 +14,8 @@ async function shot(page: Page, name: string, project: string) {
   await page.screenshot({ path: `${SCREENS}p2-${project === "mobile-night" ? "night" : "day"}-${name}.png` })
 }
 
-async function switchTo(page: Page, from: string, to: string) {
-  await page.getByRole("button", { name: `You're ${from}` }).click()
-  await page.getByRole("menuitem", { name: `Switch to ${to}` }).click()
-  await expect(page.getByRole("button", { name: `You're ${to}` })).toBeVisible()
+async function switchTo(page: Page, _from: string, to: string) {
+  await becomePerson(page, to.toLowerCase() as MockPerson)
 }
 
 
@@ -25,7 +23,7 @@ test.describe("rules change (P-8)", () => {
   test.use({ reducedMotion: "reduce" })
 
   test("Maya asks for a $50 instant limit → Sam approves → the new limit applies to new spends", async ({ page }, info) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?tab=rules")
     await expect(page.getByText("Anyone can spend up to $100 without asking.")).toBeVisible()
     await expect(page.getByText("Changes need the group's approval. They apply once 2 of 3 approve.")).toBeVisible()
@@ -84,7 +82,7 @@ test.describe("rules change (P-8)", () => {
   })
 
   test("a sole member changes the rules directly", async ({ page }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/pots")
     // make Porto Weekend Maya's alone (mock world edit), then reload
     await page.evaluate(() => {
@@ -107,7 +105,7 @@ test.describe("rules change (P-8)", () => {
   })
 
   test("a refused change says nothing changed (ERR_RULES_PENDING from another phone)", async ({ page }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.addInitScript(() => localStorage.setItem("pot.mock.fail", "rules_pending"))
     await page.goto("/p/lisbon-trip?tab=rules&sheet=rules")
     const sheet = await openedSheet(page, "Ask the group to change a rule")
@@ -121,7 +119,7 @@ test.describe("close (P-9)", () => {
   test.use({ reducedMotion: "reduce" })
 
   test("Maya asks → money just moved → try again → Sam approves → closed, read-only, refunds shown", async ({ page }, info) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip")
     await page.getByRole("button", { name: "More options for Lisbon Trip" }).click()
     const item = page.getByRole("menuitem", { name: /Close Pot/ })
@@ -201,13 +199,13 @@ test.describe("close (P-9)", () => {
   })
 
   test("deep link from a push: ?pid=<proposal> opens the close request", async ({ page }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?sheet=close")
     const sheet = await openedSheet(page, "Close Lisbon Trip?")
     await sheet.locator("[data-close-cta]").click()
     await expect(sheet.getByText("Sent to the group. Your approval is counted. It needs 1 more.")).toBeVisible()
     await page.evaluate(() => {
-      localStorage.setItem("pot.mock.session", JSON.stringify({ persona: "leo", kind: "demo" }))
+      localStorage.setItem("pot.mock.session", JSON.stringify({ persona: "leo", kind: "mock" }))
     })
     const pid = await page.evaluate(() => JSON.parse(localStorage.getItem("pot.mock.world.v1")!).pots["lisbon-trip"].close.id as number)
     await page.goto(`/p/lisbon-trip?pid=${pid}`)
@@ -218,7 +216,7 @@ test.describe("close (P-9)", () => {
 
 test("Members: Gets back is what a close would pay now, and how it's worked out", async ({ page }, info) => {
   test.skip(info.project.name === "desktop", "Members live in the right column on desktop")
-  await asPersona(page, "leo")
+  await asPerson(page, "leo")
   await page.goto("/p/lisbon-trip?tab=members")
   const row = page.getByRole("listitem", { name: /^Leo \(you\)\. Put in \$150\.00 · Share of spending \$0\.00 · Gets back \$150\.00$/ })
   await expect(row).toBeVisible()
@@ -230,7 +228,7 @@ test("Members: Gets back is what a close would pay now, and how it's worked out"
 })
 
 test("Advanced: account and Pot ids, explorer links, the On-chain rules panel (D-52)", async ({ page }, info) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/you/advanced")
   await expect(page.getByRole("link", { name: "View your account on the explorer" })).toHaveAttribute("href", /\/address\/maya-4f2a\.users\.pots\.testnet$/)
   const pot = page.locator('[data-advanced-pot="lisbon-trip"]')

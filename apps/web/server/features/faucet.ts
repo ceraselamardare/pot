@@ -57,7 +57,7 @@ export async function claimFaucet(
 
   // B-11: below the critical treasury float the faucet is off (api-spec §3.5); the cron alerts `treasury_low`
   if (!(await treasuryAllowsFaucet(deps.rpc, cfg))) throw unavailable("treasury", 60_000, { why: "treasury_low" })
-  const subject = s.kind === "demo" && s.visitorHash ? `visitor:${s.visitorHash}` : `account:${account}`
+  const subject = `account:${account}`
   const charges: QuotaCharge[] = [
     { subject, action: "faucet_claims", amount: 1n, limit: limit("account_faucet_claims") },
     { subject, action: "faucet_usd", amount, limit: limit("account_faucet_usd") },

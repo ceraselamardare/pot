@@ -1,6 +1,7 @@
 // X-07 testnet tier, the big chunks end to end on the real chain (test-plan §5.2), with two browser contexts:
-// A = a new person on a dev session who creates the Pot, B = a friend who opens the invite on another phone.
-//   E-a  dev session → create a Pot → the share link
+// A = a new person who creates the Pot, B = a friend who opens the invite on another phone. Both sign in with a NEAR
+// wallet (NEAR Connect → the e2e mock wallet) holding a throwaway 0-NEAR testnet account (accounts.ts; Rev 9).
+//   E-a  wallet sign-in → create a Pot → the share link
 //   E-b  B opens the invite → joins → adds money (A adds too, so the close splits between two people)
 //   E-c  B: instant spend → "Approved by Pot rules" → the Pot's balance drops on chain
 //   E-d  A: over the instant limit → needs 2 of 2 → B approves → executed on chain
@@ -9,7 +10,8 @@
 import { fileURLToPath } from "node:url"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 import { typeAmount } from "../fixtures/pot"
-import { accountOf, chain, dao, eventually, nearBalance, potBalance, usd, usdcOf } from "./chain"
+import { createTestAccounts, type TestAccounts } from "./accounts"
+import { accountOf, chain, dao, eventually, nearBalance, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 const RUN = Math.random().toString(36).slice(2, 6)
@@ -25,15 +27,9 @@ let slug = ""
 let link = ""
 let accA = ""
 let accB = ""
+let accounts: TestAccounts
 
 const hero = (p: Page) => p.locator("[data-hero] [data-money]").first()
-
-async function devSignIn(page: Page, name: string) {
-  const form = page.locator("[data-dev-signin]")
-  await expect(form).toBeVisible()
-  await form.getByRole("textbox", { name: "Your first name" }).fill(name)
-  await form.getByRole("button", { name: "Continue with a test account" }).click()
-}
 
 async function addMoney(page: Page, amount: number) {
   await page.getByRole("button", { name: "Add money" }).first().click()
@@ -48,6 +44,9 @@ async function addMoney(page: Page, amount: number) {
 }
 
 test.beforeAll(async ({ browser }) => {
+  test.setTimeout(180_000)
+  // Ana and Ben: <name>.e2e-<run>.pot-funds-65k8.testnet, 0 NEAR, one full-access key each (held by the mock wallet)
+  accounts = await createTestAccounts(["Ana", "Ben"])
   const opts = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
   ctxA = await browser.newContext(opts)
   ctxB = await browser.newContext(opts)
@@ -58,20 +57,25 @@ test.beforeAll(async ({ browser }) => {
       if (m.type() === "error" || m.type() === "warning") console.log(`[${who} ${m.type()}] ${m.text().slice(0, 300)}`)
     })
   }
+  await useWallet(A, accounts.people[0]!)
+  await useWallet(B, accounts.people[1]!)
 })
 
 test.afterAll(async () => {
   await ctxA?.close()
   await ctxB?.close()
+  await accounts?.release()
 })
 
-test("E-a: a new person (dev session) creates a Pot and gets the share link", async () => {
+test("E-a: a new person (NEAR wallet) creates a Pot and gets the share link", async () => {
   await A.goto("/pots")
-  await devSignIn(A, "Ana")
+  await walletSignIn(A)
   await expect(A.getByRole("heading", { level: 1, name: "Pots" })).toBeVisible({ timeout: 30_000 })
   accA = await accountOf(A.request)
-  expect(accA).toMatch(/^u-[a-z0-9]{8}\./)
-  // 0 NEAR for the person: the account has no balance of its own (NEP-448 sponsored)
+  expect(accA).toBe(accounts.people[0]!.accountId)
+  // the token registration is the relayer's, once, after the sign-in (D-23)
+  await eventually(() => chain.usdc.storageBalanceOf(accA as never), (v) => !!v.value, 45_000)
+  // 0 NEAR for the person: the account has no balance of its own (NEP-448)
   await A.getByRole("button", { name: "Start a Pot" }).first().click()
   const step1 = A.getByRole("dialog", { name: "Name your Pot" })
   await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
@@ -98,7 +102,7 @@ test("E-a: a new person (dev session) creates a Pot and gets the share link", as
   const pk = `ed25519:${new URL(link).searchParams.get("i")}`
   const inv = await chain.hub.getInvite(dao(slug), pk as never)
   expect(inv.value?.status).toBe("active")
-  // the person's own NEAR balance stays 0: account, token registration and the Pot were sponsored
+  // the person's own NEAR balance stays 0: token registration, gas and the Pot were sponsored
   expect(await nearBalance(accA)).toBe(0n)
   await share.getByRole("button", { name: "Close" }).click()
 })
@@ -116,14 +120,14 @@ test("E-b: a friend opens the invite on another phone, joins and adds money", as
   }
   await B.emulateMedia({ colorScheme: "light" })
 
-  const form = B.locator("[data-dev-join]")
-  await form.getByRole("textbox", { name: "Your first name" }).fill("Ben")
-  await form.getByRole("button", { name: "Join with a test account" }).click()
-  await expect(B.getByText("Setting up your Pot account…")).toBeVisible()
+  // "I have a NEAR wallet" → signed in → straight on to joining (D-08 signature with the #secret, relayed `join`)
+  await walletSignIn(B)
+  await expect(B.getByText(`Joining ${POT_NAME}…`)).toBeVisible({ timeout: 30_000 })
   const youreIn = B.getByRole("dialog", { name: "You're in!" })
   await expect(youreIn).toBeVisible({ timeout: 60_000 })
   expect(new URL(B.url()).hash).toBe("")
   accB = await accountOf(B.request)
+  expect(accB).toBe(accounts.people[1]!.accountId)
   const members = await eventually(() => chain.hub.getMembers(dao(slug)), (v) => v.value.some((m) => m.account === accB && m.status === "active"))
   expect(members.value.map((m) => m.account).sort()).toEqual([accA, accB].sort())
 
@@ -174,6 +178,13 @@ test("E-c: instant spend → Approved by Pot rules → the balance drops on chai
   await expect(row).toBeVisible()
   await expect(row.getByText("Approved by Pot rules")).toBeVisible()
   await expect(hero(A)).toHaveText("$230.00", { timeout: 30_000 })
+  // review screenshots of the live Pot (a separate screenshot spec did this before Rev 9)
+  for (const scheme of ["light", "dark"] as const) {
+    await B.emulateMedia({ colorScheme: scheme })
+    await B.waitForTimeout(400)
+    await B.screenshot({ path: `${SCREENS}live-${scheme === "dark" ? "night" : "day"}-pot.png` })
+  }
+  await B.emulateMedia({ colorScheme: "light" })
 })
 
 test("E-d: over the instant limit → needs 2 of 2 → the friend approves → executed", async () => {

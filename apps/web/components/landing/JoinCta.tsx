@@ -7,9 +7,8 @@
 //  - Runs the join machine: [Join with Google] → "Setting up your Pot account…" → "Joining {potName}…" →
 //    "You're in!" (focus on the H1, one polite announcement) → [Add my $150 share] (prefilled Add sheet).
 // Mock data source: there's no NEAR Auth popup; joining signs the invitee in as Leo (the D-61 story).
-// Testnet (F-13): [Join with a test account] (preview/local, FLAG_DEV_SESSION) asks for a first name and makes a
-// dev session for this browser's device key; then the join signs the D-08 message with the #secret and relays
-// `join`. NEAR Auth's popup (F-14) slots into the machine's `authorizing` state.
+// Testnet (F-13, F-14, F-19): NEAR Auth (Google/email) or "I have a NEAR wallet" (NEAR Connect) signs in, then the
+// join signs the D-08 message with the #secret and relays `join`.
 import { ChevronDown, KeyRound, Mail, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react"
@@ -22,14 +21,14 @@ import { useInstallContext } from "@/lib/client/pwa/platform"
 import { t } from "@/i18n/t"
 import { announce } from "@/lib/client/browser"
 import { joinPot, mockJoinSession } from "@/lib/client/actions"
-import { FLAG_DEV_SESSION, IS_LIVE } from "@/lib/client/config"
+import { IS_LIVE } from "@/lib/client/config"
 import { useMeInfo, usePot } from "@/lib/client/data"
 import { INVITE_SECRET_RE } from "@/lib/client/invite"
 import { deviceKeys } from "@/lib/client/keys/device-key-store"
 import { initialJoin, joinReducer, joinStep } from "@/lib/client/machines/join"
 import { PEOPLE, type PersonaId } from "@/lib/client/mock/fixtures"
 import { formatUsd } from "@/lib/client/money"
-import { signInDev, signOut } from "@/lib/client/session"
+import { signOut } from "@/lib/client/session"
 import { cn } from "@/lib/client/cn"
 import { SignInOptions } from "@/components/features/auth/SignInOptions"
 
@@ -78,8 +77,6 @@ export function JoinCta({
   const secret = useInviteSecret(slug)
   const [s, dispatch] = useReducer(joinReducer, initialJoin)
   const [more, setMore] = useState(false)
-  const [devName, setDevName] = useState("")
-  const devNameRef = useRef("")
   const secretRef = useRef<string | null>(null)
   useEffect(() => {
     if (secret) secretRef.current = secret
@@ -89,7 +86,7 @@ export function JoinCta({
   const suggestedText = suggested ? formatUsd(BigInt(suggested), "whole") : null
   const view = pot.state === "ready" ? pot.data : null
   const live = IS_LIVE
-  const firstName = live ? (meInfo?.name ?? devName.trim()) : PEOPLE[JOINER].name
+  const firstName = live ? (meInfo?.name ?? "") : PEOPLE[JOINER].name
 
   // pre-generate the device key on idle (§4.3); harmless where unsupported
   useEffect(() => {
@@ -105,7 +102,8 @@ export function JoinCta({
     let cancelled = false
     const slow = setTimeout(() => !cancelled && dispatch({ type: "SLOW" }), 10_000)
     if (tag === "creatingSession") {
-      ;(live ? signInDev(devNameRef.current).then(() => undefined) : mockJoinSession(JOINER))
+      // live sign-in happens in SignInOptions before the machine starts; only the mock creates a session here
+      ;(live ? Promise.resolve() : mockJoinSession(JOINER))
         .then(() => !cancelled && dispatch({ type: "SESSION_OK" }))
         .catch(() => !cancelled && dispatch({ type: "SESSION_ERR" }))
     } else if (tag === "joining") {
@@ -138,11 +136,6 @@ export function JoinCta({
   }, [tag, slug, potName, suggestedText])
 
   const join = () => dispatch({ type: "TAP_JOIN", signedIn: !!me, needsAuth: false })
-  const joinDev = () => {
-    if (!devName.trim()) return
-    devNameRef.current = devName.trim()
-    join()
-  }
   const step = joinStep(s)
   const busy = s.tag === "creatingSession" || s.tag === "joining" || s.tag === "setupError" || s.tag === "joinError"
 
@@ -214,37 +207,9 @@ export function JoinCta({
         </>
       ) : s.tag !== "joined" && live ? (
         <>
-        {/* integrations (F-14, F-19): NEAR Auth and "I have a NEAR wallet"; once signed in, straight on to joining */}
-        <SignInOptions join primary={!FLAG_DEV_SESSION} onSignedIn={() => dispatch({ type: "TAP_JOIN", signedIn: true, needsAuth: false })} />
-        <form
-          className="flex flex-col gap-3"
-          data-dev-join
-          onSubmit={(e) => {
-            e.preventDefault()
-            joinDev()
-          }}
-        >
-          {FLAG_DEV_SESSION ? (
-            <>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-label text-ink">{t("signin.dev.name")}</span>
-                <input
-                  value={devName}
-                  maxLength={40}
-                  autoComplete="given-name"
-                  onChange={(e) => setDevName(e.target.value)}
-                  className="h-13 rounded-sm border border-line-strong bg-surface-sunken px-3 text-body text-ink"
-                />
-              </label>
-              <Button type="submit" variant="primary" className="w-full" disabled={!devName.trim()}>
-                {t("landing.cta.dev")}
-              </Button>
-              <p className="text-center text-body-sm text-ink-muted">{t("signin.dev.hint")}</p>
-            </>
-          ) : (
-            <p className="text-center text-body-sm text-ink-muted">{t("signin.body")}</p>
-          )}
-        </form>
+          {/* integrations (F-14, F-19): NEAR Auth and "I have a NEAR wallet"; once signed in, straight on to joining */}
+          <SignInOptions join primary onSignedIn={() => dispatch({ type: "TAP_JOIN", signedIn: true, needsAuth: false })} />
+          <p className="text-center text-body-sm text-ink-muted">{t("signin.body")}</p>
         </>
       ) : s.tag !== "joined" ? (
         <>

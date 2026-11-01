@@ -1,13 +1,13 @@
 // The PotSigner interface (frontend-architecture §4.1). Type-only, so UI code can depend on it
-// without loading near-api-js. Browser adapters (DeviceKey/WebCrypto, NearAuth, NearConnect, Demo)
-// live in apps/web; "@pot/sdk/sign" ships KeyPairPotSigner (tests, scripts) and HashSigner (the
+// without loading near-api-js. Browser adapters (DeviceKey/WebCrypto, NearAuth, NearConnect) live
+// in apps/web; "@pot/sdk/sign" ships KeyPairPotSigner (tests, scripts) and HashSigner (the
 // base class a WebCrypto adapter needs).
 
 import type { DevicesReq, OpKey, RelayReq } from "./api.ts"
 import type { AccountId, PublicKeyStr } from "./ids.ts"
-import type { ActionIntent, CallSpec } from "./intents.ts"
+import type { ActionIntent, ActionIntentWire, CallSpec } from "./intents.ts"
 
-export type SignerKind = "device" | "near-auth" | "near-connect" | "demo"
+export type SignerKind = "device" | "near-auth" | "near-connect" | "mock"
 export type Readiness = "ready" | "needs_device" | "reconnect_wallet" | "unsupported"
 
 export interface Prepared {
@@ -23,12 +23,20 @@ export interface Prepared {
 }
 
 export type SignedPayload =
-  /** device, wallet delegate, demo → POST /api/relay */
+  /** device, wallet delegate → POST /api/relay */
   | { via: "relay"; body: RelayReq }
+  /** MockSigner only (@pot/sdk/testing): MockChain.handleMockBody builds the call; never sent to a server */
+  | { via: "mock"; body: MockRelayBody }
   /** NEAR Auth AddKey → POST /api/devices */
   | { via: "devices"; body: DevicesReq }
   /** wallet signAndSendTransaction (user paid gas) */
   | { via: "submitted"; txHash: string }
+
+/** The MockSigner's body: an intent for MockChain to build and execute (no delegate, no key). */
+export interface MockRelayBody {
+  mock: { intent: ActionIntentWire }
+  idempotencyKey: OpKey
+}
 
 export interface PotSigner {
   readonly kind: SignerKind

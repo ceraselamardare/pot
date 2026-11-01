@@ -51,9 +51,9 @@ New tests: `server/features/oneclick/oneclick.test.ts` (31), `server/features/wa
 `GET /api/oneclick/status/[id]` (`?relayId=` marks ADDED), `GET /api/oneclick/status?pot=` (additive: the Pot card's
 list), `POST /api/oneclick/simulate`.
 **Caps (rev4 H-3):** simulated quotes ≤ $500; simulated deliveries ≤ $500 per session subject per UTC day
-(`user:` / `visitor:` · `xc_sim_usd`), **$150 in demo sessions**, inside the global `faucet_usd` cap; 20 non-dry quotes
+(`user:` · `xc_sim_usd`; the $150 demo-session cap went with the demo in Rev 9), inside the global `faucet_usd` cap; 20 non-dry quotes
 per day, ≤ 5 open deposits per person; dry quotes 300/day. Overrides: `QUOTA_XC_QUOTES`, `QUOTA_XC_DRY`,
-`QUOTA_XC_SIM_USD`, `QUOTA_XC_SIM_USD_DEMO`. `ONECLICK_SIM_PAUSED=base,…` shows the "paused" picker on testnet.
+`QUOTA_XC_SIM_USD`. `ONECLICK_SIM_PAUSED=base,…` shows the "paused" picker on testnet.
 **The simulator** (testnet; `ONECLICK_MODE=real` + mainnet only for the clip): the address is `SIMULATED-<chain>-<8 hex>`,
 the QR encodes `POT TESTNET DEMO - DO NOT SEND FUNDS` under a "Test only · Do not send" band, every screen has the
 "Testnet demo: simulated transfer, no real money" pill. Its numbers are a real dry quote's (placeholder recipient
@@ -84,8 +84,10 @@ Client: `lib/deposit/` (live API, the browser mock over sim.ts, TanStack hooks p
   `signMessage`). `walletSend()`: gasless `signDelegateActions` → the same `/api/relay`; otherwise
   `signAndSendTransaction` with `buildCall(…, {direct: true})` (the wallet pays its gas; a synthetic RelayOk).
   `send()` routes wallet sessions there. UI: `components/features/wallet/WalletSignIn.tsx` ("I have a NEAR wallet").
-- E2E: a build flag `NEXT_PUBLIC_E2E_MOCK_WALLET=1` swaps the connector for a local NEP-413 signer (key from
-  `localStorage['pot.e2e.wallet']`). Never set in a normal build.
+- E2E: a build flag `NEXT_PUBLIC_E2E_MOCK_WALLET=1` swaps the connector for a local signer (key from
+  `localStorage['pot.e2e.wallet']`): NEP-413 sign-in and, since Rev 9, `signDelegateActions` (the testnet tier's only sign-in
+  path). `next.config.ts` aliases `pot-e2e-mock-wallet` to it only under that flag (refused on Vercel and mainnet) and to a
+  throwing stub otherwise, so a normal build carries none of its code; it also refuses to run outside localhost.
 
 ## 3. NEAR Auth login (F-14, F-27, B-07 live bits, B-20)
 

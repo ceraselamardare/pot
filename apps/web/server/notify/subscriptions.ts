@@ -33,22 +33,14 @@ export interface PushSubInput {
 export const MAX_SUBSCRIPTIONS_PER_USER = 10
 
 /**
- * POST /api/push/subscription. Session (not pending_device); demo only with FLAG_DEMO_PUSH on a POOL lease
- * (rev3 R-15; the row keeps `demo_pot_id`, so fan-out reaches only that lease's persona and the cron drops it
- * when the lease retires). Upsert by endpoint (a shared device moves to this user); ≤ 10 per user, oldest out.
+ * POST /api/push/subscription. Session (not pending_device). Upsert by endpoint (a shared device moves to this
+ * user); ≤ 10 per user, oldest out.
  */
 export async function saveSubscription(
   db: Db,
   s: SessionCtx,
   input: PushSubInput,
-  env: Record<string, string | undefined> = process.env,
 ): Promise<{ subscriptionId: string }> {
-  let demoPotId: string | null = null
-  if (s.kind === "demo") {
-    const allowed = env.FLAG_DEMO_PUSH === "true" && env.NEXT_PUBLIC_NETWORK !== "mainnet" && s.demo?.kind === "pool"
-    if (!allowed) throw new ApiError("demo_forbidden", { detail: { why: s.demo?.kind === "shared" ? "shared_pot" : "demo_push_off" } })
-    demoPotId = s.demo!.id
-  }
   if (s.pendingDevice) throw new ApiError("device_not_registered")
   const { endpoint, expirationTime, keys } = input.subscription
   if (endpoint.length > 1024 || !pushHostAllowed(endpoint)) throw new ApiError("args_invalid", { detail: { field: "subscription.endpoint" } })
@@ -62,7 +54,6 @@ export async function saveSubscription(
     expirationTime: expirationTime ? new Date(expirationTime) : null,
     standalone: input.standalone,
     platform: input.platform ?? null,
-    demoPotId,
   }
   const [row] = await db
     .insert(pushSubscription)

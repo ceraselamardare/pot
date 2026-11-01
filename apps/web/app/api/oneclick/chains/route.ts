@@ -10,7 +10,6 @@ export const maxDuration = 10
 
 export const GET = route("GET /api/oneclick/chains", async (ctx) => {
   const cfg = getConfig()
-  const s = await requireSession(getDb(), ctx.req, cfg)
-  if (s.kind === "demo") ctx.demo = true
+  await requireSession(getDb(), ctx.req, cfg)
   return ctx.json(await listChains({ cfg, oneclick: getOneClick() }))
 })

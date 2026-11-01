@@ -3,6 +3,20 @@
 > Written 2026-10-22 by the frontend engineer. Specs: plan/frontend-architecture.md, plan/ux-spec.md, plan/design-direction/, brand/README.md + tokens.json, decisions.md Rev 7.
 > Review screenshots (390×844 @3x, Day + Night): `notes/screens/{day,night}-{pot,invite-landing,instant-approval}.png`.
 
+> **Rev 9 (2026-11-01, plan/decisions.md): removed** the live persona demo client (`/demo/live`, `DemoForms`, `DemoSigner`,
+> `startDemoSession`, `signInDemo`/`switchPersona`/`resetDemo`), the `DemoBanner` (person switcher + reset; the mock specs now switch
+> people with the `becomePerson` fixture: localStorage + reload) and the test-account sign-in (`DevSignIn`, `startDevSession`,
+> `signInDev`, `FLAG_DEV_SESSION`, the "Join with a test account" form in `JoinCta`; i18n `signin.dev.*`, `landing.cta.dev`,
+> `demo.banner/switch/reset/as/choose/maya/sam/leo/intro/try.*/snapshot.*/readonly/readme`). Signed out on testnet, the app offers
+> NEAR Auth and "I have a NEAR wallet" only; the join landing's NEAR Auth button is always the marigold. The mock data source stays
+> (tests, design); its session kind is `mock` (was `demo`). **E2E mock wallet:** `lib/signing/near-connect/e2e-mock-wallet.ts` now
+> also signs `signDelegateActions` (nonce from the chain, NEP-366 via `@pot/sdk/sign`), so the testnet tier follows the real wallet
+> path. It is imported as `pot-e2e-mock-wallet`, which `next.config.ts` aliases to the file only when `NEXT_PUBLIC_E2E_MOCK_WALLET=1`
+> (refused on Vercel and mainnet) and to a throwing stub (`e2e-mock-wallet.off.ts`) otherwise: a normal build contains none of its code
+> (verified 2026-11-01). `walletSend` retries once on `expired`/`nonce_used`/`nonce_pending`, like the device path. The testnet suites
+> (`flows`, `p2`, `deposit`) sign in with throwaway accounts (`e2e/testnet/accounts.ts`); `demo.testnet.ts` and `screens.testnet.ts`
+> are gone (the live Pot screenshots are taken in `flows` E-c).
+
 ## Status
 
 | Command (from the repo root) | Result |

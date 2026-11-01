@@ -85,7 +85,7 @@ const proposal = (id: number, status: Proposal["status"], votes: Record<string, 
 const feed = (o: Partial<Api.FeedRes> = {}): Api.FeedRes => ({
   ok: true,
   requestId: "req_1",
-  pot: { potId: D, slug: "trip-ab12", name: "Trip", isDemo: false, gradient: "3" },
+  pot: { potId: D, slug: "trip-ab12", name: "Trip", gradient: "3" },
   items: [{ key: "contribution:tx1", type: "contribution", actor: ben, at: new Date(NOW - 120_000).toISOString(), amount: "150000000", txHash: "tx1" }],
   profiles: { [ana]: { name: "Ana", tint: "peach" }, [ben]: { name: "Ben", tint: "sage" } },
   memos: { ref2: "ferry" },
@@ -166,7 +166,7 @@ describe("livePotVM", () => {
 })
 
 describe("names and covers", () => {
-  it("reads persona names from demo accounts, nothing from u-<8> ids", () => {
+  it("reads first names from named accounts (the reference Pot's members), nothing from u-<8> ids", () => {
     expect(nameFromAccount("maya-qg6e.users.potprev.testnet")).toBe("Maya")
     expect(nameFromAccount("leo.users.potprev.testnet")).toBe("Leo")
     expect(nameFromAccount("u-z7wm7129.users.potprev.testnet")).toBeNull()

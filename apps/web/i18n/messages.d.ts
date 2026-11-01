@@ -264,7 +264,6 @@ export interface Messages {
   "demo.all.glossary": undefined
   "demo.all.title": undefined
   "demo.approx": undefined
-  "demo.as": { persona: string | number }
   "demo.balances.account": undefined
   "demo.balances.caption": undefined
   "demo.balances.change": undefined
@@ -273,7 +272,6 @@ export interface Messages {
   "demo.balances.near": undefined
   "demo.balances.out": undefined
   "demo.balances.same": undefined
-  "demo.banner": undefined
   "demo.before": undefined
   "demo.c1.aha": undefined
   "demo.c1.b1": undefined
@@ -378,7 +376,6 @@ export interface Messages {
   "demo.check.nonce": undefined
   "demo.check.quotas": undefined
   "demo.check.signature": undefined
-  "demo.choose": undefined
   "demo.copied": undefined
   "demo.copy": undefined
   "demo.copy.label": undefined
@@ -486,12 +483,9 @@ export interface Messages {
   "demo.glossary.title": undefined
   "demo.interlude": undefined
   "demo.interlude.title": undefined
-  "demo.intro": undefined
   "demo.invite.how": undefined
   "demo.invite.why": undefined
   "demo.key.device": undefined
-  "demo.leo": undefined
-  "demo.maya": undefined
   "demo.meta.description": undefined
   "demo.near.all": undefined
   "demo.near.p1.summary": undefined
@@ -547,8 +541,6 @@ export interface Messages {
   "demo.proposal.who": undefined
   "demo.raw": undefined
   "demo.raw.region": { label: string | number }
-  "demo.readme": undefined
-  "demo.readonly": undefined
   "demo.real.c1.create": undefined
   "demo.real.c2.join": undefined
   "demo.real.c3.add": undefined
@@ -585,8 +577,6 @@ export interface Messages {
   "demo.recap.transactions": undefined
   "demo.refunds.hide": undefined
   "demo.refunds.show": { count: string | number }
-  "demo.reset": undefined
-  "demo.reset.done": undefined
   "demo.route.batch": { count: string | number }
   "demo.route.callback": undefined
   "demo.route.callback_from_to": { from: string | number; to: string | number }
@@ -617,7 +607,6 @@ export interface Messages {
   "demo.rules.path.vote": { reason: string | number }
   "demo.rules.result": undefined
   "demo.rules.value": undefined
-  "demo.sam": undefined
   "demo.sent.checks": undefined
   "demo.sent.inner": { name: string | number }
   "demo.sent.outer": undefined
@@ -634,12 +623,6 @@ export interface Messages {
   "demo.sim.chip": undefined
   "demo.sim.pill": undefined
   "demo.sim.values": undefined
-  "demo.snapshot.balance": { potName: string | number; balance: string | number }
-  "demo.snapshot.feed": undefined
-  "demo.snapshot.json": undefined
-  "demo.snapshot.members": { names: string | number }
-  "demo.snapshot.title": undefined
-  "demo.snapshot.unavailable": undefined
   "demo.state.caption": undefined
   "demo.state.changed": undefined
   "demo.state.changed.sr": undefined
@@ -674,15 +657,10 @@ export interface Messages {
   "demo.summary.receipts": { n: number }
   "demo.summary.signatures": { n: number }
   "demo.summary.transactions": { n: number }
-  "demo.switch": { persona: string | number }
   "demo.timeline.app": undefined
   "demo.timeline.label": undefined
   "demo.to": { name: string | number }
   "demo.to.gas": { name: string | number; n: string | number }
-  "demo.try.1": undefined
-  "demo.try.2": undefined
-  "demo.try.3": undefined
-  "demo.try.title": undefined
   "demo.unit.tgas": { n: string | number }
   "demo.unit.tgas_approx": { n: string | number }
   "demo.who_paid": undefined
@@ -869,7 +847,6 @@ export interface Messages {
   "landing.balance": { potName: string | number; balance: string | number; count: string | number }
   "landing.balance.zero": { potName: string | number }
   "landing.cta.apple": undefined
-  "landing.cta.dev": undefined
   "landing.cta.google": undefined
   "landing.cta.more": undefined
   "landing.expiry": { date: string | number }
@@ -1118,9 +1095,6 @@ export interface Messages {
   "share.title": { potName: string | number }
   "signin.body": undefined
   "signin.demo": undefined
-  "signin.dev.cta": undefined
-  "signin.dev.hint": undefined
-  "signin.dev.name": undefined
   "signin.google": undefined
   "signin.home": undefined
   "signin.more": undefined

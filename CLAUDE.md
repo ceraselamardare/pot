@@ -13,7 +13,8 @@ It is being built for NEAR HACKATHON (Nov 1-14, 2026; tracks `social` + `realwor
 ## Status
 - **Research and planning are done** (2026-10-21).
 - **Implementation started on 2026-10-22 at the user's explicit request.** The rules update of 2026-10-29 (Q-001) confirms that code written since the 2026-10-19 announcement counts, so all of it is in-window. The current rules are summarized at the top of `kb/hackathon-rules.md`, with a snapshot in `kb/sources/`.
-  - **There is no git repo yet**, by the user's choice. Never run `git init` or other git commands unless the user asks.
+  - **The git repo is `ceraselamardare/pot` on GitHub (branch `main`).** Read-only git (status, diff, log, grep) is fine. Commit only when the user asks, and always ask before you push.
+- **No wallet-less real accounts** (user decision, 2026-11-01): there is no test-account login and no custodial live persona demo. Sign-in is a NEAR wallet (NEAR Connect) or Google/email (NEAR Auth) only. Fake, no-network content is fine: the simulated `/demo` tour and the landing's "Try the rules".
 - **Built and tested:**
   - `contracts/`: Pot Hub + test USDC, 120 sandbox tests.
   - `packages/pot-sdk`.

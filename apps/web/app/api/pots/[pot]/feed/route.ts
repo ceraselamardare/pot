@@ -20,6 +20,5 @@ export const GET = route<{ pot: string }>("GET /api/pots/[pot]/feed", async (ctx
     limit: limitRaw ? Number(limitRaw) : undefined,
   })
   ctx.cacheControl = r.cacheControl
-  ctx.demo = r.demo
   return ctx.json(r.body)
 })

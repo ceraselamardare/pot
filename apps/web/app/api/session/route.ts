@@ -17,7 +17,6 @@ export const GET = route("GET /api/session", async (ctx) => {
   if (!s) return ctx.json({ session: null })
   const info = sessionInfo(s)
   if (!readCookie(ctx.req, "pot_hint")) ctx.setCookie(hintCookie(cfg, hintFor(info)))
-  if (s.kind === "demo") ctx.demo = true
   return ctx.json({ session: info })
 })
 

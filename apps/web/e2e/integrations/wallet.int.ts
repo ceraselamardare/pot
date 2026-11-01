@@ -41,7 +41,7 @@ test("I have a NEAR wallet → one prompt → a wallet session; USDC registratio
 })
 
 test("refused: one of Pot's own accounts, a key that isn't full access; a cancelled wallet is silent", async ({ page }) => {
-  // an account under the project root (NEAR Auth users, personas, the hub…) can't open a wallet session
+  // an account under the project root (NEAR Auth users, the relayer, the hub…) can't open a wallet session
   const own = newWallet(`u-${RUN}0000.users.potprev.testnet`)
   await onChain(own.accountId, [own.pk])
   await useWallet(page, own)

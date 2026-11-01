@@ -35,28 +35,19 @@ const DEFAULTS: Record<string, [bigint, bigint]> = {
   // global
   global_relay_yocto: [5n * NEAR, 1n * NEAR],
   global_hub_yocto: [5n * NEAR, 1n * NEAR],
-  global_demo_yocto: [3n * NEAR, 1n * NEAR],
-  // DAO float top-ups (demo and reference Pots only, ≤ 2 per DAO lifetime; rev4 M-4)
-  global_topup_yocto: [2n * NEAR, NEAR / 2n],
   global_relays: [20_000n, 2_000n],
   global_pots_created: [20n, 10n],
   global_accounts_created: [300n, 50n],
   global_registrations: [200n, 50n],
-  global_dev_accounts: [0n, 20n],
   global_mpc_signs: [100n, 20n],
   global_faucet_usd: [50_000_000_000n, 5_000_000_000n],
   // per IP
   ip_accounts_created: [3n, 3n],
-  ip_dev_accounts: [10n, 10n],
   ip_session_create: [10n, 10n], // per hour in the spec; daily bucket here (WAF covers bursts)
   ip_faucet_usd: [1_000_000_000n, 1_000_000_000n],
-  ipnet_lease: [10n, 10n],
   // faucet per account
   account_faucet_claims: [5n, 5n],
   account_faucet_usd: [500_000_000n, 500_000_000n],
-  // demo
-  visitor_reset: [10n, 10n],
-  visitor_create: [1n, 1n],
 }
 
 export function limit(name: keyof typeof DEFAULTS | string): bigint {

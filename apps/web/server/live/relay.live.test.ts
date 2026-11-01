@@ -1,17 +1,18 @@
-// LIVE testnet test of the relayer core (B-03/B-04/X-09). Skipped unless LIVE_TESTNET=1 and
+// LIVE testnet test of the relayer core (B-03/B-10/X-09). Skipped unless LIVE_TESTNET=1 and
 // apps/web/.keys/testnet.env exists (throwaway testnet keys, gitignored). It spends real testnet NEAR
-// (≈ 0.009 NEAR per run: one 0-NEAR account + registration + 3 relayed txs). Never runs against mainnet.
-//   LIVE_TESTNET=1 pnpm --filter web exec vitest run server/live
+// (≈ 0.01 NEAR per run: one throwaway 0-NEAR wallet account + registration + 3 relayed txs). Never mainnet.
+//   LIVE_TESTNET=1 scripts/with-testnet-lock.sh pnpm --filter web exec vitest run server/live
 // The hub isn't deployed yet, so the relayed call is a test-only allowlist rule (RELAY_TEST_ALLOWLIST):
 // a 1-yocto `wrap.testnet.ft_transfer` (the same deposit path as R1's ft_transfer_call), plus an inner failure.
 import { vi } from "vitest"
 vi.mock("server-only", () => ({}))
 import { existsSync, readFileSync } from "node:fs"
 import { eq } from "drizzle-orm"
-import { actions, buildDelegateAction, encodeSignedDelegate, KeyPair, KeyPairSigner, PublicKey } from "near-api-js"
+import { actions, buildDelegateAction, encodeSignedDelegate, KeyPairSigner, PublicKey } from "near-api-js"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { appUser, device, relayLog } from "@/db/schema"
+import { appUser, relayLog } from "@/db/schema"
 import { createTestDb, type TestDb } from "@/db/testing"
+import { createTestAccounts, nep413SignIn, type TestAccounts } from "@/e2e/testnet/accounts"
 import { createHubReader } from "../chain/hub"
 import { loadKeys, resetKeyCacheForTests } from "../chain/keys"
 import { block, viewAccessKey, viewAccessKeyList, viewAccount, viewFunction } from "../chain/near"
@@ -19,11 +20,10 @@ import { createRpc } from "../chain/rpc"
 import { createSubmitter } from "../chain/submitter"
 import { loadConfig, setConfigForTests, type Config } from "../config"
 import { claimFaucet } from "../features/faucet"
+import { walletLogin } from "../features/wallet/service"
 import { relay, type Actor, type RelayDeps } from "../relay/pipeline"
-import { popMessages } from "../session/pop"
-import { devLogin } from "../session/service"
 import { loadSession } from "../session/store"
-import { b64url, sha256Hex } from "../util/crypto"
+import { sha256Hex } from "../util/crypto"
 
 const KEYS = new URL("../../.keys/testnet.env", import.meta.url)
 const enabled = process.env.LIVE_TESTNET === "1" && existsSync(KEYS)
@@ -55,12 +55,13 @@ describe.skipIf(!enabled)("LIVE testnet relay", () => {
       NEXT_PUBLIC_NETWORK: "testnet",
       VERCEL_ENV: "preview",
       NEXT_PUBLIC_APP_URL: "https://pot.test",
-      HUB_ID: "pots.pot-funds-65k8.testnet", // not deployed yet: nothing here touches it
+      // never touched here; NOT under the holding account, whose throwaway sub-accounts sign in below (wallet
+      // sessions refuse accounts under the project root)
+      HUB_ID: "pots.pot-relay-live.testnet",
       USDC_ID: TOKEN, // configurable token: wrap.testnet stands in for USDC (test)
       RELAYER_ACCOUNT_ID: process.env.RELAYER_ACCOUNT_ID,
       TREASURY_ACCOUNT_ID: process.env.TREASURY_ACCOUNT_ID,
       RELAY_TEST_ALLOWLIST: `${TOKEN}:ft_transfer:1:30`,
-      FLAG_DEV_SESSION: "true",
       RELAYER_FLOOR_NEAR: "0.1",
       RELAYER_CRITICAL_NEAR: "0.2",
       RELAYER_WARN_NEAR: "0.5",
@@ -75,7 +76,12 @@ describe.skipIf(!enabled)("LIVE testnet relay", () => {
     console.log("LIVE tx hashes:", JSON.stringify(hashes, null, 2))
   })
 
-  it("dev session → faucet → relayed 1-yocto ft_transfer → inner failure → dedupe", { timeout: 180_000 }, async () => {
+  let accounts: TestAccounts | undefined
+  afterAll(async () => {
+    await accounts?.release()
+  })
+
+  it("wallet session → faucet → relayed 1-yocto ft_transfer → inner failure → dedupe", { timeout: 240_000 }, async () => {
     const rpc = createRpc(cfg.rpcUrls, { timeoutMs: 15_000 })
     const submitter = createSubmitter({
       db: t.db,
@@ -85,20 +91,15 @@ describe.skipIf(!enabled)("LIVE testnet relay", () => {
     const deferred: (() => Promise<void>)[] = []
     const defer = (fn: () => Promise<void>) => deferred.push(fn)
 
-    // 1. B-04 dev session: a 0-NEAR u-<8> account with ONE full-access key, registered on the token
-    const deviceKey = KeyPair.fromRandom("ed25519")
-    const devicePk = deviceKey.getPublicKey().toString()
-    const ts = Date.now()
-    const sig = deviceKey.sign(new TextEncoder().encode(popMessages.dev_session(devicePk, ts))).signature
-    const login = await devLogin(
-      { db: t.db, rpc, submitter, cfg, defer },
-      { devicePublicKey: devicePk, keyKind: "fallback", pop: { ts, sig: b64url(sig) }, displayName: "Leo" },
-      { ipHash: "live", userAgent: "vitest" },
-    )
-    const accountId = String(login.body.accountId)
-    hashes.createAccount = String(login.body.createTxHash)
-    expect(accountId).toMatch(new RegExp(`^u-[0-9a-hjkmnp-tv-z]{8}\\.${cfg.relayerAccountId.replaceAll(".", "\\.")}$`))
-    expect(login.body.usdcRegistered).toBe(true)
+    // 1. B-10 wallet session (Rev 9): a throwaway 0-NEAR account with ONE full-access key signs "Sign in to Pot"
+    //    (NEP-413); the relayer registers it on the token once, after the response
+    accounts = await createTestAccounts(["Leo"])
+    const leo = accounts.people[0]!
+    const accountId = leo.accountId
+    const devicePk = leo.publicKey
+    const deviceKey = leo.keyPair
+    const login = await walletLogin({ db: t.db, rpc, submitter, cfg, defer }, nep413SignIn(leo, "pot.test"), { ipHash: "live", userAgent: "vitest" })
+    for (const fn of deferred.splice(0)) await fn() // registerOnce
     const acct = await eventually(() => viewAccount(rpc, accountId, "optimistic"), (a) => !!a)
     expect(acct?.amount).toBe("0") // NEP-448 zero-balance account
     const keys = await eventually(() => viewAccessKeyList(rpc, accountId), (k) => !!k && k.length > 0)
@@ -111,7 +112,7 @@ describe.skipIf(!enabled)("LIVE testnet relay", () => {
     // the session cookie works
     const cookie = login.cookies[0]!.split(";")[0]!
     const s = (await loadSession(t.db, new Request("https://pot.test", { headers: { cookie } }), cfg))!
-    expect(s).toMatchObject({ kind: "dev", pendingDevice: false })
+    expect(s).toMatchObject({ kind: "wallet", pendingDevice: false })
 
     // 2. X-09 faucet from the treasury key pool (150_000_000 base units of the configured token)
     const f = await claimFaucet({ db: t.db, rpc, submitter, cfg }, s, { amount: "150000000", idempotencyKey: "live00000000faucet".slice(0, 16) }, { ipHash: "live", requestId: "req_live_faucet" })
@@ -122,8 +123,7 @@ describe.skipIf(!enabled)("LIVE testnet relay", () => {
 
     // 3. B-03: the user signs a delegate (1 yocto ft_transfer); the relayer pays everything
     const user = (await t.db.select().from(appUser).where(eq(appUser.nearAccount, accountId)))[0]!
-    const dev = (await t.db.select().from(device).where(eq(device.userId, user.id)))[0]!
-    const actor: Actor = { userId: user.id, accountId, kind: "dev", device: { publicKey: dev.publicKey, status: "active" } }
+    const actor: Actor = { userId: user.id, accountId, kind: "wallet", device: null }
     const deps: RelayDeps = { db: t.db, rpc, hub: createHubReader(rpc, cfg.hubId), submitter, cfg, defer }
     let lastNonce = -1n
     const sign = async (amount: string) => {

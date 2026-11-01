@@ -6,7 +6,6 @@ import type { Config } from "../config"
 import { b64url } from "../util/crypto"
 
 export const SESSION_MAX_AGE = 30 * 24 * 3600
-export const VISITOR_MAX_AGE = 7 * 24 * 3600
 
 export const sessionCookieName = (cfg: Config) => (cfg.secureCookies ? "__Host-pot_session" : "pot_session")
 
@@ -22,21 +21,15 @@ export function sessionCookie(cfg: Config, value: string, maxAge = SESSION_MAX_A
 
 export interface SessionHint {
   accountId: string
-  kind: "near-auth" | "wallet" | "demo" | "dev"
+  kind: "near-auth" | "wallet"
   displayName: string
   emailHint?: string
-  persona?: string
-  leasedPot?: string
   devicePublicKey?: string
 }
 
 export function hintCookie(cfg: Config, hint: SessionHint, maxAge = SESSION_MAX_AGE): string {
   const v = b64url(new TextEncoder().encode(JSON.stringify(hint)))
   return `pot_hint=${v}; ${attrs(cfg, false, maxAge)}`
-}
-
-export function visitorCookie(cfg: Config, value: string): string {
-  return `pot_demo_visitor=${value}; ${attrs(cfg, true, VISITOR_MAX_AGE)}`
 }
 
 export function clearCookie(cfg: Config, name: string): string {

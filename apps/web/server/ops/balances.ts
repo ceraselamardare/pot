@@ -102,13 +102,10 @@ export async function checkBalances(deps: { db: DbOrTx; rpc: RpcClient; cfg: Con
 export const GLOBAL_COUNTERS = [
   "relay_yocto",
   "hub_yocto",
-  "demo_yocto",
-  "topup_yocto",
   "relays",
   "pots_created",
   "accounts_created",
   "registrations",
-  "dev_accounts",
   "mpc_signs",
   "faucet_usd",
 ] as const

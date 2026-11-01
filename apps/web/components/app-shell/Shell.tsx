@@ -3,25 +3,20 @@
 //  - TabBar: Pots · Requests · You at the bottom on phones (56 px + safe area); a 64 px top bar from bp-lg.
 //    The Requests badge counts what waits on you, in `ink` with `surface` numerals (never `declined` red).
 //  - SessionGate: signed out → SignedOutScreen; signed in → the tab content.
-//  - DemoBanner: mock/demo sessions — "Demo · test money", switch person, reset.
 //  - OfflineBanner + one polite LiveRegion per screen.
-import { Menu } from "@base-ui/react/menu"
-import { ChevronDown, House, Inbox, RotateCcw, UserRound, WifiOff } from "lucide-react"
+import { House, Inbox, UserRound, WifiOff } from "lucide-react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { usePathname } from "next/navigation"
+import { useEffect, useRef, type ReactNode } from "react"
 import { toast } from "sonner"
 import { Lockup } from "@/components/brand/Lockup"
 import { Glyph } from "@/components/brand/Glyph"
-import { Avatar } from "@/components/pot/Avatar"
 import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import { useAnnouncement, useOnline } from "@/lib/client/browser"
-import { useMe, useMeInfo, useWaitingCount } from "@/lib/client/data"
-import { FLAG_DEV_SESSION, IS_LIVE } from "@/lib/client/config"
-import { PEOPLE, PERSONAS, type PersonaId } from "@/lib/client/mock/fixtures"
-import { initialsOf } from "@/lib/client/mock/world"
-import { resetDemo, signInDev, signOut as endSession, switchPersona } from "@/lib/client/session"
+import { useMe, useWaitingCount } from "@/lib/client/data"
+import { IS_LIVE } from "@/lib/client/config"
+import { signOut as endSession } from "@/lib/client/session"
 import { cn } from "@/lib/client/cn"
 import { SignInOptions } from "@/components/features/auth/SignInOptions"
 
@@ -130,68 +125,6 @@ export function TopBar() {
   )
 }
 
-export function DemoBanner() {
-  const me = useMeInfo()
-  const router = useRouter()
-  if (!me || me.kind !== "demo" || !me.persona) return null
-  const persona = me.persona
-  const others = PERSONAS.filter((p) => p !== persona)
-  const switchTo = async (p: PersonaId) => {
-    try {
-      await switchPersona(p)
-    } catch {
-      toast.error(t("generic.error"))
-    }
-  }
-  const item =
-    "flex min-h-12 w-full cursor-default items-center gap-3 rounded-sm px-3 text-body text-ink outline-none select-none data-highlighted:bg-surface-sunken"
-  return (
-    <div className="border-b border-line bg-surface-sunken" data-demo-banner>
-      <div className="mx-auto flex min-h-11 max-w-app items-center gap-2 px-4 py-1 md:px-6">
-        <p className="min-w-0 flex-1 truncate text-body-sm text-ink">{t("demo.banner")}</p>
-        <Menu.Root>
-          <Menu.Trigger
-            className="flex h-11 items-center gap-2 rounded-pill pr-2 pl-1 text-label text-ink hover:bg-line data-popup-open:bg-line"
-            aria-label={t("demo.as", { persona: PEOPLE[persona].name })}
-          >
-            <Avatar person={{ name: PEOPLE[persona].name, initials: initialsOf(PEOPLE[persona].name), joinIndex: PERSONAS.indexOf(persona) }} size="xs" />
-            <span>{PEOPLE[persona].name}</span>
-            <ChevronDown aria-hidden className="size-4" strokeWidth={2} />
-          </Menu.Trigger>
-          <Menu.Portal>
-            <Menu.Positioner sideOffset={6} align="end" className="z-50 outline-none">
-              <Menu.Popup className="min-w-56 origin-(--transform-origin) rounded-md border border-line bg-surface p-1 shadow-card outline-none">
-                {others.map((p) => (
-                  <Menu.Item key={p} className={item} onClick={() => void switchTo(p)} data-switch-persona={p}>
-                    <Avatar person={{ name: PEOPLE[p].name, initials: initialsOf(PEOPLE[p].name), joinIndex: PERSONAS.indexOf(p) }} size="xs" />
-                    {t("demo.switch", { persona: PEOPLE[p].name })}
-                  </Menu.Item>
-                ))}
-                <Menu.Separator className="my-1 h-px bg-line" />
-                <Menu.Item
-                  className={item}
-                  onClick={async () => {
-                    try {
-                      const next = await resetDemo()
-                      toast(t("demo.reset.done"))
-                      router.push(next)
-                    } catch {
-                      toast.error(t("generic.error"))
-                    }
-                  }}
-                >
-                  <RotateCcw aria-hidden className="size-5" strokeWidth={2} />
-                  {t("demo.reset")}
-                </Menu.Item>
-              </Menu.Popup>
-            </Menu.Positioner>
-          </Menu.Portal>
-        </Menu.Root>
-      </div>
-    </div>
-  )
-}
-
 export function OfflineBanner() {
   const online = useOnline()
   const was = useRef(online)
@@ -233,58 +166,7 @@ export function SignedOutScreen() {
       </div>
       {/* integrations (F-14, F-19): NEAR Auth (localhost:3000 / flagged builds) and "I have a NEAR wallet" */}
       {IS_LIVE && <SignInOptions className="mt-6 max-w-80" />}
-      {IS_LIVE && FLAG_DEV_SESSION && <DevSignIn />}
     </main>
-  )
-}
-
-/** Preview/local only (FLAG_DEV_SESSION): a 0-NEAR test account for this browser's device key (api-spec §2.1). */
-export function DevSignIn({ onDone, cta }: { onDone?: () => void; cta?: string }) {
-  const [name, setName] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
-  const go = async () => {
-    if (busy || !name.trim()) return
-    setBusy(true)
-    setFailed(false)
-    try {
-      await signInDev(name)
-      onDone?.()
-    } catch {
-      setFailed(true)
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <form
-      className="mt-8 flex w-full max-w-80 flex-col gap-2 rounded-md border border-line bg-surface p-3 text-left"
-      data-dev-signin
-      onSubmit={(e) => {
-        e.preventDefault()
-        void go()
-      }}
-    >
-      <label className="flex flex-col gap-1.5">
-        <span className="text-label text-ink">{t("signin.dev.name")}</span>
-        <input
-          value={name}
-          maxLength={40}
-          autoComplete="given-name"
-          onChange={(e) => setName(e.target.value)}
-          className="h-12 rounded-sm border border-line-strong bg-surface-sunken px-3 text-body text-ink"
-        />
-      </label>
-      {failed && (
-        <p role="alert" className="text-body-sm text-ink">
-          {t("setup.error.relayer")}
-        </p>
-      )}
-      <Button type="submit" disabled={busy || !name.trim()} aria-busy={busy || undefined}>
-        {cta ?? t("signin.dev.cta")}
-      </Button>
-      <p className="text-body-sm text-ink-muted">{t("signin.dev.hint")}</p>
-    </form>
   )
 }
 

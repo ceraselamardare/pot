@@ -32,14 +32,12 @@ export const RETENTION: { name: string; stmt: SQL }[] = [
     name: "push_subscription",
     stmt: del(
       "push_subscription",
-      sql`(expiration_time < now() AND coalesce(last_ok_at, created_at) < now() - interval '60 days')
-          OR demo_pot_id IN (SELECT id FROM demo_pot WHERE state = 'retired')`,
+      sql`expiration_time < now() AND coalesce(last_ok_at, created_at) < now() - interval '60 days'`,
     ),
   },
   { name: "notification_log", stmt: del("notification_log", sql`created_at < now() - interval '30 days'`) },
   { name: "note", stmt: del("note", sql`kind = 'memo' AND matched_at IS NULL AND created_at < now() - interval '24 hours'`) },
   { name: "tg_link_token", stmt: del("tg_link_token", sql`expires_at < now() - interval '1 day'`) },
-  { name: "demo_pot", stmt: del("demo_pot", sql`state = 'retired' AND retired_at < now() - interval '7 days' AND id NOT IN (SELECT demo_pot_id FROM session WHERE demo_pot_id IS NOT NULL)`) },
 ]
 
 export async function runRetention(db: DbOrTx): Promise<Record<string, number>> {

@@ -1,10 +1,9 @@
 "use client"
-// Live sessions (api-spec §2.1, §2.8): the cookie session is the truth; GET /api/session tells the UI who is
-// signed in. Login for testing is the preview-only dev session (a 0-NEAR `u-<8>` account whose one key is this
-// browser's device key, D-21); /demo personas come from POST /api/demo/session. NEAR Auth live login is F-14.
-import { newOpKey, type Api } from "@pot/sdk"
+// Live sessions (api-spec §2.1): the cookie session is the truth; GET /api/session tells the UI who is signed
+// in. Sign-in is NEAR Auth (lib/signing/near-auth, F-14) or a NEAR wallet through NEAR Connect
+// (lib/signing/near-connect, F-19); there is no test-account or server-signed login (Rev 9).
+import type { Api } from "@pot/sdk"
 import { useQuery } from "@tanstack/react-query"
-import { base64urlnopad } from "@scure/base"
 import { deviceKeys } from "../keys/device-key-store"
 import { queryClient } from "../query"
 import { api } from "./api"
@@ -39,37 +38,6 @@ function setSession(s: SessionInfo | null) {
   void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== SESSION_KEY[0] })
 }
 
-/**
- * Dev session (api-spec §2.1, B-04): the pending device key proves possession of
- * `pot-dev-session-v1|<pk>|<ts>`, the server creates `u-<8>.<relayer>` with that key as its only full-access key
- * and registers it with the token; the key becomes this browser's current key.
- */
-export async function startDevSession(displayName: string): Promise<SessionInfo> {
-  const keys = deviceKeys()
-  if (!keys) throw new Error("unsupported")
-  const pending = await keys.ensurePending()
-  const ts = Date.now()
-  const sig = await keys.sign(new TextEncoder().encode(`pot-dev-session-v1|${pending.publicKey}|${ts}`), "pending")
-  const body: Api.DevSessionReq = {
-    devicePublicKey: pending.publicKey,
-    keyKind: pending.impl,
-    pop: { ts, sig: base64urlnopad.encode(sig) },
-    displayName: displayName.trim().slice(0, 40) || "Friend",
-    idempotencyKey: newOpKey(),
-  }
-  const { data } = await api<Api.DevSessionRes>("POST", "/api/session/dev", body)
-  await keys.promotePending(data.accountId)
-  setSession(data.session)
-  return data.session
-}
-
-/** /demo persona, persona switch, or reset (api-spec §2.8). */
-export async function startDemoSession(req: Api.DemoSessionReq): Promise<Api.DemoSessionRes> {
-  const { data } = await api<Api.DemoSessionRes>("POST", "/api/demo/session", req)
-  setSession(data.session)
-  return data
-}
-
 export async function liveSignOut(): Promise<void> {
   const s = getLiveSession()
   try {
@@ -77,7 +45,7 @@ export async function liveSignOut(): Promise<void> {
   } catch {
     /* the cookie may already be gone */
   }
-  // a dev/near-auth key is the account's own key: destroying it ends that account on this browser (§4.3)
-  if (s && s.kind !== "demo") await deviceKeys()?.clear().catch(() => {})
+  // a NEAR Auth device key is the account's own key: destroying it ends that account on this browser (§4.3)
+  if (s) await deviceKeys()?.clear().catch(() => {})
   setSession(null)
 }

@@ -14,7 +14,6 @@ export const POST = route("POST /api/faucet", async (ctx) => {
   const { value } = await readJson(ctx.req, faucetReq)
   const cfg = getConfig()
   const s = await requireSession(getDb(), ctx.req, cfg, { activeDevice: true })
-  if (s.kind === "demo") ctx.demo = true
   const r = await claimFaucet({ db: getDb(), rpc: getRpc(), submitter: getSubmitter(), cfg }, s, value, {
     ipHash: ipHash(ctx.req),
     requestId: ctx.requestId,

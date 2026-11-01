@@ -19,7 +19,6 @@ export const popMessages = {
   device_login: (accountId: string, ts: number) => `pot-device-login-v1|${accountId}|${ts}`,
   device_add: (accountId: string, ts: number) => `pot-device-add-v1|${accountId}|${ts}`,
   device_pair: (accountId: string, ts: number) => `pot-device-pair-v1|${accountId}|${ts}`,
-  dev_session: (devicePublicKey: string, ts: number) => `pot-dev-session-v1|${devicePublicKey}|${ts}`,
 }
 
 /** Insert a single-use proof; false when it was used before. */

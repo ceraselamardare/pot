@@ -150,8 +150,8 @@ Sputnik DAO  <slug>.pots.<root>  (holds the money; members vote by majority)
   contributor, Σ = balance); a majority executes it.
 - **Gasless:** users hold 0 NEAR. Our relayer submits their signed delegates and pays gas and the 1-yocto deposits;
   the hub pays storage only for calls our relayer signs. Direct callers pay their own way.
-- **Who can move money:** nobody alone. The server holds no user keys (demo personas excepted) and is not in any
-  DAO policy; the hub can only approve what fits the Pot's rules.
+- **Who can move money:** nobody alone. The server holds no user keys and is not in any DAO policy; the hub can
+  only approve what fits the Pot's rules.
 
 Code map (pnpm workspace):
 
@@ -217,8 +217,8 @@ daily budgets. Two ways to pay for it without new contracts: a small app fee on 
 - **Trezu is mainnet-only**, so testnet Pots can't be opened there. On mainnet, Trezu's approval count would be wrong
   for Pot's two-role policy and its balance view stays empty for DAOs outside `*.sputnik-dao.near`.
 - **`/demo` is a simulation.** It signs and sends nothing; its ids, keys and hashes are made up (generated from the
-  same MockChain the tests use) and each chapter links to a real testnet transaction. The live persona demo, whose
-  personas sign with a server-held testnet key, is at `/demo/live` and is off unless a deploy sets `FLAG_DEMO_LIVE=true`.
+  same MockChain the tests use) and each chapter links to a real testnet transaction. To do it for real, sign in with
+  Google/email (NEAR Auth) or a NEAR wallet; there is no test-account or server-signed sign-in.
 - **The 1Click deposit is a simulator on testnet**: a labeled "do not send" address; on success the server sends test
   dollars to the member, who adds them to the Pot with one tap. Real cross-chain deposits need mainnet. Refunds land
   in the member's NEAR Intents balance and getting them out is not built.
@@ -259,7 +259,7 @@ this repository.
 | Typecheck, lint (incl. the jargon lint), unit + DB integration | `pnpm typecheck && pnpm lint && pnpm test` | Postgres for the DB tests (`pnpm db:up`) |
 | Mocked UI end to end (3 projects, axe, brand checks) | `cd apps/web && E2E_PORT=3100 NEXT_PUBLIC_DATA_SOURCE=mock pnpm exec playwright test` | Playwright Chromium |
 | Integrations (fake NEAR Auth issuer, fake RPC, mock wallet) | `cd apps/web && pnpm exec playwright test -c e2e/integrations/playwright.config.ts` | Postgres |
-| Testnet (signs testnet txs through our relayer) | `E2E_TESTNET=1 pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts` | preview keys |
+| Testnet (signs testnet txs through our relayer; each run creates throwaway 0-NEAR accounts that sign in with a NEAR wallet) | `E2E_TESTNET=1 scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts` | preview keys, `pot-funds-65k8.testnet` in the near-cli-rs legacy keychain |
 | README CLI twins (J-7) | `scripts/readme-cli-check.sh` | network only |
 
 The latest full run, with outputs and the bugs it found, is in `notes/qa-report.md`. CI is

@@ -5,8 +5,8 @@
 //   scripts/run keys show      → public keys + what is on chain
 //   scripts/run keys init-live → appends the LIVE-TEST pools (RELAYER_KEYS_LIVE ×4, TREASURY_KEYS_LIVE ×2) if missing;
 //                                then `scripts/with-testnet-lock.sh scripts/run keys onchain` adds them on chain
-// Pools: RELAYER_KEYS ×4 (users.<root>), TREASURY_KEYS ×2 (treasury.<root>), DEMO_PERSONA_KEY ×1 (personas),
-// plus APP_HMAC_SECRET. Secret halves never leave the file.
+// Pools: RELAYER_KEYS ×4 (users.<root>), TREASURY_KEYS ×2 (treasury.<root>), plus APP_HMAC_SECRET. (The removed
+// live demo's server-held key is no longer generated, Rev 9.) Secret halves never leave the file.
 // Wave 3 (frontend request 4): servers (next dev/start, scripts, Playwright) use RELAYER_KEYS / TREASURY_KEYS and
 // coordinate through the dev DB's lease rows; the live tests (own pot_test schemas, so own lease rows) use ONLY
 // the *_LIVE pools (server/live/harness.ts), split per test file. scripts/run env never copies *_LIVE into .env.local.
@@ -35,7 +35,6 @@ function init() {
     `TREASURY_ACCOUNT_ID=${IDS.treasury}`,
     `RELAYER_KEYS=${Array.from({ length: 4 }, fresh).join(",")}`,
     `TREASURY_KEYS=${Array.from({ length: 2 }, fresh).join(",")}`,
-    `DEMO_PERSONA_KEY=${fresh()}`,
     `APP_HMAC_SECRET=${randomBytes(36).toString("base64url")}`,
     "",
   ]
@@ -74,7 +73,6 @@ async function show() {
     console.log(`${p.account}: ${p.keys.length} pool keys, ${p.keys.filter((k) => have.has(k)).length} on chain; ${have.size} keys on chain in total`)
     for (const k of p.keys) console.log(`  ${have.has(k) ? "✓" : "✗"} ${k}`)
   }
-  if (e.DEMO_PERSONA_KEY) console.log(`DEMO_PERSONA_KEY public: ${pub(e.DEMO_PERSONA_KEY)}`)
 }
 
 async function onchain() {

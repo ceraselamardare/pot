@@ -27,8 +27,8 @@ export function sponsorLevel(available: bigint, t: Thresholds): SponsorLevel {
   return "ok"
 }
 
-/** Ops that need more than the floor: refused once the relayer is critical (create_pot, registrations, MPC, seeding). */
-export const HEAVY_OPS = new Set(["create_pot", "registration", "mpc_sign", "demo_seed", "create_account"])
+/** Ops that need more than the floor: refused once the relayer is critical (create_pot, registrations, MPC). */
+export const HEAVY_OPS = new Set(["create_pot", "registration", "mpc_sign", "create_account"])
 
 export function sponsorAllows(level: SponsorLevel, op: string): boolean {
   if (level === "empty") return false

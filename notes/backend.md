@@ -3,6 +3,29 @@
 > Written 2026-10-22 by the backend agent. Sources: plan/api-spec.md (primary), data-model.md, architecture.md, contracts-spec.md, review-security.md §7, implementation-plan B-01…B-09/X-05/X-08/X-09, kb/meta-tx-relayer.md, kb/accounts-onboarding.md, kb/near-auth.md, kb/backend-infra.md, notes/sdk.md.
 > Reconciled with `@pot/sdk` 0.1.0 (wire types, delegate decoder/verifier, `RELAY_POLICY`, `kindsEqual`, `errorCodeFromText`, `buildCall`, Raw view types). `contracts/abi/pot_hub.json` and `notes/contracts.md` did not exist yet; method names and view JSON follow contracts-spec + `contracts/pot-hub/src` (read 00:30) via the sdk's `Raw*` types.
 
+> **Rev 9 (2026-11-01, plan/decisions.md): removed, because nothing may act on chain without the person's own sign-in.**
+> - **Routes:** `POST /api/session/dev` (B-04), `POST /api/demo/session` + `GET /api/demo/state` (X-08), `GET /api/cron/demo-pool`
+>   (B-12; also its `vercel.json` cron). Their rows in the table below are history.
+> - **Modules:** `server/features/{demo,demoPool,demoState,seed}.ts`, `devLogin`/`devSessionEnabled` (`session/service.ts`), the
+>   `dev_session` PoP, the visitor cookie, `kickDemoPool`, the reconcile steps "DAO float top-ups for demo/reference Pots" and "demo
+>   pool", the demo retention rows, `ipNet`/`ipNetHash` and the form-post CSRF mode (only the demo session used them).
+> - **Relay (B-08):** no `{demo: {intent}}` bodies, no server-signed (`serverSigned`) path, no `visitor:`/`ipnet:` subjects,
+>   `demo_yocto`/`demo_create`/`visitor_*`/`ipnet_lease`/`*_dev_accounts`/`topup_yocto` quotas. Step 7's device binding applies to
+>   `near-auth`; `wallet` actors may use any full-access key of their account (checked on chain).
+> - **Sessions:** `kind` is `near-auth | wallet` (`SessionCtx` lost `visitorHash`/`demo`); device re-login is NEAR Auth only. Push
+>   subscriptions, the faucet and the 1Click simulator charge `user:`/`account:` subjects only ($500/day per person).
+> - **Config/env:** `flags.devSession`, `flags.demo`, `demoReferencePot`; `FLAG_DEMO*`, `FLAG_DEV_SESSION`, `DEMO_REFERENCE_POT`,
+>   `DEMO_POOL_TARGET`, `QUOTA_GLOBAL_DEMO_YOCTO`, `DEMO_PERSONA_KEY` (`loadKeys` takes `RELAYER_KEYS | TREASURY_KEYS`).
+> - **DB:** `db/migrations/0001_remove_demo_and_dev_sessions.sql` deletes demo/dev sessions and users (nulling `relay_log.user_id`,
+>   `telegram_chat.linked_by_user_id`, deleting their `deposit_intent` rows), drops `demo_pot`, `app_user.persona`, `pot.is_demo`,
+>   `push_subscription.demo_pot_id`, `session.demo_pot_id`/`visitor_hash`, `relay_log.visitor_hash`, and adds CHECKs
+>   `app_user_kind_ck`/`session_kind_ck` (`near-auth`, `wallet`). Tested on a populated copy and on the local dev DB (94 demo/dev users).
+> - **Tests:** the live harness's `devUser` became `walletUsers` (throwaway 0-NEAR accounts from `e2e/testnet/accounts.ts`, signed in
+>   through `walletLogin` with NEP-413); `relay.live` signs in the same way; `scripts/e2e-chain.ts` uses `POST /api/session/wallet`.
+>   Unit tests that used the `dev` kind as "a device-bound user" use `near-auth`; the demo-only tests are gone (features, ops, notify,
+>   routes, session); new ones: wallet actors in the pipeline, wallet users can't device-relogin, sponsor-low and bidi names on the
+>   NEAR Auth path, the removed routes stay removed, migration 0001 refuses a `dev` user.
+
 ## Status
 
 | Check | Result |

@@ -14,6 +14,5 @@ export const GET = route("GET /api/oneclick/status", async (ctx) => {
   const pot = new URL(ctx.req.url).searchParams.get("pot")
   if (!pot) throw new ApiError("bad_request", { detail: { field: "pot" } })
   const s = await requireSession(getDb(), ctx.req, getConfig())
-  if (s.kind === "demo") ctx.demo = true
   return ctx.json(await listDeposits(oneclickDeps(), s, pot))
 })

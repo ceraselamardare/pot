@@ -7,7 +7,8 @@ Build notes for plan/design-direction/05-demo-explainer.md. The lead took every 
 - the Meanwhile interlude is in;
 - `/demo/all` is in.
 
-The live persona demo (`/demo/live`) is **off by default and not linked**. It sits behind the env flag `FLAG_DEMO_LIVE`, which defaults to off. No real transactions happen in the demo.
+The old live testnet demo (server-held keys, real transactions) was **removed in Rev 9** (2026-11-01, plan/decisions.md): its page,
+API routes, demo Pot pool and flags are gone. `/demo` is the simulation only; no real transactions happen in it.
 
 ## Data
 
@@ -164,7 +165,7 @@ Rewritten 2026-10-27 by tour-builder for plan/design-direction/06 (the simple to
 | `#near`, `#g-<id>` / `#p3-g-<id>` | Open the part's "Under the hood" sheet (and its glossary word) |
 | `/demo?step=3` | 308 → `/demo/3` (`next.config.ts`) |
 | `/demo/all` | "How Pot works on NEAR (simulation)": the five parts, every chapter's full timeline open, the recap, every glossary word |
-| `/demo/live` | Unchanged; `FLAG_DEMO_LIVE`, unlinked |
+| (the old live demo) | Removed in Rev 9 |
 
 ### Files (`apps/web/components/demo/`)
 - `tour.ts`: the tour as plain data, no `@/` imports (e2e can import it): `TOUR`, `TOUR_PARTS`, `TOUR_CHAPTER_START`, the timings, `stepForLegacyBeat`.

@@ -4,7 +4,7 @@
 // network; and the Pot-screen deposit card that takes the marigold while an arrived deposit waits.
 // The page clock is faked (Playwright clock), so the simulator's measured timings run in a few seconds.
 import { expect, test, type Page } from "@playwright/test"
-import { asPersona, axe, brandChecks, openedSheet } from "../fixtures/pot"
+import { asPerson, axe, brandChecks, openedSheet } from "../fixtures/pot"
 
 async function openDeposit(page: Page) {
   await page.goto("/p/lisbon-trip")
@@ -32,7 +32,7 @@ async function sent(page: Page) {
 const statusIs = (page: Page, status: string, timeout = 5_000) => expect(stepper(page)).toHaveAttribute("data-status", status, { timeout })
 
 test.beforeEach(async ({ page }) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.clock.install()
 })
 

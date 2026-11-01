@@ -9,6 +9,13 @@
 >
 > Where this file disagrees with the original plan, this file wins.
 >
+> **Revision 9 (2026-11-01, the user's call):** nothing in Pot lets anyone act on chain without their own sign-in.
+> - **Removed:** the live testnet demo (`/demo/live`: server-held demo keys, demo sessions, the demo Pot pool and its cron, the relay's server-signed demo intents and their quotas; its flags and `DEMO_*` env) and the test-account sign-in ("dev" sessions, `POST /api/session/dev`, `FLAG_DEV_SESSION`). Migration `0001` drops `demo_pot` and the demo columns, deletes demo/dev users and sessions, and pins `app_user`/`session.kind` to `near-auth | wallet`.
+> - **Why:** "Remove any demo or thing without actually being connected to a wallet where a user can do an onchain tx." Fake things with no real accounts or transactions stay: the simulated `/demo` tour, the landing's rules playground, and the mock data source for tests and design.
+> - **Stays:** NEAR Auth (Google/email) and NEAR Connect wallets; the demo-dollars faucet and the 1Click simulator, which deliver test dollars to the signed-in person's own account.
+> - **Tests:** the testnet e2e, live tests and `scripts/e2e-chain.ts` create throwaway 0-NEAR accounts from `pot-funds-65k8.testnet` and sign in through the wallet path (NEP-413 → wallet session → `signDelegateActions` → relayer). The browser uses the e2e mock wallet, which `next.config.ts` compiles in only for a flagged local build and refuses on Vercel and mainnet.
+> - **Superseded:** D-33's demo Pots (reference/pool/shared), the demo parts of D-63 and S-5, and the dev session of D-21 / api-spec §2.1 and §2.8. The older entries below are kept as written.
+>
 > **Revision 6 (2026-10-21, brand; details in [../brand/README.md](../brand/README.md)):**
 > - **D-67 (new): the brand and design system are decided.**
 >   - Source of truth: the Design System artifact `https://claude.ai/artifact/TfPiy6PHkWTSZsR2wDxwWN` plus `brand/` (logo, web assets, `brand/tokens.json`).

@@ -160,7 +160,7 @@ async function build(opts: MockChainOptions): Promise<Built> {
 }
 
 /**
- * A fresh MockChain at one D-61 state (default "seeded", the README / demo-pool state: $450,
+ * A fresh MockChain at one D-61 state (default "seeded", the README state: $450,
  * three members, no spends). Each call returns an independent clone.
  */
 export async function lisbonTrip(state: LisbonState = "seeded", opts: Pick<MockChainOptions, "autoSync" | "enforceRelayPolicy" | "msPerBlock"> = {}): Promise<LisbonFixture> {

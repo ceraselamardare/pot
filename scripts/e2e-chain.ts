@@ -1,13 +1,15 @@
-// Backend E2E over HTTP (testnet): the full MVP story against a locally running `next start` with dev
-// sessions, every action signed client-side with @pot/sdk (device keys) and relayed by POST /api/relay.
+// Backend E2E over HTTP (testnet): the full MVP story against a locally running `next start`. Rev 9: people sign
+// in like anyone with a NEAR wallet: throwaway 0-NEAR accounts from the holding account (apps/web/e2e/testnet/
+// accounts.ts), NEP-413 "Sign in to Pot" → POST /api/session/wallet; every action is a delegate signed with that
+// account's key (@pot/sdk) and relayed by POST /api/relay.
 //   (cd apps/web && pnpm build && pnpm exec next start -p 3418)      # env from apps/web/.env.local
-//   scripts/run e2e-chain [--base http://localhost:3418]
-// Story: 3 dev sessions → faucet → create a Pot (invite key) → 2 joins → 3 × $150 contributions → $84 instant
+//   scripts/with-testnet-lock.sh scripts/run e2e-chain [--base http://localhost:3418]
+// Story: 3 wallet sessions → faucet → create a Pot (invite key) → 2 joins → 3 × $150 contributions → $84 instant
 // spend (two-phase) → $300 vote spend + approvals → close proposal + approvals → pro-rata payouts verified on
 // chain. Prints every tx hash; exits 1 on the first failed step. Spends ≈ 0.12 NEAR of preview funds.
 import { createChainViews, createRpcClient, newOpKey, testnetConfig, type ActionIntent, type ProposalKind } from "@pot/sdk"
 import { generateInvite, KeyPairPotSigner, NonceTracker, signJoin } from "@pot/sdk/sign"
-import { KeyPair } from "near-api-js"
+import { createTestAccounts, nep413SignIn, type TestAccount, type TestAccounts } from "@/e2e/testnet/accounts"
 import { eventually, IDS, loadEnv, sleep, txUrl, usd, view } from "./lib/env.ts"
 
 loadEnv()
@@ -39,7 +41,6 @@ function assert(cond: unknown, what: string): asserts cond {
 
 interface User {
   name: string
-  key: KeyPair
   account: string
   jar: Map<string, string>
   signer: KeyPairPotSigner
@@ -65,19 +66,15 @@ async function http(u: User | null, method: string, path: string, body?: unknown
   return { status: res.status, body: json }
 }
 
-async function devSession(name: string): Promise<User> {
-  const key = KeyPair.fromRandom("ed25519")
-  const pk = key.getPublicKey().toString()
-  const ts = Date.now()
-  const sig = Buffer.from(key.sign(new TextEncoder().encode(`pot-dev-session-v1|${pk}|${ts}`)).signature).toString("base64url")
-  const u: User = { name, key, account: "", jar: new Map(), signer: undefined as never }
-  const r = await http(u, "POST", "/api/session/dev", { devicePublicKey: pk, keyKind: "fallback", pop: { ts, sig }, displayName: name, idempotencyKey: newOpKey() })
-  assert(r.status === 200 && typeof r.body.accountId === "string", `dev session ${name}: ${r.status} ${JSON.stringify(r.body).slice(0, 300)}`)
-  u.account = r.body.accountId as string
-  tx(`create account ${name}`, r.body.createTxHash)
-  u.signer = new KeyPairPotSigner({ accountId: u.account, secretKey: key, chain, cfg: sdkCfg, nonces: new NonceTracker() })
-  await eventually(() => chain.account.accessKey(u.account as never, pk as never), (v) => !!v.value, 20_000)
-  log(`${name}: ${u.account} (0 NEAR, one device key)`)
+/** NEP-413 "Sign in to Pot" with the account's full-access key → POST /api/session/wallet (a wallet session). */
+async function walletSession(a: TestAccount): Promise<User> {
+  const u: User = { name: a.name, account: a.accountId, jar: new Map(), signer: undefined as never }
+  const r = await http(u, "POST", "/api/session/wallet", nep413SignIn(a, new URL(ORIGIN).host))
+  assert(r.status === 200, `wallet session ${a.name}: ${r.status} ${JSON.stringify(r.body).slice(0, 300)}`)
+  u.signer = new KeyPairPotSigner({ accountId: a.accountId, secretKey: a.keyPair, chain, cfg: sdkCfg, nonces: new NonceTracker() })
+  // the relayer registers a wallet account on the token once, right after the sign-in (D-23)
+  await eventually(() => view<unknown>(IDS.usdc, "storage_balance_of", { account_id: a.accountId }), (v) => !!v, 45_000)
+  log(`${a.name}: ${a.accountId} (0 NEAR, one full-access key, registered by the relayer)`)
   return u
 }
 
@@ -109,14 +106,12 @@ async function main() {
   log(`E2E against ${BASE} (hub ${IDS.hub}, token ${IDS.usdc})`)
   const health = await http(null, "GET", "/api/health")
   assert(health.status === 200, `GET /api/health: ${health.status} ${JSON.stringify(health.body).slice(0, 200)}`)
-  const demo = await http(null, "GET", "/api/demo/state")
-  assert(demo.status === 200, `GET /api/demo/state: ${demo.status} ${JSON.stringify(demo.body).slice(0, 200)}`)
-  const ref = demo.body.reference as { potId: string; balance: string; members: unknown[] } | null
-  log(`${++step}. health ok; /api/demo/state reference ${ref?.potId}: ${ref ? usd(ref.balance) : "—"}, ${ref?.members.length} members`)
+  log(`${++step}. health ok`)
 
-  // 1. three dev sessions (0-NEAR accounts created by the relayer, registered on the token)
-  const [maya, sam, leo] = [await devSession("Maya"), await devSession("Sam"), await devSession("Leo")]
-  log(`${++step}. 3 dev sessions`)
+  // 1. three throwaway 0-NEAR testnet accounts (from the holding account) sign in with NEP-413: wallet sessions
+  accounts = await createTestAccounts(["Maya", "Sam", "Leo"], (l) => log(l))
+  const [maya, sam, leo] = [await walletSession(accounts.people[0]!), await walletSession(accounts.people[1]!), await walletSession(accounts.people[2]!)]
+  log(`${++step}. 3 wallet sessions`)
 
   // 2. faucet: $150 test dollars each, from the treasury key pool
   for (const u of [maya, sam, leo]) {
@@ -209,11 +204,15 @@ async function main() {
   console.log(`\nE2E PASSED in ${((Date.now() - t0) / 1000).toFixed(0)} s (${txs.length} txs)`)
 }
 
-main().catch((e) => {
-  console.error(String(e instanceof Error ? e.message : e))
-  if (txs.length) {
-    console.log("\nTX HASHES SO FAR")
-    for (const [label, h] of txs) console.log(`  ${label.padEnd(28)} ${h}`)
-  }
-  process.exit(1)
-})
+let accounts: TestAccounts | undefined
+main()
+  .then(() => accounts?.release())
+  .catch(async (e) => {
+    console.error(String(e instanceof Error ? e.message : e))
+    if (txs.length) {
+      console.log("\nTX HASHES SO FAR")
+      for (const [label, h] of txs) console.log(`  ${label.padEnd(28)} ${h}`)
+    }
+    await accounts?.release()
+    process.exit(1)
+  })

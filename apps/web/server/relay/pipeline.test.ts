@@ -112,8 +112,8 @@ beforeEach(async () => {
     defer: (fn) => deferred.push(fn),
     sleep: async () => undefined,
   }
-  const { user } = await insertUser(t.db, { account: USER, key, kind: "dev" })
-  actor = { userId: user.id, accountId: USER, kind: "dev", device: { publicKey: key.getPublicKey().toString(), status: "active" } }
+  const { user } = await insertUser(t.db, { account: USER, key, kind: "near-auth" })
+  actor = { userId: user.id, accountId: USER, kind: "near-auth", device: { publicKey: key.getPublicKey().toString(), status: "active" } }
 })
 
 describe("success path (R1 contribution)", () => {
@@ -309,14 +309,13 @@ describe("quotas and budgets (A-02, A-23)", () => {
     expect((await send([contribution()])).body.reason).toBe("user_suspended")
   })
 
-  it("demo actors are charged per visitor and IP net, from demo_yocto only", async () => {
-    const demo: Actor = { ...actor, kind: "demo", device: null, demo: { visitorHash: "v1", ipnetHash: "n1" } }
-    const r = await send([contribution()], { who: demo })
+  it("wallet actors (no device binding: any full-access key of the account) are charged per user from relay_yocto", async () => {
+    const wallet: Actor = { ...actor, kind: "wallet", device: null }
+    const r = await send([contribution()], { who: wallet })
     expect(r.status).toBe(200)
-    expect(await readQuota(t.db, "visitor:v1", "contribute")).toBe(1n)
-    expect(await readQuota(t.db, "ipnet:n1", "contribute")).toBe(1n)
-    expect(await readQuota(t.db, "global", "relay_yocto")).toBe(0n)
-    expect(await readQuota(t.db, "global", "demo_yocto")).toBeGreaterThan(0n)
+    expect(await readQuota(t.db, `user:${actor.userId}`, "contribute")).toBe(1n)
+    expect(await readQuota(t.db, "global", "relay_yocto")).toBeGreaterThan(0n)
+    expect(await readQuota(t.db, `user:${actor.userId}`, "relay_yocto")).toBeGreaterThan(0n)
   })
 })
 

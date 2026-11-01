@@ -1,10 +1,10 @@
 // Degraded and edge states (M-10, M-15, M-05, M-21 c): offline banner + disabled money CTAs, revert-with-toast,
 // reduced motion (no burst, the 1.2 s beat stays), inline approve with Undo, Appearance switching.
 import { expect, test } from "@playwright/test"
-import { asPersona, openedSheet, typeAmount } from "../fixtures/pot"
+import { asPerson, becomePerson, openedSheet, typeAmount } from "../fixtures/pot"
 
 test("offline: banner, cached numbers stay, money buttons explain; back online", async ({ page, context }) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$450.00")
   await context.setOffline(true)
@@ -21,7 +21,7 @@ test("offline: banner, cached numbers stay, money buttons explain; back online",
 })
 
 test("a failed add reverts the Sending… item and says what happened (one toast)", async ({ page }) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.addInitScript(() => localStorage.setItem("pot.mock.fail", "add"))
   await page.goto("/p/lisbon-trip?sheet=add")
   const sheet = await openedSheet(page, "Add money to Lisbon Trip")
@@ -37,7 +37,7 @@ test("a failed add reverts the Sending… item and says what happened (one toast
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" })
   test("no burst and still dots, but the 1.2 s rules beat stays", async ({ page }) => {
-    await asPersona(page, "maya")
+    await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?sheet=spend")
     const sheet = await openedSheet(page, "Spend from Lisbon Trip")
     await typeAmount(page, "20")
@@ -54,14 +54,13 @@ test.describe("reduced motion", () => {
 })
 
 test("inline Approve: 4 s Undo sends nothing", async ({ page }) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip?sheet=spend")
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
   await typeAmount(page, "300")
   await sheet.getByRole("button", { name: "Ask the group" }).click()
   await sheet.getByRole("button", { name: "Done" }).click()
-  await page.getByRole("button", { name: "You're Maya" }).click()
-  await page.getByRole("menuitem", { name: "Switch to Leo" }).click()
+  await becomePerson(page, "leo")
   const card = page.locator("[data-request-card]").locator("visible=true").first()
   await card.getByRole("button", { name: "Approve $300" }).click()
   await expect(card.getByText("Approved", { exact: true })).toBeVisible()
@@ -73,7 +72,7 @@ test("inline Approve: 4 s Undo sends nothing", async ({ page }) => {
 })
 
 test("Appearance: Night and Day switch live and survive a reload; Match my phone restores", async ({ page }, info) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/you")
   const group = page.getByRole("radiogroup", { name: "Appearance" })
   await group.getByRole("radio", { name: "Night" }).click()
@@ -90,7 +89,7 @@ test("Appearance: Night and Day switch live and survive a reload; Match my phone
 })
 
 test("a cold deep link to a request opens the Pot with the Approve sheet; closing stays in the app", async ({ page }) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip?sheet=spend")
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
   await typeAmount(page, "300")

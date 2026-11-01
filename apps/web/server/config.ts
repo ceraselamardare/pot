@@ -7,7 +7,7 @@ export type Network = "testnet" | "mainnet"
 export interface Thresholds {
   /** below this the relayer refuses everything (yocto) */
   floor: bigint
-  /** below this: refuse create_pot, faucet registrations, demo seeding, MPC signs */
+  /** below this: refuse create_pot, faucet registrations, MPC signs */
   critical: bigint
   /** alert only */
   warn: bigint
@@ -28,10 +28,9 @@ export interface Config {
   explorerUrl: string
   relayerAccountId: string
   treasuryAccountId: string
-  demoReferencePot: string | null
   nearAuth: { clientId: string; issuer: string; jwksUrl: string; acceptedAudiences: string[]; requireNonce: boolean }
   mpc: { contract: string; predecessor: string; domainId: number; signDepositYocto: bigint }
-  flags: { devSession: boolean; demo: boolean; nearAuth: boolean; botId: boolean }
+  flags: { nearAuth: boolean; botId: boolean }
   /** USDC registration deposit (storage_balance_bounds.min); 0.00125 NEAR */
   tokenStorageDepositYocto: bigint
   relayerThresholds: Thresholds
@@ -125,7 +124,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     explorerUrl: env.NEXT_PUBLIC_EXPLORER || "https://testnet.nearblocks.io",
     relayerAccountId: env.RELAYER_ACCOUNT_ID || "",
     treasuryAccountId: env.TREASURY_ACCOUNT_ID || "",
-    demoReferencePot: env.DEMO_REFERENCE_POT || null,
     nearAuth: {
       clientId,
       issuer,
@@ -141,8 +139,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       signDepositYocto: BigInt(env.MPC_SIGN_DEPOSIT_YOCTO || "1"),
     },
     flags: {
-      devSession: bool(env.FLAG_DEV_SESSION),
-      demo: bool(env.FLAG_DEMO, true),
       nearAuth: bool(env.FLAG_NEAR_AUTH),
       botId: bool(env.FLAG_BOTID),
     },

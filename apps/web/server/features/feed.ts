@@ -1,7 +1,6 @@
 // GET /api/pots/[pot]/feed (X-05; api-spec §2.5): feed_event history (newest first, cursor pagination) plus
-// enrichment. Everyone gets items (public on-chain data); rev4 (M-7): `profiles` only for members, demo
-// sessions and anonymous reads of demo Pots; memos and decline reasons only for members (and the Pot's demo
-// persona). Display rules: a memo shows only if its author is the on-chain requester of that request_ref;
+// enrichment. Everyone gets items (public on-chain data); rev4 (M-7): `profiles`, memos and decline reasons
+// only for members. Display rules: a memo shows only if its author is the on-chain requester of that request_ref;
 // a decline reason only if its author voted Reject. The lazy reconcile is Phase 2 (not here).
 import "server-only"
 import type * as Api from "@pot/sdk/api"
@@ -55,13 +54,12 @@ export async function getFeed(
   s: SessionCtx | null,
   potParam: string,
   q: { before?: string; limit?: number },
-): Promise<{ body: Record<string, unknown>; cacheControl: string; demo: boolean }> {
+): Promise<{ body: Record<string, unknown>; cacheControl: string }> {
   const { db, hub, cfg } = deps
   const potId = resolvePotId(potParam, cfg.hubId)
   const potRow = await ensurePot(db, hub, cfg, potId)
   const lim = Math.min(Math.max(q.limit ?? 50, 1), 100)
-  const demoOfPot = !!s && s.kind === "demo" && s.demo?.potId === potId
-  const member = !!s && (demoOfPot || (await isMember(hub, potId, s.user.nearAccount).catch(() => false)))
+  const member = !!s && (await isMember(hub, potId, s.user.nearAccount).catch(() => false))
 
   const cursor = q.before ? decodeCursor(q.before) : null
   const kinds = [...Object.keys(TYPE), "spend_payout_failed"] as (typeof feedEvent.$inferSelect)["kind"][]
@@ -110,7 +108,6 @@ export async function getFeed(
       name: potRow.name,
       ...(potRow.emoji ? { emoji: potRow.emoji } : {}),
       ...(potRow.gradient ? { gradient: potRow.gradient } : {}),
-      isDemo: potRow.isDemo,
     },
     items,
     profiles: {},
@@ -121,9 +118,9 @@ export async function getFeed(
     body.nextCursor = encodeCursor(last.at, last.id)
   }
 
-  // profiles: members, demo sessions, and anonymous reads of demo Pots (rev4 M-7). Every active (or joining)
-  // member is included, not just the actors on this page: the creator often has no item (wave 3, request 3).
-  if (member || potRow.isDemo || s?.kind === "demo") {
+  // profiles: members only (rev4 M-7). Every active (or joining) member is included, not just the actors on
+  // this page: the creator often has no item (wave 3, request 3).
+  if (member) {
     const members = await hub.getMembers(potId).catch(() => [])
     const accounts = [
       ...new Set([
@@ -181,5 +178,5 @@ export async function getFeed(
   }
 
   const cacheControl = s ? "private, no-store" : "public, s-maxage=5, stale-while-revalidate=30"
-  return { body, cacheControl, demo: potRow.isDemo || s?.kind === "demo" }
+  return { body, cacheControl }
 }

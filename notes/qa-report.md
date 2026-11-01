@@ -4,6 +4,11 @@
 > Testnet only, every chain-touching run under `scripts/with-testnet-lock.sh`, own build dir `NEXT_DIST_DIR=.next-qa`,
 > no git, no deploys. Raw logs were kept in the session scratchpad; the outputs below are copied from them.
 
+> **Rev 9 (2026-11-01):** the live demo (`demo.testnet.ts`, J-1…J-5 on testnet), the test-account sign-in and their tests were
+> removed (plan/decisions.md). Rows below that cite them (dev sessions, demo leases, `/api/demo/state`, the pool) are history. The
+> testnet suites now sign in through NEAR Connect with the e2e mock wallet and throwaway 0-NEAR accounts; the results of the Rev 9
+> run are in §10 at the end.
+
 ## 1. Regression matrix (final state: all green)
 
 | # | Layer | Command (repo root unless noted) | Final result (actual output) | Runs |
@@ -190,3 +195,19 @@ servers) were stopped.
   Connect wallet, push on real phones, the device/VoiceOver QA rows, and the E-12 abuse run.
 - Decide whether `spikes/` (throwaway, with gitignored keys) belongs in the public repo; the submission plan says no.
 - Add a LICENSE file (submission-plan §1.1 row 14).
+
+## 10. Rev 9 run (2026-11-01): live demo and test-account sign-in removed
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck | `pnpm typecheck` (+ `pnpm exec tsc -p scripts`) | clean |
+| Lint | `pnpm lint` | `lint-copy: 1313 strings, 0 banned words`; eslint 0 problems |
+| Unit + DB | `pnpm test` | 56 files passed, 3 skipped; 870 passed, 32 skipped |
+| Web build | `cd apps/web && NEXT_DIST_DIR=.next-rm pnpm build` | passes; no `/demo/live`, `/api/demo/*`, `/api/session/dev`, `/api/cron/demo-pool`; no e2e mock wallet code in the output |
+| Mock e2e | `E2E_PORT=3797 NEXT_PUBLIC_DATA_SOURCE=mock NEXT_DIST_DIR=.next-rm-mock pnpm exec playwright test` | 204 passed, 21 skipped (mobile-day, mobile-night, desktop) |
+| Integrations | `E2E_INT_PORT=3793 NEXT_DIST_DIR=.next-rm-int pnpm exec playwright test -c e2e/integrations/playwright.config.ts` | 5 passed |
+| Testnet Playwright | `E2E_TESTNET=1 … playwright test -c e2e/testnet/playwright.config.ts flows p2 deposit` (lock) | flows 5/5, p2 3/3, deposit 1/1 |
+| Live | `LIVE_TESTNET=1 … vitest run server/live` (lock) | 2 files, 9 passed |
+| HTTP E2E | `scripts/run e2e-chain --base http://localhost:3418` (lock) | `E2E PASSED in 143 s (16 txs)` |
+
+Spend ≈ 0.85 NEAR (notes/deploy.md "Rev 9 spend").

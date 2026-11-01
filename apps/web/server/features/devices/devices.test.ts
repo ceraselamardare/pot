@@ -73,7 +73,7 @@ beforeEach(async () => {
   const { user } = await insertUser(t.db, { account: ACCOUNT, kind: "near-auth" })
   const [u] = await t.db.update((await import("@/db/schema")).appUser).set({ authSub: SUB, mpcPublicKey: mpc.getPublicKey().toString() }).returning()
   await t.db.insert(session).values({ idHash: "sess1", userId: user.id, kind: "near-auth", expiresAt: new Date(Date.now() + 86_400_000), idleExpiresAt: new Date(Date.now() + 86_400_000) })
-  me = { idHash: "sess1", kind: "near-auth", expiresAt: new Date(Date.now() + 86_400_000), user: u!, device: null, pendingDevice: true, visitorHash: null, demo: null }
+  me = { idHash: "sess1", kind: "near-auth", expiresAt: new Date(Date.now() + 86_400_000), user: u!, device: null, pendingDevice: true }
 })
 
 function delegateBytes(o: { newPk: string; signer?: string; sender?: string; nonce?: bigint; mbh?: bigint; extra?: boolean }): Uint8Array {
@@ -190,7 +190,7 @@ describe("POST /api/devices", () => {
       [async () => addDevice(deps, me, await body({ newKey: k, bytes: delegateBytes({ newPk: pk, nonce: 10n }) }), { requestId: "f" }), "nonce_used"],
       [async () => addDevice(deps, me, await body({ newKey: k, bytes: delegateBytes({ newPk: pk, mbh: BigInt(HEAD + 5) }) }), { requestId: "g" }), "expired"],
       [async () => addDevice(deps, me, await body({ newKey: k, bytes: delegateBytes({ newPk: pk, mbh: BigInt(HEAD + 900) }) }), { requestId: "h" }), "ttl_too_long"],
-      [async () => addDevice(deps, { ...me, kind: "dev" }, await body({ newKey: k }), { requestId: "i" }), "demo_forbidden"],
+      [async () => addDevice(deps, { ...me, kind: "wallet" }, await body({ newKey: k }), { requestId: "i" }), "demo_forbidden"],
     ]
     for (const [p, reason] of cases) await expect(p()).rejects.toMatchObject({ reason })
     expect(sub.submitted).toHaveLength(0)

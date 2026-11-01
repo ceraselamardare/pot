@@ -55,9 +55,9 @@ function browserKeys() {
   return { ecdh, auth, p256dh: ecdh.getPublicKey().toString("base64url"), authB64: auth.toString("base64url") }
 }
 
-async function sessionFor(account: string, name = "Maya", kind: "dev" = "dev", deviceStatus: "active" | "pending" = "active"): Promise<SessionCtx> {
+async function sessionFor(account: string, name = "Maya", kind: "near-auth" = "near-auth", deviceStatus: "active" | "pending" = "active"): Promise<SessionCtx> {
   const key = KeyPair.fromRandom("ed25519")
-  const { user, device } = await insertUser(t.db, { account, key, kind: "dev", deviceStatus })
+  const { user, device } = await insertUser(t.db, { account, key, kind, deviceStatus })
   if (name !== "Maya") await t.db.execute(`UPDATE app_user SET display_name = '${name}' WHERE id = '${user.id}'` as never)
   const s = await createSession(t.db, { userId: user.id, kind, deviceId: device?.id })
   return (await loadSession(t.db, new Request("https://pot.test", { headers: { cookie: `__Host-pot_session=${s.cookieValue}` } }), cfg))!
@@ -170,19 +170,10 @@ describe("subscriptions (api-spec §2.6, SSRF guard)", () => {
     expect(await t.db.select().from(pushSubscription).where(eq(pushSubscription.userId, sam.user.id))).toHaveLength(0)
   })
 
-  it("demo sessions: refused unless FLAG_DEMO_PUSH and a pool lease; pending devices refused", async () => {
+  it("pending devices are refused", async () => {
     const k = browserKeys()
     const body = { subscription: { endpoint: "https://fcm.googleapis.com/d", expirationTime: null, keys: { p256dh: k.p256dh, auth: k.authB64 } }, standalone: true }
-    const base = await sessionFor("maya-k1.users.potapp.testnet")
-    const demo = { ...base, kind: "demo", device: null, demo: null } as unknown as SessionCtx
-    await expect(saveSubscription(t.db, demo, body, {})).rejects.toMatchObject({ reason: "demo_forbidden" })
-    const pool = { ...demo, demo: { id: "00000000-0000-4000-8000-000000000001", kind: "pool" } } as unknown as SessionCtx
-    await expect(saveSubscription(t.db, pool, body, {})).rejects.toMatchObject({ reason: "demo_forbidden", detail: { why: "demo_push_off" } })
-    await expect(saveSubscription(t.db, { ...pool, demo: { ...pool.demo!, kind: "shared" } }, body, { FLAG_DEMO_PUSH: "true" })).rejects.toMatchObject({
-      reason: "demo_forbidden",
-      detail: { why: "shared_pot" },
-    })
-    const pending = await sessionFor("u-pend.users.potapp.testnet", "Pat", "dev", "pending")
+    const pending = await sessionFor("u-pend.users.potapp.testnet", "Pat", "near-auth", "pending")
     await expect(saveSubscription(t.db, pending, body)).rejects.toMatchObject({ reason: "device_not_registered" })
   })
 })

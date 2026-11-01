@@ -1,25 +1,19 @@
-// X-09 faucet (A-11, A-28), X-05 notes and feed (A-12, A-29), X-08 demo session and demo intents
-// (A-13, A-26) against pot_test with a fake chain and a scripted submitter.
+// X-09 faucet (A-11, A-28), X-05 notes and feed (A-12, A-29) against pot_test with a fake chain and a
+// scripted submitter.
 import { vi } from "vitest"
 vi.mock("server-only", () => ({}))
-import { eq, sql } from "drizzle-orm"
 import { KeyPair } from "near-api-js"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { readQuota } from "@/db/quota"
-import { demoPot, feedEvent, note, pot, relayLog, session } from "@/db/schema"
+import { feedEvent, note, pot } from "@/db/schema"
 import { createTestDb, type TestDb } from "@/db/testing"
 import { resetBalanceCacheForTests } from "../chain/balance"
 import { createHubReader } from "../chain/hub"
-import type { PoolKey } from "../chain/keys"
 import type { Config } from "../config"
-import { ApiError } from "../http/errors"
-import type { RelayDeps } from "../relay/pipeline"
 import { createSession, loadSession, type SessionCtx } from "../session/store"
 import { DAO, HUB, USDC } from "../testing/delegates"
-import { insertUser, NEAR, potView, RELAYER, seedChain, testConfig, TREASURY } from "../testing/env"
-import { event, FakeChain, FakeSubmitter, methodOf, plainOutcome, relayedOutcome, valueOf } from "../testing/fakeChain"
-import { b64url, random } from "../util/crypto"
-import { demoRelay, demoSession, newVisitorId, verifyVisitorId } from "./demo"
+import { insertUser, seedChain, testConfig, TREASURY } from "../testing/env"
+import { FakeChain, FakeSubmitter, methodOf, plainOutcome } from "../testing/fakeChain"
 import { claimFaucet } from "./faucet"
 import { getFeed } from "./feed"
 import { postNote } from "./notes"
@@ -28,7 +22,6 @@ let t: TestDb
 let cfg: Config
 let chain: FakeChain
 let sub: FakeSubmitter
-const SECRET = "s".repeat(40)
 
 beforeAll(async () => {
   t = await createTestDb("features")
@@ -39,15 +32,15 @@ afterAll(async () => {
 beforeEach(async () => {
   await t.truncate()
   for (const k of Object.keys(process.env)) if (k.startsWith("QUOTA_")) delete process.env[k]
-  cfg = testConfig({ DEMO_REFERENCE_POT: `lisbon-trip-ref.${HUB}` })
+  cfg = testConfig()
   resetBalanceCacheForTests()
   chain = seedChain(new FakeChain())
   sub = new FakeSubmitter((spec) => plainOutcome("x", spec.signerId, spec.receiverId))
 })
 
-async function sessionFor(account: string, kind: "dev" | "near-auth" | "demo" = "dev", deviceStatus: "active" | "pending" = "active"): Promise<SessionCtx> {
+async function sessionFor(account: string, kind: "near-auth" | "wallet" = "near-auth", deviceStatus: "active" | "pending" = "active"): Promise<SessionCtx> {
   const key = KeyPair.fromRandom("ed25519")
-  const { user, device } = await insertUser(t.db, { account, key, kind: kind === "demo" ? "dev" : kind, deviceStatus })
+  const { user, device } = await insertUser(t.db, { account, key, kind, deviceStatus })
   const s = await createSession(t.db, { userId: user.id, kind, deviceId: device?.id })
   return (await loadSession(t.db, new Request("https://pot.test", { headers: { cookie: `__Host-pot_session=${s.cookieValue}` } }), cfg))!
 }
@@ -177,8 +170,8 @@ describe("feed (X-05, A-12, A-29)", () => {
   const MAYA = "maya.users.potapp.testnet"
   const SAM = "sam.users.potapp.testnet"
   let rid = 0
-  async function seedFeed(isDemo = false, withMaya = true) {
-    await t.db.insert(pot).values({ daoId: DAO, slug: "lisbon-trip", hubId: HUB, name: "Lisbon Trip", preset: "trip", creatorAccount: MAYA, isDemo })
+  async function seedFeed(withMaya = true) {
+    await t.db.insert(pot).values({ daoId: DAO, slug: "lisbon-trip", hubId: HUB, name: "Lisbon Trip", preset: "trip", creatorAccount: MAYA })
     const at = (s: number) => new Date(Date.UTC(2026, 10, 3, 12, 0, s))
     const row = (kind: string, s: number, extra: Record<string, unknown>) => ({
       potId: DAO,
@@ -226,7 +219,7 @@ describe("feed (X-05, A-12, A-29)", () => {
   })
 
   it("members get profiles, matched memos only and Reject-vote decline reasons only", async () => {
-    await seedFeed(false, false)
+    await seedFeed(false)
     const s = await sessionFor("maya.users.potapp.testnet")
     const r = await getFeed(deps(), s, DAO, {})
     expect(Object.keys(r.body.profiles as object)).toContain(MAYA)
@@ -241,12 +234,6 @@ describe("feed (X-05, A-12, A-29)", () => {
     expect(r.cacheControl).toBe("private, no-store")
   })
 
-  it("anonymous reads of demo Pots keep profiles", async () => {
-    await seedFeed(true)
-    const r = await getFeed(deps(), null, DAO, {})
-    expect(Object.keys(r.body.profiles as object)).toContain(MAYA)
-    expect(r.demo).toBe(true)
-  })
 
   it("rule changes and close requests carry proposalId and the member who asked (frontend request 9)", async () => {
     const { applyHubEvents } = await import("../relay/effects")
@@ -286,215 +273,5 @@ describe("feed (X-05, A-12, A-29)", () => {
   it("an unknown Pot → pot_unknown (and the hub lookup is cached negatively)", async () => {
     await expect(getFeed(deps(), null, "nope", {})).rejects.toMatchObject({ reason: "pot_unknown" })
     await expect(getFeed(deps(), null, "BAD SLUG", {})).rejects.toMatchObject({ reason: "pot_unknown" })
-  })
-})
-
-// ---------------------------------------------------------------------------------------------
-
-describe("demo session (X-08, A-13, A-26)", () => {
-  const personas = (k: string) => ({ maya: `maya-${k}.users.potapp.testnet`, sam: `sam-${k}.users.potapp.testnet`, leo: `leo-${k}.users.potapp.testnet` })
-  async function seedPool(n: number) {
-    for (let i = 0; i < n; i++)
-      await t.db.insert(demoPot).values({ kind: "pool", slug: `lisbon-p${i}`, potId: `lisbon-p${i}.${HUB}`, personas: personas(`p${i}`), state: "ready", seededAt: new Date(Date.now() - (n - i) * 1000) })
-  }
-  const deps = (isBot = false) => ({ db: t.db, cfg, secret: SECRET, isBot: async () => isBot })
-  const lease = (over: Partial<Parameters<typeof demoSession>[1]> = {}) =>
-    demoSession(deps(), { form: false, visitorCookie: null, ipnetHash: "net1", userAgent: null, ...over })
-  const visitorOf = (cookies: string[]) => cookies.find((c) => c.startsWith("pot_demo_visitor="))!.split(";")[0]!.split("=")[1]!
-
-  it("visitor ids are MAC'd", () => {
-    const v = newVisitorId(SECRET)
-    expect(verifyVisitorId(SECRET, v)).toBeTruthy()
-    expect(verifyVisitorId("o".repeat(40), v)).toBeNull()
-    // Always change the last character (the old `replace(/.$/, "0")` was a no-op when it already ended in "0").
-    const tampered = v.slice(0, -1) + (v.endsWith("0") ? "1" : "0")
-    expect(tampered).not.toBe(v)
-    expect(verifyVisitorId(SECRET, tampered)).toBeNull()
-  })
-
-  it("JSON: leases a ready pool Pot, creates a Maya demo session, sets the three cookies", async () => {
-    await seedPool(2)
-    const r = await lease()
-    if (r.kind !== "json") throw new Error("expected json")
-    expect(r.body.lease).toMatchObject({ slug: "lisbon-p0", shared: false })
-    expect(r.body.session).toMatchObject({ kind: "demo", demo: { persona: "maya", slug: "lisbon-p0", shared: false } })
-    expect(r.cookies.map((c) => c.split("=")[0])).toEqual(["pot_demo_visitor", "__Host-pot_session", "pot_hint"])
-    const row = (await t.db.select().from(demoPot).where(eq(demoPot.slug, "lisbon-p0")))[0]!
-    expect(row.state).toBe("leased")
-  })
-
-  it("a form post → 303 to /p/<slug>", async () => {
-    await seedPool(1)
-    const r = await lease({ form: true })
-    expect(r).toMatchObject({ kind: "redirect", location: "/p/lisbon-p0" })
-  })
-
-  it("persona switch inside a lease: same Pot, no BotID, no new lease", async () => {
-    await seedPool(2)
-    const first = await lease()
-    const v = visitorOf(first.cookies)
-    const sw = await demoSession(deps(true), { form: false, visitorCookie: v, ipnetHash: "net1", userAgent: null, persona: "leo" })
-    if (sw.kind !== "json") throw new Error("json")
-    expect(sw.body.lease).toMatchObject({ slug: "lisbon-p0" })
-    expect(sw.body.session).toMatchObject({ demo: { persona: "leo" } })
-    expect((await t.db.select().from(demoPot).where(eq(demoPot.state, "leased")))).toHaveLength(1)
-  })
-
-  it("two visitors never get the same pool Pot under concurrency (SKIP LOCKED)", async () => {
-    await seedPool(5)
-    const rs = await Promise.all(Array.from({ length: 5 }, (_, i) => lease({ ipnetHash: `net${i}` })))
-    const slugs = rs.map((r) => (r.kind === "json" ? (r.body.lease as { slug: string }).slug : ""))
-    expect(new Set(slugs).size).toBe(5)
-  })
-
-  it("an empty pool → the shared Pot, shared: true", async () => {
-    await t.db.insert(demoPot).values({ kind: "shared", slug: "lisbon-20261103", potId: `lisbon-20261103.${HUB}`, personas: personas("s1"), state: "ready" })
-    const r = await lease()
-    if (r.kind !== "json") throw new Error("json")
-    expect(r.body.lease).toMatchObject({ slug: "lisbon-20261103", shared: true })
-    const cookie = r.cookies.find((c) => c.startsWith("__Host-pot_session="))!.split(";")[0]!
-    const s = await loadSession(t.db, new Request("https://pot.test", { headers: { cookie } }), cfg)
-    expect(s).toMatchObject({ kind: "demo" })
-  })
-
-  it("reset retires the lease and leases a fresh Pot", async () => {
-    await seedPool(2)
-    const first = await lease()
-    const v = visitorOf(first.cookies)
-    const second = await demoSession(deps(), { form: false, visitorCookie: v, ipnetHash: "net1", userAgent: null, reset: true })
-    if (second.kind !== "json") throw new Error("json")
-    expect(second.body.lease).toMatchObject({ slug: "lisbon-p1" })
-    expect((await t.db.select().from(demoPot).where(eq(demoPot.slug, "lisbon-p0")))[0]!.state).toBe("retired")
-  })
-
-  it("BotID on a NEW lease: JSON → 403 bot_detected; a form → 303 /demo?ro=1", async () => {
-    await seedPool(1)
-    await expect(demoSession(deps(true), { form: false, visitorCookie: null, ipnetHash: "n", userAgent: null })).rejects.toMatchObject({ reason: "bot_detected" })
-    expect(await demoSession(deps(true), { form: true, visitorCookie: null, ipnetHash: "n", userAgent: null })).toMatchObject({ kind: "redirect", location: "/demo/live?ro=1" })
-  })
-
-  it("the 11th new lease in a day from one IP net → 429 family lease (form → /demo?ro=1)", async () => {
-    await seedPool(12)
-    for (let i = 0; i < 10; i++) await lease({ ipnetHash: "same-net" })
-    await expect(lease({ ipnetHash: "same-net" })).rejects.toMatchObject({ reason: "quota_exceeded", detail: { family: "lease" } })
-    expect(await lease({ ipnetHash: "same-net", form: true })).toMatchObject({ kind: "redirect", location: "/demo/live?ro=1" })
-  })
-
-  it("the demo flag off → 404", async () => {
-    cfg = testConfig({ FLAG_DEMO: "false" })
-    await expect(lease()).rejects.toMatchObject({ reason: "not_found" })
-  })
-})
-
-describe("demo intents in /api/relay (B-08 / rev4 S-5)", () => {
-  const MAYA = "maya-p0.users.potapp.testnet"
-  const personaKey = KeyPair.fromRandom("ed25519")
-  const pk: PoolKey = { publicKey: personaKey.getPublicKey().toString(), keyPair: personaKey }
-  let s: SessionCtx
-  let deps: RelayDeps & { personaKey: PoolKey; personaQueueMs?: number }
-  async function demoSessionFor(kind: "pool" | "shared") {
-    await t.db.insert(demoPot).values({
-      kind,
-      slug: "lisbon-p0",
-      potId: DAO,
-      personas: { maya: MAYA, sam: "sam-p0.users.potapp.testnet", leo: "leo-p0.users.potapp.testnet" },
-      state: "ready",
-      seededAt: new Date(),
-    })
-    const r = await demoSession({ db: t.db, cfg, secret: SECRET, isBot: async () => false }, { form: false, visitorCookie: null, ipnetHash: "n", userAgent: null })
-    if (r.kind !== "json") throw new Error("json")
-    const cookie = r.cookies.find((c) => c.startsWith("__Host-pot_session="))!.split(";")[0]!
-    return (await loadSession(t.db, new Request("https://pot.test", { headers: { cookie } }), cfg))!
-  }
-  beforeEach(() => {
-    chain.account(MAYA, { keys: { [pk.publicKey]: 500n } })
-    chain.view(HUB, "get_pot", (a) => (a.pot === DAO ? potView() : null))
-    sub.script = (spec) =>
-      relayedOutcome({
-        txHash: "x",
-        relayer: RELAYER,
-        sender: spec.receiverId,
-        inner: {
-          executor: USDC,
-          children: [{ executor: HUB, status: valueOf("0"), logs: [event("pot", "contribution", { pot: DAO, member: MAYA, amount: "150000000" })] }],
-          then: { executor: USDC, status: valueOf("150000000") },
-        },
-      })
-    deps = { db: t.db, rpc: chain, hub: createHubReader(chain, HUB), submitter: sub, cfg, defer: () => undefined, sleep: async () => undefined, personaKey: pk, personaQueueMs: 300 }
-  })
-  const send = (intent: Record<string, unknown>, key = b64url(random(10)).toLowerCase().replace(/[^0-9a-hjkmnp-tv-z]/g, "a").padEnd(16, "a").slice(0, 16)) =>
-    demoRelay(deps, s, { demo: { intent: intent as never }, idempotencyKey: key }, { requestId: "req", ipnetHash: "n", bodyHash: key })
-
-  it("signs as the persona with DEMO_PERSONA_KEY and relays through the normal pipeline", async () => {
-    s = await demoSessionFor("pool")
-    const r = await send({ type: "add_money", pot: DAO, amount: "150000000" })
-    expect(r.status).toBe(200)
-    expect(r.body).toMatchObject({ outcome: "success", result: { type: "contribution", recorded: true } })
-    const row = (await t.db.select().from(relayLog).where(eq(relayLog.op, "relay")))[0]!
-    expect(row).toMatchObject({ senderId: MAYA, delegatePublicKey: pk.publicKey })
-    expect(row.visitorHash).toBeTruthy()
-    expect(await readQuota(t.db, "global", "demo_yocto")).toBeGreaterThan(0n)
-    expect(await readQuota(t.db, "global", "relay_yocto")).toBe(0n)
-  })
-
-  it("the reference Pot is refused FIRST (before any other check)", async () => {
-    s = await demoSessionFor("pool")
-    await expect(send({ type: "add_money", pot: `lisbon-trip-ref.${HUB}`, amount: "1" })).rejects.toMatchObject({
-      reason: "demo_forbidden",
-      detail: { why: "reference_pot" },
-    })
-    expect(sub.submitted).toHaveLength(0)
-  })
-
-  it("another visitor's Pot → demo_forbidden", async () => {
-    s = await demoSessionFor("pool")
-    await expect(send({ type: "add_money", pot: `other.${HUB}`, amount: "1" })).rejects.toMatchObject({ reason: "demo_forbidden" })
-  })
-
-  it.each([
-    ["propose_close", { type: "propose_close", pot: DAO }],
-    ["propose_rules", { type: "propose_rules", pot: DAO, rules: { instantCap: "1", memberBudget: "1", instantPayees: "members", payeeAllowlist: [] } }],
-    ["set_rules", { type: "set_rules", pot: DAO, rules: { instantCap: "1", memberBudget: "1", instantPayees: "members", payeeAllowlist: [] } }],
-  ])("the shared Pot refuses %s (rev4 H-5)", async (_n, intent) => {
-    s = await demoSessionFor("shared")
-    await expect(send(intent)).rejects.toMatchObject({ reason: "demo_forbidden", detail: { why: "shared_pot" } })
-  })
-
-  it("the shared Pot refuses votes on its close proposal", async () => {
-    s = await demoSessionFor("shared")
-    chain.view(HUB, "get_proposal_subject", () => ({ pot: DAO, proposal_id: 9, kind: "close", live: true }))
-    deps.hub = createHubReader(chain, HUB)
-    await expect(send({ type: "vote", pot: DAO, proposalId: 9, kind: { FunctionCall: { receiver_id: USDC, actions: [] } }, action: "VoteApprove" })).rejects.toMatchObject({
-      reason: "demo_forbidden",
-    })
-  })
-
-  it("concurrent demo intents for one persona are serialized by the demo_signer lease", async () => {
-    s = await demoSessionFor("pool")
-    await t.db.execute(sql`INSERT INTO lease (name, holder, until) VALUES (${`demo_signer:${MAYA}`}, 'other', now() + interval '30 seconds')`)
-    await expect(send({ type: "add_money", pot: DAO, amount: "150000000" })).rejects.toMatchObject({ reason: "nonce_pending" })
-  })
-
-  it("B-19: a second delegate for a busy persona queues (no 409) and signs above the lease's last nonce", async () => {
-    s = await demoSessionFor("pool")
-    // another request holds Maya's signer and signed nonce 900 (a node that lags still says 500)
-    await t.db.execute(sql`INSERT INTO lease (name, holder, until, meta) VALUES (${`demo_signer:${MAYA}`}, 'other', now() + interval '30 seconds', '{"lastNonce":"900"}'::jsonb)`)
-    // (drizzle queries are lazy: .then() runs it)
-    setTimeout(() => t.db.execute(sql`UPDATE lease SET holder = NULL, until = NULL WHERE name = ${`demo_signer:${MAYA}`}`).then(() => undefined), 150)
-    deps.personaQueueMs = 5_000
-    deps.sleep = (ms) => new Promise((r) => setTimeout(r, Math.min(ms, 50)))
-    const r = await send({ type: "add_money", pot: DAO, amount: "150000000" })
-    expect(r.status).toBe(200)
-    const row = (await t.db.select().from(relayLog).where(eq(relayLog.op, "relay")))[0]!
-    expect(row.delegateNonce).toBe("901")
-    const meta = await t.db.execute<{ last: string; holder: string | null }>(sql`SELECT meta->>'lastNonce' AS last, holder FROM lease WHERE name = ${`demo_signer:${MAYA}`}`)
-    expect(meta.rows[0]).toMatchObject({ last: "901", holder: null })
-  })
-
-  it("session rows exist per persona switch", async () => {
-    s = await demoSessionFor("pool")
-    expect((await t.db.select().from(session)).length).toBe(1)
-    expect(ApiError).toBeTruthy()
-    expect(NEAR > 0n && RELAYER.length > 0).toBe(true)
   })
 })

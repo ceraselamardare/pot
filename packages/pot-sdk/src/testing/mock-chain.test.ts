@@ -42,7 +42,7 @@ describe("Lisbon Trip fixtures at every D-61 state", () => {
     })
   }
 
-  it("seeded = the README / demo-pool state: $450, Maya, Sam, Leo, no spends, an active invite", async () => {
+  it("seeded = the README state: $450, Maya, Sam, Leo, no spends, an active invite", async () => {
     const { chain, invite } = await lisbonTrip("seeded")
     const members = (await chain.hub.getMembers(L.dao)).value
     expect(members.map((m) => [m.account, m.joinIndex, m.contributed])).toEqual([
@@ -379,13 +379,13 @@ describe("rules and close", () => {
 })
 
 describe("MockSigner (frontend wiring before testnet)", () => {
-  it("prepare → sign → handleRelayBody runs a demo relay body", async () => {
+  it("prepare → sign → handleMockBody runs a mock body", async () => {
     const { chain } = await lisbonTrip("seeded")
     const sam = new MockSigner(chain, L.sam)
     expect(await sam.readiness()).toBe("ready")
     const intent: ActionIntent = { type: "request_spend", pot: L.dao, amount: 30_000_000n, receiverId: L.sam, category: "transport", requestRef: "m0m0m0m0m0m0m0m0" }
     const signed = await sam.sign(await sam.prepare(intent))
-    expect(signed).toMatchObject({ via: "relay", body: { idempotencyKey: "m0m0m0m0m0m0m0m0", demo: { intent: { amount: "30000000" } } } })
+    expect(signed).toMatchObject({ via: "mock", body: { idempotencyKey: "m0m0m0m0m0m0m0m0", mock: { intent: { amount: "30000000" } } } })
     const r = ok(await sam.send({ ...intent, requestRef: "m1m1m1m1m1m1m1m1" }))
     expect(r.result).toMatchObject({ path: "instant", payout: "sent" })
   })

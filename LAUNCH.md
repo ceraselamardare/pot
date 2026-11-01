@@ -6,7 +6,8 @@
 > - **Testnet only**; no mainnet contracts.
 > - **Vercel Hobby.**
 > - **No custom domain** (`<project>.vercel.app`).
-> - **No git repo until Nov 1**: the user's choice.
+> - **Repo:** `github.com/ceraselamardare/pot` (branch `main`; created Nov 1). Commits only when asked, and always confirm before a push.
+> - **No wallet-less real accounts** (Rev 9): sign-in is NEAR wallet or Google (NEAR Auth) only. The simulated `/demo` tour stays.
 >
 > **Key dates (UTC):**
 > - Submissions open Nov 1 00:00 and close Nov 14 23:59. The API returns 403 outside that window.
@@ -28,7 +29,7 @@
 | Landing page `/` | Built (two rounds, motion) | `notes/landing.md` |
 | Demo video | 82 s, clean + captioned; motion graphics | `marketing/video/out/final/`, `notes/video.md` |
 | Judge README | Written; `<APP_URL>` placeholders; CLI steps verified on testnet | `README.md` |
-| CI | Workflow written, **never run** (no repo) | `.github/workflows/ci.yml` |
+| CI | Workflow written, **never run** (the repo exists; Actions not yet enabled) | `.github/workflows/ci.yml` |
 | Hosting | **Never deployed** (Vercel/Neon untested) | — |
 | Real devices / real logins | **Never tested** | `notes/near-auth-manual-test.md` |
 
@@ -39,8 +40,8 @@
 Goal by end of day: the app runs at `https://<project>.vercel.app` on testnet, `/demo` works for a stranger, and CI is green.
 
 ### 1. Repo
-- [ ] **[You]** Create the GitHub repo. It must be under a personal account for Vercel Hobby. Recommended: **public from day 1**, because on a private Hobby repo only the owner's commits deploy.
-- [ ] **[Claude]** `git init`, then the first commit. Before committing:
+- [x] **[You]** GitHub repo created: `ceraselamardare/pot` ("init" commit; scanned clean of secrets). Make it **public** when you're ready; on a private Hobby repo only the owner's commits deploy.
+- [ ] **[Claude]** Next commit (when you ask). Before committing:
   - check `.gitignore` covers `.env*`, `.keys/`, `node_modules`, `.next*`, `target/`;
   - run a secret scan over the staged files;
   - decide on `spikes/` (recommended: **exclude** it; it's throwaway pre-event code);
@@ -54,20 +55,21 @@ Goal by end of day: the app runs at `https://<project>.vercel.app` on testnet, `
 - [ ] **[You]** Vercel → Storage / Marketplace → **Neon Postgres** (free) → connect to the project. This sets `DATABASE_URL` / `DATABASE_URL_UNPOOLED`.
 - [ ] **[Claude]** Run the Drizzle migrations against Neon (`apps/web/db/migrations`).
 - [ ] **[Both]** Add the env vars in Vercel. Secrets go in as **Sensitive**, from `apps/web/.keys/preview.env`; Claude prepares the list, and you paste the values.
-  - **Public:** `NEXT_PUBLIC_NETWORK=testnet`, `NEXT_PUBLIC_APP_URL=https://<project>.vercel.app`, `NEXT_PUBLIC_HUB_ID=pots.potprev.testnet`, `NEXT_PUBLIC_USDC_ID=usdc.potprev.testnet`, `NEXT_PUBLIC_RPC_URLS` (FastNEAR, dRPC; **never** `rpc.testnet.near.org`), `NEXT_PUBLIC_TX_API`, `NEXT_PUBLIC_EXPLORER`, `NEXT_PUBLIC_FLAG_DEMO=1`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`.
-  - **Server:** `RELAYER_ACCOUNT_ID`, `TREASURY_ACCOUNT_ID`, `DEMO_REFERENCE_POT=lisbon-trip.pots.potprev.testnet`, `DEMO_POOL_TARGET=3`, `FLAG_DEMO=1`, `MPC_SIGN_DEPOSIT_YOCTO`, `RELAYER_*_NEAR`, `QUOTA_*`, `VAPID_SUBJECT`.
-  - **Sensitive:** `RELAYER_KEYS`, `TREASURY_KEYS`, `DEMO_PERSONA_KEY`, `APP_HMAC_SECRET` (a **new** random value), `VAPID_PRIVATE_KEY`, `CRON_SECRET`.
-  - **Dev sessions:** `FLAG_DEV_SESSION` on Preview only, never Production.
+  - **Public:** `NEXT_PUBLIC_NETWORK=testnet`, `NEXT_PUBLIC_APP_URL=https://<project>.vercel.app`, `NEXT_PUBLIC_HUB_ID=pots.potprev.testnet`, `NEXT_PUBLIC_USDC_ID=usdc.potprev.testnet`, `NEXT_PUBLIC_RPC_URLS` (FastNEAR, dRPC; **never** `rpc.testnet.near.org`), `NEXT_PUBLIC_TX_API`, `NEXT_PUBLIC_EXPLORER`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Never `NEXT_PUBLIC_E2E_MOCK_WALLET` (the build refuses it on Vercel).
+  - **Server:** `RELAYER_ACCOUNT_ID`, `TREASURY_ACCOUNT_ID`, `MPC_SIGN_DEPOSIT_YOCTO`, `RELAYER_*_NEAR`, `QUOTA_*`, `VAPID_SUBJECT`.
+  - **Sensitive:** `RELAYER_KEYS`, `TREASURY_KEYS`, `APP_HMAC_SECRET` (a **new** random value), `VAPID_PRIVATE_KEY`, `CRON_SECRET`.
+  - **Removed in Rev 9 (delete them if they were added):** the live demo and the test-account sign-in are gone, so Vercel needs none of `FLAG_DEMO`, `NEXT_PUBLIC_FLAG_DEMO`, `FLAG_DEMO_LIVE`, `FLAG_DEMO_PUSH`, `FLAG_DEV_SESSION`, `NEXT_PUBLIC_FLAG_DEV_SESSION`, `DEMO_REFERENCE_POT`, `DEMO_POOL_TARGET`, `QUOTA_GLOBAL_DEMO_YOCTO` or the `DEMO_PERSONA_KEY` secret.
   - **Separation:** use separate relayer keys for Preview and Production. Claude adds keys to `users.potprev.testnet`.
-- [ ] **[Claude]** Confirm that the crons in `apps/web/vercel.json` (daily reconcile, daily demo-pool refill) are accepted on Hobby.
+- [ ] **[Claude]** Confirm that the cron in `apps/web/vercel.json` (daily reconcile) is accepted on Hobby.
 - [ ] **[You]** Deploy, and paste the URL in chat.
 
 ### 3. Smoke test the live URL
 - [ ] **[Claude]** Run against the deployed URL:
   - `GET /api/health`;
-  - `GET /api/demo/state` (reference Pot $450, pool ≥ 2);
-  - the README judge steps J-1…J-7 (`scripts/readme-cli-check.sh`, `scripts/check-readme-steps.ts`);
-  - the testnet Playwright `demo` suite pointed at the URL.
+  - the README judge steps J-1…J-7 (`scripts/readme-cli-check.sh`, `scripts/check-readme-steps.ts`).
+
+  (The signing testnet Playwright suites run on a local build only: they sign in through the e2e mock wallet, which the
+  build refuses on Vercel.)
 
   Run each through `scripts/with-testnet-lock.sh`.
 - [ ] **[Claude]** Check the things never verified on Vercel:
@@ -102,7 +104,7 @@ Goal by end of day: the app runs at `https://<project>.vercel.app` on testnet, `
 - [ ] **[You] Wallet.** Sign in with Meteor or Intear on testnet ("I have a NEAR wallet"), and do one gasless action.
 - [ ] **[You] Hallway test (round A).** 3-5 non-crypto friends on the live URL, following `plan/hallway-test.md` (join and pay in under 2 min). **[Claude]** fixes the top 5 findings.
 - [ ] **[You] Design calls.** Go through the 44 defaulted questions in `notes/frontend.md`, and the landing decisions 1-7 in `notes/landing.md`. Claude applies your answers.
-- [ ] **[Claude] Abuse check (E-12).** A scripted run against Preview: faucet and demo-lease limits, create caps, a relay of a non-hub vote.
+- [ ] **[Claude] Abuse check (E-12).** A scripted run against Preview: faucet limits, wallet sign-in limits, create caps, a relay of a non-hub vote.
 - [ ] **[Claude] Testnet funding.** Keep `pot-funds-65k8.testnet` ≥ 30 NEAR (faucet top-ups, verified on chain), hub ≥ 5 NEAR free, relayer ≥ 3 NEAR, treasury ≥ $50k test dollars. Log it in `notes/deploy.md`.
 
 ## Days 7-10 (Nov 7-10): freeze features, decide the extras
@@ -161,7 +163,6 @@ Order matters (`plan/submission-plan.md` §5). Agents never post, make repos pub
 
 - [ ] **[Claude]** Twice a day until **Nov 25** (Q-012: "keep it up to 2026-11-18, ideally 2026-11-25"):
   - `/api/health`;
-  - `/api/demo/state` (pool ≥ 2);
   - balances (hub, relayer, treasury);
   - the cron runs (Hobby crons are daily);
   - top up testnet NEAR if needed.
@@ -182,8 +183,7 @@ Order matters (`plan/submission-plan.md` §5). Agents never post, make repos pub
 |---|---|
 | Testnet funding account | `pot-funds-65k8.testnet` (key in `~/.near-credentials/testnet/`) |
 | Preview root / hub / token / relayer / treasury | `potprev.testnet`, `pots.`, `usdc.`, `users.`, `treasury.` (+ `reserve.`) |
-| Reference demo Pot | `lisbon-trip.pots.potprev.testnet` |
 | Secrets for Vercel | `apps/web/.keys/preview.env` (gitignored, never commit) |
 | Local env | `apps/web/.env.local` (gitignored) |
 | Testnet lock for any testnet run | `scripts/with-testnet-lock.sh <cmd>` |
-| Scripts (deploy status, seed, demo pool, e2e) | `scripts/run <name>`, documented in `notes/deploy.md` |
+| Scripts (deploy status, keys, env, e2e) | `scripts/run <name>`, documented in `notes/deploy.md` |

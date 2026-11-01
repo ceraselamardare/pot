@@ -1,14 +1,12 @@
-// POST /api/relay (B-03 + B-05, B-08 demo intents, B-09; api-spec §2.3, §3).
+// POST /api/relay (B-03 + B-05, B-09; api-spec §2.3, §3).
 import { eq } from "drizzle-orm"
 import { getDb } from "@/db/client"
 import { pot } from "@/db/schema"
-import { loadKeys } from "@/server/chain/keys"
 import { getConfig } from "@/server/config"
 import { relayDeps } from "@/server/deps"
-import { demoRelay } from "@/server/features/demo"
 import { ApiError } from "@/server/http/errors"
-import { checkCsrf, ipNetHash, parseWith, readBody, route } from "@/server/http/context"
-import { demoRelayReq, signedRelayReq } from "@/server/http/schemas"
+import { checkCsrf, parseWith, readBody, route } from "@/server/http/context"
+import { signedRelayReq } from "@/server/http/schemas"
 import { relay } from "@/server/relay/pipeline"
 import { requireSession } from "@/server/session/store"
 import { sha256Hex } from "@/server/util/crypto"
@@ -27,20 +25,6 @@ export const POST = route("POST /api/relay", async (ctx) => {
   const cfg = getConfig()
   const s = await requireSession(getDb(), ctx.req, cfg)
   const bodyHash = sha256Hex(JSON.stringify(parsed))
-  const isDemoBody = typeof parsed === "object" && parsed !== null && "demo" in parsed
-  if (s.kind === "demo") {
-    ctx.demo = true
-    if (!isDemoBody) throw new ApiError("demo_forbidden", { detail: { why: "signed_body_in_demo" } })
-    const body = parseWith(demoRelayReq, parsed)
-    const r = await demoRelay(
-      { ...relayDeps(), personaKey: loadKeys("DEMO_PERSONA_KEY")[0] },
-      s,
-      body as never,
-      { requestId: ctx.requestId, ipnetHash: ipNetHash(ctx.req), bodyHash },
-    )
-    return ctx.raw({ ...r.body, requestId: ctx.requestId }, r.status)
-  }
-  if (isDemoBody) throw new ApiError("demo_forbidden", { detail: { why: "demo_body_outside_demo" } })
   const body = parseWith(signedRelayReq, parsed)
   const r = await relay(
     relayDeps(),

@@ -1,6 +1,5 @@
-// A PotSigner for MockChain-backed UIs and tests: it behaves like the DemoSigner (no gesture,
-// relayed; the "server" builds the CallSpec), producing a demo relay body that
-// MockChain.handleRelayBody executes. Lets the frontend run every flow before testnet is wired.
+// A PotSigner for MockChain-backed UIs and tests (no gesture, no key; the "server" builds the
+// CallSpec), producing a mock body that MockChain.handleMockBody executes. Lets the frontend run every flow before testnet is wired.
 
 import { intentToWire } from "../actions/build.ts"
 import { buildCall } from "../actions/build.ts"
@@ -12,7 +11,7 @@ import { newOpKey } from "../validate.ts"
 import type { MockChain } from "./mock-chain.ts"
 
 export class MockSigner implements PotSigner {
-  readonly kind: SignerKind = "demo"
+  readonly kind: SignerKind = "mock"
   readonly accountId: AccountId
   readonly publicKey = null
   readonly needsGesture = false
@@ -34,13 +33,13 @@ export class MockSigner implements PotSigner {
   }
 
   async sign(p: Prepared): Promise<SignedPayload> {
-    return { via: "relay", body: { demo: { intent: intentToWire(p.intent) }, idempotencyKey: p.opId } }
+    return { via: "mock", body: { mock: { intent: intentToWire(p.intent) }, idempotencyKey: p.opId } }
   }
 
-  /** prepare → sign → MockChain.handleRelayBody, i.e. what POST /api/relay would answer. */
+  /** prepare → sign → MockChain.handleMockBody, i.e. what POST /api/relay would answer. */
   async send(intent: ActionIntent): Promise<RelayOk | Err> {
     const signed = await this.sign(await this.prepare(intent))
-    if (signed.via !== "relay") throw new Error("MockSigner only relays")
-    return this.chain.handleRelayBody(this.accountId, signed.body)
+    if (signed.via !== "mock") throw new Error("MockSigner only makes mock bodies")
+    return this.chain.handleMockBody(this.accountId, signed.body)
   }
 }

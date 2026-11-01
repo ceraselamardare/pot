@@ -47,9 +47,8 @@ export interface RelayDeps {
 export interface Actor {
   userId: string
   accountId: string
-  kind: "near-auth" | "wallet" | "demo" | "dev"
+  kind: "near-auth" | "wallet"
   device: { publicKey: string; status: "pending" | "active" | "revoked" } | null
-  demo?: { visitorHash: string; ipnetHash: string }
   /** sha256 of a verified email (per-email create quota) */
   emailHash?: string | null
 }
@@ -61,8 +60,6 @@ export interface RelayRequest {
   intent?: string
   requestRef?: string
   bodyHash: string
-  /** demo intents: the server signed with DEMO_PERSONA_KEY, so step 7's device binding doesn't apply */
-  serverSigned?: boolean
 }
 
 export interface RelayResponse {
@@ -220,7 +217,7 @@ async function r11Preflight(deps: RelayDeps, actor: Actor, m: PolicyMatch, potVi
       throw new ApiError("proposal_not_open", { detail: { status: proposal.status, expired } })
     if (proposal.votes[actor.accountId]) throw new ApiError("already_voted")
   }
-  // shared-Pot demo refusals need the subject kind (api-spec §2.3 rule 3)
+  // a close approval registers unregistered payees first (rev4 M-5): step 12 needs the subject kind
   ;(m as PolicyMatch & { subjectKind?: string }).subjectKind = subject.kind
 }
 
@@ -228,13 +225,11 @@ async function r11Preflight(deps: RelayDeps, actor: Actor, m: PolicyMatch, potVi
 // step 12: quotas
 
 function quotaCharges(actor: Actor, m: PolicyMatch): QuotaCharge[] {
-  const isDemo = actor.kind === "demo" && !!actor.demo
-  const subjects = isDemo ? [`visitor:${actor.demo!.visitorHash}`, `ipnet:${actor.demo!.ipnetHash}`] : [`user:${actor.userId}`]
-  const c: QuotaCharge[] = []
-  for (const s of subjects) {
-    c.push({ subject: s, action: "burst", amount: 1n, limit: limit("user_burst"), period: "minute", tag: "burst" })
-    c.push({ subject: s, action: m.family, amount: 1n, limit: limit(`user_${m.family}`), tag: `family:${m.family}` })
-  }
+  const user = `user:${actor.userId}`
+  const c: QuotaCharge[] = [
+    { subject: user, action: "burst", amount: 1n, limit: limit("user_burst"), period: "minute", tag: "burst" },
+    { subject: user, action: m.family, amount: 1n, limit: limit(`user_${m.family}`), tag: `family:${m.family}` },
+  ]
   if (m.potId && ["contribute", "spend", "vote", "close"].includes(m.family))
     c.push({ subject: `pot:${m.potId}`, action: m.family, amount: 1n, limit: limit(`pot_${m.family}`), tag: `family:${m.family}` })
   const finalizePid = m.vote?.action === "Finalize" ? m.vote.proposalId : m.retry?.proposalId
@@ -244,32 +239,23 @@ function quotaCharges(actor: Actor, m: PolicyMatch): QuotaCharge[] {
     c.push({ subject: "global", action: "pots_created", amount: 1n, limit: limit("global_pots_created"), tag: "family:create" })
     if (actor.emailHash)
       c.push({ subject: `email:${actor.emailHash}`, action: "create", amount: 1n, limit: limit("email_create"), tag: "family:create" })
-    if (isDemo)
-      c.push({ subject: `visitor:${actor.demo!.visitorHash}`, action: "demo_create", amount: 1n, limit: limit("visitor_create"), tag: "family:create" })
   }
   c.push({ subject: "global", action: "relays", amount: 1n, limit: limit("global_relays"), tag: "global_cap" })
-  if (isDemo) {
-    // demo relays draw only from demo_yocto (rev4 H-5), never from relay_yocto or hub_yocto
-    c.push({ subject: "global", action: "demo_yocto", amount: m.estYocto + m.hubYocto, limit: limit("global_demo_yocto"), tag: "budget" })
-  } else {
-    c.push({ subject: "global", action: "relay_yocto", amount: m.estYocto, limit: limit("global_relay_yocto"), tag: "global_cap" })
-    c.push({ subject: `user:${actor.userId}`, action: "relay_yocto", amount: m.estYocto, limit: limit("user_relay_yocto"), tag: "budget" })
-    if (m.hubYocto > 0n) {
-      c.push({ subject: `user:${actor.userId}`, action: "hub_yocto", amount: m.hubYocto, limit: limit("user_hub_yocto"), tag: "budget" })
-      c.push({ subject: "global", action: "hub_yocto", amount: m.hubYocto, limit: limit("global_hub_yocto"), tag: "global_cap" })
-    }
+  c.push({ subject: "global", action: "relay_yocto", amount: m.estYocto, limit: limit("global_relay_yocto"), tag: "global_cap" })
+  c.push({ subject: user, action: "relay_yocto", amount: m.estYocto, limit: limit("user_relay_yocto"), tag: "budget" })
+  if (m.hubYocto > 0n) {
+    c.push({ subject: user, action: "hub_yocto", amount: m.hubYocto, limit: limit("user_hub_yocto"), tag: "budget" })
+    c.push({ subject: "global", action: "hub_yocto", amount: m.hubYocto, limit: limit("global_hub_yocto"), tag: "global_cap" })
   }
   return c
 }
 
 async function chargeOrThrow(deps: RelayDeps, actor: Actor, m: PolicyMatch): Promise<QuotaCharge[]> {
-  if (actor.kind !== "demo") {
-    const r = await deps.db.execute<{ n: number }>(sql`
-      SELECT count(*)::int AS n FROM relay_log
-      WHERE user_id = ${actor.userId} AND outcome = 'delegate_failed'
-        AND created_at >= (date_trunc('day', now() AT TIME ZONE 'utc') AT TIME ZONE 'utc')`)
-    if ((r.rows[0]?.n ?? 0) > 10) throw new ApiError("user_suspended", { detail: { resetsAt: nextUtcDay().toISOString() } })
-  }
+  const r = await deps.db.execute<{ n: number }>(sql`
+    SELECT count(*)::int AS n FROM relay_log
+    WHERE user_id = ${actor.userId} AND outcome = 'delegate_failed'
+      AND created_at >= (date_trunc('day', now() AT TIME ZONE 'utc') AT TIME ZONE 'utc')`)
+  if ((r.rows[0]?.n ?? 0) > 10) throw new ApiError("user_suspended", { detail: { resetsAt: nextUtcDay().toISOString() } })
   const charges = quotaCharges(actor, m)
   const res = await chargeQuotas(deps.db, charges)
   if (res.ok) return charges
@@ -315,7 +301,7 @@ export async function relay(deps: RelayDeps, actor: Actor, req: RelayRequest): P
       testAllowlist: cfg.testAllowlist,
     })
     // 7. key binding
-    if ((actor.kind === "near-auth" || actor.kind === "dev") && !req.serverSigned) {
+    if (actor.kind === "near-auth") {
       if (!actor.device || actor.device.status !== "active" || actor.device.publicKey !== d.publicKey)
         throw new ApiError("key_not_allowed")
     }
@@ -351,7 +337,6 @@ export async function relay(deps: RelayDeps, actor: Actor, req: RelayRequest): P
       id: relayId,
       requestId: req.requestId,
       userId: actor.userId,
-      visitorHash: actor.demo?.visitorHash ?? null,
       idempotencyKey: req.idempotencyKey,
       bodyHash: req.bodyHash,
       op: "relay",
@@ -393,7 +378,6 @@ async function recordRejected(
       id: newRelayId(),
       requestId: req.requestId,
       userId: actor.userId,
-      visitorHash: actor.demo?.visitorHash ?? null,
       op: "relay",
       intent: m?.intent ?? req.intent ?? null,
       senderId: d.senderId,
@@ -425,7 +409,7 @@ async function submitAndClassify(
   potView: PotView | null,
 ): Promise<RelayResponse> {
   const { db, cfg } = deps
-  const yoctoSubjects = actor.kind === "demo" ? { action: "demo_yocto", subjects: ["global"] } : { action: "relay_yocto", subjects: ["global", `user:${actor.userId}`] }
+  const yoctoSubjects = { action: "relay_yocto", subjects: ["global", `user:${actor.userId}`] }
 
   const submitP = deps.submitter.submit(
     {

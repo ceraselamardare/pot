@@ -9,9 +9,6 @@ export type DataSource = "mock" | "testnet"
 export const DATA_SOURCE: DataSource = process.env.NEXT_PUBLIC_DATA_SOURCE === "testnet" ? "testnet" : "mock"
 export const IS_LIVE = DATA_SOURCE === "testnet"
 
-/** preview/local only: "Join with a test account" (POST /api/session/dev, api-spec §2.1). */
-export const FLAG_DEV_SESSION = process.env.NEXT_PUBLIC_FLAG_DEV_SESSION === "true"
-
 const list = (v: string | undefined): string[] =>
   (v ?? "")
     .split(",")

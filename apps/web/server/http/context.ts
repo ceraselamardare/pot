@@ -26,7 +26,6 @@ export class Ctx {
   readonly startedAt = Date.now()
   readonly headers = new Headers()
   cacheControl = "private, no-store"
-  demo = false
   constructor(
     readonly req: Request,
     readonly route: string,
@@ -40,7 +39,6 @@ export class Ctx {
     res.headers.set("x-request-id", this.requestId)
     if (!res.headers.has("cache-control")) res.headers.set("cache-control", this.cacheControl)
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.headers.set(k, v)
-    if (this.demo) res.headers.set("x-pot-demo", "1")
     this.headers.forEach((v, k) => {
       if (k === "set-cookie") return
       res.headers.set(k, v)
@@ -63,29 +61,14 @@ export class Ctx {
     if (e.retryAfterMs) res.headers.set("retry-after", String(Math.ceil(e.retryAfterMs / 1000)))
     return this.finish(res)
   }
-
-  redirect(location: string, status = 303): Response {
-    return this.finish(new Response(null, { status, headers: { location } }))
-  }
 }
 
 /** Origin + content-type check for non-GET routes (api-spec §0.2). */
-export function checkCsrf(req: Request, opts: { allowForm?: boolean } = {}): "json" | "form" {
+export function checkCsrf(req: Request): void {
   const ct = (req.headers.get("content-type") ?? "").toLowerCase()
-  const isJson = ct.startsWith("application/json")
-  const isForm = opts.allowForm && ct.startsWith("application/x-www-form-urlencoded")
-  if (!isJson && !isForm) throw new ApiError("forbidden_origin", { detail: { cause: "content_type" } })
+  if (!ct.startsWith("application/json")) throw new ApiError("forbidden_origin", { detail: { cause: "content_type" } })
   const origin = req.headers.get("origin")
-  const allowed = getConfig().allowedOrigins
-  if (opts.allowForm) {
-    // demo session: same-origin or direct navigation only (login-CSRF guard, api-spec §2.8)
-    if ((req.headers.get("sec-fetch-site") ?? "") === "cross-site")
-      throw new ApiError("forbidden_origin", { detail: { cause: "sec_fetch_site" } })
-    if (origin && !allowed.includes(origin)) throw new ApiError("forbidden_origin", { detail: { cause: "origin" } })
-  } else if (!origin || !allowed.includes(origin)) {
-    throw new ApiError("forbidden_origin", { detail: { cause: "origin" } })
-  }
-  return isJson ? "json" : "form"
+  if (!origin || !getConfig().allowedOrigins.includes(origin)) throw new ApiError("forbidden_origin", { detail: { cause: "origin" } })
 }
 
 export async function readBody(req: Request): Promise<string> {
@@ -127,27 +110,9 @@ export function clientIp(req: Request): string {
   return ip
 }
 
-/** The IPv4 address, or the IPv6 /64 prefix (rev4: rotating /128s inside one /64 share a bucket). */
-export function ipNet(ip: string): string {
-  if (!ip.includes(":")) return ip
-  const v4mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i)
-  if (v4mapped?.[1]) return v4mapped[1]
-  const [head = "", tail = ""] = ip.split("::")
-  const h = head ? head.split(":") : []
-  const t = tail ? tail.split(":") : []
-  const full = ip.includes("::") ? [...h, ...Array<string>(8 - h.length - t.length).fill("0"), ...t] : h
-  return (
-    full
-      .slice(0, 4)
-      .map((x) => parseInt(x || "0", 16).toString(16))
-      .join(":") + "::/64"
-  )
-}
-
 const utcDate = () => new Date().toISOString().slice(0, 10)
 /** HMAC(APP_HMAC_SECRET, utc_date) of the IP: rate-limit keys without storing IPs (architecture §2.5). */
 export const ipHash = (req: Request) => hmacHex(hmacSecret(), `ip|${utcDate()}|${clientIp(req)}`).slice(0, 32)
-export const ipNetHash = (req: Request) => hmacHex(hmacSecret(), `ipnet|${utcDate()}|${ipNet(clientIp(req))}`).slice(0, 32)
 
 type Handler<P> = (ctx: Ctx, params: P) => Promise<Response>
 
@@ -168,7 +133,7 @@ export function route<P extends object = object>(
     } catch (e) {
       // Next's own control-flow errors (the prerender bail-out of a request-time API under Cache Components,
       // notFound/redirect) must reach Next: caught here, `next build` prerendered GET routes that read
-      // headers (/api/health, /api/demo/state) as a static 500 (wave 2)
+      // headers (/api/health) as a static 500 (wave 2)
       unstable_rethrow(e)
       if (e instanceof ApiError) return ctx.error(e)
       console.error(JSON.stringify({ level: "error", requestId: ctx.requestId, route: name, err: String(e).slice(0, 500) }))

@@ -4,8 +4,8 @@
 //                                     deposit_intent row (simulated on testnet: a labelled fake address)
 //  - GET  /api/oneclick/status[/id]   the stepper status; lazily advances the simulator and, at SUCCESS, delivers
 //                                     real "USDC (test)" from the treasury (through the token, like 1Click would)
-//  - POST /api/oneclick/simulate      "Simulate sending" (testnet only), capped ≤ $500 per session per day,
-//                                     $150 in demo sessions, inside the global faucet cap
+//  - POST /api/oneclick/simulate      "Simulate sending" (testnet only), capped ≤ $500 per person per day,
+//                                     inside the global faucet cap
 // The Workflow poller (§5.1) isn't wired (workflow is not in next.config): status advances when the client polls,
 // which it does while the stepper or the Pot's deposit card is on screen. ADDED is set when the client shows the
 // relayed contribution (`?relayId=`), verified against relay_log.
@@ -71,13 +71,13 @@ export const SIM_MAX = 500_000_000n
 const MAX_OPEN = 5
 
 /** xc limits with QUOTA_<NAME> overrides (same convention as server/quotas.ts). */
-export function xcLimit(name: "xc_quotes" | "xc_dry" | "xc_sim_usd" | "xc_sim_usd_demo"): bigint {
+export function xcLimit(name: "xc_quotes" | "xc_dry" | "xc_sim_usd"): bigint {
   const env = process.env[`QUOTA_${name.toUpperCase()}`]
   if (env && /^[0-9]+$/.test(env)) return BigInt(env)
-  return { xc_quotes: 20n, xc_dry: 300n, xc_sim_usd: 500_000_000n, xc_sim_usd_demo: 150_000_000n }[name]
+  return { xc_quotes: 20n, xc_dry: 300n, xc_sim_usd: 500_000_000n }[name]
 }
 
-const subjectOf = (s: SessionCtx) => (s.kind === "demo" && s.visitorHash ? `visitor:${s.visitorHash}` : `user:${s.user.id}`)
+const subjectOf = (s: SessionCtx) => `user:${s.user.id}`
 
 async function charge(db: Db, charges: QuotaCharge[]) {
   const r = await chargeQuotas(db, charges)
@@ -366,10 +366,10 @@ export async function simulate(deps: OneClickDeps, s: SessionCtx, body: Simulate
   if (amount < 0n || sent + amount > cap) throw new ApiError("amount_too_high", { detail: { maximum: (cap - sent).toString() } })
   if (scenario !== "expired" && amount === 0n) throw new ApiError("bad_request", { detail: { field: "amount" } })
 
-  // rev4 H-3: ≤ $500 per session subject per UTC day ($150 in demo sessions), inside the global faucet cap
+  // rev4 H-3: ≤ $500 per person per UTC day, inside the global faucet cap
   if (amount > 0n)
     await charge(db, [
-      { subject: subjectOf(s), action: "xc_sim_usd", amount, limit: s.kind === "demo" ? xcLimit("xc_sim_usd_demo") : xcLimit("xc_sim_usd") },
+      { subject: subjectOf(s), action: "xc_sim_usd", amount, limit: xcLimit("xc_sim_usd") },
       { subject: "global", action: "faucet_usd", amount, limit: limit("global_faucet_usd") },
     ])
 

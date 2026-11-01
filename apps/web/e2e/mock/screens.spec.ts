@@ -3,7 +3,7 @@
 // The mobile projects also save review screenshots for Cerasela to notes/screens/.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPersona, axe, brandChecks, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 test.use({ reducedMotion: "reduce" })
@@ -34,7 +34,7 @@ test("public screens: home, invite landing, demo", async ({ page }, info) => {
 })
 
 test("the Pot: activity, members, rules, and its sheets", async ({ page }, info) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$450.00")
   await check(page, "one")
@@ -70,7 +70,7 @@ test("the Pot: activity, members, rules, and its sheets", async ({ page }, info)
 })
 
 test("Approve sheet, Requests and You", async ({ page }) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
   await page.getByRole("button", { name: "Spend" }).click()
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
@@ -80,8 +80,7 @@ test("Approve sheet, Requests and You", async ({ page }) => {
   await check(page, "one") // [Done]
   await sheet.getByRole("button", { name: "Done" }).click()
 
-  await page.getByRole("button", { name: "You're Maya" }).click()
-  await page.getByRole("menuitem", { name: "Switch to Sam" }).click()
+  await becomePerson(page, "sam")
   await expect(page.getByRole("heading", { name: "Waiting on you" }).locator("visible=true")).toBeVisible()
   await check(page, "one") // the inline Approve stays secondary: Add money is the one marigold
 
@@ -100,7 +99,7 @@ test("Approve sheet, Requests and You", async ({ page }) => {
 })
 
 test("Pots home and Create", async ({ page }) => {
-  await asPersona(page, "maya")
+  await asPerson(page, "maya")
   await page.goto("/pots")
   await expect(page.locator("[data-pot-card]")).toHaveCount(2)
   await check(page, "none")

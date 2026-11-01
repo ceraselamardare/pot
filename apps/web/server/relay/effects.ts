@@ -14,7 +14,7 @@ const str = (v: unknown) => (v === undefined || v === null ? null : String(v))
 const num = (v: unknown) => (v === undefined || v === null || v === "" ? null : Number(v))
 
 /** Ensure the `pot` cache row exists (feed_event and note reference it). */
-export async function upsertPotRow(db: DbOrTx, hubId: string, v: PotView, isDemo = false): Promise<void> {
+export async function upsertPotRow(db: DbOrTx, hubId: string, v: PotView): Promise<void> {
   await db
     .insert(pot)
     .values({
@@ -26,7 +26,6 @@ export async function upsertPotRow(db: DbOrTx, hubId: string, v: PotView, isDemo
       preset: v.preset,
       creatorAccount: v.creator,
       status: v.status,
-      isDemo,
       lastActivityAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -75,8 +74,7 @@ export async function applyHubEvents(
     txHash: string
     events: RawEvent[]
     blockTimes: Map<string, { height: number; ms: number }>
-    source?: "relay" | "reconcile" | "report" | "seed"
-    isDemo?: boolean
+    source?: "relay" | "reconcile" | "report"
   },
 ): Promise<number> {
   let inserted = 0
@@ -104,7 +102,6 @@ export async function applyHubEvents(
             | "custom",
           creatorAccount: String(d.creator ?? ""),
           status: "open",
-          isDemo: opts.isDemo ?? false,
           createdTxHash: opts.txHash,
           lastActivityAt: at,
         })

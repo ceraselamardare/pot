@@ -15,7 +15,7 @@ const FAIL_KEY = "pot.mock.fail"
 
 export interface Session {
   persona: PersonaId
-  kind: "demo"
+  kind: "mock"
 }
 
 /** Relay-like latencies (ms). The spend machine adds its own 1.2 s minimum on top. */
@@ -95,7 +95,7 @@ export function getSession(): Session | null {
 }
 
 export function setSession(persona: PersonaId | null) {
-  session = persona ? { persona, kind: "demo" } : null
+  session = persona ? { persona, kind: "mock" } : null
   write(SESSION_KEY, session)
   emit()
 }

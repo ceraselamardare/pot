@@ -86,7 +86,7 @@ const proposal = (id: number, status: Proposal["status"], votes: Record<string, 
 const feed = (o: Partial<Api.FeedRes> = {}): Api.FeedRes => ({
   ok: true,
   requestId: "req_1",
-  pot: { potId: D, slug: "trip-ab12", name: "Trip", isDemo: false, gradient: "3" },
+  pot: { potId: D, slug: "trip-ab12", name: "Trip", gradient: "3" },
   items: [{ key: "contribution:tx1", type: "contribution", actor: ben, at: new Date(NOW - 120_000).toISOString(), amount: "150000000", txHash: "tx1" }],
   profiles: { [ana]: { name: "Ana", tint: "peach" }, [ben]: { name: "Ben", tint: "sage" } },
   memos: { ref2: "ferry" },

@@ -27,6 +27,7 @@ import { RELAY_POLICY, TGAS, voteGas } from "../actions/gas.ts"
 import { RpcViewError } from "../read/rpc.ts"
 import { decodeSignedDelegate, delegateHash } from "../sign/encode.ts"
 import type { Err, PotEvent, Reason, RelayOk, RelayReq, RelayResult, FaucetRes } from "../types/api.ts"
+import type { MockRelayBody } from "../types/signer.ts"
 import type { ActionCall, DaoAction, Policy, ProposalKind, ProposalStatus, RawActionsLogEntry, RawProposal, RolePermission, Vote } from "../types/dao.ts"
 import { HUB_LIMITS, RESERVED_SLUGS, type Category, type PresetId, type Rules } from "../types/hub.ts"
 import type { RawClosePreview, RawConfigView, RawInviteView, RawMemberView, RawPath, RawPotSummary, RawPotView, RawReason, RawRequestStatus, RawRequestView, RawSpendPreview, RawSubjectView, RawRules, RawSpendOutcome } from "../types/hub-raw.ts"
@@ -474,12 +475,16 @@ export class MockChain implements ChainViews {
     return this.relay(sender, buildCall(intent, this.cfg))
   }
 
+  /** A MockSigner body ({mock: {intent}}) for `sessionAccount`: built and executed like a relayed call. */
+  handleMockBody(sessionAccount: string, body: MockRelayBody): Promise<RelayOk | Err> {
+    return this.relayIntent(sessionAccount, intentFromWire(body.mock.intent))
+  }
+
   /**
-   * Handles a POST /api/relay body for `sessionAccount`: a demo body ({demo: {intent}}) or a
-   * signed delegate (decoded, signature-checked with WebCrypto, nonce/expiry/key checked).
+   * Handles a POST /api/relay body for `sessionAccount`: a signed delegate (decoded, signature-checked
+   * with WebCrypto, nonce/expiry/key checked).
    */
   async handleRelayBody(sessionAccount: string, body: RelayReq): Promise<RelayOk | Err> {
-    if ("demo" in body) return this.relayIntent(sessionAccount, intentFromWire(body.demo.intent))
     const requestId = this.nextId("req")
     const rej = (reason: Reason, detail?: Record<string, unknown>): Err => ({ ok: false, requestId, reason, detail })
     let d

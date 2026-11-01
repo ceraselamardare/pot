@@ -5,7 +5,7 @@
     "jsx": "react-jsx",
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "paths": { "@/*": ["./*"], "pot-e2e-mock-wallet": ["./lib/signing/near-connect/e2e-mock-wallet.ts"] }
   },
   "include": [
     "next-env.d.ts",

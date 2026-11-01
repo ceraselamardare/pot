@@ -161,7 +161,7 @@ describe("KeyPairPotSigner (tests and scripts)", () => {
     expect(p.delegateBytes?.slice(0, 4)).toEqual(NEP461_PREFIX_BYTES)
     const signed = await signer.sign(p)
     expect(signed.via).toBe("relay")
-    if (signed.via !== "relay" || "demo" in signed.body) throw new Error("expected a signed relay body")
+    if (signed.via !== "relay") throw new Error("expected a signed relay body")
     expect(signed.body).toMatchObject({ idempotencyKey: p.opId, intent: "create_pot" })
     const res = await chain.handleRelayBody(MAYA, signed.body)
     expect(res.ok && res.outcome).toBe("success")

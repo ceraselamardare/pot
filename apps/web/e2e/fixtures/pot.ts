@@ -1,4 +1,5 @@
-// Shared helpers for the mocked-UI tier (test-plan §5.1): personas, brand checks (M-20, M-22) and axe (M-13).
+// Shared helpers for the mocked-UI tier (test-plan §5.1): the mock world's people, brand checks (M-20, M-22) and axe
+// (M-13).
 import { AxeBuilder } from "@axe-core/playwright"
 import { expect, type Page } from "@playwright/test"
 
@@ -8,11 +9,19 @@ export const BRAND_DEEP = ["rgb(184, 120, 0)", "rgb(227, 154, 0)"]
 export const PORTO_INVITE_PK = "BYQrv4recka1ASkHNkAiZ4ZTSoAjp91824cnR15bRmok"
 export const PORTO_INVITE_URL = `/j/porto-weekend?i=${PORTO_INVITE_PK}#BRAbJjE8R1JdaHN-iZSfqrXAy9bh7PcCDRgjLjlET1o`
 
-/** Sign in as a demo persona (the mock session) before the first page load; later switches stick. */
-export async function asPersona(page: Page, persona: "maya" | "sam" | "leo") {
+export type MockPerson = "maya" | "sam" | "leo"
+
+/** Sign in as one of the mock world's people (the mock session) before the first page load; later switches stick. */
+export async function asPerson(page: Page, person: MockPerson) {
   await page.addInitScript((p) => {
-    if (!localStorage.getItem("pot.mock.session")) localStorage.setItem("pot.mock.session", JSON.stringify({ persona: p, kind: "demo" }))
-  }, persona)
+    if (!localStorage.getItem("pot.mock.session")) localStorage.setItem("pot.mock.session", JSON.stringify({ persona: p, kind: "mock" }))
+  }, person)
+}
+
+/** Become another of the mock world's people on the same page (the app has no person switcher since Rev 9). */
+export async function becomePerson(page: Page, person: MockPerson) {
+  await page.evaluate((p) => localStorage.setItem("pot.mock.session", JSON.stringify({ persona: p, kind: "mock" })), person)
+  await page.reload()
 }
 
 /** The open dialog, if any (sheets are modal: the page under them is inert). */

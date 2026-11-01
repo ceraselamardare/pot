@@ -25,7 +25,6 @@ export function testConfig(env: Record<string, string> = {}): Config {
     APP_HMAC_SECRET: "x".repeat(40),
     SERVER_RPC_URLS: "https://rpc.testnet.fastnear.com",
     RELAY_TEST_ALLOWLIST: "wrap.testnet:ft_transfer:1",
-    FLAG_DEV_SESSION: "true",
     ...env,
   } as NodeJS.ProcessEnv)
   setConfigForTests(cfg)
@@ -80,9 +79,9 @@ export function seedChain(chain: FakeChain, opts: { pot?: Partial<PotView> | nul
 let n = 0
 export async function insertUser(
   db: Db,
-  opts: { account: string; key?: KeyPair; kind?: "near-auth" | "dev" | "wallet" | "demo"; deviceStatus?: "active" | "pending" | "revoked" },
+  opts: { account: string; key?: KeyPair; kind?: "near-auth" | "wallet"; deviceStatus?: "active" | "pending" | "revoked" },
 ) {
-  const kind = opts.kind ?? "dev"
+  const kind = opts.kind ?? "near-auth"
   const [u] = await db
     .insert(appUser)
     .values({

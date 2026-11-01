@@ -3,7 +3,7 @@
 // `Pop.ts` and NEAR fields such as `expires_at_ms`. Import from "@pot/sdk/api" (or `Api.*` from
 // "@pot/sdk"). Sections follow api-spec §0-§2; `ApiRoutes` at the end maps each route to its types.
 
-import type { ActionIntentType, ActionIntentWire } from "./intents.ts"
+import type { ActionIntentType } from "./intents.ts"
 
 // ---------------------------------------------------------------- §0.3 envelope, ids, amounts
 
@@ -19,8 +19,7 @@ export type PublicKeyStr = `ed25519:${string}`
 export type IsoTime = string
 /** Client op id: 16 chars of lowercase Crockford base32, /^[0-9a-hjkmnp-tv-z]{16}$/. */
 export type OpKey = string
-export type SessionKind = "near-auth" | "wallet" | "demo" | "dev"
-export type Persona = "maya" | "sam" | "leo"
+export type SessionKind = "near-auth" | "wallet"
 export type Category = "groceries" | "food" | "transport" | "stay" | "tickets" | "other"
 export type AvatarTint = "peach" | "sand" | "sage" | "mist" | "lilac" | "rose"
 /** Cover gradient token from the design system (D-61: emoji + gradient only). */
@@ -174,8 +173,6 @@ export interface SessionHint {
   kind: SessionKind
   displayName: string
   emailHint?: string
-  persona?: Persona
-  leasedPot?: DaoId
   devicePublicKey?: PublicKeyStr
 }
 
@@ -190,11 +187,10 @@ export interface SessionInfo {
   emailHint?: string
   expiresAt: IsoTime
   usdcRegistered: boolean
-  /** near-auth and dev */
+  /** near-auth only */
   device?: { publicKey: PublicKeyStr; status: "active" | "pending" }
   /** near-auth only; the client needs it to build AddKey (frontend §4.4) */
   mpcPublicKey?: PublicKeyStr
-  demo?: { persona: Persona; potId: DaoId; slug: string; leaseExpiresAt: IsoTime; shared: boolean }
 }
 
 /** GET /api/session */
@@ -231,23 +227,6 @@ export interface SessionChallengeRes extends Ok {
   /** base64url (no padding) of 32 bytes: ts(8, BE ms) ‖ random(16) ‖ HMAC(8) */
   challenge: string
   expiresAt: IsoTime
-}
-
-/** POST /api/session/dev (preview and local only, rev3) */
-export interface DevSessionReq {
-  devicePublicKey: PublicKeyStr
-  keyKind: "webcrypto" | "fallback"
-  /** `pot-dev-session-v1|${devicePublicKey}|${ts}` (§4.2) */
-  pop: Pop
-  /** 1-40 code points */
-  displayName: string
-  idempotencyKey: OpKey
-}
-export interface DevSessionRes extends Ok {
-  accountId: AccountId
-  isNew: true
-  session: SessionInfo
-  createTxHash: string
 }
 
 /** POST /api/session/device: device-key re-login (K-2) */
@@ -395,14 +374,8 @@ export interface RelaySignedReq {
   requestRef?: OpKey
   context?: RelayContext
 }
-export interface RelayDemoReq {
-  /** demo sessions only: @pot/sdk ActionIntent with bigint → string */
-  demo: { intent: ActionIntentWire }
-  idempotencyKey: OpKey
-  context?: RelayContext
-}
 /** POST /api/relay */
-export type RelayReq = RelaySignedReq | RelayDemoReq
+export type RelayReq = RelaySignedReq
 
 /** A parsed NEP-297 log, only from trusted executors (§3.4). */
 export interface PotEvent {
@@ -543,10 +516,10 @@ export interface FeedApiItem {
   payoutFailed?: boolean
 }
 export interface FeedRes extends Ok {
-  pot: { potId: DaoId; slug: string; name: string; emoji?: string; gradient?: GradientId; isDemo: boolean }
+  pot: { potId: DaoId; slug: string; name: string; emoji?: string; gradient?: GradientId }
   /** newest first */
   items: FeedApiItem[]
-  /** members and demo sessions only (rev4 M-7); others get {} */
+  /** members only (rev4 M-7); others get {} */
   profiles: Record<AccountId, { name: string; tint: AvatarTint; avatarUrl?: null }>
   /** requestRef → text; members only */
   memos?: Record<string, string>
@@ -561,7 +534,6 @@ export interface PotMeta {
   name: string
   emoji?: string
   gradient?: GradientId
-  isDemo: boolean
 }
 /** GET /api/pots/meta?pots=<slug|dao>,… (≤ 50) */
 export interface PotsMetaQuery {
@@ -702,42 +674,6 @@ export interface SimulateRes extends Ok {
   profile: { pendingSec: number; processingSec: number }
 }
 
-// ---------------------------------------------------------------- §2.8 demo
-
-/** POST /api/demo/session (JSON; the HTML form variant posts `persona=maya&reset=1`) */
-export interface DemoSessionReq {
-  persona?: Persona
-  reset?: boolean
-}
-export interface DemoSessionRes extends Ok {
-  session: SessionInfo
-  lease: { potId: DaoId; slug: string; expiresAt: IsoTime; shared: boolean }
-}
-
-export interface DemoPotPublic {
-  potId: DaoId
-  slug: string
-  name: string
-  balance: MicroStr
-  members: { account: AccountId; name: string; contributed: MicroStr }[]
-  requests: { proposalId: number; requester: AccountId; amount: MicroStr; category: Category; status: string }[]
-  /** https://testnet.nearblocks.io/address/<dao> */
-  explorerUrl: string
-}
-/** GET /api/demo/state: the JSON twin for judges */
-export interface DemoStateRes extends Ok {
-  network: "testnet"
-  hubId: AccountId
-  usdcId: AccountId
-  /** permanent, never leased (architecture K-7) */
-  reference: DemoPotPublic
-  /** tonight's shared fallback Pot */
-  shared?: DemoPotPublic
-  pool: { ready: number; leased: number; target: number }
-  /** ready-to-run near-cli-rs 0.30.1 view commands */
-  commands: { getPolicy: string; getPot: string; listKeys: string }
-}
-
 // ---------------------------------------------------------------- §2.9 Telegram (Phase 2)
 
 /** POST /api/telegram/webhook: the body is a Telegram `Update` (grammY); always 200. */
@@ -778,7 +714,6 @@ export interface ApiRoutes {
   "GET /api/session": Route<void, SessionGetRes>
   "POST /api/session": Route<SessionCreateReq, SessionCreateRes>
   "GET /api/session/challenge": Route<void, SessionChallengeRes>
-  "POST /api/session/dev": Route<DevSessionReq, DevSessionRes>
   "POST /api/session/device": Route<DeviceLoginReq, DeviceLoginRes>
   "POST /api/session/wallet": Route<WalletSessionReq, WalletSessionRes>
   "DELETE /api/session": Route<LogoutReq, LogoutRes>
@@ -802,8 +737,6 @@ export interface ApiRoutes {
   "POST /api/oneclick/quote": Route<QuoteReq, QuoteRes>
   "GET /api/oneclick/status/[id]": Route<void, DepositStatusRes>
   "POST /api/oneclick/simulate": Route<SimulateReq, SimulateRes>
-  "POST /api/demo/session": Route<DemoSessionReq, DemoSessionRes>
-  "GET /api/demo/state": Route<void, DemoStateRes>
   "POST /api/telegram/webhook": Route<TelegramWebhookReq, TelegramWebhookRes>
   "POST /api/telegram/link": Route<TelegramLinkReq, TelegramLinkRes>
   "GET /api/health": Route<void, HealthRes>
@@ -815,4 +748,3 @@ export type ApiRes<K extends ApiRouteKey> = ApiRoutes[K]["res"]
 
 export const isErr = (r: { ok: boolean }): r is Err => r.ok === false
 export const isRelayPending = (r: RelayRes): r is RelayPending => r.ok && "status" in r && r.status === "pending"
-export const isDemoRelayReq = (r: RelayReq): r is RelayDemoReq => "demo" in r

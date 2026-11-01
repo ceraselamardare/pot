@@ -190,9 +190,9 @@ afterAll(async () => {
   await t.close()
 })
 
-async function session(kind: "dev" | "demo" = "dev", account = ME): Promise<SessionCtx> {
+async function session(kind: "near-auth" | "wallet" = "near-auth", account = ME): Promise<SessionCtx> {
   const { user } = await insertUser(t.db, { account, kind })
-  return { idHash: `h-${account}`, kind, expiresAt: new Date(clock + 86_400_000), user, device: null, pendingDevice: false, visitorHash: kind === "demo" ? "visitor1" : null, demo: null }
+  return { idHash: `h-${account}`, kind, expiresAt: new Date(clock + 86_400_000), user, device: null, pendingDevice: false }
 }
 
 beforeEach(async () => {
@@ -204,7 +204,7 @@ beforeEach(async () => {
   paused = new Set()
   chain = seedChain(new FakeChain())
   chain.account(TREASURY, { amount: 1n * NEAR })
-  chain.view(HUB, "get_members", (a) => (a.pot === DAO ? [{ account_id: ME, status: "active" }, { account_id: "u-demo1.users.potapp.testnet", status: "active" }] : []))
+  chain.view(HUB, "get_members", (a) => (a.pot === DAO ? [{ account_id: ME, status: "active" }, { account_id: "bob.testnet", status: "active" }] : []))
   chain.view(USDC, "storage_balance_of", () => ({ total: "1250000000000000000000", available: "0" }))
   sub = new FakeSubmitter((spec) => plainOutcome("x", spec.signerId, spec.receiverId))
   deps = {
@@ -261,7 +261,7 @@ describe("POST /api/oneclick/quote", () => {
     await expect(createQuote(deps, me, { pot: DAO, chain: "base", amount: "999999", idempotencyKey: key(4) })).rejects.toMatchObject({ reason: "amount_too_low" })
     paused = new Set(["eth"])
     await expect(createQuote(deps, me, { pot: DAO, chain: "eth", amount: "150000000", idempotencyKey: key(5) })).rejects.toMatchObject({ reason: "chain_paused" })
-    const stranger = await session("dev", "u-stranger.users.potapp.testnet")
+    const stranger = await session("near-auth", "u-stranger.users.potapp.testnet")
     await expect(createQuote(deps, stranger, { pot: DAO, chain: "base", amount: "150000000", idempotencyKey: key(6) })).rejects.toMatchObject({ reason: "not_a_member" })
     await expect(createQuote(deps, me, { pot: `nope.${HUB}`, chain: "base", amount: "150000000", idempotencyKey: key(7) })).rejects.toMatchObject({ reason: "pot_unknown" })
   })
@@ -413,7 +413,7 @@ describe("simulate → status → delivery → ADDED", () => {
     expect(sub.submitted).toHaveLength(0)
   })
 
-  it("caps: amount ≤ the quote; $500 per session per day; $150 in demo sessions", async () => {
+  it("caps: amount ≤ the quote; $500 per person per day", async () => {
     const a = await newIntent("300000000")
     await expect(simulate(deps, me, { depositIntentId: a, amount: "300000001", idempotencyKey: key(10) })).rejects.toMatchObject({ reason: "amount_too_high" })
     await simulate(deps, me, { depositIntentId: a, idempotencyKey: key(11) })
@@ -422,16 +422,15 @@ describe("simulate → status → delivery → ADDED", () => {
     const c = await newIntent("10000000")
     await expect(simulate(deps, me, { depositIntentId: c, idempotencyKey: key(13) })).rejects.toMatchObject({ reason: "quota_exceeded", detail: { family: "xc" } })
 
-    const demo = await session("demo", "u-demo1.users.potapp.testnet")
-    const d1 = await newIntent("100000000", "arb", demo)
-    await simulate(deps, demo, { depositIntentId: d1, idempotencyKey: key(21) })
-    const d2 = await newIntent("100000000", "arb", demo)
-    await expect(simulate(deps, demo, { depositIntentId: d2, idempotencyKey: key(22) })).rejects.toMatchObject({ reason: "quota_exceeded" })
+    // the cap is per person: another member (a wallet session) has their own $500
+    const other = await session("wallet", "bob.testnet")
+    const d1 = await newIntent("100000000", "arb", other)
+    await simulate(deps, other, { depositIntentId: d1, idempotencyKey: key(21) })
   })
 
   it("owner only; real-mode intents can't be simulated", async () => {
     const id = await newIntent()
-    const other = await session("dev", "u-other.users.potapp.testnet")
+    const other = await session("near-auth", "u-other.users.potapp.testnet")
     await expect(depositStatus(deps, other, id)).rejects.toMatchObject({ reason: "not_found" })
     await t.db.update(depositIntent).set({ mode: "real" }).where(eq(depositIntent.id, id))
     await expect(simulate(deps, me, { depositIntentId: id, idempotencyKey: key(23) })).rejects.toMatchObject({ reason: "demo_forbidden" })

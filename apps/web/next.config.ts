@@ -1,5 +1,12 @@
 import type { NextConfig } from "next"
 
+// Rev 9: the e2e mock wallet (lib/signing/near-connect/e2e-mock-wallet.ts) signs with a key the test puts in
+// localStorage. It exists for local Playwright builds only: refuse it on any Vercel build (preview or production)
+// and on mainnet, so a shipped bundle can never contain it.
+const E2E_MOCK_WALLET = process.env.NEXT_PUBLIC_E2E_MOCK_WALLET === "1"
+if (E2E_MOCK_WALLET && (process.env.VERCEL || process.env.VERCEL_ENV || process.env.NEXT_PUBLIC_NETWORK === "mainnet"))
+  throw new Error("NEXT_PUBLIC_E2E_MOCK_WALLET=1 is for local test builds only (refused on Vercel and mainnet)")
+
 // frontend-architecture §1.5. Cache Components stay on (D-43): never export dynamic / revalidate /
 // fetchCache / dynamicParams / runtime from any segment, and read params/searchParams/cookies()/headers()
 // only inside <Suspense>.
@@ -13,6 +20,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     // Tailwind v4 through the Turbopack loader; there is no PostCSS config (kb/frontend-stack.md).
     rules: { "*.css": { loaders: ["@tailwindcss/turbopack"], as: "*.css" } },
+    // Rev 9: the e2e mock wallet is compiled in only for a flagged local test build; every other build gets a stub
+    resolveAlias: {
+      "pot-e2e-mock-wallet": E2E_MOCK_WALLET ? "./lib/signing/near-connect/e2e-mock-wallet.ts" : "./lib/signing/near-connect/e2e-mock-wallet.off.ts",
+    },
   },
   async redirects() {
     // ux-spec IA deep link -> sheet query state (frontend-architecture §2.2)

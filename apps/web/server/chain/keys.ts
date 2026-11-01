@@ -22,8 +22,8 @@ export function parseKeys(raw: string | undefined): PoolKey[] {
     })
 }
 
-/** RELAYER_KEYS (full access on RELAYER_ACCOUNT_ID), TREASURY_KEYS, DEMO_PERSONA_KEY. */
-export function loadKeys(envVar: "RELAYER_KEYS" | "TREASURY_KEYS" | "DEMO_PERSONA_KEY"): PoolKey[] {
+/** RELAYER_KEYS (full access on RELAYER_ACCOUNT_ID), TREASURY_KEYS. */
+export function loadKeys(envVar: "RELAYER_KEYS" | "TREASURY_KEYS"): PoolKey[] {
   const hit = cache.get(envVar)
   if (hit) return hit
   const keys = parseKeys(process.env[envVar])

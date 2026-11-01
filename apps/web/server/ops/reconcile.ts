@@ -6,32 +6,20 @@
 //      requests → `retry_payout` when the DAO's USDC covers them (≤ 3 per proposal per UTC day, shared with
 //      Finalize); missed "needs your approval" pushes re-sent (notification_log dedupes)
 //   3. balances (relayer / hub / treasury) and global daily caps → alerts
-//   4. DAO float top-ups: demo and reference Pots only, ≤ 2 per DAO lifetime (rev4 M-4)
-//   5. demo: retire expired leases, tonight's shared Pot, refill the pool (B-12; with the budget left)
-//   6. retention deletes
+//   4. retention deletes
+// (The demo-only steps, DAO float top-ups for demo Pots and the demo pool refill, were removed in Rev 9.)
 import "server-only"
-import { and, eq, gt, inArray, sql } from "drizzle-orm"
-import { actions } from "near-api-js"
+import { and, gt, inArray, sql } from "drizzle-orm"
 import { claimNamedLease, releaseLease } from "@/db/lease"
 import { chargeQuotas } from "@/db/quota"
-import { demoPot, pot, relayLog } from "@/db/schema"
-import { availableYocto, viewAccount } from "../chain/near"
-import { firstFailure } from "../chain/outcome"
-import { ensureSharedPot, refillDemoPool, retireExpiredLeases, SEED_BUDGET_MS, type RefillReport, type SharedReport } from "../features/demoPool"
-import type { SeedDeps } from "../features/seed"
+import { pot } from "@/db/schema"
 import { logError } from "../log"
 import { notify } from "../notify/notify"
 import { limit } from "../quotas"
 import { serverRetryPayout, serverSync, type RelayDeps } from "../relay/pipeline"
 import { reconcileStaleRelays } from "../relay/reconcile"
-import { newRelayId } from "../util/crypto"
 import { checkBalances, checkGlobalCaps, type BalanceReport } from "./balances"
 import { runRetention } from "./retention"
-
-const NEAR = 10n ** 24n
-export const TOPUP_BELOW = NEAR / 50n // 0.02 NEAR
-export const TOPUP_AMOUNT = NEAR / 20n // 0.05 NEAR
-export const MAX_TOPUPS_PER_DAO = 2
 
 export interface ReconcileReport {
   skipped?: "busy"
@@ -40,18 +28,15 @@ export interface ReconcileReport {
   pots?: { scanned: number; expiredSynced: number; payoutRetries: number; approvalPushes: number }
   balances?: BalanceReport
   caps?: Awaited<ReturnType<typeof checkGlobalCaps>>
-  topups?: { checked: number; toppedUp: string[] }
-  demo?: { retired: number; pushDeleted: number; shared?: SharedReport; refill?: RefillReport }
   retention?: Record<string, number>
   errors: string[]
 }
 
 export async function runReconcile(
-  deps: RelayDeps & { seed?: SeedDeps | null },
-  opts: { holder: string; budgetMs?: number; demo?: boolean; now?: Date } = { holder: "cron" },
+  deps: RelayDeps,
+  opts: { holder: string; budgetMs?: number; now?: Date } = { holder: "cron" },
 ): Promise<ReconcileReport> {
   const started = Date.now()
-  const deadline = started + (opts.budgetMs ?? 280_000)
   const report: ReconcileReport = { ms: 0, errors: [] }
   if (!(await claimNamedLease(deps.db, "cron:reconcile", opts.holder, 15 * 60))) return { ...report, skipped: "busy" }
   // server follow-ups are keyed by cause: one per run (a later run re-reads the chain, so an expired request
@@ -71,17 +56,6 @@ export async function runReconcile(
     report.pots = await step("pots", () => reconcilePots(deps, `${cause}:${opts.holder}`))
     report.balances = await step("balances", () => checkBalances(deps))
     report.caps = await step("caps", () => checkGlobalCaps(deps.db))
-    report.topups = await step("topups", () => topUpDemoDaos(deps, opts.holder))
-    if (opts.demo !== false && deps.seed) {
-      const seed = deps.seed
-      report.demo = await step("demo", async () => {
-        const r = await retireExpiredLeases(deps.db)
-        const shared = await ensureSharedPot(seed, { holder: opts.holder, now: opts.now, budgetMs: deadline - Date.now() })
-        const left = deadline - Date.now()
-        const refill = left >= SEED_BUDGET_MS ? await refillDemoPool(seed, { holder: opts.holder, budgetMs: left - 20_000 }) : undefined
-        return { ...r, shared, refill }
-      })
-    }
     report.retention = await step("retention", () => runRetention(deps.db))
   } finally {
     await releaseLease(deps.db, "cron:reconcile", opts.holder).catch(() => undefined)
@@ -129,52 +103,6 @@ async function reconcilePots(deps: RelayDeps, cause: string) {
         out.payoutRetries++
       }
     }
-  }
-  return out
-}
-
-/** Step 4 (api-spec §3.5; rev4 M-4): DAO float backstop for demo and reference Pots only, ≤ 2 per DAO ever. */
-export async function topUpDemoDaos(deps: RelayDeps, holder: string): Promise<{ checked: number; toppedUp: string[] }> {
-  const { db, cfg, rpc } = deps
-  const rows = await db
-    .select({ potId: demoPot.potId })
-    .from(demoPot)
-    .where(and(inArray(demoPot.state, ["ready", "leased"]), sql`${demoPot.potId} IS NOT NULL`))
-  const daos = [...new Set([...rows.map((r) => r.potId!), ...(cfg.demoReferencePot ? [cfg.demoReferencePot] : [])])]
-  const out = { checked: 0, toppedUp: [] as string[] }
-  for (const dao of daos) {
-    out.checked++
-    const a = await viewAccount(rpc, dao, "optimistic").catch(() => null)
-    if (!a || availableYocto(a) >= TOPUP_BELOW) continue
-    const done = await db.execute<{ n: number }>(sql`
-      SELECT count(*)::int AS n FROM relay_log WHERE op = 'dao_topup' AND receiver_id = ${dao} AND status <> 'failed'`)
-    if ((done.rows[0]?.n ?? 0) >= MAX_TOPUPS_PER_DAO) continue
-    if (!(await claimNamedLease(db, `topup:${dao}`, holder, 3600))) continue
-    const q = await chargeQuotas(db, [{ subject: "global", action: "topup_yocto", amount: TOPUP_AMOUNT, limit: limit("global_topup_yocto") }])
-    if (!q.ok) break
-    const id = newRelayId()
-    await db.insert(relayLog).values({
-      id,
-      requestId: holder,
-      op: "dao_topup",
-      idempotencyKey: `topup:${dao}:${(done.rows[0]?.n ?? 0) + 1}`,
-      senderId: cfg.relayerAccountId,
-      receiverId: dao,
-      methods: ["transfer"],
-      potId: dao,
-      status: "validated",
-      estYocto: TOPUP_AMOUNT.toString(),
-    })
-    const r = await deps.submitter.submit(
-      { signerId: cfg.relayerAccountId, receiverId: dao, actions: [actions.transfer(TOPUP_AMOUNT)] },
-      { pool: cfg.relayerPool, holder: id, budgetMs: 20_000 },
-    )
-    const failed = r.kind === "outcome" && !!firstFailure(r.outcome)
-    await db
-      .update(relayLog)
-      .set({ status: r.kind === "pending" ? "pending" : failed ? "failed" : "executed", outerTxHash: r.txHash, finishedAt: new Date() })
-      .where(eq(relayLog.id, id))
-    if (!failed) out.toppedUp.push(dao)
   }
   return out
 }
