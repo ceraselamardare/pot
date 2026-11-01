@@ -11,7 +11,7 @@
 // (NEP-413 sign-in + signDelegateActions) whose key the test puts in localStorage['pot.e2e.wallet']. next.config.ts
 // refuses that flag on Vercel and mainnet builds and aliases `pot-e2e-mock-wallet` to a stub in every other build
 // (the mock's code is not in the bundle); the mock itself also refuses to run outside localhost.
-import { buildCall, newOpKey, type ActionIntent, type Api } from "@pot/sdk"
+import { buildCall, newOpKey, opKeyOfRef, type ActionIntent, type Api } from "@pot/sdk"
 import { sdkConfig } from "@/lib/client/config"
 import { ActionError } from "@/lib/client/errors"
 import { api } from "@/lib/client/live/api"
@@ -123,7 +123,7 @@ export async function walletSend(intent: ActionIntent, opts: { opId?: string; co
     throw new ActionError("needs_device", "reconnect_wallet")
   }
   const wallet = connected.wallet
-  const opId = opts.opId ?? (intent.type === "request_spend" ? intent.requestRef : newOpKey())
+  const opId = opts.opId ?? (intent.type === "request_spend" ? opKeyOfRef(intent.requestRef) : newOpKey())
   if (wallet.manifest.features.signDelegateActions) {
     const call = buildCall(intent, sdkConfig())
     for (let attempt = 0; ; attempt++) {

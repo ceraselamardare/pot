@@ -1,7 +1,7 @@
 // zod 4.6 request schemas (api-spec §2); every object is strict (unknown fields → bad_request).
 import { z } from "zod"
 import { INTENTS } from "../relay/types"
-import { MICRO_RE, OPKEY_RE, PK_RE } from "../util/ids"
+import { MICRO_RE, OPKEY_RE, PK_RE, SPEND_REF_RE } from "../util/ids"
 import { AVATAR_IDS } from "@/lib/avatars"
 
 export const opKey = z.string().regex(OPKEY_RE)
@@ -38,7 +38,7 @@ export const signedRelayReq = z.strictObject({
   signedDelegate: z.string().min(1).max(6000),
   idempotencyKey: opKey,
   intent: z.enum(INTENTS),
-  requestRef: opKey.optional(),
+  requestRef: z.string().regex(SPEND_REF_RE).optional(),
   context: relayContext.optional(),
 })
 

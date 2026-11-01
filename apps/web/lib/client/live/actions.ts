@@ -90,7 +90,8 @@ export interface LiveSpendInput {
   receiver: string
   /** pay by link (hub 1.1.0): the receiver is the hub's escrow; the link key's secret stays on this device */
   link?: { claimPk: string; expiresAtMs: number }
-  /** the request's op id (the caller keeps the link secret under it before sending) */
+  /** the request's request_ref: its op id (+ the receipt fingerprint when details are attached; the caller keeps
+   *  the link secret / the receipt under it before sending) */
   requestRef?: string
 }
 

@@ -7,6 +7,7 @@
 import {
   buildCall,
   newOpKey,
+  opKeyOfRef,
   type AccountId,
   type ActionIntent,
   type Api,
@@ -55,7 +56,7 @@ export class DeviceKeySigner implements PotSigner {
       await new Promise((r) => setTimeout(r, 700))
     }
     const { nonce, maxBlockHeight } = engine.nonceAndExpiry(this.accountId, this.publicKey, ak.value.nonce, ak.blockHeight)
-    return { intent, call, senderId: this.accountId, opId: opId ?? (intent.type === "request_spend" ? intent.requestRef : newOpKey()), nonce, maxBlockHeight }
+    return { intent, call, senderId: this.accountId, opId: opId ?? (intent.type === "request_spend" ? opKeyOfRef(intent.requestRef) : newOpKey()), nonce, maxBlockHeight }
   }
 
   async sign(p: Prepared): Promise<SignedPayload> {
@@ -98,7 +99,7 @@ export async function send(intent: ActionIntent, opts: SendOptions = {}): Promis
 
 async function sendOnce(intent: ActionIntent, opts: SendOptions, session: SessionInfo | null): Promise<RelayOk> {
   const signer = await resolveSigner(session)
-  const opId = opts.opId ?? (intent.type === "request_spend" ? intent.requestRef : newOpKey())
+  const opId = opts.opId ?? (intent.type === "request_spend" ? opKeyOfRef(intent.requestRef) : newOpKey())
   const withContext = (body: Api.RelayReq): Api.RelayReq => (opts.context ? { ...body, context: opts.context } : body)
 
   const engine = await loadEngine()

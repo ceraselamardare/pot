@@ -9,6 +9,9 @@
 //  - goal: while an all-or-nothing goal isn't reached every spend waits; once the date passes short, money in is
 //    refused and the hub refunds everyone (phase 1 propose, phase 2 approve: the mock's "cron" in store.ts).
 // A Pot without `extras` is a Pot made before hub 1.1.0: everything off (LEGACY).
+import { spendRef } from "@pot/sdk"
+import { isoDayUtc } from "@/lib/receipt"
+import { RECEIPT_VERIFY_URL, receiptFingerprint, type SavedReceipt } from "@/lib/receipt-saved"
 import { cents, type Micro } from "../money"
 import type {
   CloseRec,
@@ -344,8 +347,45 @@ export function seedShowcase(now: number): Record<string, PotRec> {
 }
 
 /** Add the showcase Pots to a world (ids above every seeded one). */
+/**
+ * The showcase's saved receipt (Ski Chalet, Maya's $35 food, request 103): a euro receipt read three days ago and
+ * converted at the ECB's rate (€32.25 × 1.0852 = $35.00), with the place it was read (a model-only check link).
+ * Fake content for the mock build only; its fingerprint rides in the request's ref like a real one.
+ */
+export function showcaseReceipt(now: number): SavedReceipt {
+  const day = isoDayUtc(now - 3 * DAY)
+  return {
+    v: 1,
+    nonce: "5c0a1e7d9b3f4a6c8e2d1b0f7a9c3e5d",
+    merchant: "Café du Col",
+    date: day,
+    currency: "EUR",
+    totalCents: 3_225,
+    taxCents: 270,
+    tipCents: 250,
+    items: [
+      { name: "Raclette for two", qty: 1, amountCents: 1_950 },
+      { name: "Hot chocolate", qty: 2, amountCents: 650 },
+      { name: "Apple strudel", qty: 1, amountCents: 375 },
+    ],
+    fx: { from: "EUR", amountCents: 3_225, usdCents: 3_500, rate: "1.0852", rateDate: day, source: "ecb" },
+    proof: { verifyUrl: `${RECEIPT_VERIFY_URL}?model=z-ai%2Fglm-5.3-flash`, reply: false, model: "z-ai/glm-5.3-flash" },
+    source: "near-ai",
+    readAt: new Date(now - 3 * DAY + 5 * MIN).toISOString(),
+  }
+}
+
 export function withShowcase(w: World, now: number): World {
-  return { ...w, pots: { ...w.pots, ...seedShowcase(now) }, nextRequestId: Math.max(w.nextRequestId, 110) }
+  const pots = seedShowcase(now)
+  const receipt = showcaseReceipt(now)
+  const r103 = pots["ski-chalet"]!.requests.find((r) => r.id === 103)!
+  r103.ref = spendRef("skc0000000000103", receiptFingerprint(receipt))
+  return {
+    ...w,
+    pots: { ...w.pots, ...pots },
+    nextRequestId: Math.max(w.nextRequestId, 110),
+    receipts: { ...(w.receipts ?? {}), "ski-chalet:103": receipt },
+  }
 }
 
 export type { Micro }

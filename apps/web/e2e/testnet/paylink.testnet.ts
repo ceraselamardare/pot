@@ -163,7 +163,7 @@ test("Ana cancels a $25 link: the money is back in the Pot; the claim page says 
   )
   expect(await eventually(() => potBalance(slug), (b) => b === usd(85), 60_000)).toBe(usd(85))
   await A.goto(`/p/${slug}?r=${id}`)
-  const req = A.getByRole("dialog", { name: /asks for \$25/ })
+  const req = A.getByRole("dialog", { name: /asked for \$25/ }) // a funded link is decided: the details sheet says "asked"
   await req.getByRole("button", { name: "Cancel and return the money" }).click({ timeout: 30_000 })
   await req.getByRole("button", { name: "Yes, cancel it" }).click()
   await expect(A.getByText(`Link cancelled. $25 is back in ${POT_NAME}.`).first()).toBeVisible({ timeout: 60_000 })

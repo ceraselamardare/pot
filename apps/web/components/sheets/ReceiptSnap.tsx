@@ -33,6 +33,7 @@ import {
   type ReceiptRead,
   type ReceiptReadRes,
 } from "@/lib/receipt"
+import { newReceiptNonce, savedReceiptOf, type SavedReceipt } from "@/lib/receipt-saved"
 
 /** What a reading fills in. `amount` is a keypad string; absent = leave the field alone. */
 export interface ReceiptFill {
@@ -41,7 +42,9 @@ export interface ReceiptFill {
   note?: string
 }
 
-export type Reading = { result: ReceiptRead; proof: ReceiptProof | null; source: ReceiptReadRes["source"]; fx: ReceiptFx | null }
+/** A reading as kept by the sheet: `readAt` and `nonce` are fixed when it arrives, so the details saved with the spend
+ *  (lib/receipt-saved.ts savedReceiptOf) and their fingerprint are the same however often the ask is retried. */
+export type Reading = { result: ReceiptRead; proof: ReceiptProof | null; source: ReceiptReadRes["source"]; fx: ReceiptFx | null; readAt: number; nonce: string }
 export type SnapState = { tag: "idle" } | { tag: "reading" } | { tag: "read"; reading: Reading } | { tag: "failed"; kind: ReceiptFailure }
 
 /** A reading → the fields it fills: dollars (printed, or converted at a live rate) fill the amount; the reason and note always. */
@@ -163,7 +166,7 @@ export function useReceiptSnap({
         return
       }
       const fx = res.fx ?? null
-      setState({ tag: "read", reading: { result: res.result, proof: res.proof, source: res.source, fx } })
+      setState({ tag: "read", reading: { result: res.result, proof: res.proof, source: res.source, fx, readAt: Date.now(), nonce: newReceiptNonce() } })
       setLive(announcement(res.result, fx))
       if (!cbs.current.onRead(fillOf(res.result, fx))) focusSoon("[data-receipt-heading]")
     } catch (e) {
@@ -204,6 +207,13 @@ export function useReceiptSnap({
     },
     useAmount: (amount) => cbs.current.onFill({ amount }),
   }
+}
+
+/** The receipt details to save with the spend: the reading the person kept (null without one, or after Remove). */
+export function keptReceipt(snap: Pick<Snap, "state">): SavedReceipt | null {
+  if (snap.state.tag !== "read") return null
+  const r = snap.state.reading
+  return savedReceiptOf(r, { nonce: r.nonce, readAt: r.readAt })
 }
 
 /** The hidden inputs and the reading's own live region: mounted on every step (the sheet's region is outside the modal). */

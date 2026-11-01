@@ -22,6 +22,9 @@ import { coachTrigger } from "./pwa/coach"
 import * as live from "./live/actions"
 import * as liveWave4 from "./live/wave4"
 import { extrasRecOf } from "./wave4-form"
+import { newOpKey, receiptFingerprintOfRef, spendRef } from "@pot/sdk"
+import { receiptFingerprint, shortFingerprint, type SavedReceipt } from "@/lib/receipt-saved"
+import { attachReceipt, keepPendingReceipt } from "./receipts/saved"
 
 function revertToast(key: MessageKey) {
   toast.error(t(key as "generic.error"))
@@ -105,8 +108,10 @@ export interface SpendInput {
   receiver: string
   /** pay by link (lib/client/paylink/actions.ts): the link key's public half, its date and who it's for */
   link?: { pk: string; expiresAt: number; label?: string }
-  /** the request's op id (testnet), when the caller needs it before sending */
+  /** the request's op id (testnet), when the caller needs it before sending (with a receipt: its spendRef) */
   requestRef?: string
+  /** the receipt details the person kept from "Scan receipt": their fingerprint goes into the request, then they're saved */
+  receipt?: SavedReceipt
 }
 
 export interface SpendResult {
@@ -119,12 +124,31 @@ export interface SpendResult {
   txHash?: string
 }
 
+/**
+ * Ask to spend. With receipt details, their fingerprint is fixed first and rides in the request's request_ref
+ * (OpKey + 16 hex), the details are kept on this device, and once the hub has given the request its id (for an
+ * instant spend, from the relay's answer) they're saved with it in the background (lib/client/receipts/saved.ts).
+ */
 export async function requestSpend(slug: string, input: SpendInput): Promise<SpendResult> {
-  if (IS_LIVE)
-    return live.requestSpend(slug, { ...input, link: input.link ? { claimPk: input.link.pk, expiresAtMs: input.link.expiresAt } : undefined })
-  const r = await store.requestSpend(slug, { amountCents: toCents(input.amount), category: input.category, note: input.note, receiver: input.receiver, ...(input.link ? { link: input.link } : {}) })
-  const payout = r.payout === "sent" ? "sent" : "pending"
-  return { id: r.id, path: r.path, payout, final: Promise.resolve(payout), txHash: mockTxHash(`${slug}:request:${r.id}`) }
+  const { receipt, ...rest } = input
+  const fp = receipt ? receiptFingerprint(receipt) : undefined
+  // kept on this device first: a save that doesn't make it is tried again from the spend's details
+  if (receipt) keepPendingReceipt(slug, receipt)
+  let r: SpendResult
+  if (IS_LIVE) {
+    const requestRef = rest.requestRef ?? spendRef(newOpKey(), fp)
+    if (fp && receiptFingerprintOfRef(requestRef) !== shortFingerprint(fp)) throw new ActionError("bug", "receipt_ref")
+    r = await live.requestSpend(slug, { ...rest, requestRef, link: rest.link ? { claimPk: rest.link.pk, expiresAtMs: rest.link.expiresAt } : undefined })
+  } else {
+    const m = await store.requestSpend(slug, { amountCents: toCents(rest.amount), category: rest.category, note: rest.note, receiver: rest.receiver, ...(rest.link ? { link: rest.link } : {}), ...(fp ? { fingerprint: fp } : {}) })
+    const payout = m.payout === "sent" ? "sent" : "pending"
+    r = { id: m.id, path: m.path, payout, final: Promise.resolve(payout), txHash: mockTxHash(`${slug}:request:${m.id}`) }
+  }
+  if (receipt)
+    void attachReceipt(slug, r.id, receipt).then((saved) => {
+      if (!saved) toast(t("details.receipt.save_failed"))
+    })
+  return r
 }
 
 export interface CreateInput {

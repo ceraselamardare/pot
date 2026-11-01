@@ -381,8 +381,8 @@ export interface RelaySignedReq {
   idempotencyKey: OpKey
   /** advisory: must match the decoded call, else args_invalid */
   intent: IntentType
-  /** request_spend only; must equal args.request_ref */
-  requestRef?: OpKey
+  /** request_spend only; must equal args.request_ref (an OpKey, + a 16-hex receipt fingerprint when one is attached) */
+  requestRef?: string
   context?: RelayContext
 }
 /** POST /api/relay */
@@ -542,6 +542,9 @@ export interface FeedRes extends Ok {
   declineReasons?: Record<string, Record<AccountId, string>>
   /** hub request id (decimal string) → comments not removed; members only, requests with ≥ 1 comment */
   commentCounts?: Record<string, number>
+  /** hub request ids (decimal strings) that have saved receipt details (web: spend_receipt). Everyone gets it: it only
+   *  says a receipt is attached (the details are members only, GET /api/pots/[pot]/requests/[id]/receipt). */
+  receipts?: string[]
   nextCursor?: string
   syncedAt: IsoTime
 }

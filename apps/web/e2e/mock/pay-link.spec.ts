@@ -129,7 +129,7 @@ test("Maya pays someone else $50 by link; a guest claims it; the feed says who",
   await expect(claimed.locator("[data-status='link-claimed']")).toHaveText("Claimed")
   // the request sheet tells the same story; no share or cancel any more
   await claimed.getByRole("button").first().click()
-  const req = await openedSheet(page, /Maya asks for \$50/)
+  const req = await openedSheet(page, /Maya asked for \$50/)
   await expect(req.locator("[data-link-panel='claimed']")).toContainText("Claimed by Alex")
   await expect(req.getByRole("button", { name: "Cancel and return the money" })).toHaveCount(0)
   await axe(page)
@@ -189,7 +189,7 @@ test("the group's path: waiting for the OK (updates by itself) → approved → 
   // Maya shares it again from the request, then cancels it: the money goes back
   await becomePerson(page, "maya")
   await page.goto(`/p/surf-camp?r=${id}`)
-  const mine = await openedSheet(page, /Maya asks for \$350/)
+  const mine = await openedSheet(page, /Maya asked for \$350/)
   await expect(mine.getByRole("button", { name: "See payment link" })).toBeVisible()
   await mine.getByRole("button", { name: "See payment link" }).click()
   const share = await openedSheet(page, "Payment link · $350")

@@ -846,9 +846,35 @@ export interface Messages {
   "demo.who_paid.user": { name: string | number }
   "demo.you": { name: string | number }
   "demo.you.switch": { name: string | number }
+  "details.approved.label": undefined
   "details.copy": undefined
+  "details.dialog.label": undefined
+  "details.fingerprint.how": undefined
+  "details.fingerprint.how.body": undefined
+  "details.fingerprint.how.public": undefined
+  "details.fingerprint.match": undefined
+  "details.fingerprint.match.body": undefined
+  "details.fingerprint.mismatch": undefined
+  "details.instant": { amount: string | number; name: string | number }
+  "details.instant.you": { amount: string | number }
   "details.label": undefined
+  "details.receipt.converted": { original: string | number; rate: string | number; day: string | number }
+  "details.receipt.error": undefined
+  "details.receipt.header": undefined
+  "details.receipt.indicator": undefined
+  "details.receipt.indicator.label": undefined
+  "details.receipt.loading": undefined
+  "details.receipt.missing": undefined
+  "details.receipt.read_on": { date: string | number }
+  "details.receipt.retry": undefined
+  "details.receipt.sample": undefined
+  "details.receipt.save_failed": undefined
+  "details.receipt.saving": undefined
+  "details.receipt.total": undefined
+  "details.receipt.unsaved": undefined
   "details.request_id": { id: string | number }
+  "details.status.label": undefined
+  "details.title": { name: string | number; amount: string | number }
   "feed.and": { a: string | number; b: string | number }
   "feed.approved": { amount: string | number; name: string | number; reason: string | number }
   "feed.approved.ok": { name: string | number }
@@ -1336,6 +1362,9 @@ export interface Messages {
   "record.names_note": undefined
   "record.not_found": undefined
   "record.open_pot": { potName: string | number }
+  "record.receipt.attached": undefined
+  "record.receipt.details": undefined
+  "record.receipt.details.label": { what: string | number }
   "record.status.cancelled": undefined
   "record.status.declined": undefined
   "record.status.expired": undefined

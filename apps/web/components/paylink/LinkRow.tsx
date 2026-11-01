@@ -6,6 +6,7 @@
 import { MoneyText } from "@/components/money/MoneyText"
 import { CommentCount } from "@/components/comments/RequestComments"
 import { Row } from "@/components/pot/Feed"
+import { ReceiptIndicator } from "@/components/receipt/ReceiptIndicator"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { t } from "@/i18n/t"
 import type { Category, RequestVM } from "@/lib/client/mock/types"
@@ -39,6 +40,7 @@ export function LinkRow({ r }: { r: RequestVM }) {
         <>
           <span data-paylink-status={l.status}>{r.status === "needs" ? t("paylink.status.waiting") : linkStatusLine(l, meId)}</span>
           <CommentCount n={r.comments} />
+          {r.hasReceipt && <ReceiptIndicator />}
         </>
       }
       chip={

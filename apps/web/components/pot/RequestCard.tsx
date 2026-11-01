@@ -6,6 +6,7 @@
 // where the optional reason lives. The sentence button opens the sheet for review.
 import { Check } from "lucide-react"
 import { CommentCount } from "@/components/comments/RequestComments"
+import { ReceiptIndicator } from "@/components/receipt/ReceiptIndicator"
 import { Avatar } from "@/components/pot/Avatar"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { MoneyText } from "@/components/money/MoneyText"
@@ -71,6 +72,7 @@ export function RequestCard({
             <StatusChip status="needs">{r.tier === "one_ok" && r.declines.length === 0 ? t("feed.pending.one_ok") : t("approve.progress", { count: r.approvals.length, k: r.k })}</StatusChip>
             <span className="text-body-sm text-ink-muted">{t("approve.expires", { relativeTime: inWords(r.expiresAt, now) })}</span>
             <CommentCount n={r.comments} />
+            {r.hasReceipt && <ReceiptIndicator className="text-body-sm text-ink-muted" />}
           </span>
         </span>
         <MoneyText micro={r.amount} className="pt-0.5 text-ink" />

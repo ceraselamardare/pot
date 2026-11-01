@@ -13,31 +13,37 @@ import { Bone, EmptyState } from "@/components/feedback/States"
 import { MoneyText } from "@/components/money/MoneyText"
 import { Avatar } from "@/components/pot/Avatar"
 import { CoverTile } from "@/components/pot/CoverTile"
-import { StatusChip, type ChipStatus } from "@/components/pot/StatusChip"
+import { RecordStatusChip } from "@/components/record/RecordStatusChip"
 import { ReceiptLink } from "@/components/receipt/ReceiptLink"
+import { ReceiptIndicator } from "@/components/receipt/ReceiptIndicator"
 import { Button } from "@/components/ui/button"
 import { pageTitle, t } from "@/i18n/t"
 import { explorerTxUrl } from "@/lib/client/explorer"
 import { formatUsd } from "@/lib/client/money"
-import { approvedWords, csvFileName, paidOut, recordCsv, rowSentence, statusWord, type RecordRow, type RecordStatus } from "@/lib/client/record"
+import { approvedWords, csvFileName, paidOut, recordCsv, rowSentence, type RecordRow } from "@/lib/client/record"
 import { useRecord } from "@/lib/client/record-data"
 import { formatDate } from "@/lib/client/time"
 
-const CHIP: Record<RecordStatus, ChipStatus> = {
-  paid: "approved",
-  pending: "needs",
-  processing: "sending",
-  declined: "declined",
-  expired: "expired",
-  withdrawn: "expired",
-  failed: "failed",
-  returned: "expired",
-  held: "needs",
-  cancelled: "expired",
-}
+const Status = RecordStatusChip
 
-function Status({ s }: { s: RecordStatus }) {
-  return <StatusChip status={CHIP[s]}>{statusWord(s)}</StatusChip>
+/** "Receipt attached" for everyone; a member also gets "See details" (the spend's sheet on the Pot). */
+function ReceiptAttached({ row, slug, member }: { row: RecordRow; slug: string; member: boolean }) {
+  if (!row.receipt) return null
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2 text-body-sm text-ink-muted" data-record-receipt>
+      <ReceiptIndicator />
+      {member && (
+        <Link
+          href={`/p/${encodeURIComponent(slug)}?r=${row.id}`}
+          aria-label={t("record.receipt.details.label", { what: rowSentence(row) })}
+          className="inline-flex min-h-6 items-center rounded-sm text-link underline-offset-4 hover:underline"
+          data-record-receipt-details
+        >
+          {t("record.receipt.details")}
+        </Link>
+      )}
+    </span>
+  )
 }
 
 function download(rows: RecordRow[], potName: string, slug: string) {
@@ -137,6 +143,11 @@ export function RecordScreen() {
                         <Status s={row.status} />
                         <ReceiptLink txHash={row.txHash} what={rowSentence(row)} />
                       </div>
+                      {row.receipt && (
+                        <div className="mt-1.5">
+                          <ReceiptAttached row={row} slug={r.slug} member={r.member} />
+                        </div>
+                      )}
                     </div>
                     <MoneyText micro={row.amount} className="shrink-0 pt-0.5 text-ink" />
                   </div>
@@ -175,7 +186,10 @@ export function RecordScreen() {
                         <Status s={row.status} />
                       </td>
                       <td className="px-3 py-2">
-                        <ReceiptLink txHash={row.txHash} what={rowSentence(row)} />
+                        <span className="flex flex-col items-start gap-1">
+                          <ReceiptLink txHash={row.txHash} what={rowSentence(row)} />
+                          <ReceiptAttached row={row} slug={r.slug} member={r.member} />
+                        </span>
                       </td>
                     </tr>
                   ))}

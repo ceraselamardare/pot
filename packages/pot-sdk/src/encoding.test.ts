@@ -2,7 +2,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 import { base58Decode, base58Encode, base64Decode, base64Encode, base64UrlDecode, base64UrlEncode, utf8Decode, utf8Encode } from "./encoding.ts"
-import { displayNameError, hasForbiddenChars, isOpKey, isValidEmoji, isValidPotName, isValidRequestRef, isValidSlug, newOpKey, noteTextError, slugError } from "./validate.ts"
+import { displayNameError, hasForbiddenChars, isOpKey, isSpendRef, isValidEmoji, isValidPotName, isValidRequestRef, isValidSlug, newOpKey, noteTextError, opKeyOfRef, receiptFingerprintOfRef, slugError, spendRef } from "./validate.ts"
 import { errorCodeFromText, refusedCode, stripControlChars } from "./types/errors.ts"
 import { formatEventLog, isHubEvent, parseEventLog } from "./types/events.ts"
 import { isAccountId, isPublicKeyStr } from "./types/ids.ts"
@@ -76,6 +76,25 @@ describe("validators (mirror the hub's, U-11)", () => {
       expect(isValidRequestRef(k)).toBe(true)
     }
     expect(isOpKey("k3d9x1a2b4c6m7nl")).toBe(false) // 'l' isn't Crockford
+  })
+
+  it("a spend's request_ref carries a receipt fingerprint in the hub's 32 chars", () => {
+    const fp = "0123456789abcdef0011223344556677"
+    const ref = spendRef("k3d9x1a2b4c6m7n8", fp)
+    expect(ref).toBe("k3d9x1a2b4c6m7n80123456789abcdef")
+    expect(ref).toHaveLength(32)
+    expect(isValidRequestRef(ref)).toBe(true) // the hub's own rule: no contract change
+    expect(isSpendRef(ref)).toBe(true)
+    expect(opKeyOfRef(ref)).toBe("k3d9x1a2b4c6m7n8")
+    expect(receiptFingerprintOfRef(ref)).toBe("0123456789abcdef")
+    expect(spendRef("k3d9x1a2b4c6m7n8")).toBe("k3d9x1a2b4c6m7n8")
+    expect(receiptFingerprintOfRef("k3d9x1a2b4c6m7n8")).toBeNull()
+    expect(receiptFingerprintOfRef(null)).toBeNull()
+    expect(isSpendRef("k3d9x1a2b4c6m7n8ABCDEF0123456789")).toBe(false) // upper-case hex
+    expect(isSpendRef("k3d9x1a2b4c6m7n8zzzzzzzzzzzzzzzz")).toBe(false) // not hex
+    expect(receiptFingerprintOfRef("k3d9x1a2b4c6m7n8zzzzzzzzzzzzzzzz")).toBeNull()
+    expect(() => spendRef("nope", fp)).toThrow()
+    expect(() => spendRef("k3d9x1a2b4c6m7n8", "XYZ")).toThrow()
   })
 
   it("ids", () => {

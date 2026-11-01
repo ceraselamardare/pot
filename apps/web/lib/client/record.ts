@@ -29,19 +29,30 @@ export interface RecordRow {
   okBy: PersonVM | null
   status: RecordStatus
   txHash?: string
+  /** receipt details were saved with the spend (visitors see only that; members open the details) */
+  receipt?: boolean
 }
 
 const word = (c: Category) => t(`spend.reason.word.${c}` as `spend.reason.word.${Category}`)
+
+/** How a request was approved (the Pot's rules / one OK / the group), null while it isn't. */
+export function approvedByOf(r: Pick<RequestVM, "status" | "path" | "okBy">): ApprovedBy {
+  const approved = r.status === "instant" || r.status === "approved" || r.status === "failed"
+  return !approved ? null : r.status === "instant" || r.path === "instant" ? "rules" : r.okBy ? "one_ok" : "group"
+}
+
+/** A request's status in the record's words (Paid, Waiting, Declined…). */
+export function recordStatusOf(r: Pick<RequestVM, "status">): RecordStatus {
+  return r.status === "instant" || r.status === "approved" ? "paid" : r.status === "needs" ? "pending" : r.status === "failed" ? "failed" : r.status
+}
 
 /** A member's view: the Pot's requests (both data sources produce RequestVMs), oldest first. */
 export function rowsFromRequests(reqs: readonly RequestVM[]): RecordRow[] {
   return [...reqs]
     .sort((a, b) => a.createdAt - b.createdAt || a.id - b.id)
     .map((r) => {
-      const approved = r.status === "instant" || r.status === "approved" || r.status === "failed"
-      const approvedBy: ApprovedBy = !approved ? null : r.status === "instant" || r.path === "instant" ? "rules" : r.okBy ? "one_ok" : "group"
-      const status: RecordStatus =
-        r.status === "instant" || r.status === "approved" ? "paid" : r.status === "needs" ? "pending" : r.status === "failed" ? "failed" : r.status
+      const approvedBy = approvedByOf(r)
+      const status = recordStatusOf(r)
       return {
         id: r.id,
         at: r.createdAt,
@@ -54,6 +65,7 @@ export function rowsFromRequests(reqs: readonly RequestVM[]): RecordRow[] {
         okBy: r.okBy ?? null,
         status,
         ...(r.txHash ? { txHash: r.txHash } : {}),
+        ...(r.hasReceipt ? { receipt: true } : {}),
       }
     })
 }
@@ -76,8 +88,9 @@ const MONEY: Record<RecordEntry["money"], RecordStatus> = {
 export function rowsFromEntries(
   entries: readonly RecordEntry[],
   person: (account: string) => PersonVM,
-  extra: { notes?: Record<string, string>; txByRef?: Record<string, string> } = {},
+  extra: { notes?: Record<string, string>; txByRef?: Record<string, string>; receipts?: readonly string[] } = {},
 ): RecordRow[] {
+  const withReceipt = new Set(extra.receipts ?? [])
   return [...entries]
     .sort((a, b) => a.createdAtMs - b.createdAtMs || a.requestId - b.requestId)
     .map((e) => ({
@@ -92,6 +105,7 @@ export function rowsFromEntries(
       okBy: e.okBy ? person(e.okBy) : null,
       status: MONEY[e.money] ?? "processing",
       ...(extra.txByRef?.[e.requestRef] ? { txHash: extra.txByRef[e.requestRef] } : {}),
+      ...(withReceipt.has(String(e.requestId)) ? { receipt: true } : {}),
     }))
 }
 

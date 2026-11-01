@@ -134,7 +134,8 @@ describe("activityFromApi: GET /api/me/activity rows → items", () => {
     expect(items[0]).toMatchObject({ amount: 150_000_000n, txHash: HASH, potCover: 2, potEmoji: "🇵🇹", at: Date.parse("2026-11-10T12:00:00.000Z") })
     expect(items[3]).toMatchObject({ requestId: 2 })
     expect(activityHref(items[3]!)).toBe("/p/lisbon-trip?r=2")
-    expect(activityHref(items[1]!)).toBe("/p/lisbon-trip")
+    // an instant spend opens its details too (2026-11-02: every spend has a details sheet)
+    expect(activityHref(items[1]!)).toBe("/p/lisbon-trip?r=1")
     expect(activityHref(items[5]!)).toBe("/p/lisbon-trip?tab=members")
   })
 

@@ -127,7 +127,7 @@ test("One OK: the requester waits; Leo gives the OK; it's paid and the feed says
   // Sam sees how it was approved
   await becomePerson(page, "sam")
   await page.goto("/p/ski-chalet?r=105")
-  const done = await openedSheet(page, "Sam asks for $250")
+  const done = await openedSheet(page, "Sam asked for $250") // decided: the details sheet says "asked"
   await expect(done.locator("[data-approve-status]")).toContainText("Approved by Leo's OK")
   await axe(page)
 })

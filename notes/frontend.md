@@ -1,3 +1,59 @@
+> **2026-11-02: Every spend opens its details; receipt details saved with the spend; the fingerprint check.** Server and
+> chain side in notes/backend.md "receipt details saved with a spend".
+> - **Details for every spend:** the request sheet (`ApproveSheet`) is now the details sheet of *every* spend: instant
+>   ones (their feed row is a button now), decided ones, links. Opened from the feed (`RequestRow`, `LinkRow`), a
+>   person's activity (rows about a spend are buttons: `ActivityRow onOpen`, `isSpendItem`), Requests (cards, "Your
+>   requests", Decided) and You (`activityHref` → `?r=<id>` for every asked/voted spend). New in the sheet: a facts list
+>   "Status" (the record's chip: Paid / Waiting / Declined…, `RecordStatusChip`, moved to its own module) and "Approved"
+>   (By the Pot's rules / One OK by X / By the group / Not yet, `approvedByOf` + `approvedWords`); an instant spend's status
+>   line "Approved by Pot rules · $84 was sent to Maya." (or "…to you."), no approval list for it; "Pot after this"
+>   only while it waits. The title is "Sam asks for $300" while waiting, "Sam asked for $300" once decided, fixed for the
+>   sheet's life (approving in it doesn't rename the dialog). Comments now work on instant spends too.
+> - **Receipt card** (`components/receipt/SavedReceipt.tsx` `SpendReceiptSection`, members only): heading "Receipt";
+>   one row merchant · day + the printed total; "Converted from €42.50 at 1.0852 (Oct 30)"; "Show 3 items" / "Hide items"
+>   (`aria-expanded`) with tax and tip; "Read privately · Check it yourself ↗" (the proof link, when the reading carried
+>   one) + "Read on Oct 30" (mock: "Sample reading: this test version didn't read a real photo."). Then the check
+>   (`FingerprintCheck`): ShieldCheck "Receipt fingerprint matches · These are the details saved with the spend,
+>   unchanged." or, when the recomputed fingerprint differs from the one the request carries, TriangleAlert "Receipt
+>   details changed · They don't match the fingerprint saved with the spend, so they may have been edited since." (icon
+>   + word; status colours on the icon only); "How does this work?" (disclosure) in plain words (no hash / chain /
+>   transaction). The browser computes the fingerprint itself (`fingerprintStatus`) against `RequestVM.fingerprint`, which
+>   the live VM reads from the hub's request (`receiptFingerprintOfRef(r.requestRef)`), never from our server. My own
+>   spend whose save didn't land: "Saving the receipt details…" and a retry (then "…aren't saved yet. [Try again]"); a
+>   fingerprint with no details: "A receipt fingerprint was saved with this spend, but its details weren't saved."
+> - **"Receipt attached"** (`components/receipt/ReceiptIndicator.tsx`: Lucide ReceiptText + the word; not "Receipt", so
+>   it can't be confused with the explorer's "Receipt ↗") on feed rows, link rows, request cards, "Your requests",
+>   activity rows (`ActivityItemVM.hasReceipt`) and the public record (`RecordRow.receipt`, from the feed's public
+>   `receipts`). On the record a visitor sees only that mark; a member also gets "See details" → `/p/<slug>?r=<id>`. Live
+>   record fix: `member` is now "the feed returned memos" (the feed answers everyone, so `!!feed` called visitors members).
+> - **Spend sheet:** asking sends the kept reading's details (`keptReceipt(snap)`; `readAt` + `nonce` fixed when the
+>   reading arrives, so a retried ask has the same fingerprint); Remove → nothing is sent. "Read privately"'s body now
+>   says the receipt's details are saved with the request for the group.
+> - **Mock world:** `RequestRec.ref` (`mockOpKey(id)` + fingerprint), `World.receipts` ("slug:id"), `saveReceipt` /
+>   `savedReceiptFor` (the server's rules), store `saveReceipt` (fault hook `pot.mock.fail = receipt_save`),
+>   `RequestVM.fingerprint` / `hasReceipt`. Showcase seed: Ski Chalet request 103 (Maya's $35 food) has a saved €32.25
+>   "Café du Col" receipt converted at 1.0852 with a model-only check link (`showcaseReceipt`).
+> - **Copy:** `details.*`, `record.receipt.*`, `spend.receipt.private.body` (en.json, types regenerated); lint 1817
+>   strings, 0 banned.
+> - **Tests:** unit `components/__tests__/spend-details.test.tsx` (7), `lib/client/mock/receipts.test.ts` (6),
+>   `lib/client/receipts/saved.test.ts` (3: saved with the id the spend got; a failed save stays pending and the retry
+>   saves it; a mismatch is dropped), `receipt-snap.test.tsx` +1 (the ask carries the details, never image bytes; none
+>   after Remove), `activity.test.ts` (an instant spend's href is `?r=`); plus the server ones (backend notes). Full unit
+>   **1228 passed / 17 skipped** (DB on a private `pot_details`), sdk 182. e2e `e2e/mock/spend-details.spec.ts` (6 tests ×
+>   3 projects, 320 px on mobile-day): instant spend with a scanned euro receipt → "Receipt attached" → details (approval,
+>   status, card, items, sample note, ✓ + how) → a comment on it; vote-path spend with a receipt seen by Sam before
+>   approving, then "By the group"; the showcase's check link and an edited receipt → the warning; person activity and
+>   You open the details; the record: "See details" for members, only the mark for a visitor (no merchant, no items).
+>   axe 0 serious + brand checks throughout. Updated: `comments.spec` / `pay-link.spec` / `trust.spec` (decided sheets
+>   are "… asked for …"), `activity.spec` (the instant row opens its details), testnet `paylink.testnet.ts` (same title;
+>   not run) and the new `e2e/testnet/spend-details.testnet.ts` (**not run**: needs the human's OK).
+> - **Results:** `pnpm --filter web typecheck`, `pnpm --filter web lint` clean; `NEXT_DIST_DIR=.next-details
+>   NEXT_PUBLIC_DATA_SOURCE=mock next build` OK; mock e2e on `next start -p 3310`: **317 passed, 31 skipped** (3 projects).
+>   Screens: `notes/screens/spend-details-{day,night}.png`, `-check-`, `-mismatch-`, `-record-` (Day/Night).
+> - **Open:** a spend sent with a fingerprint whose save never lands (another device, cleared storage) shows the
+>   "details weren't saved" line forever; the details are kept 30 days on the requester's device only. Editing a saved
+>   receipt is impossible by design (once); a wrong reading can only be explained in a comment.
+
 > **2026-11-01: The Spend sheet in two steps, and receipts in other currencies converted.** Feedback: "the spend popup
 > got a bit crowded, especially with the new snap a receipt button… make it more accessible without a lot of scrolling".
 > Before (`notes/screens/spend-before-{day,night}.png`, 390 × 844, $84 typed): the body held 622 px of content in a

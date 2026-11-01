@@ -16,7 +16,8 @@ vi.mock("@/lib/client/receipts/read", async (orig) => ({
   readReceiptPhoto: (slug: string, file: File, signal?: AbortSignal) => readPhoto(slug, file, signal),
   useReceiptsEnabled: () => box.enabled,
 }))
-vi.mock("@/lib/client/actions", () => ({ requestSpend: vi.fn() }))
+const spend = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/client/actions", () => ({ requestSpend: spend }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams() }))
 
 import { SpendSheet } from "@/components/sheets/SpendSheet"
@@ -30,6 +31,7 @@ afterEach(cleanup)
 beforeEach(() => {
   box.enabled = true
   readPhoto.mockReset()
+  spend.mockReset()
 })
 
 const res = (name = "receipt.jpg", over: Partial<ReceiptReadRes> = {}): ReceiptReadRes => ({ result: mockReceipt(name), proof: null, source: "mock", fx: null, ...over })
@@ -233,6 +235,44 @@ describe("Scan receipt", () => {
     fireEvent.click(within(d).getByRole("button", { name: "Next" }))
     expect(within(d).queryByRole("button", { name: "Pingo Doce · Oct 28" })).toBeNull()
     expect(chip(d, /Food/).getAttribute("aria-pressed")).toBe("true")
+  })
+
+  it("asking sends the kept reading's details with the spend (never the photo); after Remove, nothing", async () => {
+    spend.mockResolvedValue({ id: 9, path: "instant", payout: "sent", final: Promise.resolve("sent") })
+    // the result card's celebration asks about reduced motion
+    window.matchMedia ??= ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })) as never
+    readPhoto.mockResolvedValueOnce(res("receipt-cafe-eur.jpg", { fx: EUR_FX }))
+    const d = open()
+    snap(d, "receipt-cafe-eur.jpg")
+    await waitFor(() => expect(step(d)).toBe(2))
+    fireEvent.click(within(d).getByRole("button", { name: "Get $46.12 back" }))
+    await waitFor(() => expect(spend).toHaveBeenCalledTimes(1))
+    const input = spend.mock.calls[0]![1] as { receipt: Record<string, unknown> }
+    expect(input.receipt).toMatchObject({
+      v: 1,
+      merchant: "Taberna da Rua",
+      currency: "EUR",
+      totalCents: 4250,
+      fx: { from: "EUR", amountCents: 4250, usdCents: 4612, rate: "1.0852", source: "ecb" },
+      proof: null,
+      source: "mock",
+    })
+    expect(input.receipt.nonce).toMatch(/^[0-9a-f]{32}$/)
+    expect(Date.parse(input.receipt.readAt as string)).toBeGreaterThan(Date.now() - 60_000)
+    expect(JSON.stringify(input.receipt)).not.toMatch(/image|base64|data:/)
+    cleanup()
+
+    readPhoto.mockResolvedValueOnce(res())
+    const d2 = open()
+    snap(d2)
+    await waitFor(() => expect(d2.querySelector("[data-receipt-summary]")).not.toBeNull())
+    details(d2)
+    fireEvent.click(within(d2).getByRole("button", { name: "Remove" }))
+    fireEvent.click(within(d2).getByRole("button", { name: "5", exact: true } as never))
+    fireEvent.click(within(d2).getByRole("button", { name: "Next" }))
+    fireEvent.click(within(d2).getByRole("button", { name: "Get $5 back" }))
+    await waitFor(() => expect(spend).toHaveBeenCalledTimes(2))
+    expect(spend.mock.calls[1]![1]).not.toHaveProperty("receipt")
   })
 
   it("hidden when the server can't read receipts", () => {

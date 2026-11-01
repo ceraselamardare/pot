@@ -1,7 +1,8 @@
 "use client"
 // Members → tap a person → what they did in this Pot (URL state: ?sheet=person&who=<id>, so Back closes it and the
 // link can be shared). Built from the Pot's own view model (chain views ⊕ the feed route on testnet), newest first,
-// with a quiet receipt wherever a real transaction is behind the row.
+// with a quiet receipt wherever a real transaction is behind the row. A row about a spend opens its details (the
+// request sheet replaces this one; Back comes here again).
 import { useMemo } from "react"
 import { ActivityList } from "@/components/activity/ActivityList"
 import { EmptyState } from "@/components/feedback/States"
@@ -13,6 +14,7 @@ import { formatUsd } from "@/lib/client/money"
 import { t } from "@/i18n/t"
 import { activityOfPerson } from "@/lib/client/activity"
 import type { PotVM } from "@/lib/client/mock/types"
+import { openRequest } from "@/lib/client/sheet"
 import { useNow } from "@/lib/client/time"
 
 export function PersonActivitySheet({ pot, who, open, onClose }: { pot: PotVM; who: string | null; open: boolean; onClose: () => void }) {
@@ -58,7 +60,7 @@ export function PersonActivitySheet({ pot, who, open, onClose }: { pot: PotVM; w
         {items.length === 0 ? (
           <EmptyState visual="dots" headingLevel={3} title={t("activity.person.empty")} className="rounded-md bg-surface-sunken py-8" />
         ) : (
-          <ActivityList items={items} meId={meId} now={now} linked={false} showPot={false} sunken />
+          <ActivityList items={items} meId={meId} now={now} linked={false} showPot={false} sunken onOpen={(i) => i.requestId !== undefined && openRequest(i.requestId)} />
         )}
       </div>
     </Sheet>

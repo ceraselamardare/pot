@@ -45,6 +45,8 @@ export interface ActivityItemVM {
   txHash?: string
   /** pay by link (hub 1.1.0): where the asked-for link is now */
   link?: LinkStatusVM
+  /** asked: receipt details were saved with the spend */
+  hasReceipt?: boolean
 }
 
 const word = (category: string | undefined, note?: string) =>
@@ -117,6 +119,7 @@ export function activityOfPerson(pot: PotVM, personId: string): ActivityItemVM[]
             ...(r.proposalId != null ? { proposalId: r.proposalId } : {}),
             txHash: r.txHash,
             ...(r.link ? { link: r.status === "needs" ? ("waiting" as const) : r.link.status, status: linkChip(r.status === "needs" ? "waiting" : r.link.status) } : {}),
+            ...(r.hasReceipt ? { hasReceipt: true } : {}),
           })
         else {
           const v: Vote | null = r.approvals.some((p) => p.id === personId) ? "Approve" : r.declines.some((p) => p.id === personId) ? "Reject" : null
@@ -281,9 +284,14 @@ export function chipWord(i: ActivityItemVM): string | undefined {
 }
 
 /** Where tapping a row goes: the Pot, at the item (a request opens its sheet; rules and close their place). */
+/** A row about one spend (asked for it, or approved/declined it): it opens that spend's details. */
+export const isSpendItem = (i: ActivityItemVM): i is ActivityItemVM & { requestId: number } =>
+  i.requestId !== undefined && (i.kind === "asked" || (i.kind === "voted" && i.about?.type === "spend"))
+
 export function activityHref(i: ActivityItemVM): string {
   const pot = `/p/${encodeURIComponent(i.slug)}`
-  if ((i.kind === "asked" && (i.path === "vote" || !!i.link)) || (i.kind === "voted" && i.about?.type === "spend")) return i.requestId !== undefined ? `${pot}?r=${i.requestId}` : pot
+  // every spend opens its details (instant ones too: how it was approved, its receipt, the comments)
+  if (i.kind === "asked" || (i.kind === "voted" && i.about?.type === "spend")) return i.requestId !== undefined ? `${pot}?r=${i.requestId}` : pot
   if (i.kind === "rules_asked" || i.kind === "rules_changed" || (i.kind === "voted" && i.about?.type === "rules")) return `${pot}?tab=rules`
   // the refund: the closed Pot's summary (who got what); a close request (maybe declined) is on the Pot itself
   if (i.kind === "refund") return `${pot}?sheet=close`

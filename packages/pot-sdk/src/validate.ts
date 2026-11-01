@@ -95,6 +95,28 @@ export function newOpKey(): string {
   return out
 }
 
+// A spend's request_ref (the hub keeps it on the request, in the DAO proposal's description and in the
+// spend_requested event): its OpKey, optionally followed by the first RECEIPT_FP_HEX hex chars of the SHA-256 of the
+// saved receipt's canonical JSON (web lib/receipt-saved.ts). 16 + 16 = 32 = the hub's maximum, so no contract change.
+/** Hex chars of a receipt fingerprint carried in a request_ref (64 bits). */
+export const RECEIPT_FP_HEX = 16
+const SPEND_REF_RE = /^[0-9a-hjkmnp-tv-z]{16}(?:[0-9a-f]{16})?$/
+/** An OpKey, or an OpKey + a 16-hex receipt fingerprint (32 chars). */
+export const isSpendRef = (s: string): boolean => SPEND_REF_RE.test(s)
+/** The request_ref for a spend: `opKey`, plus the receipt fingerprint's first 16 hex chars when one is attached. */
+export function spendRef(opKey: string, fingerprint?: string | null): string {
+  if (!isOpKey(opKey)) throw new Error("spendRef: not an OpKey")
+  if (!fingerprint) return opKey
+  const fp = fingerprint.slice(0, RECEIPT_FP_HEX)
+  if (!/^[0-9a-f]{16}$/.test(fp)) throw new Error("spendRef: fingerprint must be lowercase hex (≥ 16 chars)")
+  return opKey + fp
+}
+/** The OpKey part of a request_ref (the relay's idempotencyKey). */
+export const opKeyOfRef = (ref: string): string => ref.slice(0, 16)
+/** The receipt fingerprint a request_ref carries (16 hex chars), or null. */
+export const receiptFingerprintOfRef = (ref: string | null | undefined): string | null =>
+  !!ref && ref.length === 32 && SPEND_REF_RE.test(ref) ? ref.slice(16) : null
+
 const RESERVED_DISPLAY_NAMES = ["pot", "near", "support", "admin", "team"]
 
 /** Display names (api-spec §2.1 PATCH /api/me): NFC, trimmed, 1-40 code points, no control/Cf, not reserved. */

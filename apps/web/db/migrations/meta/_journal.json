@@ -29,6 +29,13 @@
       "when": 1793556616426,
       "tag": "0003_request_comment",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793572844674,
+      "tag": "0004_spend_receipt",
+      "breakpoints": true
     }
   ]
 }

@@ -289,6 +289,34 @@ export const requestComment = pgTable(
   ],
 )
 
+/**
+ * The receipt details saved with a spend (never the photo, D-61): what the person confirmed from "Scan receipt"
+ * (lib/receipt-saved.ts SavedReceipt) for one (Pot, hub request id). Written once, by the request's own requester,
+ * after the request exists; the server checks that the SHA-256 of the canonical JSON starts with the 16 hex chars the
+ * request carries in its request_ref (the fingerprint), so an edit after the fact can't go unnoticed. Members read the
+ * details; anyone can see that a spend has one (the feed's `receipts`).
+ */
+export const spendReceipt = pgTable(
+  "spend_receipt",
+  {
+    potId: text("pot_id")
+      .notNull()
+      .references(() => pot.daoId),
+    requestId: bigint("request_id", { mode: "number" }).notNull(),
+    requesterAccount: text("requester_account").notNull(),
+    /** the SavedReceipt as validated (key order is irrelevant: the fingerprint is over its canonical JSON) */
+    data: jsonb("data").notNull(),
+    /** full SHA-256 hex of the canonical JSON */
+    fingerprint: text("fingerprint").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.potId, t.requestId] }),
+    check("spend_receipt_fingerprint_ck", sql`${t.fingerprint} ~ '^[0-9a-f]{64}$'`),
+    check("spend_receipt_size_ck", sql`octet_length(${t.data}::text) <= 20000`),
+  ],
+)
+
 // ---------------------------------------------------------------------------------------------
 // 2.3 Relay log, feed cache, quotas, leases, alerts, errors
 // ---------------------------------------------------------------------------------------------

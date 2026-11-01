@@ -3,6 +3,7 @@
 import type { Micro } from "../money"
 import type { Rules } from "../rules"
 import type { AvatarId } from "@/lib/avatars"
+import type { SavedReceipt } from "@/lib/receipt-saved"
 
 export type Category = "groceries" | "food" | "transport" | "stay" | "tickets" | "other"
 export type Vote = "Approve" | "Reject"
@@ -41,6 +42,9 @@ export interface RequestRec {
   okBy?: string | null
   /** hub 1.1.0 pay by link: the payee is whoever holds the link (receiver = LINK_RECEIVER, the hub's escrow) */
   link?: LinkRec
+  /** the hub's request_ref (an op key, + the saved receipt's 16-hex fingerprint when one was attached); absent in
+   *  older worlds and seeds = no fingerprint */
+  ref?: string
 }
 
 /** A pay-by-link request's link (the hub's LinkRecord twin; contracts-wave4 D4-6 lifecycle). */
@@ -179,6 +183,8 @@ export interface World {
   avatars?: Record<string, AvatarId>
   /** comments on requests, oldest first; absent in worlds saved before comments */
   comments?: CommentRec[]
+  /** receipt details saved with a spend, by "slug:requestId" (the mock's spend_receipt table) */
+  receipts?: Record<string, SavedReceipt>
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -239,6 +245,10 @@ export interface RequestVM {
   okBy?: PersonVM | null
   /** hub 1.1.0 pay by link: set for link requests (the receiver is then the link's label or "someone with the link") */
   link?: LinkVM
+  /** the receipt fingerprint the request carries (16 hex, from its request_ref), null/absent = none */
+  fingerprint?: string | null
+  /** receipt details were saved with this spend (anyone may know that; the details are members only) */
+  hasReceipt?: boolean
 }
 
 /**

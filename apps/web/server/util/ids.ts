@@ -1,5 +1,7 @@
 // Wire-format validators shared by the routes (api-spec §0.3).
 export const OPKEY_RE = /^[0-9a-hjkmnp-tv-z]{16}$/
+/** A spend's request_ref: an OpKey, optionally + the 16-hex fingerprint of its saved receipt (@pot/sdk spendRef). */
+export const SPEND_REF_RE = /^[0-9a-hjkmnp-tv-z]{16}(?:[0-9a-f]{16})?$/
 export const MICRO_RE = /^(0|[1-9][0-9]{0,15})$/
 export const ACCOUNT_RE = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/
 export const PK_RE = /^ed25519:[1-9A-HJ-NP-Za-km-z]{43,44}$/

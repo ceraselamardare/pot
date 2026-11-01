@@ -12,7 +12,7 @@ import { ApiError, unavailable } from "../http/errors"
 import { limit } from "../quotas"
 import { upsertPotRow } from "../relay/effects"
 import type { SessionCtx } from "../session/store"
-import { daoSlug, OPKEY_RE } from "../util/ids"
+import { daoSlug, SPEND_REF_RE } from "../util/ids"
 import { cleanNote } from "../util/text"
 
 export interface NoteBody {
@@ -56,8 +56,9 @@ export async function postNote(
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   const { db, hub, cfg } = deps
   if (!daoSlug(body.pot, cfg.hubId)) throw new ApiError("bad_request", { detail: { field: "pot" } })
-  // memo and link_label: keyed by the request's request_ref (an op key); decline_reason: by the proposal id
-  if (body.kind === "memo" || body.kind === "link_label" ? !OPKEY_RE.test(body.ref) : !/^(0|[1-9][0-9]{0,18})$/.test(body.ref))
+  // memo and link_label: keyed by the request's request_ref (an op key, + a receipt fingerprint when one is
+  // attached); decline_reason: by the proposal id
+  if (body.kind === "memo" || body.kind === "link_label" ? !SPEND_REF_RE.test(body.ref) : !/^(0|[1-9][0-9]{0,18})$/.test(body.ref))
     throw new ApiError("bad_request", { detail: { field: "ref" } })
   const text = cleanNote(body.text)
   if (!text.ok) throw new ApiError("bad_request", { detail: { field: "text", why: text.why } })

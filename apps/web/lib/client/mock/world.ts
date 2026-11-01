@@ -1,7 +1,8 @@
 // The mock world: pure functions over a JSON-safe `World` (seed, actions, selectors). The client store
 // (store.ts) persists it in localStorage and adds latency; server components call seedWorld() for /j and
 // /demo. The money rules mirror the hub (D-05, D-07, D-08, D-09) so the beats and copy match testnet.
-import { prorata, type Rules as SdkRules } from "@pot/sdk"
+import { prorata, receiptFingerprintOfRef, spendRef, type Rules as SdkRules } from "@pot/sdk"
+import { receiptFingerprint, shortFingerprint, validateSavedReceipt, type SavedReceipt } from "@/lib/receipt-saved"
 import { sha256 } from "@noble/hashes/sha2.js"
 import { base58 } from "@scure/base"
 import { avatarOrNull, type AvatarId } from "@/lib/avatars"
@@ -147,8 +148,11 @@ export const initialsOf = (name: string): string =>
 let viewAvatars: Record<string, AvatarId> = {}
 // comments not removed, per "slug:requestId" (RequestVM.comments)
 let viewCommentCounts: Record<string, number> = {}
+// spends with saved receipt details, "slug:requestId" (RequestVM.hasReceipt)
+let viewReceipts: Record<string, unknown> = {}
 function withAvatars(w: World) {
   viewAvatars = w.avatars ?? {}
+  viewReceipts = w.receipts ?? {}
   viewCommentCounts = {}
   for (const c of w.comments ?? []) if (!c.deletedAt) viewCommentCounts[`${c.pot}:${c.requestId}`] = (viewCommentCounts[`${c.pot}:${c.requestId}`] ?? 0) + 1
 }
@@ -269,7 +273,12 @@ export interface SpendInput {
   receiver: string
   /** pay by link (hub 1.1.0): the receiver is the link's escrow; `pk` = the link key's public half */
   link?: { pk: string; expiresAt: number; label?: string }
+  /** the receipt details' fingerprint (SHA-256 hex): its first 16 hex chars ride in the request's ref */
+  fingerprint?: string
 }
+
+/** The mock's op key for a request (a valid OpKey: "m" + the id), so its ref looks like the hub's. */
+export const mockOpKey = (id: number): string => `m${String(id).padStart(15, "0")}`
 
 export function requestSpend(
   w: World,
@@ -310,6 +319,7 @@ export function requestSpend(
     category: input.category,
     note: input.note,
     createdAt: now,
+    ref: spendRef(mockOpKey(id), input.fingerprint ?? null),
     ...(input.link ? { link: { pk: input.link.pk, expiresAt: input.link.expiresAt, status: "awaiting_funds" as const, ...(input.link.label ? { label: input.link.label } : {}) } } : {}),
   }
   let request: RequestRec
@@ -732,6 +742,8 @@ function requestVM(pot: PotRec, r: RequestRec, me: string | null, now: number): 
     ...(r.tier ? { tier: r.tier } : {}),
     ...(r.okBy ? { okBy: person(pot, r.okBy) } : {}),
     ...(r.link ? { link: linkVM(r, status, now, (id) => (id.startsWith("@") ? null : person(pot, id)))! } : {}),
+    fingerprint: receiptFingerprintOfRef(r.ref),
+    hasReceipt: `${pot.slug}:${r.id}` in viewReceipts,
   }
 }
 
@@ -1015,6 +1027,47 @@ export function removeComment(w: World, slug: string, requestId: number, id: str
   if (c.author !== who) throw new CommentWorldError("not_author")
   if (c.deletedAt) return w
   return { ...w, comments: (w.comments ?? []).map((x) => (x === c ? { ...x, body: "", deletedAt: now } : x)) }
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// receipt details saved with a spend (the mock's spend_receipt table; server/features/receipts/saved.ts twin):
+// members read; only the requester saves, once, details whose fingerprint is the one the request carries
+
+export type ReceiptError = "not_member" | "not_found" | "not_requester" | "no_fingerprint" | "mismatch" | "already_saved" | "invalid"
+
+export class ReceiptWorldError extends Error {
+  constructor(readonly code: ReceiptError) {
+    super(code)
+  }
+}
+
+/** A spend's saved receipt details for `me` (members only); null when there are none or `me` isn't a member. */
+export function savedReceiptFor(w: World, slug: string, requestId: number, me: string | null): SavedReceipt | null {
+  const pot = w.pots[slug]
+  if (!pot || !me || !isMember(pot, me)) return null
+  return w.receipts?.[`${slug}:${requestId}`] ?? null
+}
+
+/** Save the details of `who`'s own spend once; the same details again are a no-op (the server's replay). */
+export function saveReceipt(w: World, slug: string, requestId: number, who: string, raw: unknown, now: number): World {
+  const pot = w.pots[slug]
+  if (!pot || !isMember(pot, who)) throw new ReceiptWorldError("not_member")
+  const checked = validateSavedReceipt(raw, now)
+  if (!checked.ok) throw new ReceiptWorldError("invalid")
+  const fp = receiptFingerprint(checked.value)
+  const key = `${slug}:${requestId}`
+  const prior = w.receipts?.[key]
+  if (prior) {
+    if (receiptFingerprint(prior) === fp) return w
+    throw new ReceiptWorldError("already_saved")
+  }
+  const r = pot.requests.find((x) => x.id === requestId)
+  if (!r) throw new ReceiptWorldError("not_found")
+  if (r.requester !== who) throw new ReceiptWorldError("not_requester")
+  const on = receiptFingerprintOfRef(r.ref)
+  if (!on) throw new ReceiptWorldError("no_fingerprint")
+  if (shortFingerprint(fp) !== on) throw new ReceiptWorldError("mismatch")
+  return { ...w, receipts: { ...(w.receipts ?? {}), [key]: checked.value } }
 }
 
 export type { Micro }

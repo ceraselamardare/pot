@@ -34,7 +34,7 @@ import type { RawClosePreview, RawConfigView, RawInviteView, RawMemberView, RawP
 import type { PublicKeyStr, Viewed } from "../types/ids.ts"
 import type { ActionIntent, CallAction, CallSpec } from "../types/intents.ts"
 import { errorCodeFromText, refusedCode } from "../types/errors.ts"
-import { isValidEmoji, isValidPotName, isValidSlug, isOpKey } from "../validate.ts"
+import { isValidEmoji, isValidPotName, isValidSlug, isSpendRef } from "../validate.ts"
 
 // ---------------------------------------------------------------- state
 
@@ -575,7 +575,7 @@ export class MockChain implements ChainViews {
         if (this.s.pots.has(daoIdFromSlug(String(a.args.slug), hubId))) throw new Rejected("slug_taken")
         continue
       }
-      if (a.method === "request_spend" && !isOpKey(String(a.args.request_ref))) throw new Rejected("args_invalid", { field: "request_ref" })
+      if (a.method === "request_spend" && !isSpendRef(String(a.args.request_ref))) throw new Rejected("args_invalid", { field: "request_ref" })
       const pot = String(a.args.pot)
       if (["request_spend", "join", "set_rules", "propose_rules", "propose_close", "add_invite"].includes(a.method)) this.requireKnownOpen(pot)
       else if (!this.s.pots.has(pot)) throw new Rejected("pot_unknown")

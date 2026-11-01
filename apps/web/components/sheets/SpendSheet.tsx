@@ -47,7 +47,7 @@ import { LinkShareActions, useLinkShare, type LinkShareState } from "@/component
 import { LinkReady, PayLinkFields, payLinksOn } from "@/components/paylink/PayLinkFields"
 import { requestLinkSpend } from "@/lib/client/paylink/actions"
 import { cn } from "@/lib/client/cn"
-import { ReceiptCard, ReceiptInputs, ReceiptStart, useReceiptSnap, type ReceiptFill } from "@/components/sheets/ReceiptSnap"
+import { keptReceipt, ReceiptCard, ReceiptInputs, ReceiptStart, useReceiptSnap, type ReceiptFill } from "@/components/sheets/ReceiptSnap"
 import { useReceiptsEnabled } from "@/lib/client/receipts/read"
 import { pushSheetStep, replaceSheetParams, sheetStepBack, useSheetParams } from "@/lib/client/sheet"
 
@@ -240,10 +240,13 @@ export function SpendSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
     dispatch({ type: "SUBMIT", expected: preview.path === "instant" ? "instant" : "vote" })
     setSentTier(preview.tier)
     try {
+      // the receipt the person kept (never the photo): fixed now, its fingerprint goes with the request
+      const receipt = receipts ? keptReceipt(snap) : null
       const input = {
         amount,
         category: category ?? "other",
         note: note.trim() || undefined,
+        ...(receipt ? { receipt } : {}),
       }
       // pay by link: a fresh link key here; its secret stays on this device (lib/client/paylink)
       let r: SpendResult

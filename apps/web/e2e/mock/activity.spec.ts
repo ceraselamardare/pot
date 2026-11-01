@@ -68,9 +68,11 @@ test("You: your Pot dollars and your activity across Pots, newest first, with re
     await page.screenshot({ path: `${SCREENS}you-${info.project.name === "mobile-night" ? "night" : "day"}.png`, fullPage: true })
   }
 
-  // a row opens that Pot at the item
+  // a row opens that Pot at the item: a spend (instant too) opens its details there
   await first.getByRole("link").first().click()
-  await expect(page).toHaveURL(/\/p\/lisbon-trip$/)
+  await expect(page).toHaveURL(/\/p\/lisbon-trip\?r=\d+$/)
+  await openedSheet(page, "Maya asked for $84")
+  await page.keyboard.press("Escape")
   await expect(page.getByRole("heading", { level: 1, name: "Lisbon Trip" })).toBeVisible()
 })
 

@@ -328,6 +328,23 @@ export async function setRules(slug: string, rules: RulesRec, extras?: ExtrasRec
 // comments on requests (the mock's GET/POST/DELETE …/requests/[id]/comments). Fault hook: 'comment' (the next send
 // or delete fails like an unreachable server, so the composer's retry can be tested).
 
+/** Save the receipt details of my own spend (the mock's POST …/receipt; fault hook 'receipt_save'). */
+export async function saveReceipt(slug: string, requestId: number, receipt: unknown): Promise<void> {
+  await sleep(LATENCY.comment)
+  maybeFail("receipt_save")
+  let next: World
+  try {
+    next = W.saveReceipt(ensureWorld(), slug, requestId, me(), receipt, Date.now())
+  } catch (e) {
+    if (e instanceof W.ReceiptWorldError)
+      throw new MockRelayError(
+        e.code === "not_member" ? "not_a_member" : e.code === "not_found" ? "not_found" : e.code === "invalid" ? "bad_request" : e.code === "already_saved" ? "idempotency_conflict" : e.code === "not_requester" ? "action_not_allowed" : "payload_mismatch",
+      )
+    throw e
+  }
+  if (next !== world) commit(next)
+}
+
 function commentCall<T>(fn: () => T): T {
   try {
     return fn()

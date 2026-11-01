@@ -12,6 +12,7 @@ import { Avatar } from "@/components/pot/Avatar"
 import { MoneyText } from "@/components/money/MoneyText"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { ReceiptLink, ReceiptSpace } from "@/components/receipt/ReceiptLink"
+import { ReceiptIndicator } from "@/components/receipt/ReceiptIndicator"
 import { t } from "@/i18n/t"
 import { formatUsd } from "@/lib/client/money"
 import type { Category, FeedItemVM, PersonVM, RequestVM } from "@/lib/client/mock/types"
@@ -122,6 +123,8 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
           txHash={r.txHash}
           tint
           avatar={r.requester}
+          // every spend opens its details (how it was approved, its receipt, comments)
+          onOpen={open}
           main={t("feed.instant", { name: r.requester.name, amount: amountWhole, reason })}
           sub={
             <>
@@ -130,6 +133,8 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
                 {t("spend.approved")}
               </span>
               <span>{t("feed.instant.rule", { instantLimit: formatUsd(r.instantCap, "whole") })}</span>
+              <CommentCount n={r.comments} />
+              {r.hasReceipt && <ReceiptIndicator />}
             </>
           }
           amount={<MoneyText micro={r.amount} sign="out" className="text-ink" />}
@@ -147,6 +152,7 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
             <>
               <span>{t("approve.expires", { relativeTime: inWords(r.expiresAt, now) })}</span>
               <CommentCount n={r.comments} />
+              {r.hasReceipt && <ReceiptIndicator />}
             </>
           }
           chip={
@@ -168,6 +174,7 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
             <>
               <span>{r.okBy ? t("feed.approved.ok", { name: r.okBy.name }) : t("feed.approved.sub", { names: names(r.approvals) })}</span>
               <CommentCount n={r.comments} />
+              {r.hasReceipt && <ReceiptIndicator />}
             </>
           }
           chip={<StatusChip status={sentKey ? "sent" : "approved"} />}
@@ -185,6 +192,7 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
             <>
               <span>{t("feed.declined.sub", { names: names(r.declines) })}</span>
               <CommentCount n={r.comments} />
+              {r.hasReceipt && <ReceiptIndicator />}
             </>
           }
           chip={<StatusChip status="declined" />}
@@ -202,6 +210,7 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
             <>
               <span>{t("feed.expired.sub", { date: formatDate(r.expiresAt) })}</span>
               <CommentCount n={r.comments} />
+              {r.hasReceipt && <ReceiptIndicator />}
             </>
           }
           chip={<StatusChip status="expired" />}
@@ -219,6 +228,7 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
             <>
               <span>{t("feed.failed.sub")}</span>
               <CommentCount n={r.comments} />
+              {r.hasReceipt && <ReceiptIndicator />}
             </>
           }
           chip={<StatusChip status="failed" />}

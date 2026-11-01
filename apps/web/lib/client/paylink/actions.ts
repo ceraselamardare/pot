@@ -5,7 +5,8 @@
 //  - claimLink: sign the claim with the #secret here, claim to the signed-in person (claim_link, relayer R14).
 //  - reclaimLink: the requester cancels; the money goes back to the Pot (reclaim_link, R15).
 //  - useLinkSecret / useClaimLink: the Share card's secret and the claim page's link.
-import { newOpKey } from "@pot/sdk"
+import { newOpKey, spendRef } from "@pot/sdk"
+import { receiptFingerprint, type SavedReceipt } from "@/lib/receipt-saved"
 import { useQuery } from "@tanstack/react-query"
 import { useMemo, useSyncExternalStore } from "react"
 import { requestSpend, type SpendResult } from "../actions"
@@ -30,6 +31,8 @@ export interface LinkSpendInput {
   note?: string
   /** who it's for, in the requester's words (optional) */
   label?: string
+  /** receipt details kept from "Scan receipt" (their fingerprint rides in the request) */
+  receipt?: SavedReceipt
 }
 
 export interface LinkSpendResult extends SpendResult {
@@ -40,7 +43,7 @@ export interface LinkSpendResult extends SpendResult {
 export async function requestLinkSpend(slug: string, input: LinkSpendInput, now: number = Date.now()): Promise<LinkSpendResult> {
   const key = await generateLinkKey()
   const label = cleanLabel(input.label ?? "") ?? undefined
-  const requestRef = IS_LIVE ? newOpKey() : undefined
+  const requestRef = IS_LIVE ? spendRef(newOpKey(), input.receipt ? receiptFingerprint(input.receipt) : null) : undefined
   const stored: StoredLink = { secret: key.secret, createdAt: now, ...(label ? { label } : {}) }
   // keep the secret before anything leaves this browser: a crash between the relay and its answer can't lose it
   if (requestRef) savePendingLink(slug, requestRef, stored)
@@ -53,6 +56,7 @@ export async function requestLinkSpend(slug: string, input: LinkSpendInput, now:
       receiver: LINK_RECEIVER,
       link: { pk: key.pk, expiresAt: linkExpiry(now), ...(label ? { label } : {}) },
       ...(requestRef ? { requestRef } : {}),
+      ...(input.receipt ? { receipt: input.receipt } : {}),
     })
   } catch (e) {
     if (requestRef) dropPending(slug, requestRef)

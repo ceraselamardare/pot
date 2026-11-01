@@ -12,7 +12,7 @@ import type { IntentType, RelaySignedReq } from "../types/api.ts"
 import type { AccountId, PublicKeyStr } from "../types/ids.ts"
 import type { ActionIntent } from "../types/intents.ts"
 import type { PotSigner, Prepared, Readiness, SignedPayload, SignerKind } from "../types/signer.ts"
-import { newOpKey } from "../validate.ts"
+import { newOpKey, opKeyOfRef } from "../validate.ts"
 import { buildDelegate, delegateActionBytes, signDelegate } from "./delegate.ts"
 import { DEFAULT_DELEGATE_TTL_BLOCKS, NonceTracker, maxBlockHeightFor } from "./nonce.ts"
 
@@ -89,7 +89,7 @@ export class KeyPairPotSigner implements PotSigner {
     if (!ak.value) throw new SignerNotReadyError("needs_device")
     const nonce = this.nonces.next(this.accountId, this.publicKey, ak.value.nonce)
     const maxBlockHeight = maxBlockHeightFor(ak.blockHeight, this.opts.ttlBlocks ?? DEFAULT_DELEGATE_TTL_BLOCKS)
-    const opId = intent.type === "request_spend" ? intent.requestRef : newOpKey()
+    const opId = intent.type === "request_spend" ? opKeyOfRef(intent.requestRef) : newOpKey()
     const delegateBytes = delegateActionBytes(buildDelegate({ senderId: this.accountId, publicKey: this.publicKey, call, nonce, maxBlockHeight }))
     return { intent, call, senderId: this.accountId, opId, nonce, maxBlockHeight, delegateBytes }
   }

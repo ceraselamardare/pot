@@ -6,7 +6,7 @@
 //  - Identity keys: contribution:<txHash> | request:<requestId> | join:<account> | created:<dao>.
 //  - Expiry is computed client-side (Sputnik sets it lazily).
 //  - The balance is usdc.ft_balance_of(dao), never balanceEstimate (it ignores close payouts).
-import { decodeCloseKind, decodeRulesKind, type Api, type ClosePreview, type GoalView, type MemberView, type PotView, type Proposal, type RequestView, type InviteView, type LinkView, type TrustView } from "@pot/sdk"
+import { decodeCloseKind, decodeRulesKind, receiptFingerprintOfRef, type Api, type ClosePreview, type GoalView, type MemberView, type PotView, type Proposal, type RequestView, type InviteView, type LinkView, type TrustView } from "@pot/sdk"
 import { t } from "@/i18n/t"
 import type { Micro } from "../money"
 import { getsBack } from "../rules"
@@ -159,6 +159,10 @@ export function liveRequestVM(b: LiveBundle, r: RequestView, ctx: LiveContext, p
     memberBudget: v.rules.memberBudget,
     balanceAfter: b.balance > r.amount ? b.balance - r.amount : 0n,
     comments: b.feed?.commentCounts?.[String(r.id)] ?? 0,
+    // saved receipt details: the fingerprint the request itself carries (its request_ref, read from the hub here,
+    // never from our server) and whether the server has details for it (the feed's public `receipts`)
+    fingerprint: receiptFingerprintOfRef(r.requestRef),
+    hasReceipt: !!b.feed?.receipts?.includes(String(r.id)),
     ...receiptOfRequest(b, r),
     ...(r.tier ? { tier: r.tier } : {}),
     ...(r.okBy ? { okBy: person(r.okBy) } : {}),

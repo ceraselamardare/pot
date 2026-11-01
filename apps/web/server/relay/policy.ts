@@ -5,7 +5,7 @@ import { RELAY_POLICY, RESERVED_SLUGS as SDK_RESERVED_SLUGS } from "@pot/sdk"
 import type { TestRule } from "../config"
 import { ApiError } from "../http/errors"
 import { parseEd25519PublicKey } from "../util/crypto"
-import { daoSlug, isAccountId, OPKEY_RE, SLUG_RE } from "../util/ids"
+import { daoSlug, isAccountId, SLUG_RE, SPEND_REF_RE } from "../util/ids"
 import type { DecodedAction, DecodedDelegate } from "./decode"
 import { CATEGORIES, type Family, type IntentType } from "./types"
 
@@ -372,7 +372,8 @@ function r3(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyC
   }
   if (!CATEGORIES.includes(o.category as (typeof CATEGORIES)[number])) deny("args_invalid", "category")
   const ref = o.request_ref
-  if (typeof ref !== "string" || !OPKEY_RE.test(ref)) return deny("args_invalid", "request_ref")
+  // an OpKey, + the saved receipt's 16-hex fingerprint when one is attached (32 = the hub's max, valid_request_ref)
+  if (typeof ref !== "string" || !SPEND_REF_RE.test(ref)) return deny("args_invalid", "request_ref")
   if (ctx.requestRef !== undefined && ctx.requestRef !== ref) deny("args_invalid", "requestRef", "mismatch")
   intentMust(ctx, "request_spend")
   return {

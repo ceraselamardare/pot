@@ -4,6 +4,10 @@
 // [Approve $300] is the sheet's one marigold; [Decline] stays secondary and expands an optional reason.
 // The meter ticks optimistically (< 100 ms) and reverts with a toast if the approval didn't go through.
 // A group approval gets a calm check and `approve.final`, never the burst (brand: one celebration only).
+// It is also every spend's details sheet (2026-11-02): instant spends, decided requests and links open it too, from
+// the feed, a person's activity, Requests and You. It says how the spend was approved (the Pot's rules / one OK by
+// X / the group) and where it is, links its explorer receipt, holds the comments, and shows the receipt details saved
+// with it (members only) with the fingerprint check (components/receipt/SavedReceipt.tsx).
 import { Check, Clock, Hand, Hourglass, X } from "lucide-react"
 import { useReducer, useState } from "react"
 import { createPortal } from "react-dom"
@@ -18,6 +22,9 @@ import { ApprovalTimeline } from "@/components/pot/RequestCard"
 import { Button } from "@/components/ui/button"
 import { Sheet } from "@/components/sheets/Sheet"
 import { ReceiptLink } from "@/components/receipt/ReceiptLink"
+import { SpendReceiptSection } from "@/components/receipt/SavedReceipt"
+import { RecordStatusChip } from "@/components/record/RecordStatusChip"
+import { approvedByOf, approvedWords, recordStatusOf } from "@/lib/client/record"
 import { t, tLines, type MessageKey } from "@/i18n/t"
 import { announce, useOnline } from "@/lib/client/browser"
 import { canGiveOk, okRequest, vote } from "@/lib/client/actions"
@@ -53,7 +60,19 @@ export function ApproveSheet({ pot, requestId, onClose }: { pot: PotVM; requestI
   if (requestId !== null && requestId !== lastId) setLastId(requestId)
   const r = useRequest(pot.slug, requestId ?? lastId)
   const req = r ?? null
-  const title = req ? t("approve.title", { name: req.requester.name, amount: formatUsd(req.amount, "whole") }) : t("approve.dialog.label")
+  // "Sam asks for $300" while it waits, "Sam asked for $300" once decided; fixed for the sheet's life, so approving
+  // in it doesn't rename the open dialog
+  const [asked, setAsked] = useState<{ id: number; waiting: boolean } | null>(null)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open) setAsked(null) // a new opening reads the status afresh
+  }
+  if (req && (asked === null || asked.id !== req.id)) setAsked({ id: req.id, waiting: req.status === "needs" })
+  const waiting = asked && req && asked.id === req.id ? asked.waiting : req?.status === "needs"
+  const title = req
+    ? t(waiting ? "approve.title" : "details.title", { name: req.requester.name, amount: formatUsd(req.amount, "whole") })
+    : t("details.dialog.label")
   return (
     // the decision buttons live in the sheet's footer (outside the scrolling body, so the comment thread at the end of
     // the body is never under them); ApproveBody portals them there to keep its own state
@@ -158,18 +177,33 @@ function ApproveBody({ pot, r, onClose, actions }: { pot: PotVM; r: RequestVM; o
       {r.status === "needs" && <p className="rounded-md bg-surface-sunken p-3 text-body text-ink">{oneOk && r.declines.length === 0 ? t("approve.why.one_ok", { name: r.requester.name }) : whyText(r)}</p>}
       {oneOk && r.declines.length === 0 && r.status === "needs" ? (
         <OneOkLine r={r} potName={pot.name} />
-      ) : (
+      ) : r.path === "instant" ? null : (
+        // an instant spend had no one to ask: the Pot's rules approved it (the status line and "Approved" say so)
         <ApprovalTimeline r={r} me={me} optimistic={phase.tag === "voting" && phase.v === "Approve"} />
       )}
       {/* pay by link (hub 1.1.0): where the link is; the requester shares it again or cancels it */}
       {r.link && <LinkPanel pot={pot} r={r} />}
-      <dl className="flex flex-col divide-y divide-line rounded-md border border-line">
-        <div className="flex min-h-12 items-center justify-between gap-3 px-3">
-          <dt className="text-body-sm text-ink-muted">{t("approve.after.label")}</dt>
+      <dl className="flex flex-col divide-y divide-line rounded-md border border-line" data-details-facts>
+        <div className="flex min-h-12 items-center justify-between gap-3 px-3 py-1.5">
+          <dt className="text-body-sm text-ink-muted">{t("details.status.label")}</dt>
           <dd>
-            <MoneyText micro={r.balanceAfter} className="text-ink" />
+            <RecordStatusChip s={recordStatusOf(r)} />
           </dd>
         </div>
+        <div className="flex min-h-12 items-center justify-between gap-3 px-3 py-1.5">
+          <dt className="text-body-sm text-ink-muted">{t("details.approved.label")}</dt>
+          <dd className="text-right text-label text-ink" data-details-approved>
+            {approvedWords({ approvedBy: approvedByOf(r), okBy: r.okBy ?? null })}
+          </dd>
+        </div>
+        {r.status === "needs" && (
+          <div className="flex min-h-12 items-center justify-between gap-3 px-3">
+            <dt className="text-body-sm text-ink-muted">{t("approve.after.label")}</dt>
+            <dd>
+              <MoneyText micro={r.balanceAfter} className="text-ink" />
+            </dd>
+          </div>
+        )}
         {r.status === "needs" && (
           <div className="flex min-h-12 items-center justify-between gap-3 px-3">
             <dt className="text-body-sm text-ink-muted">{t("approve.expires.label")}</dt>
@@ -202,6 +236,9 @@ function ApproveBody({ pot, r, onClose, actions }: { pot: PotVM; r: RequestVM; o
           />
         </label>
       )}
+
+      {/* the receipt details saved with the spend (members only) and the fingerprint check */}
+      <SpendReceiptSection pot={pot} r={r} />
 
       {/* the group's thread about this spend (off-chain); its [Send] is secondary, so Approve stays the one marigold */}
       <RequestComments pot={pot} r={r} />
@@ -297,6 +334,10 @@ function statusLine(r: RequestVM, phase: Phase, now: number, me: string | null) 
     return { icon: ok, title: t("approve.already", { relativeTime: ago(now, now) }), body: null }
   }
   switch (r.status) {
+    case "instant": {
+      const [title, body] = r.receiver.id === me ? tLines("details.instant.you", { amount: amountWhole }) : tLines("details.instant", { amount: amountWhole, name: r.receiver.name })
+      return { icon: ok, title, body }
+    }
     case "approved": {
       const [title, body] = r.okBy
         ? tLines("approve.decided.ok", { okName: r.okBy.id === me ? t("feed.you") : r.okBy.name, amount: amountWhole, name: r.receiver.name })

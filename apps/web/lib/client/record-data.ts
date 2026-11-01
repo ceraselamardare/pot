@@ -128,8 +128,9 @@ function useLiveRecord(slug: string): RecordState {
     }
     const txByRef: Record<string, string> = {}
     for (const it of feed?.items ?? []) if (it.type === "request" && it.requestRef && it.txHash) txByRef[it.requestRef] = it.txHash
-    const rows = rowsFromEntries(entries, person, { notes: feed?.memos ?? {}, txByRef })
-    return { state: "ready", slug, potName: q.data.potName, emoji: q.data.emoji, cover: coverOf(slug, feed?.pot.gradient), rows, member: !!feed }
+    const rows = rowsFromEntries(entries, person, { notes: feed?.memos ?? {}, txByRef, receipts: feed?.receipts ?? [] })
+    // the feed answers everyone; only members get its memos (M-7), so that's what says the visitor is one
+    return { state: "ready", slug, potName: q.data.potName, emoji: q.data.emoji, cover: coverOf(slug, feed?.pot.gradient), rows, member: !!feed && feed.memos !== undefined }
   }, [q.isError, q.data, slug])
 }
 

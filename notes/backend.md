@@ -479,3 +479,55 @@ The tail is the per-persona queue (10 sessions share 3 personas; a persona signs
   mock rate + `receipt_rate` hook). Opt-in `server/features/fx.live.test.ts` (`LIVE_FX=1`), run once on 2026-11-01:
   ECB EUR→USD **1.1172** dated **2026-10-30** (a Friday; Nov 1 is a Sunday) → €42.50 ≈ **$47.48**; fallback 1.11662
   dated 2026-11-01 (€42.50 ≈ $47.46), AED 0.272294.
+
+### 2026-11-02: receipt details saved with a spend, with a fingerprint on the request (no contract change)
+- **What is saved (never the photo, D-61):** `lib/receipt-saved.ts` `SavedReceipt` v1 = what the person kept from
+  "Scan receipt": `merchant`, `date`, `currency`, `totalCents`, `taxCents`, `tipCents`, `items[{name, qty, amountCents}]`,
+  `fx` (`from`, `amountCents`, `usdCents`, `rate` as its shown decimal string, `rateDate`, `source`) or null, `proof`
+  (`verifyUrl` incl. the `#receipt=` fragment, `reply`, `model`) or null, `source` (`near-ai` | `mock`), `readAt` (ISO
+  ms) and a random 128-bit `nonce`. Strict zod (`savedReceiptSchema`, no extra keys) + `validateSavedReceipt` (strings
+  must already be `cleanLine`d, real days not in the future, the conversion's arithmetic = `convertCents`, `rate` =
+  `formatRate`, the proof link = `https://cloud.near.ai/verify?model=<model>[#receipt=<b64url>]` ≤ 4 KB, `readAt` within
+  30 days, canonical form ≤ 16 KB). Same checks in the server, the mock world and the tests.
+- **The fingerprint, on chain:** `canonicalJson` (keys sorted at every level, no whitespace, nulls kept, integer cents,
+  the rate as a string) → SHA-256 → the first **16 hex chars** are appended to the spend's **`request_ref`**:
+  `request_ref = <16-char OpKey><16 hex>` = **32 chars**, exactly the hub's `valid_request_ref` limit (8-32
+  `[a-z0-9]`), so **no contract change**. The hub keeps it on the request (`get_requests` / `get_record` `request_ref`),
+  in the DAO proposal's description (`Pot request #N: <category> (ref <32 chars>)`, also for instant spends, whose
+  proposal the hub creates and approves) and in the `spend_requested` event. Anyone can read it there; the `nonce` stops
+  the public fingerprint from confirming a guess of what was bought. `@pot/sdk`: `spendRef`, `opKeyOfRef`,
+  `receiptFingerprintOfRef`, `isSpendRef`, `RECEIPT_FP_HEX` (validate.ts); the relay's idempotency key stays the OpKey
+  (`opKeyOfRef`, in the sdk signer and `lib/client/live/signing.ts`, `near-connect/wallet.ts`).
+- **Accepting the longer ref:** `SPEND_REF_RE` (`server/util/ids.ts`) in relay R3 (`request_ref`), the relay body's
+  `requestRef` (`signedRelayReq`), and notes (`memo` / `link_label` stay keyed by the full on-chain ref); the sdk's
+  `MockChain` too. A 16-char ref works as before. +16 bytes per request on the hub (its own request budget) and +16 in
+  the proposal description (the hub's prepay is computed from the description's length).
+- **Table** `spend_receipt` (migration **`0004_spend_receipt.sql`**, additive): PK (`pot_id`, `request_id`),
+  `requester_account`, `data` jsonb, `fingerprint` (full SHA-256 hex, CHECK `^[0-9a-f]{64}$`), `created_at`, CHECK
+  `octet_length(data::text) <= 20000`, FK `pot`.
+- **Routes** `app/api/pots/[pot]/requests/[id]/receipt/route.ts` (`server/features/receipts/saved.ts`):
+  - `POST` `{receipt}` (strict; body read as a stream, ≤ 24 KB): signed in with an active device, CSRF, a member
+    (hub.get_members), the request exists (hub.get_requests; 404 `not_found` field `id` while the view lags, the client
+    retries 1.5/3/5 s), **only its requester** (403 `action_not_allowed` `not_requester`), the request carries a
+    fingerprint (422 `payload_mismatch` `no_fingerprint`) and the server's SHA-256 starts with it (422
+    `payload_mismatch` `receipt_mismatch`), **once** (the same details replay 200; others 409 `idempotency_conflict`
+    `already_saved`). Quotas `user_receipt_save_burst` 10/min, `user_receipt_saves` 60/day. 201 → `SpendReceiptRes`.
+  - `GET`: members only → `{pot, hubRequestId, receipt, fingerprint, savedAt}`; 404 field `receipt` when none.
+  - The feed adds **`receipts: string[]`** (hub request ids with saved details) for **everyone** (it only says one is
+    attached: the public record's "Receipt attached"); never fails the feed. `Api.FeedRes.receipts` in the sdk.
+- **Client two-phase** (`lib/client/actions.ts` requestSpend + `lib/client/receipts/saved.ts`): the details are fixed
+  before sending (the sheet keeps `readAt` + `nonce` with the reading, `keptReceipt`), kept on the device in
+  `localStorage['pot.receipts.pending.v1']` keyed by Pot + fingerprint, the request goes out with `spendRef(OpKey, fp)`,
+  then `attachReceipt(slug, id)` posts them once the id is known (an instant spend's id comes from the relay's answer).
+  A failure keeps them pending (toast "…weren't saved yet. Open the spend to try again.") and the details sheet retries;
+  permanent errors (mismatch, not mine, bad body, not a member) drop them. Pay-by-link spends carry them the same way.
+- **Tests:** `server/features/receipts/saved.test.ts` (20, private DB `pot_details`): save once/replay/key order, edits →
+  `receipt_mismatch`, `no_fingerprint`, `not_requester`, `idempotency_conflict`, outsiders / unknown Pot / bad ids /
+  missing request, 10 bad bodies (an image field, floats, control chars, 31 items, Feb 30, wrong arithmetic, a foreign
+  proof link, a future reading…), the `{receipt}`-only body, burst + daily quotas, members read / visitors refused, the
+  feed's public `receipts`. `lib/receipt-saved.test.ts` (35: canonical form, a pinned SHA-256 computed independently with
+  node:crypto, stability across key orders, the 32-char ref, 25 refusals, size). `server/relay/policy.test.ts` +3 (R3 with
+  a fingerprint; not hex; too short). `packages/pot-sdk/src/encoding.test.ts` +1.
+- **Needs a testnet run (human OK):** `e2e/testnet/spend-details.testnet.ts` (written, not run; header has the command:
+  private DB with 0004, `NEAR_AI_RECEIPTS_MODE=mock`). Apply **0004** to the local `pot` DB (and preview/prod Neon) before
+  deploying this web build.

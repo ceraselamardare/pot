@@ -15,6 +15,7 @@ import { b64url, fromB64url } from "../util/crypto"
 import { daoSlug, SLUG_RE } from "../util/ids"
 import { commentCounts } from "./comments"
 import { linkEnrichment } from "./paylink"
+import { receiptIds } from "./receipts/saved"
 import { ensurePot, isMember } from "./notes"
 import { avatarOrNull } from "@/lib/avatars"
 
@@ -120,6 +121,13 @@ export async function getFeed(
     const last = page[page.length - 1]!
     body.nextCursor = encodeCursor(last.at, last.id)
   }
+
+  // saved receipt details (spend_receipt): which spends have one. Everyone sees that much (the public record's
+  // "Receipt attached"); the details themselves are members only (GET …/requests/[id]/receipt). Never fails the feed.
+  body.receipts = await receiptIds(db, potId).catch((e: unknown) => {
+    console.error(JSON.stringify({ level: "error", where: "feed.receipts", err: String(e).slice(0, 200) }))
+    return []
+  })
 
   // profiles: members only (rev4 M-7). Every active (or joining) member is included, not just the actors on
   // this page: the creator often has no item (wave 3, request 3).
