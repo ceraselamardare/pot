@@ -22,13 +22,16 @@ import { t, type MessageKey } from "@/i18n/t"
 import { proposeRules, setRules, voteRules } from "@/lib/client/actions"
 import { announce, useOnline } from "@/lib/client/browser"
 import { ActionError } from "@/lib/client/errors"
-import type { PotVM, RulesChangeVM } from "@/lib/client/mock/types"
+import type { ExtrasVM, PotVM, RulesChangeVM } from "@/lib/client/mock/types"
+import { currentExtras } from "@/lib/client/wave4-form"
 import { formatUsd, parseKeypad, toKeypad, type Micro } from "@/lib/client/money"
 import type { Rules } from "@/lib/client/rules"
 import { useNow } from "@/lib/client/time"
 import { cn } from "@/lib/client/cn"
 
 type Field = "instantCap" | "memberBudget"
+/** hub 1.1.0: the one-OK ceiling is edited like the amounts (keypad), trust grows with a switch */
+type EditField = Field | "oneOkCap"
 type ErrKey = "rules.change.error" | "rules.change.in_flight" | "rules.change.closing" | "relayer.cap"
 type Phase =
   | { tag: "idle" }
@@ -81,7 +84,7 @@ export function RulesSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
   return (
     <Sheet open={open} onClose={close} title={title} label={title} footer={undefined}>
       {mode === "change" ? (
-        <ChangeFace key={`${pot.rules.instantCap}-${pot.rules.memberBudget}`} pot={pot} phase={phase} dispatch={dispatch} />
+        <ChangeFace key={`${pot.rules.instantCap}-${pot.rules.memberBudget}-${pot.extras?.oneOkCap ?? 0n}-${pot.extras?.trust ?? false}`} pot={pot} phase={phase} dispatch={dispatch} />
       ) : mode === "review" && change ? (
         <ReviewFace pot={pot} change={change} phase={phase} dispatch={dispatch} />
       ) : (
@@ -93,28 +96,37 @@ export function RulesSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
 
 function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispatch: (e: Ev) => void }) {
   const online = useOnline()
-  const [values, setValues] = useState<Record<Field, Micro>>({ instantCap: pot.rules.instantCap, memberBudget: pot.rules.memberBudget })
-  const [field, setField] = useState<Field>("instantCap")
+  const curOneOk = pot.extras?.oneOkCap ?? 0n
+  const curTrust = pot.extras?.trust ?? false
+  const [values, setValues] = useState<Record<EditField, Micro>>({ instantCap: pot.rules.instantCap, memberBudget: pot.rules.memberBudget, oneOkCap: curOneOk })
+  const [trust, setTrust] = useState(curTrust)
+  const [field, setField] = useState<EditField>("instantCap")
   const [fresh, setFresh] = useState(true)
   const sole = pot.n === 1
   const changed = changedFields(pot.rules, values)
+  // hub 1.1.0 extras: sent only when they change (absent = keep the Pot's current ones, goal included)
+  const extrasChanged = values.oneOkCap !== curOneOk || trust !== curTrust
+  const oneOkBelow = values.oneOkCap > 0n && values.oneOkCap < values.instantCap
   const zero = values.instantCap <= 0n || values.memberBudget <= 0n
+  const nothing = changed.length === 0 && !extrasChanged
   const busy = phase.tag === "busy"
-  const next: Rules = { ...pot.rules, ...values }
+  const next: Rules = { ...pot.rules, instantCap: values.instantCap, memberBudget: values.memberBudget }
   const s = ruleSentences(next, pot.k, pot.n)
-  const label = (f: Field) => t(f === "instantCap" ? "rules.change.instant.label" : "rules.change.budget.label")
+  const label = (f: EditField) => t(f === "instantCap" ? "rules.change.instant.label" : f === "memberBudget" ? "rules.change.budget.label" : "rules.change.oneok.label")
+  const shown = (f: EditField) => (f === "oneOkCap" && values[f] === 0n ? t("rules.change.oneok.off") : formatUsd(values[f], "whole"))
+  const input = { instantCap: values.instantCap, memberBudget: values.memberBudget, ...(extrasChanged ? { extras: { ...currentExtras(pot), trust, oneOkCap: values.oneOkCap } } : {}) }
 
   const submit = async () => {
-    if (!online || busy || zero || changed.length === 0) return
+    if (!online || busy || zero || nothing || oneOkBelow) return
     dispatch({ type: "set", phase: { tag: "busy", what: "ask" } })
     try {
       if (sole) {
-        await setRules(pot, values)
+        await setRules(pot, input)
         announce(t("rules.change.applied"))
         dispatch({ type: "set", phase: { tag: "applied", key: "rules.change.applied", title: t("rules.change.title.sole", { potName: pot.name }) } })
         return
       }
-      const r = await proposeRules(pot, values)
+      const r = await proposeRules(pot, input)
       if (r.status === "approved") {
         announce(t("approve.rules.final"))
         dispatch({ type: "set", phase: { tag: "applied", key: "approve.rules.final", title: t("rules.change.title") } })
@@ -131,7 +143,7 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
   return (
     <div className="flex flex-col gap-4 pt-1" data-rules-sheet="change">
       <div role="radiogroup" aria-label={t("rules.change.title")} className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-        {(["instantCap", "memberBudget"] as const).map((f) => {
+        {(["instantCap", "memberBudget", "oneOkCap"] as const).map((f) => {
           const on = f === field
           return (
             <button
@@ -139,7 +151,7 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={t("rules.change.edit", { label: label(f), amount: formatUsd(values[f], "whole") })}
+              aria-label={t("rules.change.edit", { label: label(f), amount: shown(f) })}
               onClick={() => {
                 setField(f)
                 setFresh(true)
@@ -154,17 +166,23 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
                 {on && <Check aria-hidden className="size-4" strokeWidth={2.5} />}
                 {label(f)}
               </span>
-              <MoneyText micro={values[f]} variant="title" style="whole" className="text-ink" />
-              {values[f] !== pot.rules[f] && (
+              {f === "oneOkCap" && values[f] === 0n ? (
+                <span className="font-display text-title text-ink">{t("rules.change.oneok.off")}</span>
+              ) : (
+                <MoneyText micro={values[f]} variant="title" style="whole" className="text-ink" />
+              )}
+              {values[f] !== (f === "oneOkCap" ? curOneOk : pot.rules[f]) && (
                 <span className="text-body-sm text-ink-muted">
-                  <MoneyText micro={pot.rules[f]} variant="inline" style="whole" strike />
+                  <MoneyText micro={f === "oneOkCap" ? curOneOk : pot.rules[f]} variant="inline" style="whole" strike />
                 </span>
               )}
             </button>
           )
         })}
       </div>
-      <p className="text-body-sm text-ink-muted">{t(field === "instantCap" ? "rules.change.instant.help" : "rules.change.budget.help")}</p>
+      <p className="text-body-sm text-ink-muted">
+        {t(field === "instantCap" ? "rules.change.instant.help" : field === "memberBudget" ? "rules.change.budget.help" : "rules.change.oneok.help")}
+      </p>
       <Keypad
         value={fresh ? "" : toKeypad(values[field])}
         onChange={(v) => {
@@ -175,6 +193,32 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
         disabled={busy}
       />
 
+      {/* hub 1.1.0: earned trust (a switch: there's no amount to type) */}
+      <div className="flex items-center justify-between gap-3 rounded-md border border-line-strong p-3" data-rules-trust>
+        <div className="min-w-0">
+          <span id="rules-trust-label" className="text-label text-ink">
+            {t("rules.change.trust.label")}
+          </span>
+          <p id="rules-trust-hint" className="text-body-sm text-ink-muted">
+            {t("rules.change.trust.hint")}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={trust}
+          aria-labelledby="rules-trust-label"
+          aria-describedby="rules-trust-hint"
+          disabled={busy}
+          onClick={() => setTrust((x) => !x)}
+          className="grid h-11 w-14 shrink-0 place-items-center"
+        >
+          <span className={cn("relative h-7 w-12 rounded-pill transition-colors duration-200", trust ? "bg-ink" : "bg-line-strong")}>
+            <span className={cn("absolute top-0.5 left-0.5 size-6 rounded-pill bg-surface shadow transition-transform duration-200 motion-reduce:transition-none", trust && "translate-x-5")} />
+          </span>
+        </button>
+      </div>
+
       <section aria-labelledby="rules-preview-h" className="rounded-md bg-surface-sunken p-3">
         <h3 id="rules-preview-h" className="text-label text-ink">
           {t("rules.change.preview")}
@@ -182,6 +226,12 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
         <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-body text-ink">
           <li className={cn(changed.includes("instantCap") && "font-semibold")}>{s.instant}</li>
           <li className={cn(changed.includes("memberBudget") && "font-semibold")}>{s.budget}</li>
+          {(values.oneOkCap > 0n || values.oneOkCap !== curOneOk) && (
+            <li className={cn(values.oneOkCap !== curOneOk && "font-semibold")}>{extrasLine({ trust, oneOkCap: values.oneOkCap, links: false }, "oneOk", values.instantCap)}</li>
+          )}
+          {(trust || trust !== curTrust) && (
+            <li className={cn(trust !== curTrust && "font-semibold")}>{extrasLine({ trust, oneOkCap: values.oneOkCap, links: false }, "trust", values.instantCap)}</li>
+          )}
         </ul>
         <p className="mt-2 text-body-sm text-ink-muted">{t("rules.change.applies_note")}</p>
       </section>
@@ -194,13 +244,21 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
           </p>
         )}
         <p className="text-body-sm text-ink-muted" aria-live="polite">
-          {zero ? t("rules.change.zero") : changed.length === 0 ? t("rules.change.same") : sole ? t("rules.change.sole_note") : t("rules.change.needs", { k: pot.k, n: pot.n })}
+          {zero
+            ? t("rules.change.zero")
+            : oneOkBelow
+              ? t("rules.change.oneok.below")
+              : nothing
+                ? t("rules.change.same")
+                : sole
+                  ? t("rules.change.sole_note")
+                  : t("rules.change.needs", { k: pot.k, n: pot.n })}
         </p>
         <Button
           variant="primary"
           className="w-full"
           onClick={submit}
-          disabled={busy || zero || changed.length === 0}
+          disabled={busy || zero || nothing || oneOkBelow}
           aria-disabled={!online || undefined}
           aria-busy={busy || undefined}
           data-rules-cta
@@ -212,9 +270,16 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
   )
 }
 
+/** hub 1.1.0: the one-OK / trust sentence for a set of extras. */
+function extrasLine(x: ExtrasVM, which: "oneOk" | "trust", instantCap: Micro): string {
+  if (which === "oneOk") return x.oneOkCap > 0n ? t("rules.change.oneok.on", { oneOk: formatUsd(x.oneOkCap, "whole") }) : t("rules.change.one_ok.off")
+  return x.trust ? t("rules.trust", { step: 3, instantLimit: formatUsd(instantCap, "whole"), max: formatUsd(instantCap * 3n, "whole") }) : t("rules.change.trust.off")
+}
+
 function Diff({ change }: { change: RulesChangeVM }) {
   const fields = changedFields(change.from, change.to)
-  const shown = fields.length ? fields : (["instantCap", "memberBudget"] as const)
+  const extras = change.toExtras && change.fromExtras ? (["oneOk", "trust"] as const).filter((w) => (w === "oneOk" ? change.fromExtras!.oneOkCap !== change.toExtras!.oneOkCap : change.fromExtras!.trust !== change.toExtras!.trust)) : []
+  const shown = fields.length || extras.length ? fields : (["instantCap", "memberBudget"] as const)
   const before = ruleSentences(change.from, change.k, change.n)
   const after = ruleSentences(change.to, change.k, change.n)
   const pick = (x: ReturnType<typeof ruleSentences>, f: Field) => (f === "instantCap" ? x.instant : x.budget)
@@ -230,6 +295,19 @@ function Diff({ change }: { change: RulesChangeVM }) {
           <dd className="text-body text-ink">
             <span className="mr-1 font-semibold">{t("approve.rules.new")}</span>
             {pick(after, f)}
+          </dd>
+        </div>
+      ))}
+      {extras.map((w) => (
+        <div key={w} className="flex flex-col gap-1 rounded-md border border-line p-3" data-rules-diff-extra={w}>
+          <dt className="sr-only">{w === "oneOk" ? t("rules.change.oneok.label") : t("rules.change.trust.label")}</dt>
+          <dd className="text-body-sm text-ink-muted">
+            <span className="mr-1 font-semibold">{t("approve.rules.now")}</span>
+            <span className="line-through">{extrasLine(change.fromExtras!, w, change.from.instantCap)}</span>
+          </dd>
+          <dd className="text-body text-ink">
+            <span className="mr-1 font-semibold">{t("approve.rules.new")}</span>
+            {extrasLine(change.toExtras!, w, change.to.instantCap)}
           </dd>
         </div>
       ))}

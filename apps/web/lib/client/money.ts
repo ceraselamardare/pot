@@ -45,6 +45,10 @@ export function formatSigned(m: Micro, sign: "in" | "out"): string {
 
 export const KEYPAD_MAX_INT_DIGITS = 6
 
+/** One add is at most $10,000: the relayer's R1 refuses more (server/relay/policy.ts MAX_CONTRIBUTION), so the Add
+ *  sheet stops there instead of sending a delegate that comes back 422. */
+export const MAX_ADD: Micro = 10_000_000_000n
+
 /** Apply one key ("0"-"9", ".", "del") to the keypad string. Returns the same string when the key is refused. */
 export function keypadPress(value: string, key: string): string {
   if (key === "del") return value.slice(0, -1)

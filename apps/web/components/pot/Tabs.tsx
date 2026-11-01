@@ -8,7 +8,10 @@
 // one marigold) opens the change sheet; while a change waits (≤ 1 per Pot, ERR_RULES_PENDING) a waiting card with
 // [Review] replaces it. A sole member changes the rules directly (set_rules).
 import { HUB_LIMITS } from "@pot/sdk"
-import { Clock, Hourglass, Undo2, UserCheck, UserRound, Users, UsersRound, Zap } from "lucide-react"
+import { Clock, Flag, Hand, Hourglass, ListChecks, Sprout, Undo2, UserCheck, UserRound, Users, UsersRound, Zap } from "lucide-react"
+import Link from "next/link"
+import { MyTrustCard, TrustBadge, trustWord } from "@/components/wave4/Trust"
+import { formatDate } from "@/lib/client/time"
 import { useState } from "react"
 import { Avatar } from "@/components/pot/Avatar"
 import { MoneyText } from "@/components/money/MoneyText"
@@ -59,6 +62,8 @@ export function MembersTab({ pot, compact }: { pot: PotVM; compact?: boolean }) 
       <ul className="flex flex-col gap-2">
         {pot.members.map((m) => {
           const name = m.isMe ? t("members.you", { name: m.person.name }) : m.person.name
+          // hub 1.1.0: earned trust as a badge (icon + word) and what they can spend without asking
+          const trust = m.trust?.enabled ? m.trust : null
           const sentence = `${name}. ${t("members.row", {
             contributed: formatUsd(m.contributed),
             spentShare: formatUsd(m.spentShare),
@@ -70,16 +75,24 @@ export function MembersTab({ pot, compact }: { pot: PotVM; compact?: boolean }) 
               <button
                 type="button"
                 onClick={() => openSheet("person", { who: m.person.id })}
-                aria-label={`${name}. ${t("members.activity.hint")}`}
+                aria-label={trust ? `${name}, ${trustWord(trust.level)}. ${t("members.activity.hint")}` : `${name}. ${t("members.activity.hint")}`}
                 data-member={m.person.id}
                 className="flex min-h-16 w-full items-center gap-3 rounded-md bg-surface p-3 text-left hover:bg-surface-sunken"
               >
               <Avatar person={m.person} size="md" />
               <div className="min-w-0 flex-1">
-                <p className="text-label text-ink">{name}</p>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label text-ink">
+                  {name}
+                  {trust && <TrustBadge trust={trust} />}
+                </p>
                 <p className="text-body-sm text-ink-muted tabular-nums">
                   {t("members.row.short", { contributed: formatUsd(m.contributed), spentShare: formatUsd(m.spentShare) })}
                 </p>
+                {trust && (
+                  <p className="text-body-sm text-ink-muted tabular-nums" data-member-up-to>
+                    {t("trust.member.up_to", { amount: formatUsd(trust.instantUpTo, "whole") })}
+                  </p>
+                )}
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-body-sm text-ink-muted">{t("members.gets_back")}</p>
@@ -141,6 +154,21 @@ export function ruleSentences(rules: Rules, k: number, n: number) {
   }
 }
 
+/** hub 1.1.0 rule sentences (null = that rule is off): earned trust, the one-OK ceiling, the goal with a date. */
+export function extrasSentences(pot: Pick<PotVM, "rules" | "extras" | "goalDetail">) {
+  const x = pot.extras
+  const g = pot.goalDetail
+  return {
+    trust: x?.trust ? t("rules.trust", { step: 3, instantLimit: formatUsd(pot.rules.instantCap, "whole"), max: formatUsd(pot.rules.instantCap * 3n, "whole") }) : null,
+    oneOk: x && x.oneOkCap > 0n ? t("rules.one_ok", { oneOk: formatUsd(x.oneOkCap, "whole") }) : null,
+    goal: g
+      ? g.allOrNothing
+        ? t("rules.goal.aon", { amount: formatUsd(g.amount, "whole"), date: formatDate(g.deadline) })
+        : t("rules.goal", { amount: formatUsd(g.amount, "whole"), date: formatDate(g.deadline) })
+      : null,
+  }
+}
+
 export function RulesTab({ pot }: { pot: PotVM }) {
   const used = pot.me?.spentInstant ?? 0n
   const budget = pot.rules.memberBudget
@@ -150,9 +178,13 @@ export function RulesTab({ pot }: { pot: PotVM }) {
   const named = pot.rules.instantPayees === "members_and_allowlist" ? pot.rules.payeeAllowlist : []
   // the Pot's own rules (no template names): with a $0 instant limit the "bigger spends" and per-person rows
   // say nothing new, so the first row carries the approvals
+  const extra = extrasSentences(pot)
   const rows: { icon: typeof Zap; text: string; meter?: boolean; list?: string[] }[] = [
     { icon: Zap, text: sentences.instant },
+    ...(extra.trust ? [{ icon: Sprout, text: extra.trust }] : []),
+    ...(extra.oneOk ? [{ icon: Hand, text: extra.oneOk }] : []),
     ...(none ? [] : [{ icon: Users, text: sentences.threshold }, { icon: UserRound, text: sentences.budget, meter: true }]),
+    ...(extra.goal ? [{ icon: Flag, text: extra.goal }] : []),
     { icon: UserCheck, text: sentences.recipients, list: named.length ? named : undefined },
     { icon: Hourglass, text: sentences.expiry },
     { icon: Undo2, text: sentences.leftovers },
@@ -163,6 +195,8 @@ export function RulesTab({ pot }: { pot: PotVM }) {
       <h2 id="rules-h" className="font-display text-heading text-ink">
         {t("rules.title", { potName: pot.name })}
       </h2>
+      {/* hub 1.1.0: what I can spend without asking, and how it grows */}
+      {pot.me?.trust?.enabled && <MyTrustCard trust={pot.me.trust} />}
       <ul className="flex flex-col gap-2" data-rules-list>
         {rows.map(({ icon: Icon, text, meter, list }) => (
           <li key={text} className="flex gap-3 rounded-md bg-surface p-4">
@@ -191,6 +225,15 @@ export function RulesTab({ pot }: { pot: PotVM }) {
       {pot.me && pot.me.contributed === 0n && <p className="text-body-sm text-ink-muted">{t("rules.new_member")}</p>}
       <p className="text-body-sm text-ink-muted">{t("rules.footer", { creator: pot.creator.name })}</p>
       <RulesChange pot={pot} />
+      {/* hub 1.1.0: the public record of every spend (a page anyone with the link can read) */}
+      <Link
+        href={`/p/${pot.slug}/record`}
+        className="-my-1 inline-flex min-h-11 items-center gap-2 self-start rounded-sm text-label text-link underline-offset-4 hover:underline"
+        data-record-link
+      >
+        <ListChecks aria-hidden className="size-5" strokeWidth={2} />
+        {t("rules.record")}
+      </Link>
       {/* the Pot's own account on the explorer: quiet, for people who want to check (never marigold) */}
       <p className="-mt-1">
         <ExplorerAccountLink account={daoOf(pot.slug)} label={t("pot.explorer.label", { potName: pot.name })} />

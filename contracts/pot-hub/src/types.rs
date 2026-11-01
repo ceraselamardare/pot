@@ -9,12 +9,14 @@ use near_sdk::{near, AccountId, BorshStorageKey, NearToken};
 // Constants (contracts-spec §2.3)
 // ---------------------------------------------------------------------------------------------
 
-pub const VERSION: &str = "1.0.0";
+pub const VERSION: &str = "1.1.0";
 pub const ROLE_MEMBER: &str = "member";
 pub const ROLE_RULEBOT: &str = "rulebot";
 pub const PROPOSAL_PERIOD_NS: u64 = 604_800_000_000_000; // 7 days (D-04)
 pub const PROPOSAL_PERIOD_MS: u64 = 604_800_000;
 pub const JOIN_DOMAIN: &str = "pot-join:v1";
+/// Pay-by-link claims sign `pot-claim:v1:<hub>:<dao>:<request_id>:<receiver>` (wave 4).
+pub const CLAIM_DOMAIN: &str = "pot-claim:v1";
 pub const MIN_SLUG_LEN: usize = 2;
 pub const MAX_SLUG_LEN: usize = 32;
 pub const MAX_ACCOUNT_LEN: usize = 64;
@@ -53,11 +55,35 @@ pub const PREPAY_EXTRA_VOTE_BYTES: u64 = 100;
 // growth (CALIBRATION.md) and these keep ≥ 1.5× margin.
 pub const STATE_BYTES_CREATE: u64 = 1_500;
 pub const STATE_BYTES_JOIN: u64 = 700;
-pub const STATE_BYTES_REQUEST: u64 = 600;
+pub const STATE_BYTES_REQUEST: u64 = 800; // wave 4: + RequestExt (tier, link) ≈ 150 B
 pub const STATE_BYTES_INVITE: u64 = 300;
 pub const STATE_BYTES_RULES: u64 = 200;
 pub const STATE_BYTES_CLOSE_BASE: u64 = 400;
 pub const STATE_BYTES_CLOSE_PER_PAYEE: u64 = 110;
+
+// Wave 4: earned trust, one-OK tier, pay by link, all-or-nothing goal (notes/contracts-wave4.md).
+/// Qualifying settled spends per trust level.
+pub const TRUST_STEP: u8 = 3;
+pub const TRUST_MAX_LEVEL: u8 = 2;
+/// A settled spend counts toward the next level only if `amount × 10 ≥ base instant_cap`
+/// (no levelling up with dust).
+pub const TRUST_MIN_SPEND_DIV: u128 = 10;
+/// The default one-OK ceiling for new Pots: 3 × the base instant cap.
+pub const DEFAULT_ONE_OK_MULT: u128 = 3;
+pub const DEFAULT_LINK_TTL_MS: u64 = 14 * 86_400_000;
+pub const MIN_LINK_TTL_MS: u64 = 60_000;
+pub const MAX_LINK_TTL_MS: u64 = 30 * 86_400_000;
+/// A requester may take back an approved-but-unfunded link only this long after approval.
+pub const LINK_SETTLE_MS: u64 = 60_000;
+pub const MIN_GOAL_LEAD_MS: u64 = 60_000;
+pub const MAX_GOAL_LEAD_MS: u64 = 366 * 86_400_000;
+pub const STATE_BYTES_CLAIM: u64 = 100;
+pub const LINK_MEMO: &str = "pot link payout";
+pub const LINK_RETURN_MEMO: &str = "pot link returned";
+/// Policy template versions (`PotExt.policy_v`): 1 = the v1 template (§3.2); 2 = v1 + the rulebot
+/// may `VoteApprove`/`Finalize` `call` proposals (all-or-nothing Pots only, for the goal refund).
+pub const POLICY_V1: u8 = 1;
+pub const POLICY_V2: u8 = 2;
 
 pub const RESERVED_SLUGS: &[&str] = &[
     "api", "app", "www", "demo", "admin", "root", "pot", "pots", "hub", "usdc", "treasury",
@@ -84,6 +110,10 @@ pub enum StorageKey {
     Closes,       // 0x07 pot idx → CloseRecord
     CreatorDaily, // 0x08 creator → DailyCount
     PendingPots,  // 0x09 DAO ids whose creation batch is in flight
+    // ---- wave 4 (hub 1.1.0, added by `migrate`) ----
+    PotExt,       // 0x0A pot idx → PotExt (rule extras, goal, links)
+    Trust,        // 0x0B (pot idx, account) → TrustRecord
+    RequestExt,   // 0x0C (pot idx, request id) → RequestExt (tier, one-OK, link)
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -448,4 +478,149 @@ pub fn status_str(s: RequestStatus) -> &'static str {
 pub fn approvals_needed(member_count: u32) -> u32 {
     // Sputnik RoleWeight Ratio(1,2): min(n·1/2 + 1, n), at least 1 (quorum "1").
     std::cmp::max(1, std::cmp::min(member_count / 2 + 1, member_count))
+}
+
+// ---------------------------------------------------------------------------------------------
+// Wave 4 (hub 1.1.0). Stored in side maps keyed by pot idx so the frozen v1 records (`Pot`,
+// `Member`, `Request`) keep their Borsh layout: old records need no rewrite (notes/contracts-wave4.md).
+// ---------------------------------------------------------------------------------------------
+
+/// The rule options added in wave 4. JSON wire + Borsh (inside `PotExt`).
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct RuleExtras {
+    /// Earned trust: the instant cap grows to `instant_cap × (1 + level)`.
+    pub trust: bool,
+    /// Spends over the (effective) instant cap but ≤ this need one other member's OK. 0 = off.
+    pub one_ok_cap: U128,
+    /// Pay by link (the payee is whoever holds a claim link).
+    pub links: bool,
+    #[serde(default)]
+    pub goal: Option<Goal>,
+}
+
+impl RuleExtras {
+    /// Behaviour of every Pot created before wave 4 (no `PotExt` record).
+    pub fn legacy() -> Self {
+        Self { trust: false, one_ok_cap: U128(0), links: false, goal: None }
+    }
+    /// The defaults for a new Pot whose creator sent no extras.
+    pub fn defaults_for(rules: &Rules) -> Self {
+        Self {
+            trust: true,
+            one_ok_cap: U128(rules.instant_cap.0.saturating_mul(DEFAULT_ONE_OK_MULT).min(MAX_AMOUNT)),
+            links: true,
+            goal: None,
+        }
+    }
+}
+
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Goal {
+    pub amount: U128,
+    pub deadline_ms: u64,
+    /// Spends wait until the goal is reached; a missed goal refunds everyone (`refund_unfunded`).
+    pub all_or_nothing: bool,
+}
+
+#[near(serializers = [borsh])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct PotExt {
+    pub extras: RuleExtras,
+    pub policy_v: u8,
+    /// 0 = not reached.
+    pub goal_reached_at_ms: u64,
+    /// The hub's own refund close for a missed all-or-nothing goal (latest).
+    pub refund_proposal: Option<u64>,
+    /// Link requests not yet claimed / returned / void (they block `propose_close`).
+    pub open_links: u32,
+    /// USDC that came back to the Pot from unclaimed links.
+    pub links_returned: u128,
+}
+
+impl PotExt {
+    pub fn legacy() -> Self {
+        Self { extras: RuleExtras::legacy(), policy_v: POLICY_V1, goal_reached_at_ms: 0, refund_proposal: None, open_links: 0, links_returned: 0 }
+    }
+}
+
+#[near(serializers = [borsh])]
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TrustRecord {
+    pub level: u8,
+    /// Qualifying settled spends since the last level change or decline.
+    pub streak: u8,
+    pub settled: u32,
+    pub settled_amount: u128,
+    pub declined: u32,
+    pub last_declined_ms: u64,
+}
+
+/// How a request gets approved.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Tier {
+    /// Within the rules: the hub approves alone.
+    Instant,
+    /// One other member's OK (`ok_request`), then the hub approves.
+    OneOk,
+    /// A majority of members vote in the DAO.
+    Group,
+}
+
+#[near(serializers = [borsh])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct RequestExt {
+    pub tier: Tier,
+    /// The member whose OK approved a one-OK request (or is being processed).
+    pub ok_by: Option<AccountId>,
+    pub ok_in_flight: bool,
+    /// The requester's trust record already counted this request as settled.
+    pub counted: bool,
+    pub link: Option<Link>,
+}
+
+impl RequestExt {
+    pub fn for_path(path: Path) -> Self {
+        let tier = if path == Path::Instant { Tier::Instant } else { Tier::Group };
+        Self { tier, ok_by: None, ok_in_flight: false, counted: false, link: None }
+    }
+}
+
+#[near(serializers = [borsh])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Link {
+    pub pk: [u8; 32],
+    pub expires_at_ms: u64,
+    pub status: LinkStatus,
+    pub receiver: Option<AccountId>,
+    pub funded_at_ms: u64,
+    pub done_at_ms: u64,
+}
+
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LinkStatus {
+    /// The request is not approved yet, or its payout to the hub hasn't arrived.
+    AwaitingFunds,
+    /// The hub holds the money for the link holder.
+    Funded,
+    Claiming,
+    Claimed,
+    Returning,
+    /// The money went back to the Pot (expired or cancelled).
+    Returned,
+    /// The request was declined / expired / refused: no money ever moved.
+    Void,
+}
+
+impl LinkStatus {
+    pub fn is_open(&self) -> bool {
+        matches!(self, LinkStatus::AwaitingFunds | LinkStatus::Funded | LinkStatus::Claiming | LinkStatus::Returning)
+    }
 }

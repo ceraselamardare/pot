@@ -4,10 +4,10 @@
 // Votes must send the kind exactly as get_proposal returned it (kindsEqual mirrors Sputnik's ==).
 
 import { base64Decode, base64Encode, utf8Decode, utf8Encode } from "../encoding.ts"
-import type { Rules } from "../types/hub.ts"
+import type { RuleExtras, Rules } from "../types/hub.ts"
 import type { ActionCall, AddMemberToRoleKind, FunctionCallKind, KindLabel, ProposalKind, TransferKind } from "../types/dao.ts"
-import { rulesFromRaw, rulesToRaw } from "../rules.ts"
-import type { RawRules } from "../types/hub-raw.ts"
+import { extrasFromRaw, extrasToRaw, rulesFromRaw, rulesToRaw } from "../rules.ts"
+import type { RawRuleExtras, RawRules } from "../types/hub-raw.ts"
 
 export const CLOSE_ACTION_GAS = "5000000000000"
 export const SET_RULES_ACTION_GAS = "15000000000000"
@@ -15,6 +15,18 @@ export const CLOSE_MEMO = "pot refund"
 
 export function transferKind(usdc: string, receiver: string, amount: bigint): TransferKind {
   return { Transfer: { token_id: usdc, receiver_id: receiver, amount: amount.toString(), msg: null } }
+}
+
+/** hub 1.1.0 pay by link: the DAO pays the hub (escrow) with ft_transfer_call, msg `{"link":<id>}`. */
+export const linkMsg = (requestId: number): string => `{"link":${requestId}}`
+export function linkTransferKind(usdc: string, hub: string, amount: bigint, requestId: number): TransferKind {
+  return { Transfer: { token_id: usdc, receiver_id: hub, amount: amount.toString(), msg: linkMsg(requestId) } }
+}
+/** The request id of a link escrow kind (receiver = the hub, msg {"link":id}), or null. */
+export function decodeLinkKind(kind: ProposalKind, hubId: string): number | null {
+  if (!isTransferKind(kind) || kind.Transfer.receiver_id !== hubId || typeof kind.Transfer.msg !== "string") return null
+  const m = /^\{"link":(0|[1-9][0-9]{0,9})\}$/.exec(kind.Transfer.msg)
+  return m ? Number(m[1]) : null
 }
 
 /** Role is always "member" and member_id the joiner (INV-09). */
@@ -40,13 +52,15 @@ export function closeKind(usdc: string, payouts: readonly { account: string; amo
   }
 }
 
-export const setRulesArgs = (pot: string, rules: Rules): string => JSON.stringify({ pot, rules: rulesToRaw(rules) })
+/** hub 1.1.0: `extras` is appended only when set, so 1.0.0 kinds stay byte-identical. */
+export const setRulesArgs = (pot: string, rules: Rules, extras?: RuleExtras): string =>
+  JSON.stringify(extras ? { pot, rules: rulesToRaw(rules), extras: extrasToRaw(extras) } : { pot, rules: rulesToRaw(rules) })
 
-export function rulesKind(hub: string, pot: string, rules: Rules): FunctionCallKind {
+export function rulesKind(hub: string, pot: string, rules: Rules, extras?: RuleExtras): FunctionCallKind {
   return {
     FunctionCall: {
       receiver_id: hub,
-      actions: [{ method_name: "set_rules", args: base64Encode(utf8Encode(setRulesArgs(pot, rules))), deposit: "0", gas: SET_RULES_ACTION_GAS }],
+      actions: [{ method_name: "set_rules", args: base64Encode(utf8Encode(setRulesArgs(pot, rules, extras))), deposit: "0", gas: SET_RULES_ACTION_GAS }],
     },
   }
 }
@@ -152,13 +166,13 @@ export function decodeCloseKind(kind: ProposalKind, usdcId: string): { account: 
 }
 
 /** Decodes a rules proposal (FunctionCall to the hub with one set_rules action), or null. */
-export function decodeRulesKind(kind: ProposalKind, hubId: string): { pot: string; rules: Rules } | null {
+export function decodeRulesKind(kind: ProposalKind, hubId: string): { pot: string; rules: Rules; extras?: RuleExtras } | null {
   if (!isFunctionCallKind(kind) || kind.FunctionCall.receiver_id !== hubId || kind.FunctionCall.actions.length !== 1) return null
   const d = decodeActionCall(kind.FunctionCall.actions[0] as ActionCall)
-  const args = d.args as { pot?: unknown; rules?: RawRules } | null
+  const args = d.args as { pot?: unknown; rules?: RawRules; extras?: RawRuleExtras } | null
   if (d.methodName !== "set_rules" || !args || typeof args.pot !== "string" || !args.rules) return null
   try {
-    return { pot: args.pot, rules: rulesFromRaw(args.rules) }
+    return { pot: args.pot, rules: rulesFromRaw(args.rules), ...(args.extras ? { extras: extrasFromRaw(args.extras) } : {}) }
   } catch {
     return null
   }

@@ -86,7 +86,8 @@ async fn t01(build: Build) -> anyhow::Result<()> {
     assert_eq!(pot["rules_version"], 1);
     assert_eq!(pot["rules"], json!({"instant_cap":"100000000","member_budget":"200000000","instant_payees":"members","payee_allowlist":[]}));
     assert_eq!(pot["active_invites"], 1);
-    assert_eq!(o.event_names(), vec!["pot_created", "invite_added"]);
+    // hub 1.1.0 (wave 4): + rule_extras_set (the new Pot's trust / one-OK / links / goal options)
+    assert_eq!(o.event_names(), vec!["pot_created", "rule_extras_set", "invite_added"]);
     let ev = o.event("pot_created");
     assert_eq!(ev["pot"], dao.as_str());
     assert_eq!(ev["creator"], env.maya.id.as_str());

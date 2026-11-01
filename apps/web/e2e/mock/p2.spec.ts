@@ -4,7 +4,7 @@
 // The mobile projects save review screenshots to notes/screens/p2-*.png (Day and Night).
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet, typeAmount, type MockPerson } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, type MockPerson, openedSheet, spendWhy, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -78,7 +78,7 @@ test.describe("rules change (P-8)", () => {
     const spend = await openedSheet(page, "Spend from Lisbon Trip")
     await typeAmount(page, "60")
     await expect(spend.getByText("This needs 2 of 3 approvals")).toBeVisible()
-    await expect(spend.getByText("It's over the $50 instant limit.")).toBeVisible()
+    await expect((await spendWhy(page)).getByText("It's over the $50 instant limit.")).toBeVisible()
   })
 
   test("a sole member changes the rules directly", async ({ page }) => {

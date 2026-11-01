@@ -4,7 +4,7 @@
 //     scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts manual-request
 import { readFileSync } from "node:fs"
 import { expect, test } from "@playwright/test"
-import { typeAmount } from "../fixtures/pot"
+import { spendFlow, typeAmount } from "../fixtures/pot"
 import { accountOf, chain, dao, eventually, useWallet, walletSignIn } from "./chain"
 
 const SLUG = process.env.MANUAL_POT
@@ -29,8 +29,7 @@ test("a saved friend asks the group for a spend that needs approval", async ({ b
   await expect(sheet).toBeVisible({ timeout: 30_000 })
   await typeAmount(page, AMOUNT)
   await expect(sheet.getByText(/This needs \d+ of \d+ approvals/)).toBeVisible()
-  await sheet.getByRole("button", { name: new RegExp(`^${REASON}`) }).click()
-  await sheet.getByRole("button", { name: "Ask the group" }).click()
+  await spendFlow(page, { reason: `^${REASON}`, submit: "Ask the group" })
   await expect(sheet.getByText("Sent to the group")).toBeVisible({ timeout: 45_000 })
   await sheet.getByRole("button", { name: "Done" }).click()
 

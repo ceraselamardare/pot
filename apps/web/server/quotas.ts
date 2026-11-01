@@ -25,6 +25,8 @@ const DEFAULTS: Record<string, [bigint, bigint]> = {
   user_comments: [200n, 200n], // comments on requests, per day
   user_comment_burst: [10n, 10n], // per minute
   user_burst: [20n, 20n], // per minute
+  user_receipts: [30n, 30n], // "Snap the receipt" readings per day (each one is a paid NEAR AI call)
+  user_receipt_burst: [5n, 5n], // per minute
   // per Pot per day
   pot_contribute: [200n, 200n],
   pot_spend: [100n, 100n],
@@ -43,6 +45,7 @@ const DEFAULTS: Record<string, [bigint, bigint]> = {
   global_registrations: [200n, 50n],
   global_mpc_signs: [100n, 20n],
   global_faucet_usd: [50_000_000_000n, 5_000_000_000n],
+  global_receipts: [2_000n, 300n], // receipt readings per day, everyone (bounds the NEAR AI credit)
   // per IP
   ip_accounts_created: [3n, 3n],
   ip_session_create: [10n, 10n], // per hour in the spec; daily bucket here (WAF covers bursts)

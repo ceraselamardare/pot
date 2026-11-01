@@ -27,6 +27,13 @@ export const GAS_TGAS = {
   propose_close: 150,
   retry_payout: 100,
   sync: 50,
+  // hub 1.1.0 (contracts notes/contracts-wave4.md §gas): an instant link payout is ft_transfer_call
+  // inside the hub's chain (GAS_ACT_LINK 100), so a link request_spend needs ≈ 190 Tgas
+  request_spend_link: 250,
+  ok_request: 200,
+  claim_link: 100,
+  reclaim_link: 50,
+  refund_unfunded: 300,
 } as const
 
 export const GAS = Object.fromEntries(Object.entries(GAS_TGAS).map(([k, v]) => [k, tgas(v)])) as { readonly [K in keyof typeof GAS_TGAS]: bigint }
@@ -65,6 +72,11 @@ export function directDeposit(method: string, opts: { daoFloat?: bigint } = {}):
       return 60n * MILLI_NEAR
     case "propose_close":
       return 150n * MILLI_NEAR
+    case "claim_link":
+      // the claimer's token registration (0.00125, refunded by the token if already registered) + state
+      return 3n * MILLI_NEAR
+    case "refund_unfunded":
+      return 200n * MILLI_NEAR
     default:
       return 0n
   }
@@ -83,7 +95,8 @@ export interface RelayRule {
 export const RELAY_POLICY: Readonly<Record<string, RelayRule>> = {
   ft_transfer_call: { rule: "R1", receiver: "usdc", deposit: ONE_YOCTO, gasMinTgas: 100, gasMaxTgas: 150, defaultTgas: 100 },
   create_pot: { rule: "R2", receiver: "hub", deposit: 0n, gasMinTgas: 150, gasMaxTgas: 300, defaultTgas: 300 },
-  request_spend: { rule: "R3", receiver: "hub", deposit: 0n, gasMinTgas: 100, gasMaxTgas: 150, defaultTgas: 150 },
+  // hub 1.1.0: up to 300 for pay-by-link requests (GAS_TGAS.request_spend_link)
+  request_spend: { rule: "R3", receiver: "hub", deposit: 0n, gasMinTgas: 100, gasMaxTgas: 300, defaultTgas: 150 },
   join: { rule: "R4", receiver: "hub", deposit: 0n, gasMinTgas: 100, gasMaxTgas: 150, defaultTgas: 100 },
   add_invite: { rule: "R5", receiver: "hub", deposit: 0n, gasMinTgas: 10, gasMaxTgas: 50, defaultTgas: 30 },
   revoke_invite: { rule: "R5", receiver: "hub", deposit: 0n, gasMinTgas: 10, gasMaxTgas: 50, defaultTgas: 30 },
@@ -92,6 +105,10 @@ export const RELAY_POLICY: Readonly<Record<string, RelayRule>> = {
   propose_close: { rule: "R8", receiver: "hub", deposit: 0n, gasMinTgas: 150, gasMaxTgas: 300, defaultTgas: 150 },
   retry_payout: { rule: "R9", receiver: "hub", deposit: 0n, gasMinTgas: 80, gasMaxTgas: 150, defaultTgas: 100 },
   sync: { rule: "R9", receiver: "hub", deposit: 0n, gasMinTgas: 50, gasMaxTgas: 150, defaultTgas: 50 },
+  // hub 1.1.0 (wave 4). refund_unfunded is NOT relayed for users: the cron calls it with a relayer key.
+  ok_request: { rule: "R13", receiver: "hub", deposit: 0n, gasMinTgas: 100, gasMaxTgas: 250, defaultTgas: 200 },
+  claim_link: { rule: "R14", receiver: "hub", deposit: 0n, gasMinTgas: 50, gasMaxTgas: 150, defaultTgas: 100 },
+  reclaim_link: { rule: "R15", receiver: "hub", deposit: 0n, gasMinTgas: 30, gasMaxTgas: 100, defaultTgas: 50 },
   // R11: exactly 100 (Transfer, AddMemberToRole) or exactly 300 (FunctionCall); see voteGas().
   act_proposal: { rule: "R11", receiver: "dao", deposit: 0n, gasMinTgas: 100, gasMaxTgas: 300, defaultTgas: 100 },
 }

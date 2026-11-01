@@ -7,7 +7,7 @@
 // "You'd get back $122 · You put in $150" is a quiet button (R-33 M-6): it opens ?sheet=refund, what you'd get back if the
 // Pot closed now and how it's worked out (components/sheets/RefundSheet.tsx).
 import { ArrowUpRight, Clock, Info, Plus } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { MoneyText } from "@/components/money/MoneyText"
@@ -55,6 +55,8 @@ export function BalanceHero({
   closedAt,
   addVariant = "primary",
   onShare,
+  goalSlot,
+  spendBlocked,
 }: {
   balance: Micro
   share: Micro
@@ -72,6 +74,10 @@ export function BalanceHero({
   addVariant?: "primary" | "secondary"
   /** R-33 M-6: "You'd get back" opens the refund explainer (?sheet=refund); without it the line is plain text */
   onShare?: () => void
+  /** hub 1.1.0: the goal with a date (components/wave4/GoalBanner) in place of the plain goal bar */
+  goalSlot?: ReactNode
+  /** hub 1.1.0: why Spend waits (an all-or-nothing goal not reached yet); Spend is aria-disabled and says it */
+  spendBlocked?: string | null
 }) {
   const shown = useCountUp(balance)
   const online = useOnline()
@@ -115,7 +121,11 @@ export function BalanceHero({
           {t("pot.hero.pending", { amount: formatUsd(pendingIn, "whole") })}
         </p>
       )}
-      {goal !== null && goal > 0n && !closedAt && <GoalBar collected={collected} goal={goal} className="mt-4" />}
+      {goalSlot && !closedAt ? (
+        <div className="mt-4">{goalSlot}</div>
+      ) : (
+        goal !== null && goal > 0n && !closedAt && <GoalBar collected={collected} goal={goal} className="mt-4" />
+      )}
       {closedAt ? null : (
         <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,9.5rem),1fr))] gap-2 lg:flex lg:gap-3">
           <Button
@@ -128,13 +138,20 @@ export function BalanceHero({
             {t("pot.cta.add")}
           </Button>
           <Button
-            aria-disabled={blocked || undefined}
-            onClick={guard(onSpend, "spend.offline")}
-            className={cn("min-h-13 w-full lg:w-auto lg:min-w-40", blocked && "opacity-50")}
+            aria-disabled={blocked || !!spendBlocked || undefined}
+            aria-describedby={spendBlocked && !blocked ? "spend-blocked-why" : undefined}
+            onClick={spendBlocked && !blocked ? () => toast(spendBlocked) : guard(onSpend, "spend.offline")}
+            className={cn("min-h-13 w-full lg:w-auto lg:min-w-40", (blocked || spendBlocked) && "opacity-50")}
+            data-spend-blocked={spendBlocked ? "goal" : undefined}
           >
             <ArrowUpRight aria-hidden strokeWidth={2.25} />
             {t("pot.cta.spend")}
           </Button>
+          {spendBlocked && !blocked && (
+            <span id="spend-blocked-why" className="sr-only">
+              {spendBlocked}
+            </span>
+          )}
         </div>
       )}
     </section>

@@ -2,7 +2,7 @@
 // and approve, keyboard-only paths on desktop, 320 px reflow, 200 % zoom, reduced motion. axe runs per screen in
 // screens.spec / p2.spec; these are the checks axe can't do.
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
+import { asPerson, openedSheet, PORTO_INVITE_URL, spendFlow } from "../fixtures/pot"
 
 /** No horizontal scrolling (WCAG 1.4.10): the page is never wider than the viewport. */
 async function noHorizontalScroll(page: Page, what: string) {
@@ -135,8 +135,7 @@ test.describe("VoiceOver-style order", () => {
     await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?sheet=spend")
     const spend = await openedSheet(page, "Spend from Lisbon Trip")
-    await typeAmount(page, "300")
-    await spend.getByRole("button", { name: "Ask the group" }).click()
+    await spendFlow(page, { amount: "300", submit: "Ask the group" })
     await expect(spend.getByText("Sent to the group")).toBeVisible()
     await page.evaluate(() => localStorage.setItem("pot.mock.session", JSON.stringify({ persona: "leo", kind: "mock" })))
     await page.goto("/p/lisbon-trip?r=12")
@@ -166,6 +165,9 @@ test.describe("keyboard only (desktop)", () => {
     const spend = await openedSheet(page, "Spend from Lisbon Trip")
     await page.keyboard.type("300") // the keypad takes physical digits
     await expect(spend.locator("[data-amount-display]")).toHaveText("$300")
+    await page.keyboard.press("Enter") // Enter on the keypad = Next
+    await expect(spend.getByRole("heading", { name: "What's it for?" })).toBeFocused() // step 2's heading
+    await expect(spend.locator("[data-step-live]")).toHaveText("What's it for?")
     await spend.getByRole("button", { name: "Ask the group" }).focus()
     await page.keyboard.press("Enter")
     await expect(spend.getByText("Sent to the group")).toBeVisible()

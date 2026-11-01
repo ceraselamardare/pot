@@ -5,7 +5,7 @@
 // The mobile projects save notes/screens/refund-preview-{day,night}.png (the explainer sheet).
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, brandChecks, openedSheet, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, brandChecks, openedSheet, spendFlow, spendNext, spendWhy, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -14,9 +14,7 @@ async function instantSpend(page: Page) {
   await page.goto("/p/lisbon-trip")
   await page.getByRole("button", { name: "Spend" }).click()
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
-  await typeAmount(page, "84")
-  await sheet.getByRole("button", { name: /Groceries/ }).click()
-  await sheet.getByRole("button", { name: "Get $84 back" }).click()
+  await spendFlow(page, { amount: "84", reason: "Groceries", submit: "Get $84 back" })
   await expect(sheet.getByText("$84 sent to you")).toBeVisible()
   await sheet.getByRole("button", { name: "Done" }).click()
   await expect(page.getByRole("dialog")).toBeHidden()
@@ -86,7 +84,9 @@ test("Spend: once it's paid, what you'd get back (only for a spend the rules wou
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
   await expect(sheet.locator("[data-spend-refund]")).toHaveCount(0)
   await typeAmount(page, "30")
-  // $420 left, a third each
+  // $420 left, a third each: behind the decision line's ⓘ
+  const why = await spendWhy(page)
+  await expect(why.locator("[data-spend-refund]")).toBeVisible()
   await expect(sheet.locator("[data-spend-refund]")).toHaveText(
     "Once it's paid, you'd get back $140 if the Pot closed. It comes out of everyone's part, by what each person put in.",
   )
@@ -95,6 +95,12 @@ test("Spend: once it's paid, what you'd get back (only for a spend the rules wou
   // more than the Pot has: blocked, so no promise about refunds
   await typeAmount(page, "0000")
   await expect(sheet.locator("[data-spend-refund]")).toHaveCount(0)
+  // step 2 keeps it behind the same ⓘ, next to the ask
+  for (let i = 0; i < 4; i++) await sheet.getByRole("button", { name: "delete", exact: true }).click() // back to $30
+  await spendNext(page)
+  await expect((await spendWhy(page)).locator("[data-spend-refund]")).toContainText("you'd get back $140")
+  await brandChecks(page, { marigold: "one" })
+  await axe(page)
 })
 
 test("320 px: the hero line and the explainer fit without sideways scrolling", async ({ page }) => {

@@ -1,7 +1,8 @@
 "use client"
 // PotHeader (cover tile + H1 + seats + ••• menu) and PotCard (Pots home), design-direction 02 §1-2.
 import { Menu } from "@base-ui/react/menu"
-import { ChevronLeft, EllipsisVertical, LogOut, Share2 } from "lucide-react"
+import { ChevronLeft, EllipsisVertical, ListChecks, LogOut, Share2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AvatarStack } from "@/components/pot/Avatar"
 import { CoverTile } from "@/components/pot/CoverTile"
@@ -18,6 +19,7 @@ const itemCls =
   "flex min-h-12 w-full cursor-default items-center gap-3 rounded-sm px-3 text-left text-body text-ink outline-none select-none data-highlighted:bg-surface-sunken data-disabled:text-ink-muted"
 
 export function PotHeader({ pot }: { pot: PotVM }) {
+  const router = useRouter()
   return (
     <header className="flex flex-wrap items-center gap-2 pt-3 pb-4">
       <Link
@@ -44,6 +46,14 @@ export function PotHeader({ pot }: { pot: PotVM }) {
               <Menu.Item className={itemCls} onClick={() => openSheet("share")}>
                 <Share2 aria-hidden className="size-5" strokeWidth={2} />
                 {t("pot.menu.share")}
+              </Menu.Item>
+              {/* hub 1.1.0: the public Pot record (every spend, shareable, CSV) */}
+              <Menu.Item className={itemCls} onClick={() => router.push(`/p/${pot.slug}/record`)} data-menu-record>
+                <ListChecks aria-hidden className="size-5" strokeWidth={2} />
+                <span className="flex flex-col py-1">
+                  <span>{t("pot.menu.record")}</span>
+                  <span className="text-body-sm text-ink-muted">{t("pot.menu.record.sub")}</span>
+                </span>
               </Menu.Item>
               <Menu.Item className={itemCls} onClick={() => openSheet("close")} data-menu-close>
                 <LogOut aria-hidden className="size-5" strokeWidth={2} />

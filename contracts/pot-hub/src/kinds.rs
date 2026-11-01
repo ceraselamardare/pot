@@ -7,7 +7,7 @@ use near_sdk::serde::Serialize;
 use near_sdk::AccountId;
 
 use crate::ext::{DaoActionCall, DaoKind};
-use crate::types::{Category, Rules, ROLE_MEMBER};
+use crate::types::{Category, RuleExtras, Rules, ROLE_MEMBER};
 
 pub const CLOSE_ACTION_GAS: u64 = 5_000_000_000_000; // GAS_CLOSE_ACTION, 5 Tgas per ft_transfer
 pub const SET_RULES_ACTION_GAS: u64 = 15_000_000_000_000; // GAS_SET_RULES_ACTION
@@ -20,6 +20,17 @@ pub fn transfer_kind(usdc: &AccountId, receiver: &AccountId, amount: u128) -> Da
         amount: U128(amount),
         msg: None,
     }
+}
+
+/// Wave 4 pay-by-link: the DAO pays the hub (escrow) with `ft_transfer_call`; the hub's
+/// `ft_on_transfer` sees `msg = {"link":<request_id>}` from this DAO and marks the link Funded. Only the
+/// token's own notification proves the money arrived (an `Approved` read can be optimistic, D7).
+pub fn link_msg(request_id: u32) -> String {
+    format!(r#"{{"link":{request_id}}}"#)
+}
+
+pub fn link_transfer_kind(usdc: &AccountId, hub: &AccountId, amount: u128, request_id: u32) -> DaoKind {
+    DaoKind::Transfer { token_id: usdc.to_string(), receiver_id: hub.clone(), amount: U128(amount), msg: Some(link_msg(request_id)) }
 }
 
 /// Role is ALWAYS "member" and member_id is the joiner (INV-09, T-57).
@@ -52,18 +63,21 @@ pub fn close_kind(usdc: &AccountId, payouts: &[(AccountId, u128)]) -> DaoKind {
 struct SetRulesArgs<'a> {
     pot: &'a AccountId,
     rules: &'a Rules,
+    /// wave 4: absent (not null) when the change carries no extras, so v1 kinds stay byte-identical
+    #[serde(skip_serializing_if = "Option::is_none")]
+    extras: Option<&'a RuleExtras>,
 }
 
-pub fn set_rules_args(pot: &AccountId, rules: &Rules) -> String {
-    near_sdk::serde_json::to_string(&SetRulesArgs { pot, rules }).expect("serializable")
+pub fn set_rules_args(pot: &AccountId, rules: &Rules, extras: Option<&RuleExtras>) -> String {
+    near_sdk::serde_json::to_string(&SetRulesArgs { pot, rules, extras }).expect("serializable")
 }
 
-pub fn rules_kind(hub: &AccountId, pot: &AccountId, rules: &Rules) -> DaoKind {
+pub fn rules_kind(hub: &AccountId, pot: &AccountId, rules: &Rules, extras: Option<&RuleExtras>) -> DaoKind {
     DaoKind::FunctionCall {
         receiver_id: hub.clone(),
         actions: vec![DaoActionCall {
             method_name: "set_rules".to_string(),
-            args: Base64VecU8::from(set_rules_args(pot, rules).into_bytes()),
+            args: Base64VecU8::from(set_rules_args(pot, rules, extras).into_bytes()),
             deposit: U128(0),
             gas: U64(SET_RULES_ACTION_GAS),
         }],
@@ -155,9 +169,9 @@ mod tests {
             instant_payees: PayeeRule::Members,
             payee_allowlist: vec![],
         };
-        let k = rules_kind(&acc("pots.potapp.testnet"), &acc("lisbon.pots.potapp.testnet"), &rules);
+        let k = rules_kind(&acc("pots.potapp.testnet"), &acc("lisbon.pots.potapp.testnet"), &rules, None);
         let inner = r#"{"pot":"lisbon.pots.potapp.testnet","rules":{"instant_cap":"50000000","member_budget":"150000000","instant_payees":"members","payee_allowlist":[]}}"#;
-        assert_eq!(set_rules_args(&acc("lisbon.pots.potapp.testnet"), &rules), inner);
+        assert_eq!(set_rules_args(&acc("lisbon.pots.potapp.testnet"), &rules, None), inner);
         let args = near_sdk::base64::Engine::encode(&near_sdk::base64::engine::general_purpose::STANDARD, inner);
         assert_eq!(
             to_json(&k),
@@ -165,6 +179,23 @@ mod tests {
                 r#"{{"FunctionCall":{{"receiver_id":"pots.potapp.testnet","actions":[{{"method_name":"set_rules","args":"{args}","deposit":"0","gas":"15000000000000"}}]}}}}"#
             )
         );
+    }
+
+    #[test]
+    fn link_kind_exact_json() {
+        let k = link_transfer_kind(&acc("usdc.potapp.testnet"), &acc("pots.potapp.testnet"), 25_000_000, 7);
+        assert_eq!(
+            to_json(&k),
+            r#"{"Transfer":{"token_id":"usdc.potapp.testnet","receiver_id":"pots.potapp.testnet","amount":"25000000","msg":"{\"link\":7}"}}"#
+        );
+    }
+
+    #[test]
+    fn rules_kind_with_extras() {
+        let rules = Rules { instant_cap: U128(50_000_000), member_budget: U128(150_000_000), instant_payees: PayeeRule::Members, payee_allowlist: vec![] };
+        let ex = RuleExtras { trust: true, one_ok_cap: U128(150_000_000), links: true, goal: None };
+        let s = set_rules_args(&acc("lisbon.pots.potapp.testnet"), &rules, Some(&ex));
+        assert!(s.ends_with(r#""extras":{"trust":true,"one_ok_cap":"150000000","links":true,"goal":null}}"#), "{s}");
     }
 
     #[test]

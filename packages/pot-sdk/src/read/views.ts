@@ -5,13 +5,32 @@
 import type { SdkConfig } from "../config.ts"
 import type { Micro } from "../money.ts"
 import type { AccountId, DaoId, ProposalId, PublicKeyStr, Viewed } from "../types/ids.ts"
-import type { ClosePreview, ConfigView, InviteView, MemberView, PotSummary, PotView, RequestView, RulesView, SpendPreview, SubjectView } from "../types/hub.ts"
+import type {
+  ClosePreview,
+  ConfigView,
+  GoalView,
+  InviteView,
+  LinkView,
+  MemberView,
+  PotSummary,
+  PotView,
+  RecordEntry,
+  RequestView,
+  RulesView,
+  SpendPreview,
+  SubjectView,
+  TrustView,
+} from "../types/hub.ts"
 import type { ActionsLogEntry, Policy, PolicySummary, Proposal, RawActionsLogEntry, RawProposal } from "../types/dao.ts"
 import type { FtMetadata, RawStorageBalance, StorageBalance } from "../types/usdc.ts"
 import type {
   RawClosePreview,
   RawConfigView,
+  RawGoalView,
   RawInviteView,
+  RawLinkView,
+  RawRecordEntry,
+  RawTrustView,
   RawMemberView,
   RawPotSummary,
   RawPotView,
@@ -25,7 +44,11 @@ import {
   parseActionsLogEntry,
   parseClosePreview,
   parseConfigView,
+  parseGoalView,
   parseInviteView,
+  parseLinkView,
+  parseRecordEntry,
+  parseTrustView,
   parseMemberView,
   parsePolicy,
   parsePotSummary,
@@ -47,7 +70,8 @@ export interface HubViews {
   /** `balance` = the client's usdc.ft_balance_of(dao); the hub can't read it in a view. */
   getMembers(pot: DaoId, balance?: Micro): Promise<Viewed<MemberView[]>>
   getRules(pot: DaoId): Promise<Viewed<RulesView | null>>
-  previewSpend(pot: DaoId, account: AccountId, amount: Micro, receiver: AccountId, balance?: Micro): Promise<Viewed<SpendPreview>>
+  /** hub 1.1.0 `link`: preview a pay-by-link request (receiver = the hub id). */
+  previewSpend(pot: DaoId, account: AccountId, amount: Micro, receiver: AccountId, balance?: Micro, link?: boolean): Promise<Viewed<SpendPreview>>
   previewClose(pot: DaoId, balance?: Micro): Promise<Viewed<ClosePreview>>
   /** ids ascending, refused ids absent; limit ≤ 50. Newest page: fromIndex = max(0, requestCount \u2212 limit). */
   getRequests(pot: DaoId, fromIndex: number, limit: number): Promise<Viewed<RequestView[]>>
@@ -55,6 +79,18 @@ export interface HubViews {
   getInvite(pot: DaoId, invitePk: PublicKeyStr): Promise<Viewed<InviteView | null>>
   /** rev4: null = not created by the hub (show read-only, never relay a vote). */
   getProposalSubject(pot: DaoId, proposalId: ProposalId): Promise<Viewed<SubjectView | null>>
+  // ---- hub 1.1.0 (wave 4). Optional so hand-written HubViews (mocks) keep compiling; the RPC
+  // implementation and MockChain provide them. On a 1.0.0 hub they fail with MethodNotFound.
+  /** One member's earned trust (null: not a member). */
+  getTrust?(pot: DaoId, account: AccountId): Promise<Viewed<TrustView | null>>
+  /** Every Active member's trust, join order. */
+  getTrusts?(pot: DaoId): Promise<Viewed<TrustView[]>>
+  /** null: the Pot has no goal. */
+  getGoal?(pot: DaoId): Promise<Viewed<GoalView | null>>
+  /** The claim page's view of a link (null: not a link request). */
+  getLink?(pot: DaoId, requestId: number): Promise<Viewed<LinkView | null>>
+  /** The public record; ids ascending, refused ids absent; limit ≤ 50. */
+  getRecord?(pot: DaoId, fromIndex: number, limit: number): Promise<Viewed<RecordEntry[]>>
 }
 
 export interface DaoViews {
@@ -113,9 +149,9 @@ export function createChainViews(cfg: SdkConfig, rpc: RpcClient = createRpcClien
       getPotsOf: (account) => map(view<RawPotSummary[]>(hub, "get_pots_of", { account_id: account }), (r) => r.map(parsePotSummary)),
       getMembers: (pot, balance) => map(view<RawMemberView[]>(hub, "get_members", { pot, balance: microArg(balance) }), (r) => r.map(parseMemberView)),
       getRules: (pot) => map(view<RawRulesView | null>(hub, "get_rules", { pot }), (r) => (r ? parseRulesView(r) : null)),
-      previewSpend: (pot, account, amount, receiver, balance) =>
+      previewSpend: (pot, account, amount, receiver, balance, link) =>
         map(
-          view<RawSpendPreview>(hub, "preview_spend", { pot, account_id: account, amount: amount.toString(), receiver_id: receiver, balance: microArg(balance) }),
+          view<RawSpendPreview>(hub, "preview_spend", { pot, account_id: account, amount: amount.toString(), receiver_id: receiver, balance: microArg(balance), link }),
           parseSpendPreview,
         ),
       previewClose: (pot, balance) => map(view<RawClosePreview>(hub, "preview_close", { pot, balance: microArg(balance) }), parseClosePreview),
@@ -125,6 +161,12 @@ export function createChainViews(cfg: SdkConfig, rpc: RpcClient = createRpcClien
       getInvite: (pot, invitePk) => map(view<RawInviteView | null>(hub, "get_invite", { pot, invite_pk: invitePk }), (r) => (r ? parseInviteView(r) : null)),
       getProposalSubject: (pot, proposalId) =>
         map(view<RawSubjectView | null>(hub, "get_proposal_subject", { pot, proposal_id: proposalId }), (r) => (r ? parseSubjectView(r) : null)),
+      getTrust: (pot, account) => map(view<RawTrustView | null>(hub, "get_trust", { pot, account_id: account }), (r) => (r ? parseTrustView(r) : null)),
+      getTrusts: (pot) => map(view<RawTrustView[]>(hub, "get_trusts", { pot }), (r) => r.map(parseTrustView)),
+      getGoal: (pot) => map(view<RawGoalView | null>(hub, "get_goal", { pot }), (r) => (r ? parseGoalView(r) : null)),
+      getLink: (pot, requestId) => map(view<RawLinkView | null>(hub, "get_link", { pot, request_id: requestId }), (r) => (r ? parseLinkView(r) : null)),
+      getRecord: (pot, fromIndex, limit) =>
+        map(view<RawRecordEntry[]>(hub, "get_record", { pot, from_index: fromIndex, limit: Math.min(limit, 50) }), (r) => r.map(parseRecordEntry)),
     },
     dao: {
       getPolicy: (dao) => map(view<Policy>(dao, "get_policy"), parsePolicy),

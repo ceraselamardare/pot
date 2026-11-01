@@ -1,3 +1,261 @@
+> **2026-11-01: The Spend sheet in two steps, and receipts in other currencies converted.** Feedback: "the spend popup
+> got a bit crowded, especially with the new snap a receipt button… make it more accessible without a lot of scrolling".
+> Before (`notes/screens/spend-before-{day,night}.png`, 390 × 844, $84 typed): the body held 622 px of content in a
+> 374 px window, so the receipt button, its help, "Read privately", the reason chips and the note were all below the fold.
+> - **Step 1 "How much?"** (`SpendSheet`, `data-spend-body="1"`): "How much?" + the big amount, a compact secondary
+>   **[📷 Scan receipt]** pill right under it (+ "Choose a photo" on touch screens; the old help sentence is now its
+>   sr-only description), then the **decision line** (`DecisionLine` in `RulePreview.tsx`): icon + one line ("This will
+>   be approved instantly" / "This needs one OK from anyone else" / "This needs 2 of 3 approvals"), the why behind an ⓘ
+>   (`Info`, `aria-expanded`, "Why: more about this"): the rule's second line (the instant limit, raised by trust, over
+>   the budget…) and "Once it's paid, you'd get back $X…" (`data-spend-refund`). A **blocked** spend shows its reason in
+>   full (no ⓘ): over the balance, or the goal lock (Lucide `Lock`), which now shows on step 1 before anyone types: no
+>   Scan, the keypad disabled, the button reads "Spending opens once the goal is reached.". Footer: **[Next]** (the one
+>   marigold; off at $0 and when blocked) above the keypad; Enter on the keypad = Next.
+> - **Step 2 "What's it for?"** (`?sheet=spend&step=details`, pushed like Create's `?step=rules`): the amount as a title
+>   line (sr-only "How much?"), the reason chips (the `h3` "What's it for?" is the step heading: focus + the sheet's
+>   live region on every step change), "Who gets paid?" (the same Me · A member · Someone else segmented control, member
+>   avatars / link fields under it), the receipt in **one row**, the note. Footer: the decision line pinned over the ask
+>   (same ⓘ), the error/offline lines, the ask (the one marigold), **[‹ Back]** (`SheetBack`, ghost). Back and the
+>   browser's Back agree; everything typed is kept; browser Back from a sent request's result closes the sheet.
+> - **Measured** (Playwright, 390 × 844, mock Lisbon Trip, $84, Groceries): step 1 body **220 px content in a 220 px
+>   window** (footer 337 px, popup 622 px of 776); step 2 body **302 px in 302 px** (footer 197, popup 564): no
+>   scrolling in either, Day and Night (`notes/screens/spend-step{1,2}-{day,night}.png`). Paying by link with a label
+>   also fits (`paylink-spend-*`). 320 × 568: step 1 220 in 153 (the keypad keys drop to 48 px under 680 px of height:
+>   `Keypad`, also in Add/Rules), step 2 302 in 261: a short scroll, no sideways scroll, the CTA and keypad pinned.
+> - **Receipts** (`ReceiptSnap.tsx` is now `useReceiptSnap` (state owned by the sheet, so it survives the step change;
+>   reset on each opening) + `ReceiptStart` (step 1) + `ReceiptCard` + `ReceiptInputs` (hidden inputs + the
+>   `role=status` region, mounted on both steps)). A reading that fills a dollar amount the rules could take **jumps to
+>   step 2 with amount, reason and note filled** (its heading gets focus; the reading is announced). Reading / failure
+>   rows are compact on step 1; the keypad keeps working. The summary row: receipt icon · merchant · total · ⌄; the
+>   details (day, the filled / converted notice, the rate's source, the items with tax/tip, [Scan again], [Remove],
+>   "Read privately") open under it. Remove on step 2 that clears the amount goes back to step 1. "Snap the receipt" /
+>   "Snap again" are now "Scan receipt" / "Scan again".
+> - **Another currency is converted** (server: notes/backend.md "receipts in another currency are converted"): the row
+>   shows "€42.50 ≈ $46.12 · rate 1.0852 from today" (`data-receipt-fx`, tabular; "from Oct 30" when the ECB rate is
+>   from an earlier working day), the dollars are pre-filled and editable (Back → keypad), the details say "Rate from
+>   the European Central Bank" / "Rate from exchangerate-api.com" / (mock) "Sample rate: this test version doesn't look up
+>   today's rate." and "Your bank's rate may differ a little, so check the amount." The live region adds "That's about
+>   $46.12.". With no rate: "This receipt is in EUR (€42.50). We couldn't get today's rate, so type the amount in
+>   dollars." (or "We don't have a rate for it"), it stays on step 1 and offers [Use 42.50 as dollars] (now a link-style
+>   button, so the step keeps one marigold).
+> - **Links:** `?sheet=spend&amount=84` opens with $84 typed (1-6 digits, ≤ 2 decimals, > 0); `&step=details` with an
+>   amount opens on step 2, without one the URL is corrected to step 1 (`replaceSheetParams`, new in `lib/client/sheet.ts`).
+> - **Tests:** new `components/__tests__/spend-steps.test.tsx` (7); `receipt-snap.test.tsx` rewritten (13: jump to step 2,
+>   details, conversion + source + day, three no-rate cases, failures, cancel, remove); e2e helper `spendFlow(page,
+>   {amount, reason, payee, member, submit})` + `spendNext` + `spendWhy` in `e2e/fixtures/pot.ts`, used by every mock spec
+>   that drives Spend (flows, activity, trust, pay-link, receipt, refund-preview, screens, states, a11y (keyboard: digits →
+>   Enter = Next → step heading focused → Ask), avatars, comments, p2, pwa) and the testnet specs' Spend steps (comments,
+>   flows, manual-request, paylink, wave4-trust-goal; edited, **not run**). `receipt.spec.ts`: the dollar receipt (and "no
+>   scroll on step 2" asserted), the euro at the mock rate (then Back, edit, Next), no rate (`pot.mock.fail =
+>   receipt_rate`), blurry/timeout, 320 px. Screens: `receipt-{day,night}.png` (step 2 after a scan),
+>   `receipt-fx-{day,night}.png`.
+> - **Results:** typecheck, `pnpm --filter web lint` (1787 strings, 0 banned), unit **1150 passed / 17 skipped** (80
+>   files, DB tests on a private `pot_spend`), `NEXT_DIST_DIR=.next-spend NEXT_PUBLIC_DATA_SOURCE=mock next build`, mock
+>   e2e on `next start -p 3410`: **301 passed, 29 skipped** (3 projects).
+> - **Supersedes:** "Back in multi-step sheets" said Spend was one form; it now has two steps (same pattern). "Snap the
+>   receipt" said another currency is never converted; it now is, with the rate shown.
+
+> **2026-11-01: Earned trust, one OK, the Pot record, the all-or-nothing goal (hub 1.1.0, wave 4 UI).** Built on mocks
+> and unit tests only; **the hub 1.1.0 isn't deployed** (notes/contracts-wave4.md §6 needs the human's OK). Against the
+> deployed 1.0.0 hub every new read degrades to "off" (PotView parses to LEGACY_EXTRAS, get_trusts/get_goal/get_record
+> aren't called or return nothing; the record falls back to get_requests), so a testnet build keeps working.
+> - **Create step 2** (`CreatePotSheet` `ExtrasRules` + `GoalRule`, state `lib/client/wave4-form.ts`, machine event
+>   `EXTRAS`): "Trust grows" switch (on) + "People who spend well get a bigger instant limit." + the numbers ("Every 3
+>   paid spends raise someone's limit by $100, up to $300…"); "Spends up to $[300] need just one OK from anyone else"
+>   (follows 3 × the instant limit until typed; $0 = off; below the instant limit → inline error, the hub's
+>   ERR_EXTRAS_INVALID); "Set a goal (optional)" (off): Collect $[ ] by [date] + "All or nothing" (on: "If we don't
+>   reach it, everyone gets their money back automatically." + "Spending opens once the goal is reached."). Date =
+>   end of the picked local day, tomorrow … +365 d. Create **always sends `extras`** (links stay on for pay by link).
+>   The off-chain "$X each" switch stays (it's the suggested share for /j and Add); the goal bar now shows the
+>   on-chain goal when there is one (mock `potView`, live `livePotVM`: `goalDetail.amount` wins over `goalEachOf`).
+> - **Rules tab / rules change:** new sentences (Trust grows…, Spends up to $300 need just one OK…, the goal with its
+>   date / all-or-nothing promise), "Your instant limit" card (`components/wave4/Trust.tsx` `MyTrustCard`: "You can
+>   spend up to $200 without asking" + a 3-step ink meter + "2 more paid spends to $300"), a "See every spend" link.
+>   `RulesSheet` gained a third keypad card "One OK up to" (Off/$) and a "Trust grows" switch; `extras` are sent only
+>   when they change (then whole, goal kept as it is: `currentExtras`); the review face diffs them. The goal itself
+>   isn't editable in the sheet (deviation: a soft-goal edit needs a date picker in the change sheet).
+> - **Members / person / You:** `TrustBadge` (Sprout "New" / ShieldCheck "Trusted" / BadgeCheck "Very trusted", ink on
+>   sunken: trust isn't a status) + "Can spend up to $X without asking" per row (aria-label gains the level); the
+>   person sheet says "Leo is New · Leo can spend up to $100 at a time… 1 paid spend so far."; You → "Your instant
+>   limit" lists every open Pot with trust on (`components/wave4/YourTrust.tsx`).
+> - **Spend sheet:** `previewSpend` (lib/client/rules.ts) takes `extras`, `trustLevel`, `goalBlocks` and returns
+>   `tier` + `effectiveCap` (sdk `decideSpend`); `RulePreview` words the three tiers ("This will be approved instantly ·
+>   You can spend up to $200…", Hand icon "This needs one OK from anyone else · It's over your $100 instant limit.",
+>   "This needs 2 of 3 approvals"), CTA "Ask for one OK", result "Sent · One OK from anyone else in the group and it's
+>   paid." (no k-of-n timeline). The live build still previews locally (no `preview_spend` round trip, as before);
+>   the hub decides and the result card follows the request's own `tier`.
+> - **Approve sheet / cards / feed:** for `tier === "one_ok"` with no "no" yet: why "Needs one OK from anyone in the
+>   group…", a `OneOkLine` instead of the timeline, primary **[OK $250]** → `okRequest` (mock `world.okRequest`; live
+>   `lib/client/live/wave4.ts` → relay R13 `ok_request`, 200 Tgas, outcomes mapped by `okResultOf`), Decline stays the
+>   vote (it becomes an objection: then "Someone said no first · Now the group decides…" and the normal Approve).
+>   The requester sees "Waiting for one OK" and no OK button. Decided: "Approved by Leo's OK · $250 was sent to Sam."
+>   Inline cards say "Needs one OK" and [OK $250] (`approveInline` routes to `okRequest` via `canGiveOk`); feed rows
+>   "Approved by Leo's OK"; goal feed lines (reached / refunding / refunded).
+> - **Goal on the Pot** (`components/wave4/GoalBanner.tsx` in the hero's new `goalSlot`): collecting "$300 of $1,200 ·
+>   3 days left" + Lock "Spending opens once the goal is reached." + the all-or-nothing promise; reached (check, calm,
+>   no burst); refundable/refunding "Refunding everyone…" (typing dots); refunded "Everyone got their money back"
+>   (on Activity, above the closed card); a soft goal past its date "The goal date passed". A "collecting" read past
+>   its date shows what the hub will say. Spend is `aria-disabled` with an sr-only description and a toast while an
+>   all-or-nothing goal isn't reached; a `?sheet=spend` deep link previews the hold and disables the CTA.
+> - **Public Pot record** `/p/[slug]/record` (**outside** the (app) shell: readable signed out, noindex;
+>   `components/record/RecordScreen.tsx`, data `lib/client/record-data.ts`, pure rows + CSV `lib/client/record.ts`):
+>   every spend newest first: date, who asked, for what, amount, how approved (By the Pot's rules / One OK by X / By
+>   the group / Not yet), status chip (Paid, Waiting, Processing, Declined, Expired, Withdrawn, Not sent yet,
+>   Returned, Held for a link, Cancelled), receipt. A table from md, cards on phones (320 px clean). [Download CSV]:
+>   `Date,Pot,Person,Amount (USD),Reason,Approved how,Status,Receipt URL`, ISO dates (UTC), plain `84.00`, RFC 4180
+>   quoting, `'`-prefix for cells starting = + - @, BOM + CRLF, `<slug>-record-<date>.csv`. [Copy link]. No marigold.
+>   **Product decision (privacy):** public by link, but a visitor sees only what's public on chain (amounts, reason
+>   chips, account-derived first names via `nameFromAccount`); display names from the group, notes and receipts need
+>   the member-gated feed route. Linked from the Rules tab and the Pot's ••• menu ("Pot record").
+> - **Mock world** (`lib/client/mock/wave4.ts` + small hooks in world.ts/store.ts): extras/trust/goal on `PotRec`, tier
+>   / okBy on requests, trust settle (once, when paid; amount × 10 ≥ cap; +1 per 3; max 2) and decline (−1), `okRequest`
+>   (self / not_one_ok / objection / decided / failed), the goal (blocks spends, `ERR_GOAL_MISSED` on money in after the
+>   date, reached once), a **mock cron** in the store (1 s tick while subscribed: refundable → refunding → refunded
+>   after `REFUND_PHASE_MS` 5 s, everyone gets their contribution back, the Pot closes, the close is marked `refund`).
+>   New mock Pots get the hub's defaults; Lisbon Trip / Porto Weekend stay 1.0.0-shaped (so every older spec is
+>   unchanged). **Showcase seed:** Ski Chalet (Maya Trusted, Leo's $180 approved by Sam's OK, Sam's $250 lift passes
+>   waiting for one OK) + Festival Fund ($300 of a $1,200 all-or-nothing goal, 3 days left). Added to a fresh world for
+>   people; automated browsers (`navigator.webdriver`) keep the classic two-Pot seed unless
+>   `localStorage['pot.mock.seed'] = 'showcase'` (the new specs do that). Fault hook `pot.mock.fail = "ok"`.
+> - **Live:** bundle reads `get_trusts` (trust on) + `get_goal` (a goal) → `vm-wave4.ts` (`trustVMOf`, `goalVMOf` with
+>   an extras.goal + goal_state fallback, `goalFeedOf`); requests carry `tier`/`okBy`; create/propose/set rules pass
+>   `extras` through the sdk intents.
+> - **Server:** reconcile step 2b `server/ops/goals.ts` → for open/closing Pots `get_goal`; `can_refund` + refundable →
+>   `refund_unfunded` (phase 1), re-read, refunding → `refund_unfunded` again (phase 2), relayer-signed exactly like
+>   the server's sync/retry_payout (submitter + RELAYER_KEYS pool; no key read), 300 Tgas, 0 deposit, relay_log op
+>   `refund_unfunded` (RELAY_OPS; text column, no migration) with intent `refund_propose|refund_approve`, keys
+>   `refund:<dao>:propose:<utc day>` / `…:approve:<id>:<day>`. Back-off (open question 6): refundable again with a
+>   refund on record = rejected → wait 2^(n−1) days after our n-th proposal, give up after 4 (alert
+>   `goal_refund_stuck:<dao>`). A 1.0.0 hub (MethodNotFound) stops the step. **Pushes** (`notify.ts`): `spend_requested`
+>   tier one_ok → "Maya needs one OK · $180 for … · Anyone can OK it"; `spend_ok_approved` → "Approved: $180 is on its
+>   way · Sam gave the OK for …" (same dedupe key as the sync's); `trust_level_changed` (settled, up) → "You're now
+>   Trusted in Lisbon Trip · You can spend up to $200 without asking."; `goal_reached` / `goal_refund_proposed` (missed)
+>   / `goal_refunded` (replaces "Pot closed" for that close). sdk `NotificationType` + `trust_up`, `goal`.
+> - **Tests:** unit `lib/client/mock/wave4.test.ts` (17), `lib/client/record.test.ts` (6), `lib/client/wave4-form.test.ts`
+>   (5), `lib/client/live/vm-wave4.test.ts` (5), `server/ops/goals.test.ts` (11, pot_test-style schema), 
+>   `server/notify/notify-wave4.test.ts` (7), `components/__tests__/wave4.test.tsx` (9). Mock e2e `e2e/mock/trust.spec.ts`
+>   (6) + `e2e/mock/goal.spec.ts` (4) × 3 projects: 28 passed, 2 skipped (320 px gate), axe 0 serious, brand checks.
+>   Testnet `e2e/testnet/wave4-trust-goal.testnet.ts` **written, not run** (skips itself unless get_config.version is
+>   1.1.x; 2 accounts + 2 Pots; run under the testnet lock with a private DB, see its header).
+>   Screens: `notes/screens/trust-{members,rules,spend,approve,record}-{day,night}.png`,
+>   `goal-{collecting,reached,refunding,refunded,create}-{day,night}.png`.
+> - **Gates (2026-11-01):** `pnpm --filter web lint` (1,775 strings, 0 banned) · tsc clean · unit 73 files, 1,121 passed /
+>   15 skipped (DATABASE_URL_TEST=…/pot_trust) · `NEXT_DIST_DIR=.next-trust next build` mock + testnet pass · full mock
+>   e2e on :3717: **298 passed, 29 skipped, 0 failed**.
+> - **Open:** (1) record privacy for visitors (chain-derived names only) — OK, or a per-Pot "show names publicly"?
+>   (2) the goal can't be moved/dropped from the rules sheet yet; (3) live Spend preview is local (decide twin), not
+>   `preview_spend`; (4) trust-level pushes say the new per-spend limit, not what's left of the per-person limit;
+>   (5) the cron scans ≤ 500 open/closing Pots from the `pot` cache once a day (Hobby cron) — a missed goal refunds
+>   within 24 h of its date, not at it.
+
+> **2026-11-01: Pay anyone by link (hub 1.1.0; contracts in notes/contracts-wave4.md D4-4…D4-6).** **Needs the 1.1.0 hub
+> deployed (human OK) before it works on testnet; built and tested on the mock data source + unit tests. Nothing signed.**
+> - **Spend sheet:** the type control is now "Who gets paid?" **Me · A member · Someone else** (`paylink.who.*`; the old
+>   `spend.type.*` keys stay for the /demo tour). "Someone else" (`components/paylink/PayLinkFields.tsx`) shows one line on
+>   how it works and an optional **"Who's it for?"** label (≤ 40 chars, members only), then amount + reason + note and the
+>   same tier preview (the link's payee counts as allowed, so instant / one OK / the group as for a member). CTA
+>   "Send $84 by link" (instant) or the tier's own CTA. A Pot whose rules have links off (every pre-1.1.0 Pot until a rules
+>   change; `pot.extras.links`) says so and can't submit. Submit (`lib/client/paylink/actions.ts requestLinkSpend`): a fresh
+>   ed25519 key in the browser (the invite key shape, `lib/client/paylink/keys.ts`), `request_spend` with
+>   `receiverId = hub` + `link {claimPk, expiresAtMs = now + 14 d}`; the secret is saved **only on this device**
+>   (`localStorage['pot.paylinks.v1']`, `secrets.ts`; kept under its request_ref before the relay so a crash can't lose it);
+>   the label is an off-chain note (`POST /api/notes` kind `link_label`, keyed by request_ref like a memo).
+> - **Share card** (`LinkShare.tsx`): after the link holds the money (instant: right after "Approved by Pot rules"; group /
+>   one OK: from the request sheet once approved) → "Your payment link is ready · Send it to Casa Lisboa host…", the link
+>   `/c/<slug>/<id>#<secret>`, "Anyone who has this link can take the money", "saved only on this device; if it's lost,
+>   cancel it, or the money goes back on <date>"; footer [Share payment link] (marigold, Web Share → copy fallback),
+>   [Copy link] → "Link copied", [Show QR code] (the QR replaces the card, white plate in Night). Later: the request
+>   sheet (`?r=`) shows a **Payment link** panel (`LinkPanel.tsx`: status chip, who it's for, [See payment link] →
+>   `?sheet=paylink&link=<id>` (`PayLinkSheet`), **[Cancel and return the money]** with a confirm → `reclaim_link`). A link
+>   made on another device: "can't be shown here; you can still cancel it".
+> - **Claim page `/c/[slug]/[id]`** (`app/c/[slug]/[id]/page.tsx`, params inside `<Suspense>` + `connection()`; `claim-preview.ts`
+>   server read: mock seed / testnet `get_link` + `get_pot` + the requester's display name; `opengraph-image.tsx` "Maya sent you
+>   $30 · from Surf Camp"; headers `Referrer-Policy: same-origin` + `X-Robots-Tag: noindex` like `/j`). Island
+>   `components/paylink/ClaimFlow.tsx` over a pure machine (`lib/client/paylink/claim.ts`): the #secret (kept in
+>   sessionStorage across sign-in) is checked against the link's public key first; screens: ready [Get $84] → sign in
+>   (live: `SignInOptions`, NEAR Auth or "I have a NEAR wallet"; mock: "Continue with Google" signs the guest in as **Alex**,
+>   a new mock persona outside every seeded Pot) → claiming → **"$84 is yours"** (their Pot dollars balance, Receipt ↗,
+>   [See my Pot dollars]; the fragment is stripped; a reload still shows it) · waiting for the group's OK (polls 4 s on
+>   testnet, storage events on mock) · already claimed · cancelled · expired · not approved · link isn't complete · doesn't
+>   match · not found · a claim in flight. A claimer who is a member is fine (their own Pot dollars). The claim is signed in
+>   the browser over `pot-claim:v1:<hub>:<pot>:<id>:<me>` and relayed as `claim_link` (R14).
+> - **Statuses everywhere:** feed rows (`LinkRow.tsx`, via `RequestRow`): "Maya sent Casa Lisboa host a $84 payment link for …"
+>   + "Link sent · waiting to be claimed · Until Nov 15" / "Claimed by Alex" (a member or a Pot user by display name, else
+>   "Claimed by someone outside the Pot") / "Returned to the Pot" / "Nobody took it in time · Returned to the Pot" / "Not
+>   approved, so no link was sent"; `LinkStatusChip` (icon + word, `data-status="link-*"`). Person activity: "You sent a $84
+>   payment link for …" with the link chip. Close sheet: `close.links_pending` (open links block a close).
+> - **Data:** `RequestVM.link: LinkVM` (status waiting|ready|busy|claimed|expired|returned|void, label, expiresAt, claimer,
+>   doneAt, returnedOnExpiry) from `linkStatusOf()` (`lib/client/paylink/link.ts`). Mock (`lib/client/mock/links.ts`): a link
+>   request's receiver is `@link`; funding is derived (a paid request's link reads funded), claim / reclaim / the daily
+>   sweep (on world load) / `openLinks` blocks `proposeClose`; claimer's Pot dollars include claimed links; showcase Pot
+>   **Surf Camp** (Maya + Sam; #111 claimed by Alex, #112 expired → returned, #113 open, fixture secrets in `SURF_LINKS`)
+>   added with the hub 1.1.0 showcase (`pot.mock.seed = showcase`; the classic seed is unchanged). Live
+>   (`lib/client/live/paylink.ts`, `vm-paylink.ts`): `requestSpend` takes `link` + `requestRef`; the bundle reads `get_link`
+>   per link request (finished ones cached per tab); feed route members-only `linkLabels` / `linkClaimers`.
+> - **Backend:** note kind `link_label` (no migration: text column); `FEED_KINDS` + `link_funded|claimed|returned|voided`,
+>   `RELAY_OPS` + `reclaim_link` (text columns, no migration); `server/features/paylink.ts linkEnrichment`; pushes
+>   `link_claimed` → the requester ("Your $84 payment link was claimed · Alex got the money from …", the claimer named only
+>   when a Pot user) and `link_returned` → every member except a requester who cancelled; **cron**
+>   (`server/ops/links.ts`, a `runReconcile` step `links`): Pots active ≤ 45 days → last 50 requests with a funded (or
+>   approved-but-unfunded) link → `get_link` → `selectReclaimable` (past its date, oldest first, ≤ 10 per run) →
+>   relayer-signed `reclaim_link` (50 Tgas, 0 deposit, relay_log op `reclaim_link`, idempotent per (Pot, id, run cause)),
+>   events → feed + pushes.
+> - **Tests:** unit `lib/client/paylink/{link,keys,claim}.test.ts`, `lib/client/mock/links.test.ts` (44; keys checks the
+>   signature against `@pot/sdk/sign`, raw noble and the contract's format string), `server/ops/links.test.ts` (7, DB:
+>   selection, the reclaim tx, idempotency, bound, feed row, the reconcile step, link pushes, feed enrichment), component
+>   `components/__tests__/paylink.test.tsx` (5); mock e2e `e2e/mock/pay-link.spec.ts` 5 tests × 3 projects (13 run + 2
+>   skipped by the 320 px gate), axe 0 serious + brandChecks everywhere; testnet `e2e/testnet/paylink.testnet.ts`
+>   (**written, not run**: needs hub 1.1.0; a fresh 0-NEAR claimer). Screens: `notes/screens/paylink-{spend,share,claim,
+>   claimed,expired,feed}-{day,night}.png`.
+> - **Decisions / open questions:** (1) M-7: the claim page and its preview name the requester (display name, never an
+>   account id) only while the link is open; the path is guessable (slug + small id), so that name is visible to anyone who
+>   guesses it during those ≤ 14 days. Flip `redact` in `claim-preview.ts` to always-null if that's too much. (2) The label is
+>   members-only and never shown to the claimer. (3) Mock trust counts a link when it's paid (the hub counts it when
+>   claimed). (4) Links default to 14 days (no UI to change it). (5) Pre-1.1.0 Pots need a rules change to turn links on.
+
+> **2026-11-01: Snap the receipt.** In the Spend sheet, under the rule preview and refund line,
+> `components/sheets/ReceiptSnap.tsx` shows a **secondary** [📷 Snap the receipt]. It is a hidden
+> `<input type=file accept="image/*" capture="environment">`, so phones open the camera and desktop browsers open the
+> file picker. Touch screens also get "Choose a photo" (no `capture`). Under it there is a hint line and
+> **"Read privately"** (Lucide `ShieldCheck`), a disclosure in plain words: a sealed computer reads the photo, not even
+> its operators can look in, Pot doesn't keep it, and only what you confirm goes with the request. "How do we know?"
+> names the chip makers' certificates. Once a live reading has proof, it adds a [Check it yourself ↗] link to NEAR AI's
+> public Verification Center. In the mock build it says it's a sample reading and the photo stayed on the device.
+> - **Flow** (`lib/client/receipts/`): `image.ts` decodes the photo (EXIF orientation), scales the long edge to 1600 px
+>   and re-encodes as JPEG ≤ 1.2 MB, which also strips the metadata. `read.ts` then reads it. On mock it picks a
+>   sample by file name: `receipt-cafe-eur` = EUR, `blurry` = unreadable, anything else = Pingo Doce $84.20. Fault
+>   hooks are `pot.mock.fail = receipt | receipt_timeout`. On testnet it sends `POST /api/receipts/read` with a 30 s
+>   client timeout. `useReceiptsEnabled()` is always true on mock; on testnet it reads `GET /api/health`
+>   `features.receipts`, so the option is hidden without a server key.
+> - **Fill:** dollars only fill the amount (keypad string). The reason chip comes from the reading's category
+>   (restaurant → Food). The note is "Pingo Doce · Oct 28" (≤ 80 characters, inside the 140-character memo rule).
+>   Another currency is **never converted**: the summary says "This receipt is in EUR (€42.50). Pot counts in dollars…"
+>   and offers [Use 42.50 as dollars] as an explicit choice.
+> - **Summary card:** merchant (h3, takes focus), day, total (tabular), the filled / low-confidence / currency notice,
+>   "Show n items" (`aria-expanded`, line totals + tax/tip), [Snap again], [Remove]. Remove undoes only the fields that
+>   still hold what the reading put in.
+> - **States:** "Reading your receipt…" with typing dots and [Type it in instead] (aborts; a late answer is ignored).
+>   Errors: unreadable / timeout / open / too_large / busy / unavailable / offline, each with "title · body" copy and
+>   [Try again]. The form never blocks.
+> - **A11y:** the component has its own `role=status` region: "Receipt read: $84.20 at Pingo Doce", the failure, or
+>   "Receipt removed.". Ask / Get money back stays the one marigold.
+> - **Copy:** `spend.receipt.*` in en.json.
+> - **Jargon list** (`i18n/banned.mjs`) gained `AI`, `TEEs?`, `LLMs?`, `OCR`, `attestations?` and `enclaves?`.
+> - **SpendSheet edits are additive:** `receiptKey` remounts the component on reset, `filled` ref, `fillFromReceipt`,
+>   `clearReceipt`. In the feed, a mock spend with a note reads "Maya got $84.20 back for Pingo Doce · Oct 28".
+> - **Tests:**
+>   - `lib/receipt.test.ts` (38)
+>   - `lib/client/receipts/read.test.ts` (14)
+>   - `components/__tests__/receipt-snap.test.tsx` (10)
+>   - `e2e/mock/receipt.spec.ts`: 4 tests × mobile-day / mobile-night / desktop, 10 run + 2 skipped by the 320 px
+>     gate. They cover the dollar receipt → instant spend with the note, the euro receipt, blurry + timeout, and
+>     320 px. All run with axe 0 serious and brandChecks. Desktop goes through the real file chooser.
+> - **Fixtures:** `e2e/fixtures/receipts/receipt-{pingo-doce,cafe-eur,blurry}.jpg`.
+> - **Screens:** `notes/screens/receipt-{day,night}.png`.
+> - **To check on a real phone:** `Permissions-Policy: camera=()` (next.config / `SECURITY_HEADERS`) governs
+>   `getUserMedia`. The file input's `capture` hands off to the system camera app and should not be affected, but
+>   this is unverified on iOS Safari and Android Chrome.
+
 > **2026-11-01: Comments on requests.** A short thread on every spend request that opens the request sheet (waiting,
 > your own, approved, declined, expired, failed; instant spends don't open a sheet, so they have none), so the group
 > talks about a spend inside Pot. `components/comments/RequestComments.tsx` at the end of `ApproveSheet`: "Comments · N",
@@ -509,3 +767,37 @@ Request: "We should have a back button in this flow, if I want to change somethi
   - `pnpm typecheck`, `pnpm lint` and `pnpm test` (763 passed, 9 skipped) are green.
   - `NEXT_DIST_DIR=.next-back NEXT_PUBLIC_DATA_SOURCE=mock next build` passes.
   - The mock e2e suite against `next start -p 3500` gave **216 passed, 21 skipped** (3 projects).
+
+## Hub 1.1.0 testnet run: Add money 422 (2026-11-02)
+First run of `e2e/testnet/paylink.testnet.ts` + `wave4-trust-goal.testnet.ts` against the upgraded hub 1.1.0.
+- **paylink setup, "Add $150" → hero stays $0.00, `POST /api/relay` 422.** Body (from the Playwright trace):
+  `{"reason":"args_invalid","detail":{"field":"amount","why":"range"}}`. The delegate was
+  `usdc.ft_transfer_call {receiver_id: pots.potprev.testnet, amount: "150150000000", msg: {"pot": …}}`, i.e.
+  **$150,150**. Nothing to do with hub 1.1.0, `extras` or policy v2: the Add sheet prefills "your share" ($150, D-61),
+  the spec typed "150" on top (the keypad appends → "150150"), and `getByRole("button", { name: "Add $150" })`
+  matched "Add $150,150" by substring. The relayer's R1 cap (`MAX_CONTRIBUTION` $10,000) refused it, correctly.
+  - Spec: clears the prefill first (6 × delete, as flows/p2 do) and uses `exact: true` for "Add $150" (both specs).
+  - App: the Add sheet now stops at **$10,000 per add** (`MAX_ADD` in `lib/client/money.ts` = the relayer's
+    `MAX_CONTRIBUTION`): over it the button is off and an alert says "You can add up to $10,000 at a time."
+    (`add.error.max`), instead of sending a delegate that comes back 422 with the money never moving.
+    Test: `components/__tests__/add-max.test.tsx` (also pins `MAX_ADD === MAX_CONTRIBUTION`).
+  - Still open (pre-existing): a demo-dollars add above "own + $500" claims only $500 from the faucet
+    (`FAUCET_MAX`, `lib/client/live/actions.ts`) and the `ft_transfer_call` then fails on chain.
+- **wave4-trust-goal "Error: signed in" in 158 ms:** `walletSignIn()` only taps "I have a NEAR wallet"; the spec read
+  `/api/session` right after, before the NEP-413 sign-in had landed. `accountOf()` (e2e/testnet/chain.ts) now polls
+  the session for up to 30 s.
+- **wave4-trust-goal, then two wrong expectations in the spec (the hub 1.1.0 is right, per notes/contracts-wave4.md):**
+  - `nextLevelIn` is 2, not 3: the paid $180 one-OK spend counts toward trust too (D4-2: every request that reaches
+    `approved` with amount × 10 ≥ the base cap). $180, $20, $20 → level 1 (streak 0), the third $20 → streak 1. The
+    Rules tab says "2 more paid spends to $300".
+  - "$150 is instant for Ben now" was false twice: `previewSpend`'s 5th argument is the **Pot balance** (the spec passed
+    $60, the money left, so `insufficient_balance`), and the per-person budget still bounds trust ($200 − $60 = $140 →
+    `instantUpTo` $140, a $150 spend is `over_budget` → one OK). The spec now checks $120 instant and $150 one-OK
+    against a $300 balance, plus `budgetLeft`/`instantUpTo` $140.
+- **e2e/testnet/accounts.ts `release()`** retries the parent's delete with backoff over FastNEAR → dRPC: one run's
+  delete hit FastNEAR's 429 and stranded ≈ 0.019 NEAR in `e2e-hu34bn.pot-funds-65k8.testnet` (its key lived only in
+  that process).
+- **Results:** paylink 4/4 and wave4-trust-goal 2/2 green on hub 1.1.0 (preview); unit 1153 passed; lint and typecheck
+  clean; mock e2e 310 passed, 3 failed = `receipt.spec.ts:95` in every project, unrelated and time-of-day dependent:
+  the sample FX date is `isoDayUtc(now)` (lib/receipt.ts) but `fxLine()` compares it with the **local** day, so between
+  local midnight and UTC midnight (00:00-02:00 in Romania) it says "from Nov 1" instead of "from today".

@@ -5,7 +5,17 @@
 
 import type { Micro } from "../money.ts"
 import type { AccountId, DaoId, ProposalId, PublicKeyStr, RequestId, Slug } from "./ids.ts"
-import type { RawCloseBlockedReason, RawPreviewReason, RawReason, RawRequestStatus, RawSpendRefusal } from "./hub-raw.ts"
+import type {
+  RawCloseBlockedReason,
+  RawGoalState,
+  RawLinkStatus,
+  RawPreviewReason,
+  RawReason,
+  RawRecordMoney,
+  RawRequestStatus,
+  RawSpendRefusal,
+  RawTier,
+} from "./hub-raw.ts"
 
 export type PresetId = "trip" | "club" | "team" | "custom"
 export type Category = "groceries" | "food" | "transport" | "stay" | "tickets" | "other"
@@ -55,6 +65,144 @@ export const RESERVED_SLUGS: readonly string[] = [
   "system", "support", "help", "about", "settings", "static", "assets", "auth", "login", "logout", "j", "p", "r", "new",
   "create", "null", "undefined",
 ]
+
+// ---- hub 1.1.0 (wave 4): earned trust, one-OK tier, pay by link, all-or-nothing goal ----
+
+/** How a request gets approved: the hub alone (instant), one other member's OK, or a majority. */
+export type Tier = RawTier
+export type LinkStatus = RawLinkStatus
+export type GoalState = RawGoalState
+
+export interface Goal {
+  amount: Micro
+  deadlineMs: number
+  /** Spends wait for the goal; a missed goal refunds everyone (hub `refund_unfunded`). */
+  allOrNothing: boolean
+}
+
+/** The rule options added in hub 1.1.0 (contracts/pot-hub/src/types.rs RuleExtras). */
+export interface RuleExtras {
+  /** Earned trust: the instant cap grows to instantCap × (1 + level). */
+  trust: boolean
+  /** Over-cap spends ≤ this need one other member's OK. 0n = off. */
+  oneOkCap: Micro
+  /** Pay by link (the payee is whoever holds the claim link). */
+  links: boolean
+  goal: Goal | null
+}
+
+/** What every Pot created before hub 1.1.0 behaves as (and what hub 1.0.0 data parses to). */
+export const LEGACY_EXTRAS: RuleExtras = { trust: false, oneOkCap: 0n, links: false, goal: null }
+
+/** hub 1.1.0 constants (contracts/pot-hub/src/types.rs). */
+export const WAVE4_LIMITS = {
+  trustStep: 3,
+  trustMaxLevel: 2,
+  /** a settled spend counts toward a level only if amount × 10 ≥ the base instant cap */
+  trustMinSpendDiv: 10n,
+  defaultOneOkMult: 3n,
+  defaultLinkTtlMs: 14 * 86_400_000,
+  minLinkTtlMs: 60_000,
+  maxLinkTtlMs: 30 * 86_400_000,
+  /** a requester may close an approved-but-unfunded link this long after approval */
+  linkSettleMs: 60_000,
+  minGoalLeadMs: 60_000,
+  maxGoalLeadMs: 366 * 86_400_000,
+  /** what the hub (sponsored) or a direct caller spends to register a link claimer on the token */
+  claimRegistrationYocto: 1_250_000_000_000_000_000_000n,
+} as const
+
+export interface TrustView {
+  pot: DaoId
+  account: AccountId
+  enabled: boolean
+  level: number
+  maxLevel: number
+  streak: number
+  step: number
+  /** qualifying spends still needed for the next level (0 at the top or with trust off) */
+  nextLevelIn: number
+  minQualifying: Micro
+  settled: number
+  settledAmount: Micro
+  declined: number
+  lastDeclinedMs: number | null
+  baseCap: Micro
+  multiplier: number
+  effectiveCap: Micro
+  budgetLeft: Micro
+  /** min(effectiveCap, budgetLeft): the biggest single instant spend right now */
+  instantUpTo: Micro
+  oneOkCap: Micro
+}
+
+export interface GoalView {
+  pot: DaoId
+  amount: Micro
+  deadlineMs: number
+  allOrNothing: boolean
+  totalIn: Micro
+  state: Exclude<GoalState, "none">
+  reachedAtMs: number | null
+  refundProposalId: ProposalId | null
+  /** refund_unfunded would act now (propose, approve or retry the refund close) */
+  canRefund: boolean
+  spendsBlocked: boolean
+}
+
+export interface LinkView {
+  pot: DaoId
+  requestId: RequestId
+  requester: AccountId
+  amount: Micro
+  category: Category
+  requestStatus: HubRequestStatus
+  status: LinkStatus
+  claimPk: PublicKeyStr
+  expiresAtMs: number
+  receiver: AccountId | null
+  fundedAtMs: number | null
+  doneAtMs: number | null
+  /** funded and not expired (a valid signature is still needed) */
+  claimable: boolean
+}
+
+/** One row of the public Pot record (hub `get_record`). */
+export interface RecordEntry {
+  requestId: RequestId
+  proposalId: ProposalId | null
+  requester: AccountId
+  /** the payee; for a link, the claimer once claimed (else null) */
+  payee: AccountId | null
+  link: boolean
+  amount: Micro
+  category: Category
+  requestRef: string
+  tier: Tier
+  /** how it was approved; null while not approved */
+  approvedBy: "rules" | "one_ok" | "group" | null
+  okBy: AccountId | null
+  hubStatus: HubRequestStatus
+  money: RawRecordMoney
+  linkStatus: LinkStatus | null
+  createdAtMs: number
+  updatedAtMs: number
+}
+
+export interface OkOutcome {
+  requestId: RequestId
+  ok: boolean
+  status: string
+  reason?: string
+}
+
+export interface LinkOutcome {
+  requestId: RequestId
+  ok: boolean
+  status: LinkStatus
+  receiver: AccountId | null
+  reason?: string
+}
 
 export type PotStatus = "open" | "closing" | "closed"
 export type SpendPath = "instant" | "vote"
@@ -130,6 +278,13 @@ export interface PotView {
   openRulesProposal?: ProposalId
   /** A propose_close chain is in flight (implemented-contract field). */
   closingInFlight: boolean
+  /** hub 1.1.0 (parse fills it; LEGACY_EXTRAS on 1.0.0 data). Optional for hand-built mocks. */
+  extras?: RuleExtras
+  /** 1 = v1 DAO policy; 2 = the rulebot can also approve the goal-refund close */
+  policyVersion?: number
+  /** link requests not claimed / returned / void yet (they block closing) */
+  openLinks?: number
+  goalState?: GoalState
 }
 
 export interface PotSummary {
@@ -197,6 +352,12 @@ export interface SpendPreview {
   balanceChecked: Micro | null
   /** What request_spend verifies on chain but a view cannot. */
   clientMustCheck: string[]
+  /** hub 1.1.0: null when blocked */
+  tier?: Tier | null
+  /** the requester's instant cap after earned trust (before the budget) */
+  effectiveCap?: Micro
+  trustLevel?: number
+  oneOkCap?: Micro
 }
 
 export interface ClosePayout {
@@ -240,6 +401,11 @@ export interface RequestView {
   updatedAtMs: number
   /** created + 7 d (UI expiry; the DAO's submission_time is authoritative). */
   expiresAtMs: number
+  /** hub 1.1.0 */
+  tier?: Tier
+  okBy?: AccountId | null
+  /** set for pay-by-link requests */
+  linkStatus?: LinkStatus | null
 }
 
 export type InviteStatus = "active" | "expired" | "used_up" | "revoked"
@@ -290,6 +456,9 @@ export interface SpendOutcome {
   status: "approved" | "pending" | "approving" | "rejected" | "payout_failed" | "expired" | "removed" | "refused"
   refusal: SpendRefusal | string | null
   approvalsNeeded: number
+  /** hub 1.1.0 */
+  tier?: Tier
+  link?: boolean
 }
 
 export interface JoinOutcome {

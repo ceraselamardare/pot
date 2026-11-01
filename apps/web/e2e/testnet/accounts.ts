@@ -132,13 +132,23 @@ export async function createTestAccounts(names: string[], log: (line: string) =>
   await waitForKey(parent, parentKey.publicKey)
 
   const parentAccount = new Account(parent, new JsonRpcProvider({ url: RPC_URLS[0]! }), new KeyPairSigner(parentKey.keyPair))
+  // the parent's key lives only in this process: a failed delete strands its NEAR, so retry with backoff over both
+  // providers (FastNEAR answers 429 after a busy run; deleting an already-deleted account just fails again)
   const release = async () => {
-    try {
-      const tx = await parentAccount.deleteAccount(FUNDS_ACCOUNT)
-      log(`[accounts] ${parent} deleted, the rest back to ${FUNDS_ACCOUNT} tx ${tx.transaction.hash}`)
-    } catch (e) {
-      log(`[accounts] could not delete ${parent}: ${String(e).slice(0, 200)}`)
-    }
+    let last: unknown
+    for (let round = 0; round < 3; round++)
+      for (const url of RPC_URLS) {
+        try {
+          const acc = new Account(parent, new JsonRpcProvider({ url }), new KeyPairSigner(parentKey.keyPair))
+          const tx = await acc.deleteAccount(FUNDS_ACCOUNT)
+          log(`[accounts] ${parent} deleted, the rest back to ${FUNDS_ACCOUNT} tx ${tx.transaction.hash}`)
+          return
+        } catch (e) {
+          last = e
+          await new Promise((r) => setTimeout(r, 2_000 * (round + 1)))
+        }
+      }
+    log(`[accounts] could not delete ${parent}: ${String(last).slice(0, 200)}`)
   }
   const people: TestAccount[] = []
   try {

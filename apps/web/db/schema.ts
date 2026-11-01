@@ -37,6 +37,8 @@ export const PROOF_PURPOSES = [
 ] as const
 export const RELAY_OPS = [
   "relay",
+  // pay by link: the daily job's reclaim_link of an expired link (server-signed; text column, no migration)
+  "reclaim_link",
   "create_account",
   "storage_deposit",
   "mpc_sign",
@@ -47,6 +49,8 @@ export const RELAY_OPS = [
   "dao_topup",
   "sim_delivery",
   "report",
+  // hub 1.1.0: the cron's all-or-nothing goal refunds (server/ops/goals.ts)
+  "refund_unfunded",
 ] as const
 export const RELAY_STATUSES = ["validated", "signed", "submitted", "executed", "failed", "rejected", "pending"] as const
 export const FEED_KINDS = [
@@ -65,6 +69,11 @@ export const FEED_KINDS = [
   "spend_withdrawn",
   "proposal_synced",
   "proposal_status",
+  // pay by link (hub 1.1.0): the feed route reads link_claimed for "Claimed by …"; text column, no migration
+  "link_funded",
+  "link_claimed",
+  "link_returned",
+  "link_voided",
 ] as const
 
 // ---------------------------------------------------------------------------------------------
@@ -236,7 +245,8 @@ export const note = pgTable(
     potId: text("pot_id")
       .notNull()
       .references(() => pot.daoId),
-    kind: text("kind", { enum: ["memo", "decline_reason"] }).notNull(),
+    // link_label (pay by link, hub 1.1.0): who a payment link is for, keyed by its request_ref like a memo
+    kind: text("kind", { enum: ["memo", "decline_reason", "link_label"] }).notNull(),
     ref: text("ref").notNull(),
     authorAccount: text("author_account").notNull(),
     text: text("text").notNull(),

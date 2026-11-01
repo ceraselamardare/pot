@@ -669,6 +669,9 @@ export async function followUps(deps: RelayDeps, x: CompleteInput, c: Classified
   if (c.outcome === "success" && m.rule === "R11") tasks.push(serverSync(deps, m.vote!.daoId, m.vote!.proposalId, x.relayId))
   if (c.outcome === "success" && m.rule === "R3" && c.payoutFailed && c.result?.type === "spend" && c.result.proposalId !== null)
     tasks.push(serverSync(deps, m.potId!, c.result.proposalId, x.relayId))
+  // hub 1.1.0: a one-OK approval whose payout failed (the hub's `approved` is optimistic, D7) → sync
+  if (c.outcome === "success" && m.rule === "R13" && c.payoutFailed && c.result?.type === "ok" && c.result.proposalId !== null)
+    tasks.push(serverSync(deps, m.potId!, c.result.proposalId, x.relayId))
   // B-05 / D7: a relayed retry_payout whose payout failed again → sync (the hub said `approved` optimistically)
   if (c.outcome !== "delegate_failed" && m.rule === "R9" && m.retry && c.payoutFailed)
     tasks.push(serverSync(deps, m.potId!, m.retry.proposalId, x.relayId))

@@ -2,7 +2,8 @@
 // Step 1 name + emoji + colour → step 2 the Pot rules (instant limit, per-person limit, who instant payments go
 // to; lib/client/create-rules.ts) + optional "$150 each" → step 3 creating → share. No templates: every Pot is
 // created with preset "custom" and the rules as typed.
-import { DEFAULT_RULES_FORM, MAX_NAMED, sanitizeAmount, type PayeeChoice, type RulesForm } from "../create-rules"
+import { DEFAULT_RULES_FORM, MAX_NAMED, parseAmount, sanitizeAmount, type PayeeChoice, type RulesForm } from "../create-rules"
+import { extrasFormReducer, initialExtrasForm, type ExtrasEvent, type ExtrasForm } from "../wave4-form"
 
 export const NAME_MIN = 2
 export const NAME_MAX = 40
@@ -23,6 +24,8 @@ export interface CreateState {
   /** the "$X each" amount as typed (dollars) */
   goalText: string
   rules: RulesForm
+  /** hub 1.1.0: trust grows, the one-OK ceiling, the goal with a date (lib/client/wave4-form.ts) */
+  extras: ExtrasForm
   /** [Create Pot] was pressed with something to fix: show every inline error */
   attempted: boolean
   nameError: boolean
@@ -45,6 +48,7 @@ export type CreateEvent =
   | { type: "NAMED"; index: number; value: string }
   | { type: "NAMED_ADD" }
   | { type: "NAMED_REMOVE"; index: number }
+  | { type: "EXTRAS"; e: ExtrasEvent }
   /** [Create Pot] with something to fix (the sheet checks the form; see checkRulesForm) */
   | { type: "ATTEMPT" }
   | { type: "SUBMIT" }
@@ -61,6 +65,7 @@ export const initialCreate: CreateState = {
   goalOn: true,
   goalText: "150",
   rules: DEFAULT_RULES_FORM,
+  extras: initialExtrasForm(),
   attempted: false,
   nameError: false,
   status: "editing",
@@ -83,8 +88,13 @@ export function createReducer(s: CreateState, e: CreateEvent): CreateState {
       return { ...s, goalOn: e.on }
     case "GOAL_AMOUNT":
       return { ...s, goalText: sanitizeAmount(e.value) }
-    case "RULE_AMOUNT":
-      return { ...s, rules: { ...s.rules, [e.field]: sanitizeAmount(e.value) } }
+    case "RULE_AMOUNT": {
+      const rules = { ...s.rules, [e.field]: sanitizeAmount(e.value) }
+      // an untouched one-OK ceiling follows the instant limit (3 ×)
+      return { ...s, rules, extras: e.field === "instant" ? extrasFormReducer(s.extras, { type: "INSTANT", instant: parseAmount(rules.instant) }) : s.extras }
+    }
+    case "EXTRAS":
+      return { ...s, extras: extrasFormReducer(s.extras, e.e) }
     case "PAYEES":
       return { ...s, rules: { ...s.rules, payees: e.value } }
     case "NAMED":

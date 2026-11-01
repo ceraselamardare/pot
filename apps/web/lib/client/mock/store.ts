@@ -6,13 +6,18 @@
 import { useSyncExternalStore } from "react"
 import { ActionError, classOfReason } from "../errors"
 import type { AvatarId } from "@/lib/avatars"
-import type { PersonaId } from "./fixtures"
-import type { RulesRec, Vote, World } from "./types"
+import { PERSONAS, type PersonaId } from "./fixtures"
+import * as L from "./links"
+import type { ExtrasRec, RulesRec, Vote, World } from "./types"
 import * as W from "./world"
+import { refundDue, withShowcase } from "./wave4"
+import { sweepExpiredLinks, withLinkShowcase } from "./links"
 
 const WORLD_KEY = "pot.mock.world.v1"
 const SESSION_KEY = "pot.mock.session"
 const FAIL_KEY = "pot.mock.fail"
+/** "showcase" adds the hub 1.1.0 Pots (Ski Chalet, Festival Fund) to a fresh world; "classic" leaves them out */
+const SEED_KEY = "pot.mock.seed"
 
 export interface Session {
   persona: PersonaId
@@ -43,18 +48,48 @@ function write(key: string, value: unknown) {
   }
 }
 
+/**
+ * A fresh world gets the hub 1.1.0 showcase Pots (earned trust, one OK, an all-or-nothing goal) for people looking
+ * at the mock build. Automated browsers (navigator.webdriver) keep the classic two-Pot seed the existing suites are
+ * written against, unless a spec opts in with `localStorage['pot.mock.seed'] = 'showcase'`.
+ */
+function wantsShowcase(): boolean {
+  let flag: string | null = null
+  try {
+    flag = localStorage.getItem(SEED_KEY)
+  } catch {}
+  if (flag === "showcase") return true
+  if (flag === "classic") return false
+  return typeof navigator !== "undefined" && !navigator.webdriver
+}
+
+function freshWorld(now: number): World {
+  const w = W.seedWorld(now)
+  return wantsShowcase() ? withLinkShowcase(withShowcase(w, now), now) : w
+}
+
 function ensureWorld(): World {
   if (world) return world
   const stored = read<World>(WORLD_KEY)
-  world = stored && stored.v === 1 ? stored : W.seedWorld(Date.now())
-  if (!stored) write(WORLD_KEY, world)
+  world = stored && stored.v === 1 ? stored : freshWorld(Date.now())
+  // pay by link: links past their date go back to their Pot (the mock's stand-in for the daily job)
+  const swept = sweepExpiredLinks(world, Date.now())
+  if (!stored || swept !== world) write(WORLD_KEY, (world = swept))
   return world
+}
+
+// The mock's stand-in for the server cron (hub 1.1.0 refund_unfunded): while anyone is subscribed, a missed
+// all-or-nothing goal is refunded in its two steps (propose, then approve REFUND_PHASE_MS later).
+let cronTimer: ReturnType<typeof setInterval> | null = null
+function mockCron() {
+  const next = refundDue(ensureWorld(), Date.now())
+  if (next) commit(next)
 }
 
 function readSession(): Session | null {
   if (session !== undefined) return session
   const s = read<Session>(SESSION_KEY)
-  session = s && ["maya", "sam", "leo"].includes(s.persona) ? s : null
+  session = s && PERSONAS.includes(s.persona) ? s : null
   return session
 }
 
@@ -70,6 +105,10 @@ function commit(next: World) {
 
 function subscribe(cb: () => void) {
   listeners.add(cb)
+  if (!cronTimer && typeof window !== "undefined") {
+    cronTimer = setInterval(mockCron, 1_000)
+    queueMicrotask(mockCron)
+  }
   const onStorage = (e: StorageEvent) => {
     if (e.key === WORLD_KEY) world = null
     if (e.key === SESSION_KEY) session = undefined
@@ -79,6 +118,10 @@ function subscribe(cb: () => void) {
   return () => {
     listeners.delete(cb)
     window.removeEventListener("storage", onStorage)
+    if (listeners.size === 0 && cronTimer) {
+      clearInterval(cronTimer)
+      cronTimer = null
+    }
   }
 }
 
@@ -102,7 +145,7 @@ export function setSession(persona: PersonaId | null) {
 }
 
 export function resetWorld() {
-  commit(W.seedWorld(Date.now()))
+  commit(freshWorld(Date.now()))
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -156,6 +199,7 @@ export async function addMoney(slug: string, amountCents: number, source: "demo"
     next = W.addMoney(ensureWorld(), slug, me(), amountCents, Date.now(), source)
   } catch (e) {
     if (e instanceof Error && e.message === "insufficient_own") throw new MockRelayError("insufficient_balance")
+    if (e instanceof W.HubError) throw new ActionError("specific", e.code)
     throw e
   }
   commit(next)
@@ -165,14 +209,25 @@ export interface SpendResult {
   id: number
   path: "instant" | "vote"
   payout: "sent" | "pending"
+  /** hub 1.1.0 */
+  tier?: "instant" | "one_ok" | "group"
 }
 
 export async function requestSpend(slug: string, input: W.SpendInput): Promise<SpendResult> {
   await sleep(LATENCY.relay)
   maybeFail("spend")
-  const r = W.requestSpend(ensureWorld(), slug, me(), input, Date.now())
+  const r = await hubCall(() => W.requestSpend(ensureWorld(), slug, me(), input, Date.now()))
   commit(r.world)
-  return { id: r.request.id, path: r.request.path, payout: r.request.status === "paid" ? "sent" : "pending" }
+  return { id: r.request.id, path: r.request.path, payout: r.request.status === "paid" ? "sent" : "pending", ...(r.request.tier ? { tier: r.request.tier } : {}) }
+}
+
+/** hub 1.1.0 ok_request (fault hook: 'ok'). */
+export async function okRequest(slug: string, id: number): Promise<W.OkRequestResult> {
+  await sleep(LATENCY.relay)
+  maybeFail("ok")
+  const r = await hubCall(() => W.okRequest(ensureWorld(), slug, id, me(), Date.now()))
+  if (r.result === "approved" || r.result === "failed") commit(r.world)
+  return r.result
 }
 
 export async function castVote(slug: string, id: number, v: Vote): Promise<W.VoteResult> {
@@ -245,11 +300,11 @@ export async function voteClose(slug: string, v: Vote): Promise<W.VoteResult> {
   return r.result
 }
 
-export async function proposeRules(slug: string, rules: RulesRec): Promise<{ proposalId: number; status: "needs" | "approved" }> {
+export async function proposeRules(slug: string, rules: RulesRec, extras?: ExtrasRec): Promise<{ proposalId: number; status: "needs" | "approved" }> {
   await sleep(LATENCY.relay)
   maybeFail("rules")
   hubFail("rules_pending", "ERR_RULES_PENDING")
-  const r = await hubCall(() => W.proposeRules(ensureWorld(), slug, me(), rules, Date.now()))
+  const r = await hubCall(() => W.proposeRules(ensureWorld(), slug, me(), rules, Date.now(), extras))
   commit(r.world)
   return { proposalId: r.proposal.id, status: r.proposal.status === "approved" ? "approved" : "needs" }
 }
@@ -262,10 +317,10 @@ export async function voteRules(slug: string, v: Vote): Promise<W.VoteResult> {
   return r.result
 }
 
-export async function setRules(slug: string, rules: RulesRec): Promise<void> {
+export async function setRules(slug: string, rules: RulesRec, extras?: ExtrasRec): Promise<void> {
   await sleep(LATENCY.relay)
   maybeFail("rules")
-  const w = await hubCall(() => W.setRules(ensureWorld(), slug, me(), rules, Date.now()))
+  const w = await hubCall(() => W.setRules(ensureWorld(), slug, me(), rules, Date.now(), extras))
   commit(w)
 }
 
@@ -297,4 +352,35 @@ export async function deleteComment(slug: string, requestId: number, id: string)
   await sleep(LATENCY.comment)
   maybeFail("comment")
   commit(commentCall(() => W.removeComment(ensureWorld(), slug, requestId, id, me(), Date.now())))
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// pay by link (hub 1.1.0 claim_link / reclaim_link). Fault hooks: 'claim' (the claim's relay is down), 'reclaim'.
+
+/** The claim page's link (no session needed: anyone with the link sees it). */
+export function claimLinkView(world: World, slug: string, id: number, now: number) {
+  return L.claimView(world, slug, id, now, W.nameOf, (r) => W.requestStatusOf(world.pots[slug]!, r, now))
+}
+
+/** claim_link to the signed-in person; `pk` = the public key of the secret this browser holds. */
+export async function claimLink(slug: string, id: number, pk: string): Promise<L.ClaimResult> {
+  await sleep(LATENCY.relay)
+  maybeFail("claim")
+  const r = L.claimLink(ensureWorld(), slug, id, me(), pk, Date.now())
+  if (r.result === "claimed") commit(r.world)
+  return r.result
+}
+
+/** reclaim_link: the requester takes the link back (the money goes back into the Pot). */
+export async function reclaimLink(slug: string, id: number): Promise<L.ReclaimResult> {
+  await sleep(LATENCY.relay)
+  maybeFail("reclaim")
+  const r = L.reclaimLink(ensureWorld(), slug, id, me(), Date.now())
+  if (r.result === "returned") commit(r.world)
+  return r.result
+}
+
+/** A seeded link's secret (fixtures only): the requester's "device" for the showcase links. */
+export function demoLinkSecret(slug: string, id: number): string | null {
+  return ensureWorld().pots[slug]?.requests.find((r) => r.id === id)?.link?.demoSecret ?? null
 }

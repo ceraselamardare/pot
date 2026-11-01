@@ -146,6 +146,11 @@ pub fn hub_wasm() -> Vec<u8> {
     ensure_built();
     std::fs::read(contracts_dir().join("target/near/pot_hub/pot_hub.wasm")).expect("pot_hub.wasm")
 }
+/// The hub 1.0.0 build deployed on testnet (`pots.potprev.testnet`, sha256 06861ce7…), kept as the
+/// migration test's starting point (wave 4).
+pub fn hub_v1_wasm() -> Vec<u8> {
+    std::fs::read(contracts_dir().join("tests/fixtures/pot_hub_v1.0.0.wasm")).expect("tests/fixtures/pot_hub_v1.0.0.wasm")
+}
 pub fn usdc_wasm() -> Vec<u8> {
     ensure_built();
     std::fs::read(contracts_dir().join("target/near/test_usdc/test_usdc.wasm")).expect("test_usdc.wasm")
@@ -638,6 +643,8 @@ pub struct Env {
     pub ana: Actor,
     pub eve: Actor,
     pub setup_secs: f64,
+    /// The hub account itself (wave 4: code upgrades + `migrate` in the migration test).
+    pub hub_account: Account,
 }
 
 #[derive(Clone, Debug)]
@@ -648,11 +655,13 @@ pub struct HubOpts {
     pub hub_balance: u128,
     /// Override the DAO code hash (T-04: an unpublished hash makes the creation batch fail).
     pub code_hash: Option<String>,
+    /// Deploy this hub wasm instead of the freshly built one (wave 4: the 1.0.0 fixture).
+    pub hub_wasm: Option<Vec<u8>>,
 }
 
 impl Default for HubOpts {
     fn default() -> Self {
-        Self { dao_float: 50 * MILLI, min_dao_float: 50 * MILLI, limits: None, hub_balance: 30 * NEAR, code_hash: None }
+        Self { dao_float: 50 * MILLI, min_dao_float: 50 * MILLI, limits: None, hub_balance: 30 * NEAR, code_hash: None, hub_wasm: None }
     }
 }
 
@@ -671,7 +680,7 @@ impl Env {
 
     pub async fn with(build: Build, opts: HubOpts) -> Result<Self> {
         let t0 = Instant::now();
-        let hub_code = hub_wasm();
+        let hub_code = opts.hub_wasm.clone().unwrap_or_else(hub_wasm);
         let usdc_code = usdc_wasm();
         // POT_SANDBOX_VERSION=2.14.0-rc.4 → protocol 88 (testnet parity, the CI ★ job); default
         // nearcore 2.13.4 = protocol 86 (mainnet parity).
@@ -755,6 +764,7 @@ impl Env {
             leo: Actor::from_account(&leo),
             ana: Actor::from_account(&ana),
             eve: Actor::from_account(&eve),
+            hub_account: hub_acc.clone(),
             root,
             worker,
             setup_secs: 0.0,
@@ -993,6 +1003,78 @@ impl Env {
             }
         }
         (dao, sk, pk)
+    }
+
+    // ---------------------------------------------------------------- wave 4 helpers
+
+    /// The latest final block's timestamp (ms): what `env::block_timestamp_ms` sees next.
+    pub async fn now_ms(&self) -> u128 {
+        let b = self
+            .rpc
+            .client
+            .call(methods::block::RpcBlockRequest { block_reference: BlockReference::Finality(Finality::Final) })
+            .await
+            .expect("block");
+        (b.header.timestamp / 1_000_000) as u128
+    }
+
+    /// Relayed `create_pot` with explicit wave-4 `extras` (Value::Null = the contract defaults).
+    pub async fn create_pot_extras(&self, creator: &Actor, slug: &str, preset: &str, rules: Value, extras: Value, invite_pk: Option<String>) -> (AccountId, Outcome) {
+        let o = self
+            .hub_relay(
+                creator,
+                "create_pot",
+                json!({"slug": slug, "name": format!("Pot {slug}"), "preset": preset, "rules": rules, "invite_pk": invite_pk, "emoji": null, "float": null, "extras": extras}),
+                150,
+            )
+            .await;
+        (self.dao_id(slug), o)
+    }
+
+    /// Like `pot_with_members_rules`, with explicit extras.
+    pub async fn pot_with_extras(&self, creator: &Actor, slug: &str, rules: Value, extras: Value, members: &[&Actor], contrib: u128) -> AccountId {
+        let (sk, pk) = Self::invite_key();
+        let preset = if rules.is_null() { "trip" } else { "custom" };
+        let (dao, o) = self.create_pot_extras(creator, slug, preset, rules, extras, Some(pk.clone())).await;
+        assert_eq!(o.json()["ok"], true, "create_pot {slug}: {:?}", o.value);
+        for m in members {
+            let j = self.join(m, &dao, &sk, &pk).await;
+            assert_eq!(j.json()["status"], "active", "join {}: {:?}", m.id, j.value);
+        }
+        if contrib > 0 {
+            let mut all = vec![creator];
+            all.extend_from_slice(members);
+            for m in all {
+                let c = self.contribute(m, &dao, contrib).await;
+                assert_eq!(c.json(), json!(contrib.to_string()), "contribution by {}", m.id);
+            }
+        }
+        dao
+    }
+
+    /// A relayed link request (`receiver_id` = the hub, the escrow).
+    pub async fn request_link(&self, who: &Actor, pot: &AccountId, amount: u128, claim_pk: &str, expires_at_ms: Option<u128>, rref: &str) -> Outcome {
+        self.hub_relay(
+            who,
+            "request_spend",
+            json!({"pot": pot, "amount": amount.to_string(), "receiver_id": self.hub, "category": "food", "request_ref": rref,
+                   "link": {"claim_pk": claim_pk, "expires_at_ms": expires_at_ms.map(|x| x as u64)}}),
+            250,
+        )
+        .await
+    }
+
+    /// The link holder's signature over `pot-claim:v1:<hub>:<dao>:<request_id>:<receiver>` (base64).
+    pub fn claim_sig(&self, sk: &ed25519_dalek::SigningKey, dao: &AccountId, request_id: u64, receiver: &AccountId) -> String {
+        use base64::Engine;
+        use ed25519_dalek::Signer as _;
+        let msg = format!("pot-claim:v1:{}:{dao}:{request_id}:{receiver}", self.hub);
+        base64::engine::general_purpose::STANDARD.encode(sk.sign(msg.as_bytes()).to_bytes())
+    }
+
+    /// A relayer-signed hub call (not a delegate): what the cron / the relayer's own calls look like.
+    pub async fn relayer_call(&self, method: &str, args: Value, gas_tgas: u64) -> Outcome {
+        self.call(&self.relayer.clone(), &self.hub.clone(), method, args, gas_tgas, 0).await
     }
 
     /// Advances block time past the hub's 60 s busy / closing windows.

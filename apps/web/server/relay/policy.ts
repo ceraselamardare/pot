@@ -25,11 +25,18 @@ export const MAX_ALLOWLIST = 10
 export const MAX_ARGS_BYTES = 2048
 export const INVITE_MAX_TTL_MS = 30 * 24 * 3600 * 1000
 export const INVITE_MAX_USES = 40
+/** hub 1.1.0 pay by link: (now + 60 s, now + 30 days] (WAVE4_LIMITS) */
+export const LINK_MAX_TTL_MS = 30 * 24 * 3600 * 1000
+export const LINK_MIN_TTL_MS = 60_000
+/** R3 keeps the 1.0.0 gas cap for plain requests; only link requests may use up to 300 Tgas. */
+export const PLAIN_SPEND_MAX_TGAS = 150
+/** what the hub spends registering a link claimer on the token (+ state), for the hub budget quota */
+const CLAIM_HUB_YOCTO = 2_500_000_000_000_000_000_000n
 
 /** contracts-spec §3.2 (D-02): exact-match reserved slugs (@pot/sdk mirrors the hub's list). */
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set(SDK_RESERVED_SLUGS as readonly string[])
 
-export type RuleId = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9" | "R11" | "TEST"
+export type RuleId = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9" | "R11" | "R13" | "R14" | "R15" | "TEST"
 export type VoteAction = "VoteApprove" | "VoteReject" | "Finalize"
 export type KindName = "Transfer" | "AddMemberToRole" | "FunctionCall"
 
@@ -56,8 +63,10 @@ export interface PolicyMatch {
   retry?: { proposalId: number }
   sync?: { proposalId: number }
   create?: { slug: string }
-  spend?: { requestRef: string; amount: bigint; receiverId: string }
+  spend?: { requestRef: string; amount: bigint; receiverId: string; link?: boolean }
   amount?: bigint
+  /** R13-R15 (hub 1.1.0): the request the call acts on */
+  requestId?: number
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -134,6 +143,32 @@ export function checkRules(r: unknown, field = "rules", ids?: { hubId: string; u
   if (Buffer.byteLength(JSON.stringify(r)) > 1024) deny("args_invalid", field, "too_large")
 }
 
+/**
+ * hub 1.1.0 rule extras (R2, R6, R7 `extras`): exact keys, one-OK ceiling ≤ the instant-cap bound of R2,
+ * goal amount ≤ $10M-ish bound and a deadline in (now, now + 366 days]. The hub re-validates everything
+ * (ERR_EXTRAS_INVALID / ERR_GOAL_*); this only keeps garbage off the relayer's bill.
+ */
+export function checkExtras(x: unknown, nowMs: number, field = "extras"): void {
+  if (typeof x !== "object" || x === null || Array.isArray(x)) return deny("args_invalid", field)
+  const o = x as Obj
+  keys(o, ["trust", "one_ok_cap", "links"], ["goal"])
+  if (typeof o.trust !== "boolean") deny("args_invalid", `${field}.trust`)
+  if (typeof o.links !== "boolean") deny("args_invalid", `${field}.links`)
+  amount(o, "one_ok_cap", 0n, MAX_SPEND)
+  const g = o.goal
+  if (g !== undefined && g !== null) {
+    if (typeof g !== "object" || Array.isArray(g)) return deny("args_invalid", `${field}.goal`)
+    const go = g as Obj
+    keys(go, ["amount", "deadline_ms", "all_or_nothing"])
+    amount(go, "amount", 1n, MAX_GOAL)
+    const d = go.deadline_ms
+    if (typeof d !== "number" || !Number.isSafeInteger(d) || d <= nowMs || d > nowMs + 366 * 24 * 3600 * 1000)
+      deny("args_invalid", `${field}.goal.deadline_ms`)
+    if (typeof go.all_or_nothing !== "boolean") deny("args_invalid", `${field}.goal.all_or_nothing`)
+  }
+}
+export const MAX_GOAL = 10_000_000_000_000n // $10M at 6 dp
+
 /** The @pot/sdk RELAY_POLICY row for a method (R1-R9 gas range and exact deposit). */
 function policyRow(method: string) {
   const row = RELAY_POLICY[method]
@@ -168,6 +203,10 @@ const HUB_METHODS = new Set([
   "propose_close",
   "retry_payout",
   "sync",
+  // hub 1.1.0 (wave 4); refund_unfunded is cron-only (relayer-signed), never relayed for users
+  "ok_request",
+  "claim_link",
+  "reclaim_link",
 ])
 
 function intentMust(ctx: PolicyContext, want: IntentType, alsoOk: IntentType[] = []): void {
@@ -215,6 +254,12 @@ export function evaluatePolicy(d: DecodedDelegate, ctx: PolicyContext): PolicyMa
         return r6r7(call, ctx)
       case "propose_close":
         return r8(call, ctx)
+      case "ok_request":
+        return r13(call, ctx)
+      case "claim_link":
+        return r14(call, ctx)
+      case "reclaim_link":
+        return r15(call, ctx)
       default:
         return r9(call, ctx)
     }
@@ -262,7 +307,7 @@ function r1(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyC
 function r2(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyContext): PolicyMatch {
   gasFor(call)
   const o = argsObject(call)
-  keys(o, ["slug", "name", "preset"], ["rules", "invite_pk", "emoji", "float"])
+  keys(o, ["slug", "name", "preset"], ["rules", "invite_pk", "emoji", "float", "extras"])
   const slug = o.slug
   if (typeof slug !== "string" || slug.length < 2 || slug.length > 32 || !SLUG_RE.test(slug)) return deny("args_invalid", "slug")
   if (RESERVED_SLUGS.has(slug)) deny("args_invalid", "slug", "reserved")
@@ -285,6 +330,7 @@ function r2(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyC
     if (bytes < 1 || bytes > 16 || /[A-Za-z0-9]/.test(e) || hasFormatOrControl(e)) deny("args_invalid", "emoji")
   }
   if (o.float !== undefined && o.float !== null) amount(o, "float", 0n, 10n ** 25n)
+  if (o.extras !== undefined && o.extras !== null) checkExtras(o.extras, ctx.nowMs)
   intentMust(ctx, "create_pot")
   return {
     rule: "R2",
@@ -299,14 +345,31 @@ function r2(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyC
   }
 }
 
-// R3 request_spend, 100-150 Tgas
+// R3 request_spend, 100-150 Tgas; hub 1.1.0 pay-by-link requests (`link`) 100-300 Tgas
 function r3(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyContext): PolicyMatch {
   gasFor(call)
   const o = argsObject(call)
-  keys(o, ["pot", "amount", "receiver_id", "category", "request_ref"])
+  keys(o, ["pot", "amount", "receiver_id", "category", "request_ref"], ["link"])
   const pot = potArg(o, ctx.hubId)
   const amt = amount(o, "amount", 1n, MAX_SPEND)
   if (!isAccountId(o.receiver_id)) deny("args_invalid", "receiver_id")
+  const link = o.link !== undefined && o.link !== null
+  if (link) {
+    const l = o.link
+    if (typeof l !== "object" || Array.isArray(l)) return deny("args_invalid", "link")
+    const lo = l as Obj
+    keys(lo, ["claim_pk"], ["expires_at_ms"])
+    if (typeof lo.claim_pk !== "string" || !parseEd25519PublicKey(lo.claim_pk)) deny("args_invalid", "link.claim_pk")
+    const e = lo.expires_at_ms
+    if (e !== undefined && e !== null) {
+      if (typeof e !== "number" || !Number.isSafeInteger(e) || e <= ctx.nowMs + LINK_MIN_TTL_MS || e > ctx.nowMs + LINK_MAX_TTL_MS)
+        deny("args_invalid", "link.expires_at_ms")
+    }
+    // the escrow: a link request always names the hub
+    if (o.receiver_id !== ctx.hubId) deny("args_invalid", "receiver_id", "link_needs_hub")
+  } else if (call.gas > BigInt(PLAIN_SPEND_MAX_TGAS) * TGAS) {
+    throw new ApiError("gas_cap", { detail: { min: 100e12, max: PLAIN_SPEND_MAX_TGAS * 1e12, gas: call.gas.toString() } })
+  }
   if (!CATEGORIES.includes(o.category as (typeof CATEGORIES)[number])) deny("args_invalid", "category")
   const ref = o.request_ref
   if (typeof ref !== "string" || !OPKEY_RE.test(ref)) return deny("args_invalid", "request_ref")
@@ -321,7 +384,7 @@ function r3(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyC
     needsOpenPot: true,
     estYocto: near("0.003"),
     hubYocto: near("0.011"),
-    spend: { requestRef: ref, amount: amt, receiverId: o.receiver_id as string },
+    spend: { requestRef: ref, amount: amt, receiverId: o.receiver_id as string, ...(link ? { link: true } : {}) },
     amount: amt,
   }
 }
@@ -412,9 +475,10 @@ function r6r7(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: Polic
   const propose = call.method === "propose_rules"
   gasFor(call)
   const o = argsObject(call)
-  keys(o, ["pot", "rules"])
+  keys(o, ["pot", "rules"], ["extras"])
   const pot = potArg(o, ctx.hubId)
   checkRules(o.rules, "rules", ctx)
+  if (o.extras !== undefined && o.extras !== null) checkExtras(o.extras, ctx.nowMs)
   intentMust(ctx, propose ? "propose_rules" : "set_rules")
   return {
     rule: propose ? "R7" : "R6",
@@ -467,6 +531,76 @@ function r9(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyC
     estYocto: near("0.002"),
     hubYocto: 0n,
     ...(retry ? { retry: { proposalId: pid } } : { sync: { proposalId: pid } }),
+  }
+}
+
+// R13 ok_request (hub 1.1.0): another member's OK on a one-OK request, 100-250 Tgas, 0 deposit
+function r13(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyContext): PolicyMatch {
+  gasFor(call)
+  const o = argsObject(call)
+  keys(o, ["pot", "request_id"])
+  const pot = potArg(o, ctx.hubId)
+  const requestId = u64(o, "request_id")
+  intentMust(ctx, "ok_request")
+  return {
+    rule: "R13",
+    methods: ["ok_request"],
+    intent: "ok_request",
+    family: "vote",
+    potId: pot,
+    needsOpenPot: true,
+    estYocto: near("0.003"),
+    hubYocto: 0n,
+    requestId,
+  }
+}
+
+// R14 claim_link (hub 1.1.0): authorized by the link signature, not by the sender (any signed-in person
+// may claim, typically a brand-new 0-NEAR account); 50-150 Tgas, 0 deposit (the hub sponsors the token
+// registration of the receiver: CLAIM_HUB_YOCTO against the hub budget quota)
+function r14(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyContext): PolicyMatch {
+  gasFor(call)
+  const o = argsObject(call)
+  keys(o, ["pot", "request_id", "receiver_id", "signature"])
+  const pot = potArg(o, ctx.hubId)
+  const requestId = u64(o, "request_id")
+  const r = o.receiver_id
+  if (!isAccountId(r) || r === ctx.hubId || r === ctx.usdcId || daoSlug(r, ctx.hubId)) deny("args_invalid", "receiver_id")
+  const sig = o.signature
+  if (typeof sig !== "string" || !/^[A-Za-z0-9+/]{86}==$/.test(sig) || Buffer.from(sig, "base64").length !== 64)
+    deny("args_invalid", "signature")
+  intentMust(ctx, "claim_link")
+  return {
+    rule: "R14",
+    methods: ["claim_link"],
+    intent: "claim_link",
+    family: "spend",
+    potId: pot,
+    needsOpenPot: false,
+    estYocto: near("0.002"),
+    hubYocto: CLAIM_HUB_YOCTO,
+    requestId,
+  }
+}
+
+// R15 reclaim_link (hub 1.1.0): the requester's cancel, or anyone after expiry; 30-100 Tgas
+function r15(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyContext): PolicyMatch {
+  gasFor(call)
+  const o = argsObject(call)
+  keys(o, ["pot", "request_id"])
+  const pot = potArg(o, ctx.hubId)
+  const requestId = u64(o, "request_id")
+  intentMust(ctx, "reclaim_link")
+  return {
+    rule: "R15",
+    methods: ["reclaim_link"],
+    intent: "reclaim_link",
+    family: "spend",
+    potId: pot,
+    needsOpenPot: false,
+    estYocto: near("0.002"),
+    hubYocto: 0n,
+    requestId,
   }
 }
 

@@ -3,7 +3,7 @@
 // The mobile projects also save review screenshots for Cerasela to notes/screens/.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, spendFlow } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 test.use({ reducedMotion: "reduce" })
@@ -74,8 +74,7 @@ test("Approve sheet, Requests and You", async ({ page }) => {
   await page.goto("/p/lisbon-trip")
   await page.getByRole("button", { name: "Spend" }).click()
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
-  await typeAmount(page, "300")
-  await sheet.getByRole("button", { name: "Ask the group" }).click()
+  await spendFlow(page, { amount: "300", submit: "Ask the group" })
   await expect(sheet.getByText("Sent to the group")).toBeVisible()
   await check(page, "one") // [Done]
   await sheet.getByRole("button", { name: "Done" }).click()

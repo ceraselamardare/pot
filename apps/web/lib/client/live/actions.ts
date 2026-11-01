@@ -12,9 +12,10 @@ import {
   type Micro,
   type Proposal,
   type PublicKeyStr,
+  type RuleExtras,
   type Rules,
 } from "@pot/sdk"
-import { daoOf } from "../config"
+import { daoOf, sdkConfig } from "../config"
 import { ActionError } from "../errors"
 import { slugify } from "../mock/world"
 import type { RequestVM } from "../mock/types"
@@ -87,6 +88,10 @@ export interface LiveSpendInput {
   category: Category
   note?: string
   receiver: string
+  /** pay by link (hub 1.1.0): the receiver is the hub's escrow; the link key's secret stays on this device */
+  link?: { claimPk: string; expiresAtMs: number }
+  /** the request's op id (the caller keeps the link secret under it before sending) */
+  requestRef?: string
 }
 
 export interface LiveSpendResult {
@@ -116,14 +121,16 @@ const payoutOf = (r: RelayOk): "sent" | "failed" | "pending" | "refused" => {
 export async function requestSpend(slug: string, input: LiveSpendInput): Promise<LiveSpendResult> {
   await me()
   const dao = daoOf(slug)
-  const requestRef = newOpKey()
+  const requestRef = input.requestRef ?? newOpKey()
   const note = input.note?.trim()
   if (note) background(api("POST", "/api/notes", { kind: "memo", pot: dao, ref: requestRef, text: note, idempotencyKey: newOpKey() }))
-  const r = await send({ type: "request_spend", pot: dao as never, amount: input.amount, receiverId: input.receiver as never, category: input.category, requestRef })
+  const link = input.link ? { claimPk: input.link.claimPk as PublicKeyStr, expiresAtMs: input.link.expiresAtMs } : undefined
+  const receiverId = link ? sdkConfig().hubId : input.receiver
+  const r = await send({ type: "request_spend", pot: dao as never, amount: input.amount, receiverId: receiverId as never, category: input.category, requestRef, ...(link ? { link } : {}) })
   failIfInner(r)
   const res = r.result
   if (res?.type !== "spend") throw new ActionError("failed", "no_spend_result", { txHash: r.txHash })
-  invalidatePot(dao, [qk.usdc(input.receiver)])
+  invalidatePot(dao, link ? [] : [qk.usdc(input.receiver)])
   if (res.path === "vote") {
     // the early answer may not know the proposal yet: follow the relay to its final body for the id
     const pid = res.proposalId ?? ((await followRelay(r)).result as { proposalId?: number | null } | null)?.proposalId ?? null
@@ -221,6 +228,8 @@ export interface LiveCreateInput {
   goalEachCents: number | null
   rules: Rules
   invite: { pk: string; secret: string }
+  /** hub 1.1.0 rule extras (trust, one-OK ceiling, goal); omitted = the hub's defaults */
+  extras?: RuleExtras
 }
 
 const suffix = () => Math.random().toString(36).slice(2, 6).padEnd(4, "0")
@@ -234,7 +243,16 @@ export async function createPot(input: LiveCreateInput): Promise<string> {
     let r: RelayOk
     try {
       r = await send(
-        { type: "create_pot", slug: s as never, name: input.name.trim(), preset: "custom", rules: input.rules, invitePk: input.invite.pk as PublicKeyStr, emoji: input.emoji },
+        {
+          type: "create_pot",
+          slug: s as never,
+          name: input.name.trim(),
+          preset: "custom",
+          rules: input.rules,
+          invitePk: input.invite.pk as PublicKeyStr,
+          emoji: input.emoji,
+          ...(input.extras ? { extras: input.extras } : {}),
+        },
         { context: { meta: { gradient: String(input.cover) } } },
       )
     } catch (e) {
@@ -366,10 +384,10 @@ export type LiveRulesResult = { proposalId: number | null; status: "needs" | "ap
  * approval with the exact kind at 300 Tgas (FunctionCall votes, R11). At most one open rules request per Pot
  * (ERR_RULES_PENDING); the change applies once the group approves (the DAO calls hub.set_rules).
  */
-export async function proposeRules(slug: string, rules: Rules): Promise<LiveRulesResult> {
+export async function proposeRules(slug: string, rules: Rules, extras?: RuleExtras): Promise<LiveRulesResult> {
   await me()
   const dao = daoOf(slug)
-  const r = await send({ type: "propose_rules", pot: dao as never, rules })
+  const r = await send({ type: "propose_rules", pot: dao as never, rules, ...(extras ? { extras } : {}) })
   const code = innerError(r)
   if (code) throw new ActionError("specific", code, { txHash: r.txHash })
   const res = r.result
@@ -391,10 +409,10 @@ export async function proposeRules(slug: string, rules: Rules): Promise<LiveRule
 }
 
 /** Sole member: set_rules applies at once (30 Tgas). */
-export async function setRules(slug: string, rules: Rules): Promise<void> {
+export async function setRules(slug: string, rules: Rules, extras?: RuleExtras): Promise<void> {
   await me()
   const dao = daoOf(slug)
-  const r = await send({ type: "set_rules", pot: dao as never, rules })
+  const r = await send({ type: "set_rules", pot: dao as never, rules, ...(extras ? { extras } : {}) })
   const code = innerError(r)
   if (code) throw new ActionError("specific", code, { txHash: r.txHash })
   invalidatePot(dao)

@@ -67,6 +67,14 @@ const nextConfig: NextConfig = {
           { key: "X-Robots-Tag", value: "noindex" },
         ],
       },
+      // pay by link (hub 1.1.0): a claim page is a bearer link like an invite: never indexed, no path in a referrer
+      {
+        source: "/c/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "same-origin" },
+          { key: "X-Robots-Tag", value: "noindex" },
+        ],
+      },
     ]
   },
 }

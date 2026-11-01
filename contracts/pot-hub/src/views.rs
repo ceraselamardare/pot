@@ -40,6 +40,10 @@ impl CreatePotOutcome {
 #[near(serializers = [json])]
 #[derive(Clone, Debug)]
 pub struct SpendOutcome {
+    /// wave 4: "instant" | "one_ok" | "group"
+    pub tier: Tier,
+    /// wave 4: a pay-by-link request (receiver = the hub's escrow)
+    pub link: bool,
     pub request_id: u32,
     pub proposal_id: Option<u64>,
     pub path: Path,
@@ -53,6 +57,8 @@ pub struct SpendOutcome {
 impl SpendOutcome {
     pub fn unknown(request_id: u32) -> Self {
         Self {
+            tier: Tier::Group,
+            link: false,
             request_id,
             proposal_id: None,
             path: Path::Vote,
@@ -207,6 +213,14 @@ pub struct PotView {
     pub open_rules_proposal: Option<u64>,
     /// True while a `propose_close` chain is in flight (money in is blocked).
     pub closing_in_flight: bool,
+    /// wave 4: trust / one-OK / links / goal (all off for Pots created before hub 1.1.0)
+    pub extras: RuleExtras,
+    /// wave 4: 1 = v1 policy; 2 = the rulebot can also approve the goal-refund close
+    pub policy_version: u8,
+    /// wave 4: link requests not yet claimed / returned / void (they block closing)
+    pub open_links: u32,
+    /// wave 4: "none" | "collecting" | "reached" | "missed" | "refundable" | "refunding" | "refunded"
+    pub goal_state: String,
 }
 
 #[near(serializers = [json])]
@@ -271,6 +285,12 @@ pub struct SpendPreview {
     pub budget_left: U128,
     pub balance_checked: Option<U128>,
     pub client_must_check: Vec<String>,
+    /// wave 4: "instant" | "one_ok" | "group" (empty when blocked)
+    pub tier: String,
+    /// wave 4: the requester's instant cap after earned trust (before the budget)
+    pub effective_cap: U128,
+    pub trust_level: u8,
+    pub one_ok_cap: U128,
 }
 
 #[near(serializers = [json])]
@@ -314,6 +334,12 @@ pub struct RequestView {
     pub created_at_ms: u64,
     pub updated_at_ms: u64,
     pub expires_at_ms: u64,
+    /// wave 4: "instant" | "one_ok" | "group"
+    pub tier: Tier,
+    /// wave 4: who gave the one-OK (also while it is being processed)
+    pub ok_by: Option<AccountId>,
+    /// wave 4: the link status for pay-by-link requests
+    pub link_status: Option<LinkStatus>,
 }
 
 #[near(serializers = [json])]
@@ -376,8 +402,11 @@ fn balance_estimate(p: &Pot) -> u128 {
     p.total_contributed.saturating_sub(p.spent_instant).saturating_sub(p.spent_vote)
 }
 
-fn request_view(pot: &AccountId, r: &Request) -> RequestView {
+pub(crate) fn request_view(pot: &AccountId, r: &Request, rx: &RequestExt) -> RequestView {
     RequestView {
+        tier: rx.tier,
+        ok_by: rx.ok_by.clone(),
+        link_status: rx.link.as_ref().map(|l| l.status),
         request_id: r.id,
         pot: pot.clone(),
         requester: r.requester.clone(),
@@ -396,6 +425,14 @@ fn request_view(pot: &AccountId, r: &Request) -> RequestView {
 }
 
 impl PotHub {
+    /// The ledger estimate plus USDC that unclaimed links returned to the Pot (wave 4).
+    pub(crate) fn balance_est(&self, p: &Pot) -> u128 {
+        if p.status == PotStatus::Closed {
+            return 0;
+        }
+        balance_estimate(p).saturating_add(self.pext(p.idx).links_returned)
+    }
+
     /// The close record whose payouts are authoritative (Closing / Closed).
     fn live_close_record(&self, p: &Pot) -> Option<CloseRecord> {
         match p.status {
@@ -423,6 +460,9 @@ impl PotHub {
         }
         if p.unpaid_approved > 0 || p.reserved > 0 {
             return Some("payouts_pending");
+        }
+        if self.pext(p.idx).open_links > 0 {
+            return Some("links_pending");
         }
         if p.total_contributed == 0 {
             return Some("no_contributions");
@@ -478,7 +518,7 @@ impl PotHub {
             spent_instant: U128(p.spent_instant),
             spent_vote: U128(p.spent_vote),
             reserved: U128(p.reserved),
-            balance_estimate: U128(balance_estimate(p)),
+            balance_estimate: U128(self.balance_est(p)),
             last_contributor: p.last_contributor.clone(),
             request_count: p.request_seq,
             open_requests: p.open_requests,
@@ -488,6 +528,10 @@ impl PotHub {
             usdc: self.config.usdc.clone(),
             open_rules_proposal: p.open_rules_proposal.filter(|x| *x != u64::MAX),
             closing_in_flight: p.closing_until_ms > now_ms(),
+            extras: self.pext(p.idx).extras,
+            policy_version: self.pext(p.idx).policy_v,
+            open_links: self.pext(p.idx).open_links,
+            goal_state: self.goal_state(p).into(),
         })
     }
 
@@ -508,7 +552,7 @@ impl PotHub {
                     seq: p.seq,
                     member_count: p.member_count,
                     total_contributed: U128(p.total_contributed),
-                    balance_estimate: U128(balance_estimate(p)),
+                    balance_estimate: U128(self.balance_est(p)),
                     contributed: U128(contributed),
                     created_at_ms: p.created_at_ms,
                 })
@@ -523,7 +567,7 @@ impl PotHub {
         let (gets_back, source): (Vec<(AccountId, u128)>, &str) = match self.live_close_record(p) {
             Some(rec) => (rec.payouts.clone(), "close_record"),
             None => {
-                let b = balance.map(|b| b.0).unwrap_or_else(|| balance_estimate(p));
+                let b = balance.map(|b| b.0).unwrap_or_else(|| self.balance_est(p));
                 let src = if balance.is_some() { "argument" } else { "ledger" };
                 let pr = prorata::prorata(b, &self.contributions(p), p.last_contributor.as_ref());
                 (pr.map(|x| x.payouts).unwrap_or_default(), src)
@@ -574,6 +618,7 @@ impl PotHub {
         amount: U128,
         receiver_id: AccountId,
         balance: Option<U128>,
+        link: Option<bool>,
     ) -> SpendPreview {
         let p = self.pot(&pot);
         let m = self.member(p.idx, &account_id);
@@ -589,14 +634,25 @@ impl PotHub {
             budget_left: U128(p.rules.member_budget.0.saturating_sub(used)),
             balance_checked: balance,
             client_must_check: vec!["payee_registered".into(), "dao_membership".into()],
+            tier: String::new(),
+            effective_cap: U128(0),
+            trust_level: 0,
+            one_ok_cap: U128(0),
         };
-        match self.decide(&pot, &p, &account_id, amount.0, &receiver_id, None) {
+        let ext = self.pext(p.idx);
+        out.effective_cap = U128(self.effective_cap(&p, &ext, &account_id));
+        out.trust_level = if ext.extras.trust { self.trust_of(p.idx, &account_id).level } else { 0 };
+        out.one_ok_cap = ext.extras.one_ok_cap;
+        // wave 4: `link: true` previews a pay-by-link request (receiver_id = the hub)
+        let is_link = link.unwrap_or(false);
+        match self.decide(&pot, &p, &account_id, amount.0, &receiver_id, None, is_link) {
             Err((_, why)) => out.reason = why.into(),
-            Ok((path, reason)) => {
-                let b = balance.map(|b| b.0).unwrap_or_else(|| balance_estimate(&p));
+            Ok(crate::Decision { path, reason, tier }) => {
+                let b = balance.map(|b| b.0).unwrap_or_else(|| self.balance_est(&p));
                 if amount.0 > b.saturating_sub(p.reserved) {
                     out.reason = "insufficient_balance".into();
                 } else {
+                    out.tier = near_sdk::serde_json::to_value(tier).ok().and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
                     out.path = if path == Path::Instant { "instant".into() } else { "vote".into() };
                     out.reason = near_sdk::serde_json::to_value(reason)
                         .ok()
@@ -616,7 +672,7 @@ impl PotHub {
         let (b, source, payouts, dust, dust_to) = match self.live_close_record(&p) {
             Some(rec) => (rec.balance, "close_record", rec.payouts.clone(), rec.dust, Some(rec.dust_to.clone())),
             None => {
-                let b = balance.map(|b| b.0).unwrap_or_else(|| balance_estimate(&p));
+                let b = balance.map(|b| b.0).unwrap_or_else(|| self.balance_est(&p));
                 let src = if balance.is_some() { "argument" } else { "ledger" };
                 match prorata::prorata(b, &contribs, p.last_contributor.as_ref()) {
                     Some(pr) => (b, src, pr.payouts, pr.dust, Some(pr.dust_to)),
@@ -652,12 +708,12 @@ impl PotHub {
     pub fn get_requests(&self, pot: AccountId, from_index: u32, limit: u32) -> Vec<RequestView> {
         let Some(p) = self.pots.get(&pot) else { return vec![] };
         let end = from_index.saturating_add(limit.min(50)).min(p.request_seq);
-        (from_index..end).filter_map(|i| self.requests.get(&(p.idx, i)).map(|r| request_view(&pot, r))).collect()
+        (from_index..end).filter_map(|i| self.requests.get(&(p.idx, i)).map(|r| request_view(&pot, r, &self.rx(p.idx, r)))).collect()
     }
 
     pub fn get_request(&self, pot: AccountId, request_id: u32) -> Option<RequestView> {
         let p = self.pots.get(&pot)?;
-        self.requests.get(&(p.idx, request_id)).map(|r| request_view(&pot, r))
+        self.requests.get(&(p.idx, request_id)).map(|r| request_view(&pot, r, &self.rx(p.idx, r)))
     }
 
     pub fn get_invite(&self, pot: AccountId, invite_pk: PublicKey) -> Option<InviteView> {

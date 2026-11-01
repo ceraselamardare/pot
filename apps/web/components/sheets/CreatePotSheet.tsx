@@ -8,7 +8,7 @@
 // Step 2 is its own history entry (?step=rules), so the browser's Back and the in-sheet [Back] both return to
 // step 1 with everything typed kept (notes/frontend.md "Back in multi-step sheets").
 // The invite keypair is generated here, so the first link exists the moment the Pot does (7 days, 10 uses).
-import { Check, CircleAlert, Hourglass, Info, Lock, Plus, Undo2, UserPlus, Users, UserRound, UserCheck, X, Zap } from "lucide-react"
+import { Check, CircleAlert, Flag, Hand, Hourglass, Info, Lock, Plus, Sprout, Undo2, UserPlus, Users, UserRound, UserCheck, X, Zap } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useReducer, useState, type Dispatch } from "react"
 import { toast } from "sonner"
@@ -27,6 +27,8 @@ import { ActionError } from "@/lib/client/errors"
 import { formatUsd, toCents } from "@/lib/client/money"
 import { cn } from "@/lib/client/cn"
 import { pushSheetStep, sheetStepBack, useSheetParams } from "@/lib/client/sheet"
+import { checkExtrasForm, defaultGoalDate, isoDay, type ExtrasCheck } from "@/lib/client/wave4-form"
+import { useNow } from "@/lib/client/time"
 
 const EMOJI = ["✈️", "🇵🇹", "🏖️", "🏔️", "🍷", "🎉", "🏕️", "🚐", "🎿", "🍕", "⚽", "🎸"]
 
@@ -68,7 +70,10 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
   const cfg = sdkConfig()
   const check = checkRulesForm(s.rules, { hubId: cfg.hubId, usdcId: cfg.usdcId })
   const goal = parseAmount(s.goalText)
-  const goalError = s.goalOn && (goal === null || goal <= 0n)
+  // hub 1.1.0 extras (trust, one OK, the goal with a date): checked against the instant limit and today
+  const now = useNow()
+  const extrasCheck = checkExtrasForm(s.extras, check.instant, now)
+  const goalError = (s.goalOn && (goal === null || goal <= 0n)) || !extrasCheck.ok
   // fields people have left (errors show once a field was left, or after [Create Pot])
   const [touched, setTouched] = useState<ReadonlySet<string>>(new Set())
   const touch = (id: string) => setTouched((x) => (x.has(id) ? x : new Set(x).add(id)))
@@ -76,7 +81,7 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
 
   const create = async () => {
     if (!online) return toast(t("add.offline"))
-    if (!check.rules || goalError) {
+    if (!check.rules || goalError || !extrasCheck.extras) {
       dispatch({ type: "ATTEMPT" })
       // move to the first thing to fix
       requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-create-rules] [aria-invalid='true']")?.focus())
@@ -93,6 +98,7 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
         goalEachCents: s.goalOn && goal ? toCents(goal) : null,
         rules,
         invite,
+        extras: extrasCheck.extras!,
       })
       dispatch({ type: "CREATED", slug })
       toast.success(t("create.success", { potName: s.name.trim() }))
@@ -229,7 +235,7 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
         )}
 
         {s.step === 2 && (
-          <RulesStep s={s} check={check} goalError={goalError} show={show} touch={touch} dispatch={dispatch} />
+          <RulesStep s={s} check={check} goalError={s.goalOn && (goal === null || goal <= 0n)} extrasCheck={extrasCheck} show={show} touch={touch} dispatch={dispatch} />
         )}
 
         {s.step === 3 && (
@@ -331,6 +337,7 @@ function RulesStep({
   s,
   check,
   goalError,
+  extrasCheck,
   show,
   touch,
   dispatch,
@@ -338,6 +345,7 @@ function RulesStep({
   s: CreateState
   check: RulesCheck
   goalError: boolean
+  extrasCheck: ExtrasCheck
   show: (id: string) => boolean
   touch: (id: string) => void
   dispatch: Dispatch<CreateEvent>
@@ -411,6 +419,8 @@ function RulesStep({
           )}
         </div>
       </div>
+
+      <ExtrasRules s={s} check={check} x={extrasCheck} show={show} touch={touch} dispatch={dispatch} />
 
       <fieldset className="rounded-md border border-line-strong p-4" data-rule="payees">
         <legend className="float-left mb-1 flex w-full items-start gap-3 text-body text-ink">
@@ -571,6 +581,8 @@ function RulesStep({
         )}
       </div>
 
+      <GoalRule s={s} x={extrasCheck} show={show} touch={touch} dispatch={dispatch} />
+
       <section aria-labelledby="fixed-h" className="rounded-md bg-surface-sunken p-4" data-rules-fixed>
         <h3 id="fixed-h" className="flex items-center gap-2 text-label text-ink">
           <Lock aria-hidden className="size-4 shrink-0" strokeWidth={2} />
@@ -589,6 +601,182 @@ function RulesStep({
       <p className="text-body-sm text-ink-muted" data-rules-footer>
         {t("create.rules.footer")}
       </p>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------------------------------------- hub 1.1.0
+
+/** A labelled switch (the same look as "Everyone chips in"): ink when on, never marigold. */
+function Toggle({ id, on, onChange, describedBy }: { id: string; on: boolean; onChange: (on: boolean) => void; describedBy?: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-labelledby={id}
+      aria-describedby={describedBy}
+      onClick={() => onChange(!on)}
+      className="grid h-11 w-14 shrink-0 place-items-center"
+    >
+      <span className={cn("relative h-7 w-12 rounded-pill transition-colors duration-200", on ? "bg-ink" : "bg-line-strong")}>
+        <span className={cn("absolute top-0.5 left-0.5 size-6 rounded-pill bg-surface shadow transition-transform duration-200 motion-reduce:transition-none", on && "translate-x-5")} />
+      </span>
+    </button>
+  )
+}
+
+/** "Trust grows" (default on) and "Spends up to $300 need just one OK from anyone else" (follows 3 × the instant limit). */
+function ExtrasRules({
+  s,
+  check,
+  x,
+  show,
+  touch,
+  dispatch,
+}: {
+  s: CreateState
+  check: RulesCheck
+  x: ExtrasCheck
+  show: (id: string) => boolean
+  touch: (id: string) => void
+  dispatch: Dispatch<CreateEvent>
+}) {
+  const f = s.extras
+  const instant = check.instant ?? 0n
+  const oneOkErr = x.oneOkError && (show("oneOk") || x.oneOkError === "create.oneok.below") ? x.oneOkError : null
+  return (
+    <>
+      <div className="flex gap-3 rounded-md border border-line-strong p-4" data-rule="trust">
+        <Sprout aria-hidden className="mt-2.5 size-6 shrink-0 text-ink" strokeWidth={2} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <span id="trust-label" className="text-label text-ink">
+              {t("create.trust.label")}
+            </span>
+            <Toggle id="trust-label" on={f.trust} describedBy="trust-hint" onChange={(on) => dispatch({ type: "EXTRAS", e: { type: "TRUST", on } })} />
+          </div>
+          <p id="trust-hint" className="text-body text-ink">
+            {t("create.trust.hint")}
+          </p>
+          {f.trust && instant > 0n && (
+            <p className="mt-1 text-body-sm text-ink-muted tabular-nums">
+              {t("create.trust.detail", { step: 3, instantLimit: whole(instant), max: whole(instant * 3n) })}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex gap-3 rounded-md border border-line-strong p-4" data-rule="oneOk">
+        <Hand aria-hidden className="mt-2.5 size-6 shrink-0 text-ink" strokeWidth={2} />
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body text-ink">
+            <span>{t("create.oneok.before")}</span>
+            <AmountField
+              id="rule-oneok"
+              value={f.oneOk}
+              label={t("create.oneok.label")}
+              invalid={!!oneOkErr}
+              describedBy={oneOkErr ? "rule-oneok-note" : "rule-oneok-hint"}
+              onChange={(v) => dispatch({ type: "EXTRAS", e: { type: "ONE_OK", value: v } })}
+              onBlur={() => touch("oneOk")}
+            />
+            <span>{t("create.oneok.after")}</span>
+          </p>
+          {oneOkErr ? (
+            <FieldNote id="rule-oneok-note" kind="error">
+              {oneOkErr === "create.oneok.below" ? t("create.oneok.below", { instantLimit: whole(instant) }) : t("create.rules.amount.invalid")}
+            </FieldNote>
+          ) : (
+            <FieldNote id="rule-oneok-hint" kind="info">
+              {t("create.oneok.hint")}
+            </FieldNote>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+/** "Set a goal": Collect $[1,200] by [date] + "All or nothing" (a missed goal refunds everyone automatically). */
+function GoalRule({
+  s,
+  x,
+  show,
+  touch,
+  dispatch,
+}: {
+  s: CreateState
+  x: ExtrasCheck
+  show: (id: string) => boolean
+  touch: (id: string) => void
+  dispatch: Dispatch<CreateEvent>
+}) {
+  const f = s.extras
+  const now = useNow()
+  const amountErr = x.goalAmountError && show("target") ? x.goalAmountError : null
+  const dateErr = x.goalDateError && (show("targetDate") || s.attempted) ? x.goalDateError : null
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-line-strong p-4" data-rule="target">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-3 text-label text-ink" id="target-label">
+          <Flag aria-hidden className="size-6 shrink-0" strokeWidth={2} />
+          {t("create.target.label")}
+        </span>
+        <Toggle id="target-label" on={f.goalOn} onChange={(on) => dispatch({ type: "EXTRAS", e: { type: "GOAL_ON", on, defaultDate: defaultGoalDate(now) } })} />
+      </div>
+      {f.goalOn && (
+        <>
+          <p className="flex flex-wrap items-center gap-2 text-body text-ink">
+            <span>{t("create.target.before")}</span>
+            <AmountField
+              id="target-amount"
+              value={f.goal}
+              label={t("create.target.amount.label")}
+              invalid={!!amountErr}
+              describedBy={amountErr ? "target-amount-note" : undefined}
+              onChange={(v) => dispatch({ type: "EXTRAS", e: { type: "GOAL", value: v } })}
+              onBlur={() => touch("target")}
+            />
+            <span>{t("create.target.by")}</span>
+            <input
+              type="date"
+              aria-label={t("create.target.date.label")}
+              aria-invalid={!!dateErr || undefined}
+              aria-describedby={dateErr ? "target-date-note" : undefined}
+              value={f.goalDate}
+              min={isoDay(now, 1)}
+              max={isoDay(now, 365)}
+              onChange={(e) => dispatch({ type: "EXTRAS", e: { type: "GOAL_DATE", value: e.target.value } })}
+              onBlur={() => touch("targetDate")}
+              data-target-date
+              className={cn("h-11 rounded-sm border bg-surface-sunken px-3 text-body text-ink tabular-nums", dateErr ? "border-declined" : "border-line-strong")}
+            />
+          </p>
+          {amountErr && (
+            <FieldNote id="target-amount-note" kind="error">
+              {t(amountErr)}
+            </FieldNote>
+          )}
+          {dateErr && (
+            <FieldNote id="target-date-note" kind="error">
+              {t(dateErr)}
+            </FieldNote>
+          )}
+          <div className="mt-1 flex items-start justify-between gap-3 border-t border-line pt-3">
+            <div className="min-w-0">
+              <span id="aon-label" className="text-label text-ink">
+                {t("create.target.aon.label")}
+              </span>
+              <p id="aon-hint" className="text-body-sm text-ink-muted">
+                {t("create.target.aon.hint")}
+              </p>
+              {f.allOrNothing && <p className="mt-1 text-body-sm text-ink-muted">{t("create.target.aon.spend")}</p>}
+            </div>
+            <Toggle id="aon-label" on={f.allOrNothing} describedBy="aon-hint" onChange={(on) => dispatch({ type: "EXTRAS", e: { type: "AON", on } })} />
+          </div>
+        </>
+      )}
     </div>
   )
 }

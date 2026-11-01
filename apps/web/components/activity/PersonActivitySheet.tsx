@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/feedback/States"
 import { Avatar } from "@/components/pot/Avatar"
 import { Sheet } from "@/components/sheets/Sheet"
 import { Button } from "@/components/ui/button"
+import { TrustBadge, trustWord } from "@/components/wave4/Trust"
+import { formatUsd } from "@/lib/client/money"
 import { t } from "@/i18n/t"
 import { activityOfPerson } from "@/lib/client/activity"
 import type { PotVM } from "@/lib/client/mock/types"
@@ -36,6 +38,21 @@ export function PersonActivitySheet({ pot, who, open, onClose }: { pot: PotVM; w
           <div className="flex items-center gap-3">
             <Avatar person={member.person} size="md" />
             <p className="text-body-sm text-ink-muted">{pot.name}</p>
+            {member.trust?.enabled && <TrustBadge trust={member.trust} className="ml-auto" />}
+          </div>
+        )}
+        {/* hub 1.1.0: their earned trust in words (what they can spend without asking, how many paid spends so far) */}
+        {member?.trust?.enabled && (
+          <div className="rounded-md bg-surface-sunken p-3" data-person-trust>
+            <p className="text-label text-ink">
+              {member.isMe ? t("trust.person.title.you", { level: trustWord(member.trust.level) }) : t("trust.person.title", { name, level: trustWord(member.trust.level) })}
+            </p>
+            <p className="mt-0.5 text-body-sm text-ink-muted tabular-nums">
+              {member.isMe
+                ? t("trust.person.body.you", { amount: formatUsd(member.trust.instantUpTo, "whole") })
+                : t("trust.person.body", { name, amount: formatUsd(member.trust.instantUpTo, "whole") })}{" "}
+              {t("trust.person.history", { n: member.trust.settled })}
+            </p>
           </div>
         )}
         {items.length === 0 ? (

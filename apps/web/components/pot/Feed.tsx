@@ -4,9 +4,10 @@
 // `approved`, "− $84.00" in ink). The instant spend row is tinted brand-soft with ink text and only the check in
 // `approved` (approved-on-brand-soft fails 4.5:1 in Day). System events are quiet centred lines.
 // Pending ops render on top with "Sending…"; a failed one fades out (the toast says what happened).
-import { Check, DoorClosed, Hand, PartyPopper, Scale, UserPlus } from "lucide-react"
+import { Check, DoorClosed, Flag, Hand, PartyPopper, Scale, Undo2, UserPlus } from "lucide-react"
 import { Fragment } from "react"
 import { CommentCount } from "@/components/comments/RequestComments"
+import { LinkRow } from "@/components/paylink/LinkRow"
 import { Avatar } from "@/components/pot/Avatar"
 import { MoneyText } from "@/components/money/MoneyText"
 import { StatusChip } from "@/components/pot/StatusChip"
@@ -31,7 +32,7 @@ export function names(people: Pick<PersonVM, "name">[]): string {
   return t("feed.and", { a: list.slice(0, -1).join(", "), b: list[list.length - 1]! })
 }
 
-function Row({
+export function Row({
   avatar,
   main,
   sub,
@@ -109,6 +110,8 @@ function SystemLine({ icon, text, txHash }: { icon: React.ReactNode; text: strin
 }
 
 export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sentKey?: boolean }) {
+  // pay by link (hub 1.1.0): where the link is now ("waiting to be claimed", "Claimed by Alex", "Returned to the Pot")
+  if (r.link) return <LinkRow r={r} />
   const amountWhole = formatUsd(r.amount, "whole")
   const reason = reasonWord(r)
   const open = () => openRequest(r.id, r.slug)
@@ -146,7 +149,11 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
               <CommentCount n={r.comments} />
             </>
           }
-          chip={<StatusChip status="needs">{t("approve.progress", { count: r.approvals.length, k: r.k })}</StatusChip>}
+          chip={
+            <StatusChip status="needs">
+              {r.tier === "one_ok" && r.declines.length === 0 ? t("feed.pending.one_ok") : t("approve.progress", { count: r.approvals.length, k: r.k })}
+            </StatusChip>
+          }
           amount={<MoneyText micro={r.amount} className="text-ink" />}
         />
       )
@@ -159,7 +166,7 @@ export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sen
           main={t("feed.approved", { amount: amountWhole, name: r.receiver.name, reason })}
           sub={
             <>
-              <span>{t("feed.approved.sub", { names: names(r.approvals) })}</span>
+              <span>{r.okBy ? t("feed.approved.ok", { name: r.okBy.name }) : t("feed.approved.sub", { names: names(r.approvals) })}</span>
               <CommentCount n={r.comments} />
             </>
           }
@@ -265,6 +272,13 @@ function FeedItem({ item, now, sentKeys, potName }: { item: FeedItemVM; now: num
       return <SystemLine icon={<Scale strokeWidth={2} />} text={`${t("feed.rules_requested", { name: item.actor.name })} · ${t("feed.rules_requested.sub", { k: item.k })}`} txHash={item.txHash} />
     case "rules_changed":
       return <SystemLine icon={<Scale strokeWidth={2} />} text={item.actor ? t("feed.rule_change", { name: item.actor.name }) : t("feed.rules_changed.group")} txHash={item.txHash} />
+    case "goal":
+      // hub 1.1.0: the goal with a date (reached; the all-or-nothing refund started / done)
+      return item.state === "reached" ? (
+        <SystemLine icon={<Flag strokeWidth={2} />} text={t("feed.goal.reached", { amount: formatUsd(item.amount, "whole") })} txHash={item.txHash} />
+      ) : (
+        <SystemLine icon={<Undo2 strokeWidth={2} />} text={t(item.state === "refunding" ? "feed.goal.refunding" : "feed.goal.refunded")} txHash={item.txHash} />
+      )
   }
 }
 

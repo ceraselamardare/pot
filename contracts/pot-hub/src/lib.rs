@@ -24,6 +24,7 @@ pub mod policy;
 pub mod prorata;
 pub mod types;
 pub mod views;
+pub mod wave4;
 #[cfg(test)]
 mod unit_time;
 
@@ -33,6 +34,7 @@ use ext::*;
 use kinds::*;
 use types::*;
 use views::*;
+use wave4::*;
 
 // ---------------------------------------------------------------------------------------------
 // Gas constants (contracts-spec §8.2; calibrated in C-09, see contracts/CALIBRATION.md)
@@ -60,6 +62,14 @@ pub const GAS_ON_DAO_REGISTERED: Gas = Gas::from_tgas(10);
 pub const GAS_ON_CLOSE_BALANCE: Gas = Gas::from_tgas(60);
 pub const GAS_ON_CLOSE_ADDED: Gas = Gas::from_tgas(10);
 pub const GAS_ON_RULES_ADDED: Gas = Gas::from_tgas(10);
+// wave 4: a link payout is `ft_transfer_call` to the hub, and Sputnik (278adc7 / v3.2) forwards
+// act_proposal's remaining gas to it (kb/sputnik-dao.md R8); the token keeps 30 Tgas for itself.
+pub const GAS_ACT_LINK: Gas = Gas::from_tgas(100);
+pub const GAS_ON_SPEND_ADDED_LINK: Gas = Gas::from_tgas(140);
+pub const GAS_ON_SPEND_CHECKED_LINK: Gas = Gas::from_tgas(165);
+pub const GAS_ON_OK_CHECKED: Gas = Gas::from_tgas(80);
+pub const GAS_ON_OK_CHECKED_LINK: Gas = Gas::from_tgas(140);
+pub const GAS_ON_LINK_DONE: Gas = Gas::from_tgas(15);
 
 /// Max bytes read from any promise result (a 40-member policy is ≈ 4 KB).
 const MAX_RESULT_BYTES: usize = 64 * 1024;
@@ -84,12 +94,49 @@ pub struct PotHub {
     pub(crate) creator_daily: LookupMap<AccountId, DailyCount>,
     pub(crate) pending_pots: LookupSet<AccountId>,
     pub(crate) sponsored_today: DailyCount,
+    // ---- wave 4 (hub 1.1.0; appended, created by `migrate`) ----
+    pub(crate) pot_ext: LookupMap<u32, PotExt>,
+    pub(crate) trust: LookupMap<(u32, AccountId), TrustRecord>,
+    pub(crate) req_ext: LookupMap<(u32, u32), RequestExt>,
+}
+
+/// The hub 1.0.0 state layout, read once by `migrate` (wave 4).
+#[near(serializers = [borsh])]
+pub struct PotHubV1 {
+    config: HubConfig,
+    pot_count: u32,
+    pots: LookupMap<AccountId, Pot>,
+    members: LookupMap<(u32, AccountId), Member>,
+    member_list: LookupMap<(u32, u32), AccountId>,
+    pots_of: LookupMap<AccountId, Vec<AccountId>>,
+    requests: LookupMap<(u32, u32), Request>,
+    subjects: LookupMap<(u32, u64), Subject>,
+    invites: LookupMap<(u32, [u8; 32]), Invite>,
+    closes: LookupMap<u32, CloseRecord>,
+    creator_daily: LookupMap<AccountId, DailyCount>,
+    pending_pots: LookupSet<AccountId>,
+    sponsored_today: DailyCount,
+}
+
+/// What `decide` returns: the ledger path, the reason shown to people, and the approval tier.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Decision {
+    pub path: Path,
+    pub reason: Reason,
+    pub tier: Tier,
 }
 
 #[derive(Deserialize)]
 #[serde(crate = "near_sdk::serde", deny_unknown_fields)]
 struct ContributeMsg {
     pot: AccountId,
+}
+
+/// `ft_on_transfer` msg from a Pot's DAO paying a link into escrow (wave 4).
+#[derive(Deserialize)]
+#[serde(crate = "near_sdk::serde", deny_unknown_fields)]
+struct LinkFundMsg {
+    link: u32,
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -202,7 +249,7 @@ pub fn prepay_bytes(description: &str, kind: &DaoKind, extra_votes: u32) -> u64 
         + PREPAY_EXTRA_VOTE_BYTES * extra_votes as u64
 }
 
-fn dao_status_expired(p: &DaoProposalLite) -> bool {
+pub(crate) fn dao_status_expired(p: &DaoProposalLite) -> bool {
     p.status == "Expired"
         || (p.status == "InProgress"
             && p.submission_time.0.saturating_add(PROPOSAL_PERIOD_NS) < env::block_timestamp())
@@ -233,12 +280,12 @@ impl PotHub {
     pub(crate) fn is_open(pot: &Pot) -> bool {
         pot.status == PotStatus::Open && pot.closing_until_ms <= now_ms()
     }
-    fn sponsored(&self) -> bool {
+    pub(crate) fn sponsored(&self) -> bool {
         self.config.relayers.contains(&env::signer_account_id())
     }
     /// The hub keeps `cost` from a direct (unsponsored) caller and refunds the excess in the same
     /// call (rev4, §3.0). Returns the excess being refunded (0 when sponsored).
-    fn charge(&self, sponsored: bool, cost: u128) -> u128 {
+    pub(crate) fn charge(&self, sponsored: bool, cost: u128) -> u128 {
         if sponsored {
             return 0;
         }
@@ -248,20 +295,20 @@ impl PotHub {
         }
         attached - cost
     }
-    fn refund_excess(excess: u128) {
+    pub(crate) fn refund_excess(excess: u128) {
         if excess > 0 {
             Promise::new(env::predecessor_account_id()).transfer(NearToken::from_yoctonear(excess)).detach();
         }
     }
     /// The hub never spends below `min_hub_reserve` (INV-12).
-    fn require_free(&self, spend: u128, excess: u128) {
+    pub(crate) fn require_free(&self, spend: u128, excess: u128) {
         let need = spend + excess + self.config.limits.min_hub_reserve.as_yoctonear();
         check(free_balance() >= need, ERR_HUB_LOW_BALANCE);
     }
-    fn hub_has_free(&self, spend: u128) -> bool {
+    pub(crate) fn hub_has_free(&self, spend: u128) -> bool {
         free_balance() >= spend + self.config.limits.min_hub_reserve.as_yoctonear()
     }
-    fn me() -> AccountId {
+    pub(crate) fn me() -> AccountId {
         env::current_account_id()
     }
 
@@ -282,7 +329,7 @@ impl PotHub {
 
     /// Prepay-batch: `Transfer(prepay)` precedes `add_proposal` in ONE receipt, so a failed
     /// `add_proposal` reverts the prepay too (§3.11).
-    fn propose_batch(dao: &AccountId, prepay: u128, description: &str, kind: &DaoKind, gas: Gas) -> Promise {
+    pub(crate) fn propose_batch(dao: &AccountId, prepay: u128, description: &str, kind: &DaoKind, gas: Gas) -> Promise {
         Promise::new(dao.clone()).transfer(NearToken::from_yoctonear(prepay)).function_call(
             "add_proposal",
             add_proposal_args(description, kind),
@@ -291,9 +338,9 @@ impl PotHub {
         )
     }
 
-    fn spend_prepay(&self, pot: &Pot, req: &Request) -> u128 {
+    fn spend_prepay(&self, pot: &Pot, req: &Request, is_link: bool) -> u128 {
         let desc = spend_description(req.id, req.category, &req.request_ref);
-        let kind = transfer_kind(&self.config.usdc, &req.receiver_id, req.amount);
+        let kind = self.kind_for(req, is_link);
         let extra = if req.path == Path::Vote { pot.member_count } else { 0 };
         bytes_cost(prepay_bytes(&desc, &kind, extra))
     }
@@ -308,7 +355,8 @@ impl PotHub {
         amount: u128,
         receiver: &AccountId,
         request_ref: Option<&str>,
-    ) -> Result<(Path, Reason), (&'static str, &'static str)> {
+        is_link: bool,
+    ) -> Result<Decision, (&'static str, &'static str)> {
         if self.config.paused {
             return Err((ERR_PAUSED, "paused"));
         }
@@ -321,8 +369,13 @@ impl PotHub {
         if amount == 0 || amount > MAX_AMOUNT {
             return Err((ERR_BAD_AMOUNT, "bad_amount"));
         }
-        if receiver == &Self::me() || receiver == dao || receiver == &self.config.usdc {
+        // a link request names the hub (the escrow) as receiver; nothing else may
+        if (receiver == &Self::me()) != is_link || receiver == dao || receiver == &self.config.usdc {
             return Err((ERR_BAD_RECEIVER, "bad_receiver"));
+        }
+        let ext = self.pext(pot.idx);
+        if is_link && !ext.extras.links {
+            return Err((ERR_LINKS_OFF, "links_off"));
         }
         if let Some(r) = request_ref {
             if !valid_request_ref(r) {
@@ -332,10 +385,16 @@ impl PotHub {
         if pot.request_seq >= self.config.limits.max_requests_per_pot {
             return Err((ERR_TOO_MANY_REQUESTS, "too_many_requests"));
         }
+        if goal_blocks_spends(&ext) {
+            return Err((ERR_GOAL_NOT_REACHED, "goal_not_reached"));
+        }
         let rules = &pot.rules;
-        let receiver_ok = self.active_member(pot.idx, receiver).is_some()
+        // a link counts as an allowed payee when links are on: the requester could pay themselves anyway
+        let receiver_ok = is_link
+            || self.active_member(pot.idx, receiver).is_some()
             || (rules.instant_payees == PayeeRule::MembersAndAllowlist && rules.payee_allowlist.contains(receiver));
-        let decision = if rules.instant_cap.0 == 0 || amount > rules.instant_cap.0 {
+        let cap = self.effective_cap(pot, &ext, requester);
+        let decision = if cap == 0 || amount > cap {
             (Path::Vote, Reason::OverCap)
         } else if member.instant_used + amount > rules.member_budget.0 {
             (Path::Vote, Reason::OverBudget)
@@ -349,7 +408,143 @@ impl PotHub {
         if decision.0 == Path::Vote && member.pending_votes >= self.config.limits.max_pending_per_member {
             return Err((ERR_TOO_MANY_PENDING, "too_many_pending"));
         }
-        Ok(decision)
+        let one_ok = ext.extras.one_ok_cap.0;
+        let tier = if decision.0 == Path::Instant {
+            Tier::Instant
+        } else if one_ok > 0 && amount <= one_ok && pot.member_count >= 2 {
+            Tier::OneOk
+        } else {
+            Tier::Group
+        };
+        Ok(Decision { path: decision.0, reason: decision.1, tier })
+    }
+
+    // ---------------------------------------------------------------- wave 4 helpers
+
+    /// The Pot's wave-4 record; Pots created before wave 4 behave as `PotExt::legacy()`.
+    pub(crate) fn pext(&self, idx: u32) -> PotExt {
+        self.pot_ext.get(&idx).cloned().unwrap_or_else(PotExt::legacy)
+    }
+    pub(crate) fn rx(&self, idx: u32, req: &Request) -> RequestExt {
+        self.req_ext.get(&(idx, req.id)).cloned().unwrap_or_else(|| RequestExt::for_path(req.path))
+    }
+    pub(crate) fn is_link(&self, idx: u32, id: u32) -> bool {
+        self.req_ext.get(&(idx, id)).is_some_and(|x| x.link.is_some())
+    }
+    pub(crate) fn trust_of(&self, idx: u32, a: &AccountId) -> TrustRecord {
+        self.trust.get(&(idx, a.clone())).cloned().unwrap_or_default()
+    }
+    /// `instant_cap × (1 + level)` with trust on, else `instant_cap` (the budget still applies).
+    pub(crate) fn effective_cap(&self, pot: &Pot, ext: &PotExt, a: &AccountId) -> u128 {
+        let level = if ext.extras.trust { self.trust_of(pot.idx, a).level } else { 0 };
+        pot.rules.instant_cap.0.saturating_mul(1 + level as u128)
+    }
+    /// The DAO kind a request's payout uses (INV-04: rebuilt, never stored).
+    pub(crate) fn kind_for(&self, req: &Request, is_link: bool) -> DaoKind {
+        if is_link {
+            link_transfer_kind(&self.config.usdc, &Self::me(), req.amount, req.id)
+        } else {
+            transfer_kind(&self.config.usdc, &req.receiver_id, req.amount)
+        }
+    }
+    pub(crate) fn dao_of(pot: &Pot) -> AccountId {
+        format!("{}.{}", pot.slug, Self::me()).parse().expect("pot ids are valid")
+    }
+
+    /// Trust + link side effects of a request status change (called by `transition` only).
+    fn after_transition(&mut self, pot: &Pot, req: &Request, old: RequestStatus, new: Option<RequestStatus>) {
+        if new == Some(old) {
+            return;
+        }
+        let is_link = self.is_link(pot.idx, req.id);
+        match new {
+            Some(RequestStatus::Approved) if !is_link => self.trust_settle(pot, req),
+            Some(RequestStatus::Rejected) => {
+                self.trust_decline(pot, req);
+                if is_link {
+                    self.void_link(pot, req.id);
+                }
+            }
+            Some(RequestStatus::Expired) | Some(RequestStatus::Removed) | None if is_link => self.void_link(pot, req.id),
+            _ => {}
+        }
+        if new.is_none() {
+            self.req_ext.remove(&(pot.idx, req.id));
+        }
+    }
+
+    /// Counts a settled (paid) spend once per request; levels up after `TRUST_STEP` qualifying ones.
+    pub(crate) fn trust_settle(&mut self, pot: &Pot, req: &Request) {
+        let key = (pot.idx, req.id);
+        let mut rx = self.rx(pot.idx, req);
+        if rx.counted {
+            return;
+        }
+        rx.counted = true;
+        self.req_ext.insert(key, rx);
+        let mut t = self.trust_of(pot.idx, &req.requester);
+        t.settled = t.settled.saturating_add(1);
+        t.settled_amount = t.settled_amount.saturating_add(req.amount);
+        if req.amount.saturating_mul(TRUST_MIN_SPEND_DIV) >= pot.rules.instant_cap.0 {
+            t.streak = (t.streak + 1).min(TRUST_STEP);
+            if t.streak >= TRUST_STEP && t.level < TRUST_MAX_LEVEL {
+                let from = t.level;
+                t.level += 1;
+                t.streak = 0;
+                PotEvent::TrustLevelChanged {
+                    pot: Self::dao_of(pot),
+                    member: req.requester.clone(),
+                    from,
+                    to: t.level,
+                    settled: t.settled,
+                    declined: t.declined,
+                    cause: "settled".into(),
+                }
+                .emit();
+            }
+        }
+        self.trust.insert((pot.idx, req.requester.clone()), t);
+    }
+
+    /// A declined request drops the requester one level and restarts the streak.
+    fn trust_decline(&mut self, pot: &Pot, req: &Request) {
+        let mut t = self.trust_of(pot.idx, &req.requester);
+        let from = t.level;
+        t.level = t.level.saturating_sub(1);
+        t.streak = 0;
+        t.declined = t.declined.saturating_add(1);
+        t.last_declined_ms = now_ms();
+        if from != t.level {
+            PotEvent::TrustLevelChanged {
+                pot: Self::dao_of(pot),
+                member: req.requester.clone(),
+                from,
+                to: t.level,
+                settled: t.settled,
+                declined: t.declined,
+                cause: "declined".into(),
+            }
+            .emit();
+        }
+        self.trust.insert((pot.idx, req.requester.clone()), t);
+    }
+
+    /// A link whose request can no longer be paid: no money ever moved (AwaitingFunds → Void).
+    pub(crate) fn void_link(&mut self, pot: &Pot, id: u32) {
+        let key = (pot.idx, id);
+        let Some(mut rx) = self.req_ext.get(&key).cloned() else { return };
+        let Some(mut link) = rx.link.clone() else { return };
+        if link.status != LinkStatus::AwaitingFunds {
+            return;
+        }
+        link.status = LinkStatus::Void;
+        link.done_at_ms = now_ms();
+        rx.link = Some(link);
+        self.req_ext.insert(key, rx);
+        let mut e = self.pext(pot.idx);
+        e.open_links = e.open_links.saturating_sub(1);
+        self.pot_ext.insert(pot.idx, e);
+        PotEvent::LinkVoided { pot: Self::dao_of(pot), request_id: id }.emit();
     }
 
     pub(crate) fn validate_rules(&self, rules: &Rules) -> bool {
@@ -376,8 +571,11 @@ impl PotHub {
         true
     }
 
-    fn spend_outcome(&self, pot: &Pot, req: &Request, status: &str, refusal: Option<&str>) -> SpendOutcome {
+    pub(crate) fn spend_outcome(&self, pot: &Pot, req: &Request, status: &str, refusal: Option<&str>) -> SpendOutcome {
+        let tier = self.req_ext.get(&(pot.idx, req.id)).map(|x| x.tier).unwrap_or(if req.path == Path::Instant { Tier::Instant } else { Tier::Group });
         SpendOutcome {
+            tier,
+            link: self.is_link(pot.idx, req.id),
             request_id: req.id,
             proposal_id: req.proposal_id,
             path: req.path,
@@ -389,7 +587,13 @@ impl PotHub {
     }
 
     /// Moves request `req` to `new` (None = delete) through the ledger (INV-06).
-    fn transition(&mut self, pot: &mut Pot, req: &mut Request, new: ledger::State) {
+    pub(crate) fn transition(&mut self, pot: &mut Pot, req: &mut Request, new: ledger::State) {
+        let old_status = req.status;
+        self.ledger_transition(pot, req, new);
+        self.after_transition(pot, req, old_status, new.map(|(_, s)| s));
+    }
+
+    fn ledger_transition(&mut self, pot: &mut Pot, req: &mut Request, new: ledger::State) {
         let old = Some((req.path, req.status));
         let mut m = self.member(pot.idx, &req.requester).expect("requester exists");
         ledger::apply_transition(pot, &mut m, req.amount, old, new);
@@ -408,14 +612,14 @@ impl PotHub {
     }
 
     /// Refuses a request discovered in a callback: release + delete (record absent = gap).
-    fn refuse_spend(&mut self, dao: &AccountId, mut pot: Pot, mut req: Request, refusal: &str) -> SpendOutcome {
+    pub(crate) fn refuse_spend(&mut self, dao: &AccountId, mut pot: Pot, mut req: Request, refusal: &str) -> SpendOutcome {
         self.transition(&mut pot, &mut req, None);
         let out = self.spend_outcome(&pot, &req, "refused", Some(refusal));
         self.save_pot(dao, pot);
         out
     }
 
-    fn emit_synced(&self, dao: &AccountId, pid: u64, subject: &str, request_id: Option<u32>, member: Option<AccountId>, dao_status: &str, hub_status: &str) {
+    pub(crate) fn emit_synced(&self, dao: &AccountId, pid: u64, subject: &str, request_id: Option<u32>, member: Option<AccountId>, dao_status: &str, hub_status: &str) {
         PotEvent::ProposalSynced {
             pot: dao.clone(),
             proposal_id: pid,
@@ -475,7 +679,7 @@ impl PotHub {
     }
 
     /// Upper bound of the close prepay at the current contributors (amount strings at max width).
-    fn close_prepay_upper_bound(&self, pot: &Pot) -> (u128, usize) {
+    pub(crate) fn close_prepay_upper_bound(&self, pot: &Pot) -> (u128, usize) {
         let payees: Vec<(AccountId, u128)> =
             self.contributions(pot).into_iter().filter(|(_, c)| *c > 0).map(|(a, _)| (a, MAX_AMOUNT)).collect();
         let n = payees.len();
@@ -528,6 +732,36 @@ impl PotHub {
             creator_daily: LookupMap::new(StorageKey::CreatorDaily),
             pending_pots: LookupSet::new(StorageKey::PendingPots),
             sponsored_today: DailyCount::default(),
+            pot_ext: LookupMap::new(StorageKey::PotExt),
+            trust: LookupMap::new(StorageKey::Trust),
+            req_ext: LookupMap::new(StorageKey::RequestExt),
+        }
+    }
+
+    /// Wave 4 state migration (hub 1.0.0 → 1.1.0): appends the three side maps. Old records are
+    /// untouched (their Borsh layouts are frozen); Pots without a `PotExt` keep the 1.0.0 rules.
+    /// Deploy + migrate in ONE transaction (DeployContract + FunctionCall), see notes/contracts-wave4.md.
+    #[private]
+    #[init(ignore_state)]
+    pub fn migrate() -> Self {
+        let old: PotHubV1 = env::state_read().unwrap_or_else(|| fail(ERR_MIGRATE));
+        Self {
+            config: old.config,
+            pot_count: old.pot_count,
+            pots: old.pots,
+            members: old.members,
+            member_list: old.member_list,
+            pots_of: old.pots_of,
+            requests: old.requests,
+            subjects: old.subjects,
+            invites: old.invites,
+            closes: old.closes,
+            creator_daily: old.creator_daily,
+            pending_pots: old.pending_pots,
+            sponsored_today: old.sponsored_today,
+            pot_ext: LookupMap::new(StorageKey::PotExt),
+            trust: LookupMap::new(StorageKey::Trust),
+            req_ext: LookupMap::new(StorageKey::RequestExt),
         }
     }
 
@@ -568,6 +802,7 @@ impl PotHub {
         invite_pk: Option<PublicKey>,
         emoji: Option<String>,
         float: Option<NearToken>,
+        extras: Option<RuleExtras>,
     ) -> Promise {
         let creator = env::predecessor_account_id();
         let hub = Self::me();
@@ -591,6 +826,12 @@ impl PotHub {
             None => preset.default_rules().unwrap_or_else(|| fail(ERR_RULES_INVALID)),
         };
         check(self.validate_rules(&rules), ERR_RULES_INVALID);
+        let extras = extras.unwrap_or_else(|| RuleExtras::defaults_for(&rules));
+        if let Err(code) = self.validate_extras(&rules, &extras, None) {
+            fail(code);
+        }
+        // the rulebot may approve `call` proposals only in all-or-nothing Pots (the goal refund)
+        let policy_v = if extras.goal.as_ref().is_some_and(|g| g.all_or_nothing) { POLICY_V2 } else { POLICY_V1 };
         let day = today();
         let daily = self.creator_daily.get(&creator).cloned().unwrap_or_default();
         check(daily.count_on(day) < self.config.limits.max_pots_per_creator_per_day, ERR_CREATOR_DAILY_LIMIT);
@@ -621,7 +862,7 @@ impl PotHub {
         }
         Self::refund_excess(excess);
 
-        let args = policy::dao_new_args(&name, preset, &creator, &hub).to_string().into_bytes();
+        let args = policy::dao_new_args_v(&name, preset, &creator, &hub, policy_v).to_string().into_bytes();
         Promise::new(dao.clone())
             .create_account()
             .transfer(NearToken::from_yoctonear(f))
@@ -631,7 +872,7 @@ impl PotHub {
                 Self::ext(hub)
                     .with_static_gas(GAS_ON_POT_CREATED)
                     .with_unused_gas_weight(0)
-                    .on_pot_created(dao, slug, name, emoji, preset, rules, creator, pk.map(|b| pk_string(&b)), NearToken::from_yoctonear(f), sponsored, day),
+                    .on_pot_created(dao, slug, name, emoji, preset, rules, creator, pk.map(|b| pk_string(&b)), NearToken::from_yoctonear(f), sponsored, day, Some(extras), Some(policy_v)),
             )
     }
 
@@ -650,6 +891,8 @@ impl PotHub {
         float: NearToken,
         sponsored: bool,
         day: u32,
+        extras: Option<RuleExtras>,
+        policy_v: Option<u8>,
     ) -> PromiseOrValue<CreatePotOutcome> {
         self.pending_pots.remove(&dao);
         if !promise_ok(0) {
@@ -729,6 +972,11 @@ impl PotHub {
             float,
         }
         .emit();
+        if let Some(extras) = extras {
+            let pv = policy_v.unwrap_or(POLICY_V1);
+            PotEvent::RuleExtrasSet { pot: dao.clone(), extras: extras.clone(), rules_version: 1, policy_version: pv }.emit();
+            self.pot_ext.insert(idx, PotExt { extras, policy_v: pv, ..PotExt::legacy() });
+        }
         if let Some(b) = pk_bytes_opt {
             let inv = Invite {
                 created_by: creator.clone(),
@@ -779,12 +1027,18 @@ impl PotHub {
 
     pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> PromiseOrValue<U128> {
         check(env::predecessor_account_id() == self.config.usdc, ERR_WRONG_TOKEN);
+        if let Ok(l) = near_sdk::serde_json::from_str::<LinkFundMsg>(&msg) {
+            // wave 4: a Pot's DAO paying a link into escrow (never panics; refunds on any mismatch)
+            return PromiseOrValue::Value(self.fund_link(&sender_id, l.link, amount));
+        }
         let m: ContributeMsg = near_sdk::serde_json::from_str(&msg).unwrap_or_else(|_| fail(ERR_BAD_MSG));
         let dao = m.pot;
         let mut pot = self.pot(&dao);
         check(Self::is_open(&pot), ERR_POT_NOT_OPEN);
         check(!self.config.paused, ERR_PAUSED);
         check(self.active_member(pot.idx, &sender_id).is_some(), ERR_NOT_MEMBER);
+        let ext = self.pext(pot.idx);
+        check(!goal_missed(&ext, now_ms()), ERR_GOAL_MISSED);
         check(
             amount.0 > 0 && pot.total_contributed.checked_add(amount.0).is_some_and(|t| t <= MAX_AMOUNT),
             ERR_AMOUNT_TOO_LARGE,
@@ -822,6 +1076,7 @@ impl PotHub {
         }
         p.total_contributed += amount.0;
         p.last_contributor = Some(sender_id.clone());
+        self.check_goal_reached(&pot, &p);
         PotEvent::Contribution {
             pot: pot.clone(),
             member: sender_id,
@@ -844,13 +1099,26 @@ impl PotHub {
         receiver_id: AccountId,
         category: Category,
         request_ref: String,
+        link: Option<LinkSpec>,
     ) -> Promise {
         let requester = env::predecessor_account_id();
         let mut p = self.pot(&pot);
-        let (path, reason) = self
-            .decide(&pot, &p, &requester, amount.0, &receiver_id, Some(&request_ref))
-            .unwrap_or_else(|(code, _)| fail(code));
         let now = now_ms();
+        let link = link.map(|l| {
+            let pk = pk_bytes(&l.claim_pk).unwrap_or_else(|| fail(ERR_LINK_PK_INVALID));
+            let exp = match l.expires_at_ms {
+                None => now + DEFAULT_LINK_TTL_MS,
+                Some(e) => {
+                    check(e > now + MIN_LINK_TTL_MS && e <= now + MAX_LINK_TTL_MS, ERR_LINK_EXPIRY_INVALID);
+                    e
+                }
+            };
+            Link { pk, expires_at_ms: exp, status: LinkStatus::AwaitingFunds, receiver: None, funded_at_ms: 0, done_at_ms: 0 }
+        });
+        let is_link = link.is_some();
+        let Decision { path, reason, tier } = self
+            .decide(&pot, &p, &requester, amount.0, &receiver_id, Some(&request_ref), is_link)
+            .unwrap_or_else(|(code, _)| fail(code));
         let mut req = Request {
             id: p.request_seq,
             requester: requester.clone(),
@@ -865,7 +1133,7 @@ impl PotHub {
             created_at_ms: now,
             updated_at_ms: now,
         };
-        let prepay = self.spend_prepay(&p, &req);
+        let prepay = self.spend_prepay(&p, &req, is_link);
         let sponsored = self.sponsored();
         let excess = self.charge(sponsored, prepay + bytes_cost(STATE_BYTES_REQUEST));
         self.require_free(prepay, excess);
@@ -876,6 +1144,12 @@ impl PotHub {
         ledger::apply_transition(&mut p, &mut m, req.amount, None, Some((path, RequestStatus::Checking)));
         self.put_member(p.idx, &requester, m);
         self.requests.insert((p.idx, req.id), req.clone());
+        if is_link {
+            let mut e = self.pext(p.idx);
+            e.open_links += 1;
+            self.pot_ext.insert(p.idx, e);
+        }
+        self.req_ext.insert((p.idx, req.id), RequestExt { tier, ok_by: None, ok_in_flight: false, counted: false, link });
         if path == Path::Instant {
             p.busy_until_ms = now + BUSY_WINDOW_MS;
         }
@@ -892,7 +1166,7 @@ impl PotHub {
             .and(ext_dao::ext(pot.clone()).with_static_gas(GAS_VIEW_DAO).with_unused_gas_weight(0).get_policy())
             .then(
                 Self::ext(Self::me())
-                    .with_static_gas(GAS_ON_SPEND_CHECKED)
+                    .with_static_gas(if is_link && path == Path::Instant { GAS_ON_SPEND_CHECKED_LINK } else { GAS_ON_SPEND_CHECKED })
                     .with_unused_gas_weight(0)
                     .on_spend_checked(pot, id, U128(prepay)),
             )
@@ -918,7 +1192,8 @@ impl PotHub {
         }
         // The live DAO Group gates instant payees under the `members` rule (vote-path requests to
         // non-members are legitimate: reason payee_not_allowed).
-        if req.path == Path::Instant && p.rules.instant_payees == PayeeRule::Members && !group.contains(&req.receiver_id) {
+        let is_link = self.is_link(p.idx, req.id);
+        if req.path == Path::Instant && !is_link && p.rules.instant_payees == PayeeRule::Members && !group.contains(&req.receiver_id) {
             return PromiseOrValue::Value(self.refuse_spend(&pot, p, req, "not_in_dao_group"));
         }
         if registration.is_none() {
@@ -940,11 +1215,11 @@ impl PotHub {
         let path = req.path;
         self.transition(&mut p, &mut req, Some((path, RequestStatus::Proposing)));
         let desc = spend_description(req.id, req.category, &req.request_ref);
-        let kind = transfer_kind(&self.config.usdc, &req.receiver_id, req.amount);
+        let kind = self.kind_for(&req, is_link);
         self.save_pot(&pot, p);
         PromiseOrValue::Promise(Self::propose_batch(&pot, prepay.0, &desc, &kind, GAS_ADD).then(
             Self::ext(Self::me())
-                .with_static_gas(GAS_ON_SPEND_ADDED)
+                .with_static_gas(if is_link && path == Path::Instant { GAS_ON_SPEND_ADDED_LINK } else { GAS_ON_SPEND_ADDED })
                 .with_unused_gas_weight(0)
                 .on_spend_added(pot, request_id),
         ))
@@ -968,6 +1243,8 @@ impl PotHub {
         let path = req.path;
         let next = if path == Path::Vote { RequestStatus::Pending } else { RequestStatus::Approving };
         self.transition(&mut p, &mut req, Some((path, next)));
+        let rx = self.rx(p.idx, &req);
+        let is_link = rx.link.is_some();
         PotEvent::SpendRequested {
             pot: pot.clone(),
             request_id,
@@ -980,6 +1257,8 @@ impl PotHub {
             path: req.path,
             reason: req.reason,
             approvals_needed: approvals_needed(p.member_count),
+            tier: rx.tier,
+            link: is_link,
         }
         .emit();
         if path == Path::Vote {
@@ -987,12 +1266,12 @@ impl PotHub {
             self.save_pot(&pot, p);
             return PromiseOrValue::Value(out);
         }
-        let kind = transfer_kind(&self.config.usdc, &req.receiver_id, req.amount);
+        let kind = self.kind_for(&req, is_link);
         self.save_pot(&pot, p);
         // INV-03: vote only on the id our own add_proposal returned in THIS chain.
         PromiseOrValue::Promise(
             ext_dao::ext(pot.clone())
-                .with_static_gas(GAS_ACT)
+                .with_static_gas(if is_link { GAS_ACT_LINK } else { GAS_ACT })
                 .with_unused_gas_weight(0)
                 .act_proposal(pid, DaoAction::VoteApprove, kind, Some("auto: within Pot rules".to_string()))
                 .then(ext_dao::ext(pot.clone()).with_static_gas(GAS_VIEW_DAO).with_unused_gas_weight(0).get_proposal(pid))
@@ -1188,6 +1467,9 @@ impl PotHub {
                 p.status = new_status.clone();
                 if new_status == PotStatus::Closed {
                     p.closed_at_ms = now_ms();
+                    if self.pext(p.idx).refund_proposal == Some(proposal_id) {
+                        PotEvent::GoalRefunded { pot: pot.clone(), proposal_id }.emit();
+                    }
                     PotEvent::PotClosed {
                         pot: pot.clone(),
                         proposal_id,
@@ -1228,10 +1510,11 @@ impl PotHub {
         };
         let req = self.requests.get(&(p.idx, request_id)).cloned().unwrap_or_else(|| fail(ERR_NOT_RETRYABLE));
         check(req.status == RequestStatus::PayoutFailed, ERR_NOT_RETRYABLE);
-        let kind = transfer_kind(&self.config.usdc, &req.receiver_id, req.amount);
+        let is_link = self.is_link(p.idx, request_id);
+        let kind = self.kind_for(&req, is_link);
         // INV-03: Finalize only on hub-tracked Transfer proposals in payout_failed.
         ext_dao::ext(pot.clone())
-            .with_static_gas(GAS_ACT)
+            .with_static_gas(if is_link { GAS_ACT_LINK } else { GAS_ACT })
             .with_unused_gas_weight(0)
             .act_proposal(proposal_id, DaoAction::Finalize, kind, Some("retry".to_string()))
             .then(ext_dao::ext(pot.clone()).with_static_gas(GAS_VIEW_DAO).with_unused_gas_weight(0).get_proposal(proposal_id))
@@ -1437,10 +1720,16 @@ impl PotHub {
 
     // ------------------------------------------------------------------ rules (§3.8)
 
-    pub fn set_rules(&mut self, pot: AccountId, rules: Rules) -> RulesOutcome {
+    pub fn set_rules(&mut self, pot: AccountId, rules: Rules, extras: Option<RuleExtras>) -> RulesOutcome {
         let caller = env::predecessor_account_id();
         let mut p = self.pot(&pot);
         check(self.validate_rules(&rules), ERR_RULES_INVALID);
+        let cur = self.pext(p.idx);
+        if let Some(x) = &extras {
+            if let Err(code) = self.validate_extras(&rules, x, Some((&p, &cur))) {
+                fail(code);
+            }
+        }
         let by = if caller == pot {
             // a group-approved `call` proposal executing in the DAO; never blocked by pause
             check(p.status != PotStatus::Closed, ERR_POT_NOT_OPEN);
@@ -1459,12 +1748,22 @@ impl PotHub {
         p.rules_version += 1;
         let v = p.rules_version;
         PotEvent::RulesChanged { pot: pot.clone(), rules, rules_version: v, by: by.into(), actor: caller }.emit();
+        if let Some(x) = extras {
+            let mut e = cur;
+            if e.extras.goal != x.goal {
+                e.goal_reached_at_ms = 0;
+            }
+            e.extras = x;
+            PotEvent::RuleExtrasSet { pot: pot.clone(), extras: e.extras.clone(), rules_version: v, policy_version: e.policy_v }.emit();
+            self.pot_ext.insert(p.idx, e);
+            self.check_goal_reached(&pot, &p);
+        }
         self.save_pot(&pot, p);
         RulesOutcome { applied: true, proposal_id: None, rules_version: v, reason: None }
     }
 
     #[payable]
-    pub fn propose_rules(&mut self, pot: AccountId, rules: Rules) -> Promise {
+    pub fn propose_rules(&mut self, pot: AccountId, rules: Rules, extras: Option<RuleExtras>) -> Promise {
         let by = env::predecessor_account_id();
         let mut p = self.pot(&pot);
         check(self.active_member(p.idx, &by).is_some(), ERR_NOT_MEMBER);
@@ -1472,8 +1771,14 @@ impl PotHub {
         check(!self.config.paused, ERR_PAUSED);
         check(self.validate_rules(&rules), ERR_RULES_INVALID);
         check(p.open_rules_proposal.is_none(), ERR_RULES_PENDING);
+        if let Some(x) = &extras {
+            let cur = self.pext(p.idx);
+            if let Err(code) = self.validate_extras(&rules, x, Some((&p, &cur))) {
+                fail(code);
+            }
+        }
         let version = p.rules_version + 1;
-        let kind = rules_kind(&Self::me(), &pot, &rules);
+        let kind = rules_kind(&Self::me(), &pot, &rules, extras.as_ref());
         let desc = rules_description(version);
         let prepay = bytes_cost(prepay_bytes(&desc, &kind, p.member_count));
         let excess = self.charge(self.sponsored(), prepay + bytes_cost(STATE_BYTES_RULES));
@@ -1541,6 +1846,7 @@ impl PotHub {
         let excess = self.charge(self.sponsored(), prepay + state);
         check(p.busy_until_ms <= now, ERR_POT_BUSY);
         check(p.unpaid_approved == 0 && p.reserved == 0, ERR_PAYOUTS_PENDING);
+        check(self.pext(p.idx).open_links == 0, ERR_LINKS_PENDING);
         check(p.total_contributed > 0, ERR_NO_CONTRIBUTIONS);
         self.require_free(prepay, excess);
         Self::refund_excess(excess);
@@ -1617,6 +1923,15 @@ impl PotHub {
         };
         self.closes.insert(p.idx, rec);
         self.subjects.insert((p.idx, pid), Subject::Close);
+        if by == Self::me() {
+            // the hub's own refund close of a missed all-or-nothing goal (refund_unfunded)
+            let mut e = self.pext(p.idx);
+            e.refund_proposal = Some(pid);
+            if let Some(goal) = e.extras.goal.clone() {
+                PotEvent::GoalRefundProposed { pot: pot.clone(), proposal_id: pid, goal, total: U128(p.total_contributed) }.emit();
+            }
+            self.pot_ext.insert(p.idx, e);
+        }
         PotEvent::CloseProposed {
             pot: pot.clone(),
             proposal_id: pid,
@@ -1631,6 +1946,16 @@ impl PotHub {
         self.save_pot(&pot, p);
         CloseOutcome { ok: true, proposal_id: Some(pid), balance: Some(balance), payouts, dust: Some(dust), dust_to: Some(dust_to), approvals_needed: Some(needed), reason: None }
     }
+}
+
+/// An all-or-nothing goal that isn't reached yet blocks spends (collecting or missed).
+pub(crate) fn goal_blocks_spends(e: &PotExt) -> bool {
+    e.extras.goal.as_ref().is_some_and(|g| g.all_or_nothing) && e.goal_reached_at_ms == 0
+}
+
+/// An all-or-nothing goal whose deadline passed without being reached.
+pub(crate) fn goal_missed(e: &PotExt, now: u64) -> bool {
+    goal_blocks_spends(e) && e.extras.goal.as_ref().is_some_and(|g| now >= g.deadline_ms)
 }
 
 pub(crate) fn subject_kind(s: &Subject) -> &'static str {
@@ -1725,7 +2050,8 @@ mod tests {
         let trait_body = ext.split("pub trait Dao {").nth(1).unwrap().split('}').next().unwrap();
         let fns: Vec<&str> = trait_body.lines().filter(|l| l.trim_start().starts_with("fn ")).collect();
         assert_eq!(fns.len(), 3, "ext_dao must have exactly act_proposal, get_proposal, get_policy");
-        let all = [code_only(include_str!("lib.rs")), code_only(ext), code_only(include_str!("kinds.rs"))].concat();
+        let all = [code_only(include_str!("lib.rs")), code_only(ext), code_only(include_str!("kinds.rs")), code_only(include_str!("wave4.rs"))]
+            .concat();
         for forbidden in ["RemoveProposal", "VoteReject", "VoteRemove", "store_blob", "remove_blob", "\"update\"", "deploy_contract", "add_full_access_key", "delete_account"] {
             assert!(!all.contains(forbidden), "{forbidden} appears in hub code");
         }
@@ -1739,5 +2065,7 @@ mod tests {
     fn transfer_sites() {
         let code = code_only(include_str!("lib.rs"));
         assert_eq!(code.matches(".transfer(").count(), 3, "float, prepay batch, excess refund");
+        // wave 4 moves USDC (claim / return) only as ft_transfer function calls, never NEAR transfers
+        assert_eq!(code_only(include_str!("wave4.rs")).matches(".transfer(").count(), 0);
     }
 }

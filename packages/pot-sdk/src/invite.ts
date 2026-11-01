@@ -188,3 +188,73 @@ export async function verifyJoinWebCrypto(invitePk: PublicKeyStr | string, daoId
   }
   return ed25519VerifyWebCrypto(pk, joinMessageBytes(daoId, joiner), sig)
 }
+
+// ---------------------------------------------------------------- pay by link (hub 1.1.0)
+// A link payout reuses the invite key shape: a fresh 32-byte ed25519 seed whose secret lives only
+// in the link's #fragment; `request_spend(…, link: {claim_pk})` registers the public key.
+//   link:     /c/<slug>/<request_id>#<secret>        (route owned by the frontend; helpers below)
+//   message:  UTF-8 `pot-claim:v1:<hub_id>:<dao_id>:<request_id>:<receiver>`, raw ed25519
+//   signature on the wire (claim_link arg): standard base64 WITH padding (88 chars), like join
+
+export const CLAIM_DOMAIN = "pot-claim:v1"
+
+/** `pot-claim:v1:<hub>:<dao>:<request_id>:<receiver>` (the hub id stops cross-hub replay). */
+export const claimMessage = (hubId: string, daoId: string, requestId: number, receiver: string): string =>
+  `${CLAIM_DOMAIN}:${hubId}:${daoId}:${requestId}:${receiver}`
+export const claimMessageBytes = (hubId: string, daoId: string, requestId: number, receiver: string): Uint8Array =>
+  utf8Encode(claimMessage(hubId, daoId, requestId, receiver))
+
+/** `${origin}/c/${slug}/${requestId}#${secret}` (origin optional → a path). */
+export function buildClaimLink(p: { origin?: string; slug: string; requestId: number; secret: string }): string {
+  const origin = (p.origin ?? "").replace(/\/+$/, "")
+  return `${origin}/c/${encodeURIComponent(p.slug)}/${p.requestId}#${p.secret}`
+}
+
+export interface ParsedClaimLink {
+  slug: string
+  requestId: number
+  /** null when the fragment is missing or malformed */
+  secret: string | null
+}
+
+/** Parses a full URL or a path like "/c/lisbon-trip/7#…". Returns null when it isn't a /c/ link. */
+export function parseClaimLink(url: string): ParsedClaimLink | null {
+  let u: URL
+  try {
+    u = new URL(url, "https://pot.invalid")
+  } catch {
+    return null
+  }
+  const m = /^\/c\/([^/]+)\/(0|[1-9][0-9]{0,9})\/?$/.exec(u.pathname)
+  if (!m) return null
+  const frag = u.hash.replace(/^#/, "")
+  let secret: string | null = null
+  if (frag) {
+    try {
+      secretToSeed(frag)
+      secret = frag
+    } catch {
+      secret = null
+    }
+  }
+  return { slug: decodeURIComponent(m[1] as string), requestId: Number(m[2]), secret }
+}
+
+/** Signs the claim message with WebCrypto → the `claim_link` signature (padded base64). */
+export async function signClaimWebCrypto(seed: Uint8Array, hubId: string, daoId: string, requestId: number, receiver: string): Promise<string> {
+  const key = await webCryptoInviteKey(seed)
+  return base64Encode(await key.sign(claimMessageBytes(hubId, daoId, requestId, receiver)))
+}
+
+/** Verifies a claim signature exactly as the hub does. */
+export async function verifyClaimWebCrypto(claimPk: PublicKeyStr | string, hubId: string, daoId: string, requestId: number, receiver: string, signatureB64: string): Promise<boolean> {
+  let pk: Uint8Array
+  let sig: Uint8Array
+  try {
+    pk = publicKeyBytes(claimPk)
+    sig = base64Decode(signatureB64)
+  } catch {
+    return false
+  }
+  return ed25519VerifyWebCrypto(pk, claimMessageBytes(hubId, daoId, requestId, receiver), sig)
+}

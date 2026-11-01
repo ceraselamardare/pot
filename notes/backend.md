@@ -376,3 +376,106 @@ The tail is the per-persona queue (10 sessions share 3 personas; a persona signs
   per comment and audience in `notification_log`.
 - Tests: `server/features/comments.test.ts` (22: members only incl. joining, validation, delete-own-only + the DB
   CHECK, idempotency, burst/daily quotas, feed counts, onPosted recipients, push fan-out, route gates).
+
+
+---
+
+# Snap the receipt: POST /api/receipts/read (2026-11-01)
+
+- **Route:** `app/api/receipts/read/route.ts`. Logic is in `server/features/receipts/{read,nearai}.ts`; the shared
+  parse and normalize code is in `lib/receipt.ts`.
+- **Request order:**
+  1. `checkCsrf` (same-origin JSON)
+  2. Feature off → 404 `not_found {cause: receipts_off}`
+  3. `requireSession`, before any body is read
+  4. The body is read as a **stream with a 2 MB cap** (413 `bad_request {field: body, cause: too_large}`), then the
+     strict zod `{pot, mime: jpeg|png|webp, image: base64}`
+  5. `resolvePotId` + `isMember` (hub `get_members`) → 403 `not_a_member`
+  6. Quotas in one transaction: `user_receipt_burst` 5/min → 429 `rate_limited`; `user_receipts` 30/day → 429
+     `quota_exceeded {family: receipts}`; `global_receipts` 2,000/day (prod) / 300 (preview) → 503
+     `{cause: global_cap}`
+  7. base64 + magic bytes + ≤ 1.5 MB decoded
+  8. The reader
+- **Errors:** provider timeout → 504 `service_unavailable {cause: receipts_timeout}`; 429/503 → 503
+  `receipts_busy` (+ `retryAfterMs`); auth/other → 502 `receipts_provider`. An unreadable photo is a 200 with
+  `result: {readable: false}`. `maxDuration` 35. No new sdk reasons: `detail.cause` carries the specifics, and
+  `QuotaFamily` "receipts" isn't in the sdk union, because the sdk is another agent's area.
+- **D-61 (no uploads):** the photo exists only in the request's memory. It is not in the DB, logs or disk.
+  `ReceiptProviderError` messages carry the kind and status only. A test searches every text/json/bytea column of the
+  test schema and every console line for the photo after successful, failed and crashing reads, and finds nothing.
+  The note that travels with the request is merchant + day only. No image hash goes in the note: it's public, and it
+  proves nothing to members who never see the photo.
+- **Provider (verified 2026-11-01, no key on this machine):**
+  - NEAR AI Cloud `https://cloud-api.near.ai/v1`, OpenAI-compatible, `Authorization: Bearer`.
+  - Model `Qwen/Qwen3-VL-30B-A3B-Instruct`: `GET /v1/models` lists `owned_by nearai`, text+image,
+    `structured_outputs`, 16k context, $0.15 / $0.55 per M tokens.
+  - `GET /v1/attestation/report?model=…` answered without a key: `model_attestations` with `intel_quote`,
+    `nvidia_payload`, ECDSA `signing_address`.
+  - The request: `response_format: json_schema` (strict, `RECEIPT_JSON_SCHEMA`), the photo as an `image_url` data
+    URL, `temperature 0`, `x-no-aliasing: true`, `accept-encoding: identity`.
+  - **Proof:** after the completion, `GET /v1/signature/{id}?model=&signing_algo=ecdsa` is retried on 404 with a
+    2.5 s budget. It is accepted only when `signature_kind` is `provider_tee` and the signed text equals
+    `<model>:<sha256(our exact request bytes)>:<sha256(response bytes)>`. Then the response's `proof.verifyUrl` is
+    `https://cloud.near.ai/verify?model=…#receipt=<base64url JSON>` (the Verification Center's reply receipt;
+    fragment only) and `reply: true`. Otherwise it is the model-only link.
+  - We don't verify the ECDSA signature or the quote ourselves: the Verification Center does that in the person's
+    browser.
+- **Env:**
+  - `NEAR_AI_API_KEY` (server only; Vercel Sensitive)
+  - `NEAR_AI_BASE_URL`, `NEAR_AI_RECEIPT_MODEL`, `NEAR_AI_RECEIPT_TIMEOUT_MS` (default 25 s)
+  - `NEAR_AI_RECEIPTS_MODE=mock|off`: mock is the deterministic sample, refused on production
+  - `LIVE_NEARAI`
+  - All are in the root `.env.example`.
+- **`GET /api/health`:** `features.receipts` is true with a key or with MOCK mode.
+- **Tests:**
+  - `server/features/receipts/nearai.test.ts` (21): mocked fetch for the request shape, the status → kind table,
+    the timeout and abort, junk model output, and the proof binding (wrong bytes, a gateway signature or a broken
+    body give a model-only link; 404 then OK).
+  - `server/features/receipts/read.test.ts` (11, pot_test): readReceipt, image checks, the body cap, route gates +
+    the MOCK end to end, quotas, the D-61 scan.
+  - `nearai.live.test.ts`: opt-in with `LIVE_NEARAI=1` + a key. It reads `e2e/fixtures/receipts/receipt-pingo-doce.jpg`
+    and expects $84.20 USD groceries. Not run: no key.
+
+### 2026-11-01: receipt model switched to `z-ai/glm-5.3-flash`
+- The first live run with the real key: `Qwen/Qwen3-VL-30B-A3B-Instruct` never answered (even a 5-token text prompt hung for 90 s), while the
+  key worked on other models. Two other NEAR-hosted (`owned_by nearai`) image models answered in < 1 s.
+- Live fixture read (`nearai.live.test.ts`): `z-ai/glm-5.3-flash` 6.0 s, `Qwen/Qwen3.8-27B` 15.7 s; both returned $84.20, Pingo Doce,
+  groceries, 7 items, tax $4.82. The per-reply proof came back (`proof.reply: true`), so the "Check it yourself" link carries the receipt.
+- Default is now `z-ai/glm-5.3-flash` (`NEAR_AI_DEFAULT_RECEIPT_MODEL`); override with `NEAR_AI_RECEIPT_MODEL`.
+
+### 2026-11-01: receipts in another currency are converted (`server/features/fx.ts`)
+- **What:** `POST /api/receipts/read` now also returns `fx` (`lib/receipt.ts` `ReceiptFx`): for a readable receipt
+  with a total in a known currency other than USD, `{ok: true, from, amountCents, usdCents, rate, rateDate, source}`
+  (`source`: `ecb` | `er` | `sample`), or `{ok: false, from, why: "unavailable" | "unsupported"}`. `null` for dollars,
+  no currency, no total or unreadable (and from older servers; the client's `fxOf` checks the shape). The reading is
+  never failed by the rate: a throwing converter gives `fx: null`.
+- **Sources (verified 2026-11-01 with curl):**
+  1. Frankfurter (ECB reference rates), `GET https://api.frankfurter.dev/v1/latest` →
+     `{"amount":1.0,"base":"EUR","date":"2026-10-30","rates":{"USD":1.1172,…}}`, ~30 currencies, working days only.
+     `api.frankfurter.app/latest` now 301s to it, so we call `.dev/v1` directly. One request gives every currency:
+     dollars per X = `rates.USD / rates[X]` (EUR itself = `rates.USD`).
+  2. Fallback, open.er-api.com (ExchangeRate-API's open endpoint), `GET https://open.er-api.com/v6/latest/USD` →
+     `{"result":"success","base_code":"USD","time_last_update_unix":…,"rates":{…}}`, ~160 currencies, daily. Dollars
+     per X = `1 / rates[X]`; the date is the UTC day of `time_last_update_unix`. Its terms ask for attribution: the
+     sheet's source line says "Rate from exchangerate-api.com".
+  - The ECB table is tried first; a currency it doesn't publish (or an ECB failure) goes to the fallback. Neither
+    reachable → `unavailable`; reachable but no rate → `unsupported`.
+- **Cache / limits:** one table per source in memory (per warm instance): 1 h on success, 1 min on failure (so a dead
+  source can't add 3 s to every reading); one fetch in flight; `AbortSignal.timeout(3 s)` per fetch. No DB cache
+  (two GETs an hour per instance is nothing; a cold instance pays ≤ ~50 ms). Failures log `fx_source_failed`
+  (`source`, `why`: http status / shape / timeout / network), never a body.
+- **Maths:** the rate is rounded to 6 significant digits and that same rate is shown and used; `usdCents` =
+  cents × rate, **half up**, done in BigInt from the rate's decimal digits (`convertCents`), so 100 × 1.005 = 101,
+  not the float's 100.4999…. A result over the keypad's $999,999.99 is `unsupported`.
+- **Mode:** `POT_FX_MODE=live|mock|off`; unset = `mock` when the receipts reader is the mock, else `live`; `mock` is
+  refused on production (falls back to live). Mock = `MOCK_USD_RATES` (EUR 1.0852, GBP, CHF, JPY, BRL, CAD) dated today,
+  `source: "sample"`; the browser's mock reader uses the same table (`mockFx`) plus the fault hook
+  `pot.mock.fail = receipt_rate` (no rate). Documented in the root `.env.example` (+ `LIVE_FX`).
+- **Tests:** `server/features/fx.test.ts` (14, mocked fetch: ECB success, cross rates, half-up, the hour's cache and
+  one fetch in flight, fallback on 503 / bad shape / network, a currency only the fallback has, both fail + the
+  1-minute failure cache, unsupported, the 3 s timeout, USD / no currency / no total / unreadable pass through, parser
+  shape checks, mock, off, mode); `read.test.ts` +2 (converted reading through `readReceipt`; no converter or a
+  throwing one still returns the reading); `lib/receipt.test.ts` +3; `lib/client/receipts/read.test.ts` +2 (`fxOf`,
+  mock rate + `receipt_rate` hook). Opt-in `server/features/fx.live.test.ts` (`LIVE_FX=1`), run once on 2026-11-01:
+  ECB EUR→USD **1.1172** dated **2026-10-30** (a Friday; Nov 1 is a Sunday) → €42.50 ≈ **$47.48**; fallback 1.11662
+  dated 2026-11-01 (€42.50 ≈ $47.46), AED 0.272294.

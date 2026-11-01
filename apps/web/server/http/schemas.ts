@@ -45,7 +45,7 @@ export const signedRelayReq = z.strictObject({
 export const faucetReq = z.strictObject({ amount: micro.optional(), idempotencyKey: opKey })
 
 export const noteReq = z.strictObject({
-  kind: z.enum(["memo", "decline_reason"]),
+  kind: z.enum(["memo", "decline_reason", "link_label"]),
   pot: z.string().min(2).max(64),
   ref: z.string().min(1).max(32),
   text: z.string().min(1).max(2000),

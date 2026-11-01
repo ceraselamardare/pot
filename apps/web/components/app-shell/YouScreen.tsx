@@ -7,6 +7,7 @@ import { useSyncExternalStore } from "react"
 import { Avatar } from "@/components/pot/Avatar"
 import { YourActivity } from "@/components/activity/YourActivity"
 import { YourBalance } from "@/components/activity/YourBalance"
+import { YourTrust } from "@/components/wave4/YourTrust"
 import { AvatarSetting } from "@/components/app-shell/AvatarPicker"
 import { Segmented } from "@/components/pot/Controls"
 import { signOut } from "@/components/app-shell/Shell"
@@ -129,6 +130,9 @@ export function YouScreen() {
         <section className="mt-4 rounded-lg bg-surface p-4" data-you-avatar>
           <AvatarSetting />
         </section>
+
+        {/* hub 1.1.0: what you can spend without asking in each Pot (earned trust) */}
+        <YourTrust />
 
         {/* what you did across your Pots (components/activity) */}
         <YourActivity meId={me.id} />

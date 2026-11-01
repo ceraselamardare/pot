@@ -6,6 +6,7 @@ import { block } from "@/server/chain/near"
 import { getConfig } from "@/server/config"
 import { getRpc } from "@/server/deps"
 import { route } from "@/server/http/context"
+import { receiptsEnabled } from "@/server/features/receipts/nearai"
 
 export const maxDuration = 10
 
@@ -43,6 +44,8 @@ export const GET = route("GET /api/health", async (ctx) => {
       push: process.env.FLAG_PUSH === "true",
       email: process.env.FLAG_EMAIL === "true",
       telegram: process.env.FLAG_TELEGRAM === "true",
+      // "Snap the receipt": on when the server has NEAR_AI_API_KEY (or NEAR_AI_RECEIPTS_MODE=mock off production)
+      receipts: receiptsEnabled(),
     },
   })
 })

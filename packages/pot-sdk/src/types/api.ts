@@ -362,6 +362,10 @@ export const RELAY_INTENT_TYPES: readonly IntentType[] = [
   "retry_payout",
   "set_rules",
   "propose_rules",
+  "ok_request",
+  "claim_link",
+  "reclaim_link",
+  "refund_unfunded",
 ]
 
 export interface RelayContext {
@@ -420,6 +424,10 @@ export type RelayResult =
   | { type: "close"; proposalId: number }
   | { type: "invite"; added?: PublicKeyStr; revoked?: PublicKeyStr }
   | { type: "maintenance"; proposalId: number; proposalStatus?: string }
+  /** hub 1.1.0 ok_request: approved = the hub approved on this OK (the payout may still fail, D7) */
+  | { type: "ok"; requestId: number; proposalId: number | null; approved: boolean; status: string; reason?: string }
+  /** hub 1.1.0 claim_link / reclaim_link */
+  | { type: "link"; requestId: number; ok: boolean; status: string; receiverId?: AccountId; reason?: string }
 
 /** HTTP 200 */
 export interface RelayOk extends Ok {
@@ -622,7 +630,7 @@ export interface PushUnsubReq {
 export type PushUnsubRes = Ok
 
 /** §6.2 Declarative Web Push payload (≤ 2,500 bytes as JSON). */
-export type NotificationType = "approval_needed" | "request_resolved" | "money_arrived" | "member_joined" | "deposit_status" | "pot_closed" | "nudge" | "comment"
+export type NotificationType = "approval_needed" | "request_resolved" | "money_arrived" | "member_joined" | "deposit_status" | "pot_closed" | "nudge" | "comment" | "trust_up" | "goal"
 export interface PushPayload {
   web_push: 8030
   notification: {

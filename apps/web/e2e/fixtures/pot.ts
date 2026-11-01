@@ -9,7 +9,7 @@ export const BRAND_DEEP = ["rgb(184, 120, 0)", "rgb(227, 154, 0)"]
 export const PORTO_INVITE_PK = "BYQrv4recka1ASkHNkAiZ4ZTSoAjp91824cnR15bRmok"
 export const PORTO_INVITE_URL = `/j/porto-weekend?i=${PORTO_INVITE_PK}#BRAbJjE8R1JdaHN-iZSfqrXAy9bh7PcCDRgjLjlET1o`
 
-export type MockPerson = "maya" | "sam" | "leo"
+export type MockPerson = "maya" | "sam" | "leo" | "alex"
 
 /** Sign in as one of the mock world's people (the mock session) before the first page load; later switches stick. */
 export async function asPerson(page: Page, person: MockPerson) {
@@ -89,4 +89,38 @@ export async function openedSheet(page: Page, name: string | RegExp) {
 export async function typeAmount(page: Page, amount: string) {
   const dialog = page.getByRole("dialog")
   for (const ch of amount) await dialog.getByRole("button", { name: ch === "." ? "decimal point" : ch, exact: true }).click()
+}
+
+/** The Spend sheet's [Next]: step 1 "How much?" → step 2 "What's it for?". */
+export async function spendNext(page: Page) {
+  const dialog = page.getByRole("dialog")
+  await dialog.getByRole("button", { name: "Next", exact: true }).click()
+  await expect(dialog.locator("[data-spend-body='2']")).toBeVisible()
+  return dialog
+}
+
+/** The Spend sheet's ⓘ: open the why under the decision line (the rule, trust, what you'd get back). */
+export async function spendWhy(page: Page) {
+  const line = page.getByRole("dialog").locator("[data-decision]")
+  const more = line.getByRole("button", { name: "Why: more about this" })
+  if ((await more.getAttribute("aria-expanded")) !== "true") await more.click()
+  return line.locator("[data-decision-why]")
+}
+
+/**
+ * The Spend sheet in its two steps (open it first): type `amount` on step 1 (omit it when it's typed already), [Next], then on step 2 pick the reason
+ * (a chip name, e.g. "Groceries") and who gets paid ("Me" | "A member" | "Someone else", + `member` by name), and
+ * press `submit` (the ask's name, e.g. "Get $84 back") when given. Returns the dialog, on step 2 (or its result).
+ */
+export async function spendFlow(
+  page: Page,
+  o: { amount?: string; reason?: string; payee?: "Me" | "A member" | "Someone else"; member?: string; submit?: string | RegExp },
+) {
+  if (o.amount) await typeAmount(page, o.amount)
+  const sheet = await spendNext(page)
+  if (o.reason) await sheet.getByRole("button", { name: new RegExp(o.reason) }).click()
+  if (o.payee) await sheet.getByRole("radio", { name: o.payee, exact: true }).click()
+  if (o.member) await sheet.getByRole("radiogroup", { name: "Who gets the money?" }).getByRole("radio", { name: o.member }).click()
+  if (o.submit) await sheet.getByRole("button", { name: o.submit }).click()
+  return sheet
 }

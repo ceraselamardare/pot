@@ -12,6 +12,7 @@ export interface Messages {
   "a11y.tabs.nav": undefined
   "activity.added": { who: string | number; amount: string | number }
   "activity.asked.instant": { who: string | number; amount: string | number; reason: string | number }
+  "activity.asked.link": { who: string | number; amount: string | number; reason: string | number }
   "activity.asked.vote": { who: string | number; amount: string | number; reason: string | number }
   "activity.chip.added": undefined
   "activity.chip.declined": undefined
@@ -44,6 +45,7 @@ export interface Messages {
   "add.cta.empty": undefined
   "add.error.generic": undefined
   "add.error.insufficient_own": { available: string | number }
+  "add.error.max": { max: string | number }
   "add.error.relayer": undefined
   "add.finish_pending.body": { amount: string | number; potName: string | number }
   "add.finish_pending.title": { amount: string | number }
@@ -112,9 +114,12 @@ export interface Messages {
   "approve.cta.approve": { amount: string | number }
   "approve.cta.approving": undefined
   "approve.cta.decline": undefined
+  "approve.cta.ok": { amount: string | number }
+  "approve.cta.oking": undefined
   "approve.cta.review": undefined
   "approve.decided.approved": { amount: string | number; name: string | number }
   "approve.decided.declined": undefined
+  "approve.decided.ok": { okName: string | number; amount: string | number; name: string | number }
   "approve.decline.cancel": undefined
   "approve.decline.confirm": undefined
   "approve.decline.reason": undefined
@@ -130,6 +135,13 @@ export interface Messages {
   "approve.meta": { potName: string | number; time: string | number }
   "approve.not_found": undefined
   "approve.offline": undefined
+  "approve.ok.done": { amount: string | number; name: string | number }
+  "approve.ok.error": undefined
+  "approve.ok.failed": { amount: string | number }
+  "approve.ok.objection": { k: string | number; n: string | number }
+  "approve.ok.own": undefined
+  "approve.one_ok.header": undefined
+  "approve.one_ok.who": { potName: string | number; name: string | number }
   "approve.optimistic": { count: string | number; k: string | number }
   "approve.own.counted": { remaining: string | number }
   "approve.own.excluded": undefined
@@ -146,6 +158,8 @@ export interface Messages {
   "approve.timeline.asked": { name: string | number }
   "approve.timeline.declined": { name: string | number }
   "approve.timeline.header": { count: string | number; k: string | number }
+  "approve.timeline.ok": { name: string | number }
+  "approve.timeline.ok_waiting": undefined
   "approve.timeline.waiting": { name: string | number }
   "approve.timeline.you_waiting": undefined
   "approve.title": { name: string | number; amount: string | number }
@@ -155,6 +169,7 @@ export interface Messages {
   "approve.why.budget": { memberBudget: string | number; name: string | number }
   "approve.why.cap": { instantLimit: string | number }
   "approve.why.new_member": { name: string | number }
+  "approve.why.one_ok": { name: string | number }
   "approve.why.recipient": undefined
   "approve.withdraw": undefined
   "approve.withdraw.confirm": undefined
@@ -182,6 +197,51 @@ export interface Messages {
   "chip.not_sent": undefined
   "chip.sending": undefined
   "chip.sent": undefined
+  "claim.busy": undefined
+  "claim.claimed.body": { name: string | number }
+  "claim.claimed.title": undefined
+  "claim.claiming": { amount: string | number }
+  "claim.cta": { amount: string | number }
+  "claim.error.failed": undefined
+  "claim.error.network": undefined
+  "claim.error.retry": undefined
+  "claim.expired.body": { potName: string | number; name: string | number }
+  "claim.expired.title": undefined
+  "claim.for": { reason: string | number }
+  "claim.incomplete.body": { name: string | number }
+  "claim.incomplete.title": undefined
+  "claim.member_note": { potName: string | number }
+  "claim.not_found.body": undefined
+  "claim.not_found.title": undefined
+  "claim.og.alt": { potName: string | number }
+  "claim.og.line": { potName: string | number }
+  "claim.og.title": { name: string | number; amount: string | number }
+  "claim.receipt": { amount: string | number; potName: string | number }
+  "claim.returned.body": { name: string | number; potName: string | number }
+  "claim.returned.title": undefined
+  "claim.sender": undefined
+  "claim.signed_in_as": { name: string | number }
+  "claim.signin.back": undefined
+  "claim.signin.body": undefined
+  "claim.signin.google": undefined
+  "claim.signin.mock": undefined
+  "claim.signin.title": { amount: string | number }
+  "claim.someone": undefined
+  "claim.success.balance": undefined
+  "claim.success.body": undefined
+  "claim.success.cta": undefined
+  "claim.success.title": { amount: string | number }
+  "claim.success.what": { amount: string | number; potName: string | number }
+  "claim.title": { name: string | number; amount: string | number; potName: string | number }
+  "claim.title.anon": { amount: string | number; potName: string | number }
+  "claim.trust": undefined
+  "claim.until": { date: string | number }
+  "claim.void.body": { potName: string | number }
+  "claim.void.title": undefined
+  "claim.waiting.body": { potName: string | number }
+  "claim.waiting.title": undefined
+  "claim.wrong.body": { name: string | number }
+  "claim.wrong.title": undefined
   "close.approve.cta": undefined
   "close.approve.refund": { refund: string | number }
   "close.approve.title": { name: string | number; potName: string | number }
@@ -202,6 +262,7 @@ export interface Messages {
   "close.error": undefined
   "close.in_flight": undefined
   "close.keep": undefined
+  "close.links_pending": undefined
   "close.math": { balance: string | number }
   "close.menu.sub": undefined
   "close.menu.waiting": undefined
@@ -313,6 +374,11 @@ export interface Messages {
   "create.name.count": { count: string | number }
   "create.name.label": undefined
   "create.name.placeholder": undefined
+  "create.oneok.after": undefined
+  "create.oneok.before": undefined
+  "create.oneok.below": { instantLimit: string | number }
+  "create.oneok.hint": undefined
+  "create.oneok.label": undefined
   "create.preview.members": undefined
   "create.preview_hint": undefined
   "create.progress": { potName: string | number }
@@ -355,6 +421,19 @@ export interface Messages {
   "create.step2.title": undefined
   "create.step_of": { step: string | number; total: string | number }
   "create.success": { potName: string | number }
+  "create.target.amount.invalid": undefined
+  "create.target.amount.label": undefined
+  "create.target.aon.hint": undefined
+  "create.target.aon.label": undefined
+  "create.target.aon.spend": undefined
+  "create.target.before": undefined
+  "create.target.by": undefined
+  "create.target.date.invalid": undefined
+  "create.target.date.label": undefined
+  "create.target.label": undefined
+  "create.trust.detail": { step: string | number; instantLimit: string | number; max: string | number }
+  "create.trust.hint": undefined
+  "create.trust.label": undefined
   "demo.after": undefined
   "demo.after.title": undefined
   "demo.all.glossary": undefined
@@ -772,6 +851,7 @@ export interface Messages {
   "details.request_id": { id: string | number }
   "feed.and": { a: string | number; b: string | number }
   "feed.approved": { amount: string | number; name: string | number; reason: string | number }
+  "feed.approved.ok": { name: string | number }
   "feed.approved.sub": { names: string | number }
   "feed.close_requested": { name: string | number }
   "feed.close_requested.sub": { k: string | number }
@@ -787,11 +867,15 @@ export interface Messages {
   "feed.expired.sub": { date: string | number }
   "feed.failed": { amount: string | number }
   "feed.failed.sub": undefined
+  "feed.goal.reached": { amount: string | number }
+  "feed.goal.refunded": undefined
+  "feed.goal.refunding": undefined
   "feed.instant": { name: string | number; amount: string | number; reason: string | number }
   "feed.instant.rule": { instantLimit: string | number }
   "feed.instant.sub": undefined
   "feed.joined": { name: string | number }
   "feed.pending": { name: string | number; amount: string | number; reason: string | number }
+  "feed.pending.one_ok": undefined
   "feed.pending.sub": { k: string | number; count: string | number }
   "feed.receipt": undefined
   "feed.rule_change": { name: string | number }
@@ -802,6 +886,25 @@ export interface Messages {
   "feed.you": undefined
   "generic.checking": undefined
   "generic.error": undefined
+  "goal.add.missed": undefined
+  "goal.aon.note": { goal: string | number; date: string | number }
+  "goal.left.days": { n: number }
+  "goal.left.hours": { n: number }
+  "goal.left.soon": undefined
+  "goal.missed.body": { collected: string | number; goal: string | number }
+  "goal.missed.title": undefined
+  "goal.progress": { collected: string | number; goal: string | number }
+  "goal.reached.body": { goal: string | number }
+  "goal.reached.soft": { goal: string | number }
+  "goal.reached.title": undefined
+  "goal.refunded.body": { potName: string | number; goal: string | number; date: string | number }
+  "goal.refunded.title": undefined
+  "goal.refunded.you": { refund: string | number }
+  "goal.refunding.body": { potName: string | number; goal: string | number; date: string | number }
+  "goal.refunding.title": undefined
+  "goal.soft.note": { date: string | number }
+  "goal.spends_paused": undefined
+  "goal.title": undefined
   "home.chat.at.airbnb": undefined
   "home.chat.at.boat": undefined
   "home.chat.at.invite": undefined
@@ -1027,15 +1130,97 @@ export interface Messages {
   "notif.declined.title": undefined
   "notif.expired.body": { amount: string | number; days: string | number }
   "notif.expired.title": undefined
+  "notif.goal.missed.body": undefined
+  "notif.goal.missed.title": { potName: string | number }
+  "notif.goal.reached.body": { goal: string | number }
+  "notif.goal.reached.title": { potName: string | number }
+  "notif.goal.refunded.body": { potName: string | number }
+  "notif.goal.refunded.title": undefined
   "notif.joined.body": { joined: string | number; invited: string | number }
   "notif.joined.title": { name: string | number; potName: string | number }
+  "notif.link.claimed.body": { name: string | number; potName: string | number }
+  "notif.link.claimed.body_someone": { potName: string | number }
+  "notif.link.claimed.title": { amount: string | number }
+  "notif.link.returned.body": undefined
+  "notif.link.returned.body_cancelled": { name: string | number }
+  "notif.link.returned.title": { amount: string | number; potName: string | number }
   "notif.nudge.body": { suggested: string | number; potName: string | number }
   "notif.nudge.title": { name: string | number }
+  "notif.ok_approved.body": { name: string | number; reason: string | number }
+  "notif.one_ok.body": { amount: string | number; reason: string | number; potName: string | number }
+  "notif.one_ok.title": { name: string | number }
+  "notif.trust.body": { amount: string | number }
+  "notif.trust.title": { level: string | number; potName: string | number }
   "offline.banner": undefined
   "og.alt": { potName: string | number }
   "og.closed": undefined
   "og.members": { n: number }
   "online.restored": undefined
+  "paylink.cancel.confirm": { amount: string | number; potName: string | number }
+  "paylink.cancel.cta": undefined
+  "paylink.cancel.done": { amount: string | number; potName: string | number }
+  "paylink.cancel.error": undefined
+  "paylink.cancel.no": undefined
+  "paylink.cancel.too_late": undefined
+  "paylink.cancel.yes": undefined
+  "paylink.checking": undefined
+  "paylink.chip.busy": undefined
+  "paylink.chip.claimed": undefined
+  "paylink.chip.expired": undefined
+  "paylink.chip.ready": undefined
+  "paylink.chip.returned": undefined
+  "paylink.chip.void": undefined
+  "paylink.chip.waiting": undefined
+  "paylink.cta": { amount: string | number }
+  "paylink.feed.open": { name: string | number; amount: string | number }
+  "paylink.feed.pending": { name: string | number; amount: string | number; reason: string | number }
+  "paylink.feed.sent": { name: string | number; amount: string | number; reason: string | number }
+  "paylink.feed.sent_to": { name: string | number; who: string | number; amount: string | number; reason: string | number }
+  "paylink.feed.until": { date: string | number }
+  "paylink.how": undefined
+  "paylink.label.hint": { potName: string | number }
+  "paylink.label.label": undefined
+  "paylink.label.placeholder": undefined
+  "paylink.off": undefined
+  "paylink.one_ok_sent": undefined
+  "paylink.panel.for": { who: string | number }
+  "paylink.panel.title": undefined
+  "paylink.ready.body": { who: string | number; amount: string | number }
+  "paylink.ready.title": undefined
+  "paylink.ready.who": undefined
+  "paylink.share.copied": undefined
+  "paylink.share.copy": undefined
+  "paylink.share.copy_failed": undefined
+  "paylink.share.cta": undefined
+  "paylink.share.device": { potName: string | number; date: string | number }
+  "paylink.share.expiry": { date: string | number; potName: string | number }
+  "paylink.share.for": { who: string | number }
+  "paylink.share.keep": undefined
+  "paylink.share.link.label": undefined
+  "paylink.share.message": { name: string | number; amount: string | number; potName: string | number; link: string | number }
+  "paylink.share.missing": { potName: string | number; date: string | number }
+  "paylink.share.open": undefined
+  "paylink.share.qr": undefined
+  "paylink.share.qr.alt": { amount: string | number }
+  "paylink.share.qr.hint": undefined
+  "paylink.share.qr_hide": undefined
+  "paylink.share.title": { amount: string | number }
+  "paylink.someone": undefined
+  "paylink.status.busy": undefined
+  "paylink.status.claimed": { name: string | number }
+  "paylink.status.claimed_someone": undefined
+  "paylink.status.claimed_you": undefined
+  "paylink.status.expired": undefined
+  "paylink.status.ready": undefined
+  "paylink.status.returned": undefined
+  "paylink.status.returned_expiry": undefined
+  "paylink.status.void": undefined
+  "paylink.status.waiting": undefined
+  "paylink.vote_sent": { k: string | number; n: string | number }
+  "paylink.who.label": undefined
+  "paylink.who.link": undefined
+  "paylink.who.me": undefined
+  "paylink.who.member": undefined
   "person.fallback": undefined
   "pot.back": undefined
   "pot.closed.hero": { date: string | number }
@@ -1056,6 +1241,8 @@ export interface Messages {
   "pot.hero.share.more": undefined
   "pot.menu.close": undefined
   "pot.menu.label": { potName: string | number }
+  "pot.menu.record": undefined
+  "pot.menu.record.sub": undefined
   "pot.menu.share": undefined
   "pot.mine.header": undefined
   "pot.not_found.body": undefined
@@ -1084,10 +1271,18 @@ export interface Messages {
   "pots.waiting_strip": { n: number }
   "preview.blocked.balance": { balance: string | number }
   "preview.empty": { instantLimit: string | number }
+  "preview.goal": { collected: string | number; goal: string | number }
+  "preview.goal.missed": undefined
   "preview.instant": { instantLimit: string | number }
+  "preview.instant.trust": { limit: string | number }
+  "preview.one_ok.new_member": undefined
+  "preview.one_ok.over_budget": { memberBudget: string | number; used: string | number }
+  "preview.one_ok.over_cap": { limit: string | number }
+  "preview.one_ok.recipient": undefined
   "preview.vote.new_member": { k: string | number; n: string | number }
   "preview.vote.over_budget": { k: string | number; n: string | number; memberBudget: string | number; used: string | number }
   "preview.vote.over_cap": { k: string | number; n: string | number; instantLimit: string | number }
+  "preview.vote.over_cap.trust": { k: string | number; n: string | number; limit: string | number }
   "preview.vote.recipient": { k: string | number; n: string | number }
   "push.denied": undefined
   "push.error": undefined
@@ -1112,6 +1307,48 @@ export interface Messages {
   "receipt.link": undefined
   "receipt.link.label": { what: string | number }
   "receipt.title": undefined
+  "record.approved.group": undefined
+  "record.approved.none": undefined
+  "record.approved.one_ok": { name: string | number }
+  "record.approved.rules": undefined
+  "record.col.amount": undefined
+  "record.col.approved": undefined
+  "record.col.date": undefined
+  "record.col.person": undefined
+  "record.col.reason": undefined
+  "record.col.receipt": undefined
+  "record.col.status": undefined
+  "record.copied": undefined
+  "record.copy": undefined
+  "record.csv": undefined
+  "record.csv.h.amount": undefined
+  "record.csv.h.approved": undefined
+  "record.csv.h.date": undefined
+  "record.csv.h.person": undefined
+  "record.csv.h.pot": undefined
+  "record.csv.h.reason": undefined
+  "record.csv.h.receipt": undefined
+  "record.csv.h.status": undefined
+  "record.csv.hint": undefined
+  "record.empty": undefined
+  "record.intro": undefined
+  "record.label": undefined
+  "record.names_note": undefined
+  "record.not_found": undefined
+  "record.open_pot": { potName: string | number }
+  "record.status.cancelled": undefined
+  "record.status.declined": undefined
+  "record.status.expired": undefined
+  "record.status.failed": undefined
+  "record.status.held": undefined
+  "record.status.paid": undefined
+  "record.status.pending": undefined
+  "record.status.processing": undefined
+  "record.status.returned": undefined
+  "record.status.withdrawn": undefined
+  "record.title": { potName: string | number }
+  "record.to": { name: string | number }
+  "record.totals": { paid: string | number; n: number }
   "refund.gets_back": undefined
   "refund.got_back": undefined
   "refund.how": { mine: string | number; total: string | number; left: string | number }
@@ -1154,6 +1391,12 @@ export interface Messages {
   "rules.change.instant.label": undefined
   "rules.change.needs": { k: string | number; n: string | number }
   "rules.change.note": { k: string | number; n: string | number }
+  "rules.change.one_ok.off": undefined
+  "rules.change.oneok.below": undefined
+  "rules.change.oneok.help": undefined
+  "rules.change.oneok.label": undefined
+  "rules.change.oneok.off": undefined
+  "rules.change.oneok.on": { oneOk: string | number }
   "rules.change.pending": { name: string | number }
   "rules.change.pending.sub": { count: string | number; k: string | number; relativeTime: string | number }
   "rules.change.preview": undefined
@@ -1162,19 +1405,27 @@ export interface Messages {
   "rules.change.sole_note": undefined
   "rules.change.title": undefined
   "rules.change.title.sole": { potName: string | number }
+  "rules.change.trust.hint": undefined
+  "rules.change.trust.label": undefined
+  "rules.change.trust.off": undefined
   "rules.change.zero": undefined
   "rules.expiry": { days: string | number }
   "rules.footer": { creator: string | number }
+  "rules.goal": { amount: string | number; date: string | number }
+  "rules.goal.aon": { amount: string | number; date: string | number }
   "rules.instant": { instantLimit: string | number }
   "rules.instant.none": { k: string | number; n: string | number }
   "rules.label": undefined
   "rules.leftovers": undefined
   "rules.new_member": undefined
+  "rules.one_ok": { oneOk: string | number }
   "rules.recipients": undefined
   "rules.recipients.named": undefined
+  "rules.record": undefined
   "rules.size": { max: string | number }
   "rules.threshold": { k: string | number; n: string | number }
   "rules.title": { potName: string | number }
+  "rules.trust": { step: string | number; instantLimit: string | number; max: string | number }
   "session.expired": undefined
   "setup.error.join": { potName: string | number }
   "setup.error.relayer": undefined
@@ -1231,16 +1482,21 @@ export interface Messages {
   "spend.checking": undefined
   "spend.cta.empty": undefined
   "spend.cta.instant": { amount: string | number }
+  "spend.cta.one_ok": undefined
   "spend.cta.pay_member": { amount: string | number; name: string | number }
   "spend.cta.vote": undefined
+  "spend.decision.more": undefined
   "spend.done": undefined
   "spend.error.generic": undefined
   "spend.error.relayer": undefined
+  "spend.goal_blocked": undefined
+  "spend.next": undefined
   "spend.note.add": undefined
   "spend.note.label": undefined
   "spend.note.placeholder": undefined
   "spend.note.public_hint": undefined
   "spend.offline": undefined
+  "spend.one_ok_sent": undefined
   "spend.pay_member.label": undefined
   "spend.reason.chip.food": undefined
   "spend.reason.chip.groceries": undefined
@@ -1255,6 +1511,55 @@ export interface Messages {
   "spend.reason.word.stay": undefined
   "spend.reason.word.tickets": undefined
   "spend.reason.word.transport": undefined
+  "spend.receipt.again": undefined
+  "spend.receipt.announce": { amount: string | number; merchant: string | number }
+  "spend.receipt.announce.plain": { amount: string | number }
+  "spend.receipt.announce.usd": { usd: string | number }
+  "spend.receipt.cancel": undefined
+  "spend.receipt.details": undefined
+  "spend.receipt.error.busy": undefined
+  "spend.receipt.error.offline": undefined
+  "spend.receipt.error.open": undefined
+  "spend.receipt.error.timeout": undefined
+  "spend.receipt.error.too_large": undefined
+  "spend.receipt.error.unavailable": undefined
+  "spend.receipt.error.unreadable": undefined
+  "spend.receipt.fx.line": { original: string | number; usd: string | number; rate: string | number; day: string | number }
+  "spend.receipt.fx.line_today": { original: string | number; usd: string | number; rate: string | number }
+  "spend.receipt.fx.source.ecb": undefined
+  "spend.receipt.fx.source.er": undefined
+  "spend.receipt.fx.source.sample": undefined
+  "spend.receipt.hint": undefined
+  "spend.receipt.items.hide": undefined
+  "spend.receipt.items.label": undefined
+  "spend.receipt.items.show": { n: number }
+  "spend.receipt.pick": undefined
+  "spend.receipt.private": undefined
+  "spend.receipt.private.body": undefined
+  "spend.receipt.private.check": undefined
+  "spend.receipt.private.check.label": undefined
+  "spend.receipt.private.how": undefined
+  "spend.receipt.private.reply": undefined
+  "spend.receipt.private.sample": undefined
+  "spend.receipt.private.toggle": undefined
+  "spend.receipt.qty": { qty: string | number }
+  "spend.receipt.read.converted": undefined
+  "spend.receipt.read.currency": { currency: string | number; amount: string | number }
+  "spend.receipt.read.currency_unknown": { amount: string | number }
+  "spend.receipt.read.filled": undefined
+  "spend.receipt.read.low": undefined
+  "spend.receipt.read.no_rate": { currency: string | number; amount: string | number }
+  "spend.receipt.read.no_rate_currency": { currency: string | number; amount: string | number }
+  "spend.receipt.read.title": undefined
+  "spend.receipt.reading": undefined
+  "spend.receipt.remove": undefined
+  "spend.receipt.removed": undefined
+  "spend.receipt.snap": undefined
+  "spend.receipt.tax": undefined
+  "spend.receipt.tip": undefined
+  "spend.receipt.total": undefined
+  "spend.receipt.try_again": undefined
+  "spend.receipt.use_amount": { amount: string | number }
   "spend.refund_after": { refund: string | number }
   "spend.refused": undefined
   "spend.see_rule": undefined
@@ -1338,6 +1643,23 @@ export interface Messages {
   "tour.skip": undefined
   "tour.tap_hint": undefined
   "tour.you": { name: string | number }
+  "trust.badge.a11y": { level: string | number }
+  "trust.level.0": undefined
+  "trust.level.1": undefined
+  "trust.level.2": undefined
+  "trust.level_up": { level: string | number; potName: string | number; amount: string | number }
+  "trust.member.up_to": { amount: string | number }
+  "trust.person.body": { name: string | number; amount: string | number }
+  "trust.person.body.you": { amount: string | number }
+  "trust.person.history": { n: number }
+  "trust.person.title": { name: string | number; level: string | number }
+  "trust.person.title.you": { level: string | number }
+  "trust.you.counts": { min: string | number }
+  "trust.you.left": { left: string | number }
+  "trust.you.next": { next: string | number; n: number }
+  "trust.you.title": undefined
+  "trust.you.top": undefined
+  "trust.you.up_to": { amount: string | number }
   "xc.added.body": { potName: string | number }
   "xc.address.label": undefined
   "xc.arrived.adding": { potName: string | number }

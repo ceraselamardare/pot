@@ -3,7 +3,7 @@
 // Args mirror the hub method signatures (contracts/pot-hub/src/lib.rs) key for key.
 
 import type { SdkConfig } from "../config.ts"
-import { rulesToRaw, rulesToWire, rulesFromWire } from "../rules.ts"
+import { extrasFromWire, extrasToRaw, extrasToWire, rulesToRaw, rulesToWire, rulesFromWire } from "../rules.ts"
 import type { ActionIntent, ActionIntentWire, CallAction, CallSpec } from "../types/intents.ts"
 import { isValidRequestRef } from "../validate.ts"
 import { GAS, ONE_YOCTO, directDeposit, voteGas } from "./gas.ts"
@@ -51,19 +51,20 @@ export function buildCall(i: ActionIntent, cfg: Pick<SdkConfig, "hubId" | "usdcI
           fc("ft_transfer_call", { receiver_id: hub, amount: positive(i.amount, "amount"), msg: JSON.stringify({ pot: i.pot }) }, GAS.ft_transfer_call, ONE_YOCTO),
         ],
       }
-    case "request_spend":
+    case "request_spend": {
       if (!isValidRequestRef(i.requestRef)) throw new BuildError("requestRef must match ^[a-z0-9]{8,32}$")
-      return {
-        receiverId: hub,
-        actions: [
-          hubFc(
-            "request_spend",
-            { pot: i.pot, amount: positive(i.amount, "amount"), receiver_id: i.receiverId, category: i.category, request_ref: i.requestRef },
-            GAS.request_spend,
-            o,
-          ),
-        ],
+      if (i.link && i.receiverId !== hub) throw new BuildError("a link request's receiverId must be the hub id (the escrow)")
+      const args: Record<string, unknown> = {
+        pot: i.pot,
+        amount: positive(i.amount, "amount"),
+        receiver_id: i.receiverId,
+        category: i.category,
+        request_ref: i.requestRef,
       }
+      // the `link` key only when set, so 1.0.0-shaped calls stay byte-identical
+      if (i.link) args.link = { claim_pk: i.link.claimPk, expires_at_ms: i.link.expiresAtMs ?? null }
+      return { receiverId: hub, actions: [hubFc("request_spend", args, i.link ? GAS.request_spend_link : GAS.request_spend, o)] }
+    }
     case "vote":
       // Always send `proposal` = the kind exactly as get_proposal returned it (D-05); never a memo (R11).
       return { receiverId: i.pot, actions: [fc("act_proposal", { id: i.proposalId, action: i.action, proposal: i.kind }, voteGas(i.kind))] }
@@ -84,6 +85,7 @@ export function buildCall(i: ActionIntent, cfg: Pick<SdkConfig, "hubId" | "usdcI
               invite_pk: i.invitePk ?? null,
               emoji: i.emoji ?? null,
               float: null,
+              ...(i.extras ? { extras: extrasToRaw(i.extras) } : {}),
             },
             GAS.create_pot,
             o,
@@ -112,9 +114,28 @@ export function buildCall(i: ActionIntent, cfg: Pick<SdkConfig, "hubId" | "usdcI
     case "retry_payout":
       return { receiverId: hub, actions: [fc("retry_payout", { pot: i.pot, proposal_id: i.proposalId }, GAS.retry_payout)] }
     case "set_rules":
-      return { receiverId: hub, actions: [fc("set_rules", { pot: i.pot, rules: rulesToRaw(i.rules) }, GAS.set_rules)] }
+      return {
+        receiverId: hub,
+        actions: [fc("set_rules", { pot: i.pot, rules: rulesToRaw(i.rules), ...(i.extras ? { extras: extrasToRaw(i.extras) } : {}) }, GAS.set_rules)],
+      }
     case "propose_rules":
-      return { receiverId: hub, actions: [hubFc("propose_rules", { pot: i.pot, rules: rulesToRaw(i.rules) }, GAS.propose_rules, o)] }
+      return {
+        receiverId: hub,
+        actions: [
+          hubFc("propose_rules", { pot: i.pot, rules: rulesToRaw(i.rules), ...(i.extras ? { extras: extrasToRaw(i.extras) } : {}) }, GAS.propose_rules, o),
+        ],
+      }
+    case "ok_request":
+      return { receiverId: hub, actions: [fc("ok_request", { pot: i.pot, request_id: i.requestId }, GAS.ok_request)] }
+    case "claim_link":
+      return {
+        receiverId: hub,
+        actions: [hubFc("claim_link", { pot: i.pot, request_id: i.requestId, receiver_id: i.receiverId, signature: i.signature }, GAS.claim_link, o)],
+      }
+    case "reclaim_link":
+      return { receiverId: hub, actions: [fc("reclaim_link", { pot: i.pot, request_id: i.requestId }, GAS.reclaim_link)] }
+    case "refund_unfunded":
+      return { receiverId: hub, actions: [hubFc("refund_unfunded", { pot: i.pot }, GAS.refund_unfunded, o)] }
     case "add_device_key":
       return { receiverId: i.account, actions: [{ type: "AddKey", publicKey: i.publicKey, access: "FullAccess" }] }
   }
@@ -138,11 +159,15 @@ export function intentToWire(i: ActionIntent): ActionIntentWire {
       return { ...i, amount: i.amount.toString() }
     case "request_spend":
       return { ...i, amount: i.amount.toString() }
-    case "create_pot":
-      return { ...i, rules: i.rules ? rulesToWire(i.rules) : null }
+    case "create_pot": {
+      const { extras, ...rest } = i
+      return { ...rest, rules: i.rules ? rulesToWire(i.rules) : null, ...(extras ? { extras: extrasToWire(extras) } : {}) }
+    }
     case "set_rules":
-    case "propose_rules":
-      return { ...i, rules: rulesToWire(i.rules) }
+    case "propose_rules": {
+      const { extras, ...rest } = i
+      return { ...rest, rules: rulesToWire(i.rules), ...(extras ? { extras: extrasToWire(extras) } : {}) }
+    }
     default:
       return i as ActionIntentWire
   }
@@ -156,10 +181,10 @@ export function intentFromWire(w: ActionIntentWire): ActionIntent {
     case "request_spend":
       return { ...w, amount: BigInt(w.amount) } as ActionIntent
     case "create_pot":
-      return { ...w, rules: w.rules ? rulesFromWire(w.rules) : null } as ActionIntent
+      return { ...w, rules: w.rules ? rulesFromWire(w.rules) : null, ...(w.extras ? { extras: extrasFromWire(w.extras) } : {}) } as ActionIntent
     case "set_rules":
     case "propose_rules":
-      return { ...w, rules: rulesFromWire(w.rules) } as ActionIntent
+      return { ...w, rules: rulesFromWire(w.rules), ...(w.extras ? { extras: extrasFromWire(w.extras) } : {}) } as ActionIntent
     default:
       return w as ActionIntent
   }

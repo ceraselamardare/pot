@@ -120,6 +120,39 @@ const cases: Case[] = [
   ["R3 amount 0", HUB, () => [fc("request_spend", spendArgs({ amount: "0" }), 150)], "args_invalid"],
   ["R3 invalid receiver", HUB, () => [fc("request_spend", spendArgs({ receiver_id: "Bad..id" }), 150)], "args_invalid"],
   ["R3 pot of another hub", HUB, () => [fc("request_spend", spendArgs({ pot: "x.pots.other.testnet" }), 150)], "args_invalid"],
+  // ---- hub 1.1.0 (wave 4): pay-by-link requests, rule extras, R13 ok_request, R14 claim_link, R15 reclaim_link ----
+  ["R3 link request at 250 Tgas (receiver = the hub)", HUB, () => [fc("request_spend", spendArgs({ receiver_id: HUB, link: { claim_pk: realPk, expires_at_ms: null } }), 250)], "R3"],
+  ["R3 link request at 300 Tgas with an expiry", HUB, () => [fc("request_spend", spendArgs({ receiver_id: HUB, link: { claim_pk: realPk, expires_at_ms: NOW + 14 * 86_400_000 } }), 300)], "R3"],
+  ["R3 link to a named receiver", HUB, () => [fc("request_spend", spendArgs({ link: { claim_pk: realPk } }), 250)], "args_invalid"],
+  ["R3 link with a bad key", HUB, () => [fc("request_spend", spendArgs({ receiver_id: HUB, link: { claim_pk: "ed25519:xyz" } }), 250)], "args_invalid"],
+  ["R3 link expiry past 30 days", HUB, () => [fc("request_spend", spendArgs({ receiver_id: HUB, link: { claim_pk: realPk, expires_at_ms: NOW + 30 * 86_400_000 + 1 } }), 250)], "args_invalid"],
+  ["R3 link expiry under 60 s", HUB, () => [fc("request_spend", spendArgs({ receiver_id: HUB, link: { claim_pk: realPk, expires_at_ms: NOW + 60_000 } }), 250)], "args_invalid"],
+  ["R3 link with an unknown key", HUB, () => [fc("request_spend", spendArgs({ receiver_id: HUB, link: { claim_pk: realPk, secret: "x" } }), 250)], "args_invalid"],
+  ["R3 plain request still capped at 150 Tgas", HUB, () => [fc("request_spend", spendArgs(), 151)], "gas_cap"],
+  ["R3 link request over 300 Tgas", HUB, () => [fc("request_spend", spendArgs({ receiver_id: HUB, link: { claim_pk: realPk } }), 301)], "gas_cap"],
+  ["R2 create_pot with extras (all-or-nothing goal)", HUB, () => [fc("create_pot", createArgs({ extras: { trust: true, one_ok_cap: "300000000", links: true, goal: { amount: "500000000", deadline_ms: NOW + 86_400_000, all_or_nothing: true } } }), 300)], "R2"],
+  ["R2 extras without a goal key", HUB, () => [fc("create_pot", createArgs({ extras: { trust: false, one_ok_cap: "0", links: false } }), 300)], "R2"],
+  ["R2 extras with an unknown key", HUB, () => [fc("create_pot", createArgs({ extras: { trust: true, one_ok_cap: "0", links: true, goal: null, vip: true } }), 300)], "args_invalid"],
+  ["R2 extras with a past goal deadline", HUB, () => [fc("create_pot", createArgs({ extras: { trust: true, one_ok_cap: "0", links: true, goal: { amount: "1", deadline_ms: NOW - 1, all_or_nothing: false } } }), 300)], "args_invalid"],
+  ["R2 extras one-OK ceiling over the spend bound", HUB, () => [fc("create_pot", createArgs({ extras: { trust: true, one_ok_cap: "10000000001", links: true, goal: null } }), 300)], "args_invalid"],
+  ["R7 propose_rules with extras", HUB, () => [fc("propose_rules", { pot: DAO, rules: RULES, extras: { trust: true, one_ok_cap: "300000000", links: true, goal: null } }, 100)], "R7"],
+  ["R6 set_rules with bad extras", HUB, () => [fc("set_rules", { pot: DAO, rules: RULES, extras: { trust: "yes", one_ok_cap: "0", links: true, goal: null } }, 30)], "args_invalid"],
+  ["R13 ok_request at 200 Tgas", HUB, () => [fc("ok_request", { pot: DAO, request_id: 7 }, 200)], "R13"],
+  ["R13 ok_request gas 300", HUB, () => [fc("ok_request", { pot: DAO, request_id: 7 }, 300)], "gas_cap"],
+  ["R13 ok_request with a deposit", HUB, () => [fc("ok_request", { pot: DAO, request_id: 7 }, 200, 1n)], "deposit_cap"],
+  ["R13 ok_request request_id as a string", HUB, () => [fc("ok_request", { pot: DAO, request_id: "7" }, 200)], "args_invalid"],
+  ["R13 intent mismatch", HUB, () => [fc("ok_request", { pot: DAO, request_id: 7 }, 200)], "args_invalid", { intent: "vote" }],
+  ["R14 claim_link at 100 Tgas", HUB, () => [fc("claim_link", { pot: DAO, request_id: 7, receiver_id: USER, signature: SIG }, 100)], "R14"],
+  ["R14 claim to the hub", HUB, () => [fc("claim_link", { pot: DAO, request_id: 7, receiver_id: HUB, signature: SIG }, 100)], "args_invalid"],
+  ["R14 claim to a Pot", HUB, () => [fc("claim_link", { pot: DAO, request_id: 7, receiver_id: DAO, signature: SIG }, 100)], "args_invalid"],
+  ["R14 claim to the token", HUB, () => [fc("claim_link", { pot: DAO, request_id: 7, receiver_id: USDC, signature: SIG }, 100)], "args_invalid"],
+  ["R14 signature without padding", HUB, () => [fc("claim_link", { pot: DAO, request_id: 7, receiver_id: USER, signature: SIG.replace(/=+$/, "") }, 100)], "args_invalid"],
+  ["R14 claim with a deposit", HUB, () => [fc("claim_link", { pot: DAO, request_id: 7, receiver_id: USER, signature: SIG }, 100, 1250000000000000000000n)], "deposit_cap"],
+  ["R14 gas 200", HUB, () => [fc("claim_link", { pot: DAO, request_id: 7, receiver_id: USER, signature: SIG }, 200)], "gas_cap"],
+  ["R15 reclaim_link at 50 Tgas", HUB, () => [fc("reclaim_link", { pot: DAO, request_id: 7 }, 50)], "R15"],
+  ["R15 reclaim_link gas 150", HUB, () => [fc("reclaim_link", { pot: DAO, request_id: 7 }, 150)], "gas_cap"],
+  ["refund_unfunded is cron-only (never relayed)", HUB, () => [fc("refund_unfunded", { pot: DAO }, 300)], "method_not_allowed"],
+  ["migrate is never relayed", HUB, () => [fc("migrate", {}, 50)], "method_not_allowed"],
   // ---- R4 ----
   ["R4 accepts join", HUB, () => [fc("join", { pot: DAO, invite_pk: realPk, signature: SIG }, 100)], "R4"],
   ["R4 signature without padding", HUB, () => [fc("join", { pot: DAO, invite_pk: realPk, signature: SIG.replace(/=+$/, "") }, 100)], "args_invalid"],
@@ -188,6 +221,13 @@ describe("relayer policy table", () => {
     expect(v.estYocto).toBe(30_600_000_000_000_000_000_000n) // 0.03 + 0.0006 sync (rev4)
     const c = (await run(HUB, [fc("create_pot", createArgs(), 300)])).match!
     expect(c).toMatchObject({ potId: `lisbon-trip-7k2f.${HUB}`, hubYocto: 61_000_000_000_000_000_000_000n })
+    // hub 1.1.0
+    const ok = (await run(HUB, [fc("ok_request", { pot: DAO, request_id: 7 }, 200)])).match!
+    expect(ok).toMatchObject({ rule: "R13", family: "vote", intent: "ok_request", potId: DAO, needsOpenPot: true, requestId: 7, hubYocto: 0n })
+    const cl = (await run(HUB, [fc("claim_link", { pot: DAO, request_id: 7, receiver_id: USER, signature: SIG }, 100)])).match!
+    expect(cl).toMatchObject({ rule: "R14", family: "spend", intent: "claim_link", needsOpenPot: false, requestId: 7, hubYocto: 2_500_000_000_000_000_000_000n })
+    const sp = (await run(HUB, [fc("request_spend", spendArgs({ receiver_id: HUB, link: { claim_pk: realPk } }), 250)])).match!
+    expect(sp.spend).toMatchObject({ receiverId: HUB, link: true })
   })
 })
 
@@ -286,6 +326,14 @@ describe("@pot/sdk buildCall ↔ relayer policy (reconciliation)", async () => {
     ["retry_payout", { type: "retry_payout", pot: DAO, proposalId: 3 }, "R9"],
     ["set_rules", { type: "set_rules", pot: DAO, rules }, "R6"],
     ["propose_rules", { type: "propose_rules", pot: DAO, rules }, "R7"],
+    // hub 1.1.0 (wave 4)
+    ["request_spend (link)", { type: "request_spend", pot: DAO, amount: 25_000_000n, receiverId: HUB, category: "food", requestRef: "k3d9x1a2b4c6m7n8", link: { claimPk: realPk } }, "R3"],
+    ["create_pot (extras)", { type: "create_pot", slug: "fund-1", name: "Fund", preset: "trip", rules: null, extras: { trust: true, oneOkCap: 300_000_000n, links: true, goal: { amount: 500_000_000n, deadlineMs: NOW + 86_400_000, allOrNothing: true } } }, "R2"],
+    ["propose_rules (extras)", { type: "propose_rules", pot: DAO, rules, extras: { trust: true, oneOkCap: 300_000_000n, links: true, goal: null } }, "R7"],
+    ["set_rules (extras)", { type: "set_rules", pot: DAO, rules, extras: { trust: false, oneOkCap: 0n, links: false, goal: null } }, "R6"],
+    ["ok_request", { type: "ok_request", pot: DAO, requestId: 7 }, "R13"],
+    ["claim_link", { type: "claim_link", pot: DAO, requestId: 7, receiverId: USER, signature: SIG }, "R14"],
+    ["reclaim_link", { type: "reclaim_link", pot: DAO, requestId: 7 }, "R15"],
   ]
   it.each(intents)("%s is accepted as %s", async (_n, intent, rule) => {
     const call = buildCall(intent as never, cfg)

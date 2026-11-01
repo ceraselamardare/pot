@@ -14,6 +14,7 @@ import type { SessionCtx } from "../session/store"
 import { b64url, fromB64url } from "../util/crypto"
 import { daoSlug, SLUG_RE } from "../util/ids"
 import { commentCounts } from "./comments"
+import { linkEnrichment } from "./paylink"
 import { ensurePot, isMember } from "./notes"
 import { avatarOrNull } from "@/lib/avatars"
 
@@ -183,6 +184,14 @@ export async function getFeed(
       console.error(JSON.stringify({ level: "error", where: "feed.commentCounts", err: String(e).slice(0, 200) }))
       return {}
     })
+    // pay by link (hub 1.1.0): who each link is for (the requester's note) and who claimed it (Pot users' names only)
+    Object.assign(
+      body,
+      await linkEnrichment(db, potId, page).catch((e: unknown) => {
+        console.error(JSON.stringify({ level: "error", where: "feed.links", err: String(e).slice(0, 200) }))
+        return { linkLabels: {}, linkClaimers: {} }
+      }),
+    )
   }
 
   const cacheControl = s ? "private, no-store" : "public, s-maxage=5, stale-while-revalidate=30"

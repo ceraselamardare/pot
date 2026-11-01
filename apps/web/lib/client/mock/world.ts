@@ -8,6 +8,22 @@ import { avatarOrNull, type AvatarId } from "@/lib/avatars"
 import { cents, MICRO_PER_CENT, type Micro } from "../money"
 import { approvalsNeeded, expiresAt, previewSpend, type Rules } from "../rules"
 import { DAY, HOUR, LISBON_INVITE, MIN, PEOPLE, PORTO_INVITE } from "./fixtures"
+import { effectiveLink, LINK_RECEIVER, linkReceiverVM, linkVM, openLinks } from "./links"
+import {
+  canOk,
+  checkGoalReached,
+  defaultExtrasRec,
+  extrasOf,
+  extrasVM,
+  goalBlocksSpends,
+  goalRefusesMoney,
+  goalVM,
+  trustDecline,
+  trustLevelFor,
+  trustSettle,
+  trustVM,
+  type OkResult,
+} from "./wave4"
 import type {
   Category,
   CommentRec,
@@ -29,6 +45,7 @@ import type {
   RulesChangeVM,
   RulesProposalRec,
   RulesRec,
+  ExtrasRec,
   Vote,
   World,
 } from "./types"
@@ -209,9 +226,12 @@ export function addMoney(w: World, slug: string, who: string, amountCents: numbe
   const m = pot.members.find((x) => x.id === who)
   if (!m) throw new Error("not_member")
   if (pot.status !== "open") throw new Error("closed")
+  // hub 1.1.0: an all-or-nothing goal that passed its date short takes no more money (ERR_GOAL_MISSED)
+  if (goalRefusesMoney(pot, now)) throw new HubError("ERR_GOAL_MISSED")
   m.contributed += amountCents
   pot.balance += amountCents
   pot.lastContributor = who
+  checkGoalReached(pot, now)
   if (source === "pot_dollars" && amountCents > ownDollarsOf(w, who)) throw new Error("insufficient_own")
   pot.events.push({ id: `c-${who}-${now}`, kind: "contribution", actor: who, amount: amountCents, at: now, ...(source === "pot_dollars" ? { source } : {}) })
   return world
@@ -226,6 +246,8 @@ export function ownDollarsOf(w: World, who: string): number {
   let total = 0
   for (const pot of Object.values(w.pots)) {
     for (const r of pot.requests) if (r.receiver === who && r.status === "paid") total += r.amount
+    // pay by link: what this person claimed
+    for (const r of pot.requests) if (r.link && effectiveLink(r)?.status === "claimed" && r.link.claimer === who) total += r.amount
     if (pot.status === "closed" && pot.close?.status === "approved") total += pot.close.payouts.find((p) => p.account === who)?.amount ?? 0
     for (const e of pot.events) if (e.kind === "contribution" && e.actor === who && e.source === "pot_dollars") total -= e.amount ?? 0
   }
@@ -245,6 +267,8 @@ export interface SpendInput {
   category: Category
   note?: string
   receiver: string
+  /** pay by link (hub 1.1.0): the receiver is the link's escrow; `pk` = the link key's public half */
+  link?: { pk: string; expiresAt: number; label?: string }
 }
 
 export function requestSpend(
@@ -261,6 +285,11 @@ export function requestSpend(
   if (!m) throw new Error("not_member")
   if (pot.status !== "open") throw new Error("closed")
   if (input.amountCents <= 0 || input.amountCents > pot.balance) throw new Error("balance")
+  // hub 1.1.0: spends wait for an all-or-nothing goal (ERR_GOAL_NOT_REACHED)
+  if (goalBlocksSpends(pot)) throw new HubError("ERR_GOAL_NOT_REACHED")
+  const x = extrasOf(pot)
+  // pay by link: only where the Pot's rules allow links (ERR_LINKS_OFF); the payee counts as allowed (D4-4)
+  if (input.link && !x.links) throw new HubError("ERR_LINKS_OFF")
   const p = previewSpend({
     amount: cents(input.amountCents),
     balance: cents(pot.balance),
@@ -268,34 +297,38 @@ export function requestSpend(
     memberCount: pot.members.length,
     used: cents(m.spentInstant),
     contributed: cents(m.contributed),
-    receiverIsMember: isMember(pot, input.receiver),
+    receiverIsMember: !!input.link || isMember(pot, input.receiver),
+    ...(pot.extras ? { extras: { trust: x.trust, oneOkCap: cents(x.oneOkCap) }, trustLevel: trustLevelFor(pot, who) } : {}),
   })
   const id = world.nextRequestId
   world.nextRequestId += 1
   const base = {
     id,
     requester: who,
-    receiver: input.receiver,
+    receiver: input.link ? LINK_RECEIVER : input.receiver,
     amount: input.amountCents,
     category: input.category,
     note: input.note,
     createdAt: now,
+    ...(input.link ? { link: { pk: input.link.pk, expiresAt: input.link.expiresAt, status: "awaiting_funds" as const, ...(input.link.label ? { label: input.link.label } : {}) } } : {}),
   }
   let request: RequestRec
   if (p.path === "instant") {
     // the rulebot approves; Sputnik executes the transfer (D-05)
     m.spentInstant += input.amountCents
     pot.balance -= input.amountCents
-    request = { ...base, path: "instant", reason: "ok", status: "paid", votes: {}, voteAt: {}, decidedAt: now }
+    request = { ...base, path: "instant", reason: "ok", status: "paid", votes: {}, voteAt: {}, decidedAt: now, ...(pot.extras ? { tier: "instant" as const } : {}) }
+    trustSettle(pot, request)
   } else {
     // D-61: the requester's own approval is cast automatically
     request = {
       ...base,
       path: "vote",
-      reason: p.reason === "empty" || p.reason === "balance" || p.reason === "ok" ? "over_cap" : p.reason,
+      reason: p.reason === "empty" || p.reason === "balance" || p.reason === "ok" || p.reason === "goal" ? "over_cap" : p.reason,
       status: "proposed",
       votes: { [who]: "Approve" },
       voteAt: { [who]: now },
+      ...(p.tier ? { tier: p.tier } : {}),
     }
     settle(pot, request, now)
   }
@@ -314,13 +347,45 @@ function settle(pot: PotRec, r: RequestRec, now: number) {
     if (pot.balance >= r.amount) {
       pot.balance -= r.amount
       r.status = "paid"
+      trustSettle(pot, r)
     } else {
       r.status = "payout_failed"
     }
   } else if (no > n - k) {
     r.status = "rejected"
     r.decidedAt = now
+    trustDecline(pot, r, now)
   }
+}
+
+export type OkRequestResult = OkResult
+
+/**
+ * hub 1.1.0 ok_request: another member's OK on a one-OK request (the hub then approves it as the rules). Refused for
+ * the requester, on a request that isn't one-OK or open, and after someone said no (an objection: the group decides).
+ */
+export function okRequest(w: World, slug: string, id: number, who: string, now: number): { world: World; result: OkResult } {
+  const c = clonePot(w, slug)
+  if (!c) throw new HubError("ERR_POT_NOT_FOUND")
+  const [world, pot] = c
+  const r = pot.requests.find((x) => x.id === id)
+  if (!r) throw new HubError("ERR_NOT_FOUND")
+  if (!isMember(pot, who)) return { world: w, result: "not_member" }
+  if (r.requester === who) return { world: w, result: "self" }
+  if (r.tier !== "one_ok") return { world: w, result: "not_one_ok" }
+  if (isExpired(pot, r, now)) return { world: w, result: "expired" }
+  if (r.status !== "proposed") return { world: w, result: "decided" }
+  if (!canOk(r, who)) return { world: w, result: "objection" }
+  r.okBy = who
+  r.decidedAt = now
+  if (pot.balance >= r.amount) {
+    pot.balance -= r.amount
+    r.status = "paid"
+    trustSettle(pot, r)
+    return { world, result: "approved" }
+  }
+  r.status = "payout_failed"
+  return { world, result: "failed" }
 }
 
 export type VoteResult = "counted" | "approved" | "declined" | "already" | "decided" | "expired" | "not_member"
@@ -415,6 +480,8 @@ export function proposeClose(w: World, slug: string, who: string, now: number): 
   if (pot.status === "closed") throw new HubError("ERR_POT_NOT_OPEN")
   if (pot.status === "closing" && pot.close?.status === "proposed") throw new HubError("ERR_CLOSE_IN_PROGRESS")
   if (pot.members.every((m) => m.contributed === 0)) throw new HubError("ERR_NO_CONTRIBUTIONS")
+  // pay by link: open links block a close (ERR_LINKS_PENDING): escrow can't outlive the Pot
+  if (openLinks(pot) > 0) throw new HubError("ERR_LINKS_PENDING")
   const math = closeMath(pot)
   const close: CloseRec = {
     id: world.nextRequestId,
@@ -456,6 +523,7 @@ function applyRules(pot: PotRec, p: RulesProposalRec, now: number) {
     p.status = "approved"
     p.decidedAt = now
     pot.rules = { ...p.rules }
+    if (p.extras) pot.extras = structuredClone(p.extras)
     pot.ruleChanges = [...(pot.ruleChanges ?? []), { by: p.proposer, at: now, group: true }]
   } else if (t === "rejected") {
     p.status = "rejected"
@@ -463,7 +531,7 @@ function applyRules(pot: PotRec, p: RulesProposalRec, now: number) {
   }
 }
 
-export function proposeRules(w: World, slug: string, who: string, rules: RulesRec, now: number): { world: World; proposal: RulesProposalRec } {
+export function proposeRules(w: World, slug: string, who: string, rules: RulesRec, now: number, extras?: ExtrasRec): { world: World; proposal: RulesProposalRec } {
   const c = clonePot(w, slug)
   if (!c) throw new HubError("ERR_POT_NOT_FOUND")
   const [world, pot] = c
@@ -480,6 +548,7 @@ export function proposeRules(w: World, slug: string, who: string, rules: RulesRe
     status: "proposed",
     from: { ...pot.rules },
     rules: { ...rules },
+    ...(extras ? { fromExtras: structuredClone(extrasOf(pot)), extras: structuredClone(extras) } : {}),
   }
   world.nextRequestId += 1
   pot.rulesProposal = proposal
@@ -505,7 +574,7 @@ export function voteRules(w: World, slug: string, who: string, v: Vote, now: num
 }
 
 /** Sole member: the change applies at once (hub set_rules; a bigger Pot gets ERR_USE_PROPOSE_RULES). */
-export function setRules(w: World, slug: string, who: string, rules: RulesRec, now: number): World {
+export function setRules(w: World, slug: string, who: string, rules: RulesRec, now: number, extras?: ExtrasRec): World {
   const c = clonePot(w, slug)
   if (!c) throw new HubError("ERR_POT_NOT_FOUND")
   const [world, pot] = c
@@ -513,6 +582,7 @@ export function setRules(w: World, slug: string, who: string, rules: RulesRec, n
   if (pot.status !== "open") throw new HubError("ERR_POT_NOT_OPEN")
   if (pot.members.length > 1) throw new HubError("ERR_USE_PROPOSE_RULES")
   pot.rules = { ...rules }
+  if (extras) pot.extras = structuredClone(extras)
   pot.ruleChanges = [...(pot.ruleChanges ?? []), { by: who, at: now, group: false }]
   return world
 }
@@ -537,6 +607,8 @@ export interface CreateInput {
   /** the Create form's rules (Micro); absent = the default rules */
   rules?: SdkRules
   invite: { pk: string; secret: string }
+  /** hub 1.1.0 rule extras (cents); absent = the hub's defaults (trust on, one OK up to 3 × the instant limit) */
+  extras?: ExtrasRec
 }
 
 /** The Create form's rules → the mock's record (cents, like the hub's 6 decimals floored to the cent). */
@@ -565,6 +637,9 @@ export function createPot(w: World, who: string, input: CreateInput, now: number
     createdAt: now,
     goalEach: input.goalEachCents,
     rules: rulesRecOf(input.rules),
+    // hub 1.1.0: extras as sent (or its defaults); an all-or-nothing goal gets the v2 group setup (policy v2)
+    extras: input.extras ?? defaultExtrasRec(rulesRecOf(input.rules)),
+    policyVersion: input.extras?.goal?.allOrNothing ? 2 : 1,
     balance: 0,
     members: [member(who, 0, 0, now)],
     requests: [],
@@ -584,6 +659,21 @@ export function rotateInvite(w: World, slug: string, who: string, invite: { pk: 
 
 // ---------------------------------------------------------------------------------------------------------
 // selectors → view models
+
+/** A request's status in the view (the link's status depends on it). */
+export function requestStatusOf(pot: PotRec, r: RequestRec, now: number): RequestVM["status"] {
+  return r.status === "paid"
+    ? r.path === "instant"
+      ? "instant"
+      : "approved"
+    : r.status === "payout_failed"
+      ? "failed"
+      : r.status === "rejected"
+        ? "declined"
+        : isExpired(pot, r, now)
+          ? "expired"
+          : "needs"
+}
 
 function requestVM(pot: PotRec, r: RequestRec, me: string | null, now: number): RequestVM {
   const n = pot.members.length
@@ -616,7 +706,7 @@ function requestVM(pot: PotRec, r: RequestRec, me: string | null, now: number): 
     potEmoji: pot.emoji,
     potCover: pot.cover,
     requester: person(pot, r.requester),
-    receiver: person(pot, r.receiver),
+    receiver: r.link ? linkReceiverVM(r) : person(pot, r.receiver),
     amount: cents(r.amount),
     category: r.category,
     note: r.note,
@@ -639,6 +729,9 @@ function requestVM(pot: PotRec, r: RequestRec, me: string | null, now: number): 
     txHash: mockTxHash(`${pot.slug}:request:${r.id}`),
     voteAt: { ...r.voteAt },
     comments: viewCommentCounts[`${pot.slug}:${r.id}`] ?? 0,
+    ...(r.tier ? { tier: r.tier } : {}),
+    ...(r.okBy ? { okBy: person(pot, r.okBy) } : {}),
+    ...(r.link ? { link: linkVM(r, status, now, (id) => (id.startsWith("@") ? null : person(pot, id)))! } : {}),
   }
 }
 
@@ -690,6 +783,7 @@ function rulesChangeVM(pot: PotRec, p: RulesProposalRec, me: string | null, now:
     createdAt: p.createdAt,
     expiresAt: expiresAt(p.createdAt, pot.rules),
     voteAt: { ...p.voteAt },
+    ...(p.extras ? { toExtras: extrasVM(p.extras), fromExtras: extrasVM(p.fromExtras ?? extrasOf(pot)) } : {}),
   }
 }
 
@@ -703,7 +797,9 @@ function closePreviewVM(pot: PotRec, math: ReturnType<typeof closeMath>): CloseP
           ? "no_contributions"
           : pot.balance <= 0
             ? "nothing_to_refund"
-            : null
+            : openLinks(pot) > 0
+              ? "links_pending"
+              : null
   return {
     payouts: math.payouts.map((p) => ({ person: person(pot, p.account), amount: cents(p.amount) })),
     dust: cents(math.dust),
@@ -739,6 +835,7 @@ export function potView(w: World, slug: string, me: string | null, now: number):
         spentShare: contributed > back ? contributed - back : 0n,
         spentInstant: cents(m.spentInstant),
         isMe: m.id === me,
+        ...(pot.extras ? { trust: trustVM(pot, m) } : {}),
       }
     })
     .sort((a, b) => (a.isMe === b.isMe ? (a.person.joinIndex ?? 0) - (b.person.joinIndex ?? 0) : a.isMe ? -1 : 1))
@@ -751,8 +848,9 @@ export function potView(w: World, slug: string, me: string | null, now: number):
       if (e.kind === "contribution") return { key: e.id, kind: "contribution", at: e.at, actor, amount: cents(e.amount ?? 0), txHash }
       return { key: e.id, kind: e.kind, at: e.at, actor, txHash }
     }),
-    ...reqs.map((r): FeedItemVM => ({ key: `request:${r.id}`, kind: "request", at: r.decidedAt ?? r.createdAt, request: r, txHash: r.txHash })),
-    ...(pot.close
+    ...reqs.map((r): FeedItemVM => ({ key: `request:${r.id}`, kind: "request", at: r.link?.doneAt ?? r.decidedAt ?? r.createdAt, request: r, txHash: r.txHash })),
+    ...goalFeed(pot, now),
+    ...(pot.close && !pot.close.refund
       ? [{ key: `close:${pot.close.id}`, kind: "close_requested" as const, at: pot.close.createdAt, actor: person(pot, pot.close.proposer), k: approvalsNeeded(pot.members.length), txHash: mockTxHash(`${pot.slug}:close:${pot.close.id}`) }]
       : []),
     ...(pot.status === "closed" && pot.closedAt ? [{ key: `closed:${pot.slug}`, kind: "closed" as const, at: pot.closedAt, txHash: mockTxHash(`${pot.slug}:closed`) }] : []),
@@ -762,6 +860,8 @@ export function potView(w: World, slug: string, me: string | null, now: number):
     ...(pot.ruleChanges ?? []).map((c, i): FeedItemVM => ({ key: `rules-changed:${i}`, kind: "rules_changed", at: c.at, actor: c.group ? null : person(pot, c.by), txHash: mockTxHash(`${pot.slug}:rules-changed:${i}`) })),
   ].sort((a, b) => b.at - a.at)
   const goalEach = pot.goalEach === null ? null : cents(pot.goalEach)
+  // hub 1.1.0: a goal with a date lives in the rules (on chain); it replaces the "$X each" estimate in the goal bar
+  const goalDetail = goalVM(pot, now)
   return {
     slug: pot.slug,
     name: pot.name,
@@ -771,7 +871,7 @@ export function potView(w: World, slug: string, me: string | null, now: number):
     creator: person(pot, pot.creator),
     balance,
     totalIn: cents(totalIn),
-    goal: goalEach === null ? null : goalEach * BigInt(Math.max(3, pot.members.length)),
+    goal: goalDetail ? goalDetail.amount : goalEach === null ? null : goalEach * BigInt(Math.max(3, pot.members.length)),
     goalEach,
     rules: rulesOf(pot),
     k: approvalsNeeded(pot.members.length),
@@ -799,7 +899,23 @@ export function potView(w: World, slug: string, me: string | null, now: number):
       usesLeft: Math.max(0, pot.invite.maxUses - pot.invite.uses),
       createdBy: person(pot, pot.invite.createdBy),
     },
+    ...(pot.extras ? { extras: extrasVM(pot.extras), policyVersion: pot.policyVersion ?? 1 } : {}),
+    goalDetail,
   }
+}
+
+/** hub 1.1.0 feed lines for the goal: reached, the refund started, everyone got their money back. */
+function goalFeed(pot: PotRec, now: number): FeedItemVM[] {
+  const g = extrasOf(pot).goal
+  const gs = pot.goalState
+  if (!g || !gs) return []
+  const out: FeedItemVM[] = []
+  const amount = cents(g.amount)
+  if (gs.reachedAt) out.push({ key: `goal:reached:${pot.slug}`, kind: "goal", at: gs.reachedAt, state: "reached", amount, txHash: mockTxHash(`${pot.slug}:goal:reached`) })
+  if (gs.refundStartedAt && !gs.refundedAt && gs.refundStartedAt <= now)
+    out.push({ key: `goal:refunding:${pot.slug}`, kind: "goal", at: gs.refundStartedAt, state: "refunding", amount })
+  if (gs.refundedAt) out.push({ key: `goal:refunded:${pot.slug}`, kind: "goal", at: gs.refundedAt, state: "refunded", amount, txHash: mockTxHash(`${pot.slug}:goal:refunded`) })
+  return out
 }
 
 export function potsOf(w: World, me: string, now: number): PotCardVM[] {
@@ -821,6 +937,8 @@ export function potsOf(w: World, me: string, now: number): PotCardVM[] {
         goal: v.goal,
         totalIn: v.totalIn,
         members: v.members.map((m) => m.person).sort((a, b) => (a.joinIndex ?? 0) - (b.joinIndex ?? 0)),
+        goalDetail: v.goalDetail ?? null,
+        myTrust: v.me?.trust ?? null,
       }
     })
 }

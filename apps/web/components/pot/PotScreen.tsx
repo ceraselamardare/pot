@@ -24,10 +24,12 @@ import { ClosedMoment, CloseSheet } from "@/components/sheets/CloseSheet"
 import { RulesSheet } from "@/components/sheets/RulesSheet"
 import { RefundSheet } from "@/components/sheets/RefundSheet"
 import { PersonActivitySheet } from "@/components/activity/PersonActivitySheet"
+import { PayLinkSheet } from "@/components/paylink/LinkPanel"
 import { CoachCard } from "@/components/pwa/Coach"
 import { ShareSheet } from "@/components/sheets/ShareSheet"
 import { SpendSheet } from "@/components/sheets/SpendSheet"
 import { DepositCards, useArrivedDeposit } from "@/components/features/deposit/DepositCard"
+import { GoalBanner, shownGoalState } from "@/components/wave4/GoalBanner"
 import { pageTitle, t } from "@/i18n/t"
 import { announce } from "@/lib/client/browser"
 import { usePot } from "@/lib/client/data"
@@ -38,6 +40,8 @@ import { formatUsd } from "@/lib/client/money"
 import { useNow } from "@/lib/client/time"
 
 const TABS = ["activity", "members", "rules"] as const
+/** ?sheet=paylink&link=<request id> */
+const linkParam = (v: string | null): number | null => (v && /^\d{1,10}$/.test(v) ? Number(v) : null)
 type Tab = (typeof TABS)[number]
 
 export function PotScreen() {
@@ -119,6 +123,9 @@ function PotLoaded({ pot }: { pot: PotVM }) {
     </section>
   )
   const mine = pot.mine.filter((r) => r.status === "needs")
+  // hub 1.1.0: the goal with a date sits in the hero while the Pot is open; its refund (closing, closed) on Activity
+  const goalShown = pot.goalDetail ? shownGoalState(pot.goalDetail, now) : null
+  const goalRefund = goalShown === "refunding" || goalShown === "refunded" || (goalShown === "refundable" && pot.status !== "open")
   const feed =
     pot.feed.length <= 1 && potOps.length === 0 ? (
       <EmptyState
@@ -152,6 +159,8 @@ function PotLoaded({ pot }: { pot: PotVM }) {
             onSpend={() => openSheet("spend")}
             addVariant={arrived ? "secondary" : "primary"}
             onShare={() => openSheet("refund")}
+            goalSlot={pot.goalDetail && !goalRefund ? <GoalBanner goal={pot.goalDetail} potName={pot.name} now={now} /> : undefined}
+            spendBlocked={pot.goalDetail?.spendsBlocked && pot.status === "open" ? t("spend.goal_blocked") : null}
           />
           <div className="mt-6">
             {/* phones: three tabs; desktop: Activity · Rules (Members live in the right column) */}
@@ -196,7 +205,8 @@ function PotLoaded({ pot }: { pot: PotVM }) {
               </>
             ) : (
               <div role="tabpanel" id="pot-panel-activity" aria-labelledby="pot-tab-activity" className="flex flex-col gap-6">
-                <PotStateCard pot={pot} />
+                {goalRefund && pot.goalDetail && <GoalBanner goal={pot.goalDetail} potName={pot.name} now={now} />}
+                {!(goalRefund && pot.status === "closing") && <PotStateCard pot={pot} />}
                 <DepositCards pot={pot} actor={meId} />
                 <CoachCard pot={pot.slug} />
                 {(pot.waitingOnMe.length > 0 || closeWaiting || rulesWaiting) && <div className="lg:hidden">{waiting("m")}</div>}
@@ -240,6 +250,7 @@ function PotLoaded({ pot }: { pot: PotVM }) {
       <RulesSheet pot={pot} open={sheet === "rules"} onClose={closeSheet} />
       <RefundSheet pot={pot} open={sheet === "refund"} onClose={closeSheet} />
       <PersonActivitySheet pot={pot} who={params.get("who")} open={sheet === "person" && !!params.get("who")} onClose={closeSheet} />
+      <PayLinkSheet pot={pot} id={linkParam(params.get("link"))} open={sheet === "paylink" && linkParam(params.get("link")) !== null} onClose={closeSheet} />
     </>
   )
 }

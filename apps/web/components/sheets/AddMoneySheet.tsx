@@ -15,7 +15,7 @@ import { t } from "@/i18n/t"
 import { addMoney } from "@/lib/client/actions"
 import { useOnline } from "@/lib/client/browser"
 import { useOwnDollars } from "@/lib/client/data"
-import { formatUsd, parseKeypad, toKeypad, type Micro } from "@/lib/client/money"
+import { formatUsd, MAX_ADD, parseKeypad, toKeypad, type Micro } from "@/lib/client/money"
 import type { PotVM } from "@/lib/client/mock/types"
 import { cn } from "@/lib/client/cn"
 import type { AddSource } from "@/lib/client/machines/add-flow"
@@ -73,7 +73,8 @@ export function AddMoneySheet({
     if (open && noOwn && source === "pot_dollars") setSource("demo")
   }, [open, noOwn, source, setSource])
   const short = source === "pot_dollars" && amount > ownDollars
-  const valid = amount > 0n && !short
+  const tooMuch = amount > MAX_ADD
+  const valid = amount > 0n && !short && !tooMuch
   const after = pot.balance + amount
   // R-33 M-6: what you'd get back if the Pot closed right after this (the hub's close math over the new numbers)
   const refundAfter = amount > 0n ? refundAfterAdd(pot, amount) : null
@@ -116,10 +117,16 @@ export function AddMoneySheet({
       }
     >
       <AmountDisplay value={value} label={t("add.amount.label")} className="pt-2" />
-      {short && (
-        <p role="alert" className="mt-2 text-center text-body-sm text-ink">
-          {t("add.error.insufficient_own", { available: formatUsd(ownDollars) })}
+      {tooMuch ? (
+        <p role="alert" className="mt-2 text-center text-body-sm text-ink" data-add-max>
+          {t("add.error.max", { max: formatUsd(MAX_ADD, "whole") })}
         </p>
+      ) : (
+        short && (
+          <p role="alert" className="mt-2 text-center text-body-sm text-ink">
+            {t("add.error.insufficient_own", { available: formatUsd(ownDollars) })}
+          </p>
+        )
       )}
       <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0" role="group" aria-label={t("add.amount.label")}>
         {chips.map((c) => (

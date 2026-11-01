@@ -271,7 +271,8 @@ async fn t87(build: Build) -> anyhow::Result<()> {
         ("pot_created", &["pot", "slug", "name", "emoji", "preset", "creator", "rules", "float"]),
         ("member_joined", &["pot", "member", "proposal_id", "invite_pk"]),
         ("contribution", &["pot", "member", "amount", "member_total", "pot_total"]),
-        ("spend_requested", &["pot", "request_id", "proposal_id", "requester", "receiver_id", "amount", "category", "request_ref", "path", "reason", "approvals_needed"]),
+        // hub 1.1.0 (wave 4) adds `tier` and `link`
+        ("spend_requested", &["pot", "request_id", "proposal_id", "requester", "receiver_id", "amount", "category", "request_ref", "path", "reason", "approvals_needed", "tier", "link"]),
         ("spend_auto_approved", &["pot", "request_id", "proposal_id", "requester", "receiver_id", "amount", "budget_used", "budget_left"]),
         ("rules_changed", &["pot", "rules", "rules_version", "by", "actor"]),
         ("invite_added", &["pot", "invite_pk", "by", "expires_at_ms", "max_uses"]),

@@ -26,7 +26,8 @@ async fn t20(build: Build) -> anyhow::Result<()> {
     let maya0 = env.ft_balance(&env.maya.id).await;
     let o = env.request_spend(&env.maya, &dao, 84 * USDC, &env.maya.id, "k3d9x1a2b4c6m7n8").await;
     let v = o.json();
-    assert_eq!(v, json!({"request_id":0,"proposal_id":2,"path":"instant","reason":"within_rules","status":"approved","refusal":null,"approvals_needed":2}));
+    // hub 1.1.0 (wave 4) adds `tier` and `link`
+    assert_eq!(v, json!({"tier":"instant","link":false,"request_id":0,"proposal_id":2,"path":"instant","reason":"within_rules","status":"approved","refusal":null,"approvals_needed":2}));
     assert_eq!(o.event_names(), vec!["spend_requested", "spend_auto_approved"]);
     let ev = o.event("spend_requested");
     assert_eq!(ev["path"], "instant");
@@ -116,7 +117,7 @@ async fn t20(build: Build) -> anyhow::Result<()> {
     for k in ["version","owner","usdc","dao_code_hash","dao_float","min_dao_float","relayers","limits","paused","pot_count","sponsored_today","free_balance"] {
         assert!(cfg.get(k).is_some(), "get_config.{k}");
     }
-    assert_eq!(cfg["version"], "1.0.0");
+    assert_eq!(cfg["version"], "1.1.0"); // hub 1.1.0 (wave 4)
     assert_eq!(cfg["dao_code_hash"], build.expected_hash());
     Ok(())
 }

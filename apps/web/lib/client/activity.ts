@@ -8,7 +8,11 @@
 import { activityKey, type ActivityApiItem, type ActivityApiKind } from "@/lib/activity-api"
 import { t } from "@/i18n/t"
 import { formatUsd, type Micro } from "./money"
-import type { Category, CloseVM, PotVM, RequestVM, RulesChangeVM, Vote } from "./mock/types"
+import type { Category, CloseVM, LinkStatusVM, PotVM, RequestVM, RulesChangeVM, Vote } from "./mock/types"
+
+/** A payment link's status as an activity chip (icon + colour; the word comes from chipWord). */
+const linkChip = (s: LinkStatusVM): ActivityStatus =>
+  s === "claimed" ? "sent" : s === "ready" || s === "waiting" || s === "busy" ? "needs" : s === "void" ? "declined" : "expired"
 import { coverOf, nameFromAccount } from "./live/vm"
 import { dayLabel } from "./time"
 
@@ -39,6 +43,8 @@ export interface ActivityItemVM {
   proposalId?: number
   /** the settled transaction (its receipt); absent for anything optimistic or unknown */
   txHash?: string
+  /** pay by link (hub 1.1.0): where the asked-for link is now */
+  link?: LinkStatusVM
 }
 
 const word = (category: string | undefined, note?: string) =>
@@ -110,6 +116,7 @@ export function activityOfPerson(pot: PotVM, personId: string): ActivityItemVM[]
             requestId: r.id,
             ...(r.proposalId != null ? { proposalId: r.proposalId } : {}),
             txHash: r.txHash,
+            ...(r.link ? { link: r.status === "needs" ? ("waiting" as const) : r.link.status, status: linkChip(r.status === "needs" ? "waiting" : r.link.status) } : {}),
           })
         else {
           const v: Vote | null = r.approvals.some((p) => p.id === personId) ? "Approve" : r.declines.some((p) => p.id === personId) ? "Reject" : null
@@ -240,6 +247,7 @@ export function activityText(i: ActivityItemVM, meId: string | null): string {
     case "added":
       return t("activity.added", { who, amount })
     case "asked":
+      if (i.link) return t("activity.asked.link", { who, amount, reason: i.reason ?? "" })
       return i.path === "instant" ? t("activity.asked.instant", { who, amount, reason: i.reason ?? "" }) : t("activity.asked.vote", { who, amount, reason: i.reason ?? "" })
     case "refund":
       return t("activity.refund", { who, amount })
@@ -265,6 +273,7 @@ export function activityText(i: ActivityItemVM, meId: string | null): string {
 
 /** The chip's word, when it isn't the status's default. */
 export function chipWord(i: ActivityItemVM): string | undefined {
+  if (i.kind === "asked" && i.link) return t(i.link === "waiting" ? "paylink.chip.waiting" : (`paylink.chip.${i.link}` as "paylink.chip.ready"))
   if (i.kind === "refund") return t("activity.chip.received")
   if (i.kind === "added") return t("activity.chip.added")
   if (i.kind === "voted") return i.vote === "Reject" ? t("activity.chip.declined") : t("chip.approved")
@@ -274,7 +283,7 @@ export function chipWord(i: ActivityItemVM): string | undefined {
 /** Where tapping a row goes: the Pot, at the item (a request opens its sheet; rules and close their place). */
 export function activityHref(i: ActivityItemVM): string {
   const pot = `/p/${encodeURIComponent(i.slug)}`
-  if ((i.kind === "asked" && i.path === "vote") || (i.kind === "voted" && i.about?.type === "spend")) return i.requestId !== undefined ? `${pot}?r=${i.requestId}` : pot
+  if ((i.kind === "asked" && (i.path === "vote" || !!i.link)) || (i.kind === "voted" && i.about?.type === "spend")) return i.requestId !== undefined ? `${pot}?r=${i.requestId}` : pot
   if (i.kind === "rules_asked" || i.kind === "rules_changed" || (i.kind === "voted" && i.about?.type === "rules")) return `${pot}?tab=rules`
   // the refund: the closed Pot's summary (who got what); a close request (maybe declined) is on the Pot itself
   if (i.kind === "refund") return `${pot}?sheet=close`

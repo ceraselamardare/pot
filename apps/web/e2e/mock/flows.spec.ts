@@ -2,7 +2,7 @@
 // Playwright project: mobile Day, mobile Night (390×844) and desktop (1280×800, the bp-lg two-column Pot).
 import { fileURLToPath } from "node:url"
 import { expect, test } from "@playwright/test"
-import { asPerson, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
+import { asPerson, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, spendFlow, spendWhy, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -56,8 +56,10 @@ test("(b) instant spend $84 → Checking Pot rules ≥ 1.2 s → the burst → f
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
   await typeAmount(page, "84")
   await expect(sheet.getByText("This will be approved instantly")).toBeVisible()
-  await sheet.getByRole("button", { name: /Groceries/ }).click()
-  await brandChecks(page, { marigold: "one" })
+  await brandChecks(page, { marigold: "one" }) // step 1: Next
+  await spendFlow(page, { reason: "Groceries" })
+  await expect(sheet.getByText("This will be approved instantly")).toBeVisible()
+  await brandChecks(page, { marigold: "one" }) // step 2: the ask
 
   // record the beats in the page, so a busy CI machine can't miss the 400-600 ms states between polls
   await page.evaluate(() => {
@@ -101,9 +103,8 @@ test("(c) $300 → needs 2 of 3 → switch to Leo → approve → executed", asy
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
   await typeAmount(page, "300")
   await expect(sheet.getByText("This needs 2 of 3 approvals")).toBeVisible()
-  await expect(sheet.getByText("It's over the $100 instant limit.")).toBeVisible()
-  await sheet.getByRole("button", { name: /Tickets/ }).click()
-  await sheet.getByRole("button", { name: "Ask the group" }).click()
+  await expect(await spendWhy(page)).toContainText("It's over the $100 instant limit.")
+  await spendFlow(page, { reason: "Tickets", submit: "Ask the group" })
   await expect(sheet.getByText("Sent to the group")).toBeVisible()
   await expect(sheet.getByText("Approvals · 1 of 2")).toBeVisible()
   await sheet.getByRole("button", { name: "Done" }).click()

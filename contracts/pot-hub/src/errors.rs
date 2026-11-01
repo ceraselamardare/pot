@@ -52,6 +52,31 @@ pub const ERR_TOO_MANY_REQUESTS: &str = "ERR_TOO_MANY_REQUESTS";
 pub const ERR_UNKNOWN_PROPOSAL: &str = "ERR_UNKNOWN_PROPOSAL";
 pub const ERR_NOT_RETRYABLE: &str = "ERR_NOT_RETRYABLE";
 pub const ERR_USE_DAO_FINALIZE: &str = "ERR_USE_DAO_FINALIZE";
+// wave 4
+pub const ERR_EXTRAS_INVALID: &str = "ERR_EXTRAS_INVALID";
+pub const ERR_GOAL_INVALID: &str = "ERR_GOAL_INVALID";
+pub const ERR_GOAL_LOCKED: &str = "ERR_GOAL_LOCKED";
+pub const ERR_GOAL_UNSUPPORTED: &str = "ERR_GOAL_UNSUPPORTED";
+pub const ERR_GOAL_NOT_REACHED: &str = "ERR_GOAL_NOT_REACHED";
+pub const ERR_GOAL_MISSED: &str = "ERR_GOAL_MISSED";
+pub const ERR_GOAL_NOT_MISSED: &str = "ERR_GOAL_NOT_MISSED";
+pub const ERR_NO_GOAL: &str = "ERR_NO_GOAL";
+pub const ERR_NOT_ONE_OK: &str = "ERR_NOT_ONE_OK";
+pub const ERR_NOT_PENDING: &str = "ERR_NOT_PENDING";
+pub const ERR_OK_SELF: &str = "ERR_OK_SELF";
+pub const ERR_OK_IN_FLIGHT: &str = "ERR_OK_IN_FLIGHT";
+pub const ERR_LINKS_OFF: &str = "ERR_LINKS_OFF";
+pub const ERR_LINKS_PENDING: &str = "ERR_LINKS_PENDING";
+pub const ERR_LINK_PK_INVALID: &str = "ERR_LINK_PK_INVALID";
+pub const ERR_LINK_EXPIRY_INVALID: &str = "ERR_LINK_EXPIRY_INVALID";
+pub const ERR_LINK_NOT_FOUND: &str = "ERR_LINK_NOT_FOUND";
+pub const ERR_LINK_NOT_FUNDED: &str = "ERR_LINK_NOT_FUNDED";
+pub const ERR_LINK_EXPIRED: &str = "ERR_LINK_EXPIRED";
+pub const ERR_LINK_NOT_EXPIRED: &str = "ERR_LINK_NOT_EXPIRED";
+pub const ERR_LINK_NOT_FINAL: &str = "ERR_LINK_NOT_FINAL";
+pub const ERR_LINK_BUSY: &str = "ERR_LINK_BUSY";
+pub const ERR_LINK_DONE: &str = "ERR_LINK_DONE";
+pub const ERR_MIGRATE: &str = "ERR_MIGRATE";
 
 /// Panics with `code`.
 pub fn fail(code: &str) -> ! {

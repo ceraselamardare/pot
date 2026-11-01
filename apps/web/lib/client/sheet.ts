@@ -2,14 +2,14 @@
 // Sheets are URL query state, not routes (frontend-architecture §2.2): ?sheet=add|spend|share|create and
 // ?r=<id>. Opened with native history.pushState (Next integrates it with useSearchParams), so Back closes the
 // sheet and deep links work.
-// Multi-step sheets push one entry per step (Add money → network → address; Create name → rules), so the
-// browser/Android Back steps back one level like the in-sheet [Back]. Every entry we push carries its depth in
+// Multi-step sheets push one entry per step (Add money → network → address; Create name → rules; Spend how much →
+// what for), so the browser/Android Back steps back one level like the in-sheet [Back]. Every entry we push carries its depth in
 // history.state (`potSheet`: 1 = the sheet's first step). close() unwinds all of the sheet's entries with
 // history.go(-depth); a cold deep link (depth 0) is stripped with replaceState, so it never leaves the app.
 import { useSearchParams } from "next/navigation"
 import { useCallback } from "react"
 
-export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund"
+export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink"
 
 /** Our keys in history.state (Next.js copies its own internals in beside them). */
 interface SheetEntry {
@@ -67,7 +67,8 @@ export function openRequest(id: number, pot?: string) {
   push(url)
 }
 
-const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who"]
+// "link": the payment link sheet's request id (?sheet=paylink&link=<id>; not ?r=, which opens the request sheet)
+const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link"]
 const strip = (p: URLSearchParams) => SHEET_PARAMS.forEach((k) => p.delete(k))
 
 /**
@@ -123,6 +124,11 @@ export function sheetStepBack(previous: (p: URLSearchParams) => void) {
     return
   }
   window.history.replaceState(ours(), "", urlWith(previous))
+}
+
+/** Change this entry's sheet params in place (keeps our depth keys): e.g. a deep link to a step that can't show yet. */
+export function replaceSheetParams(mutate: (p: URLSearchParams) => void) {
+  window.history.replaceState(ours(), "", urlWith(mutate))
 }
 
 /** Replace the current sheet with another without growing history (Create → Share). */

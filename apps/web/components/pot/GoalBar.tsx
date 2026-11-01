@@ -10,11 +10,14 @@ export function GoalBar({
   goal,
   className,
   size = "md",
+  text,
 }: {
   collected: Micro
   goal: Micro
   className?: string
   size?: "sm" | "md"
+  /** the text twin, when it says more than "$300 of $450 collected" (hub 1.1.0: "$300 of $1,200 · 3 days left") */
+  text?: string
 }) {
   const pct = goal > 0n ? Math.min(100, Number((collected * 10_000n) / goal) / 100) : 0
   return (
@@ -26,7 +29,7 @@ export function GoalBar({
         />
       </div>
       <p className="text-body-sm text-ink-muted tabular-nums" data-goal-text>
-        {t("pot.goal", { collected: formatUsd(collected, "whole"), goal: formatUsd(goal, "whole") })}
+        {text ?? t("pot.goal", { collected: formatUsd(collected, "whole"), goal: formatUsd(goal, "whole") })}
       </p>
     </div>
   )

@@ -19,6 +19,26 @@ export type RawRequestStatus =
   | "expired"
   | "removed"
 export type RawPotStatus = "open" | "closing" | "closed"
+/** hub 1.1.0 (wave 4): how a request gets approved. */
+export type RawTier = "instant" | "one_ok" | "group"
+export type RawLinkStatus = "awaiting_funds" | "funded" | "claiming" | "claimed" | "returning" | "returned" | "void"
+export type RawGoalState = "none" | "collecting" | "reached" | "missed" | "refundable" | "refunding" | "refunded"
+
+/** hub 1.1.0 goal: `amount` U128, `deadline_ms` ms. */
+export interface RawGoal {
+  amount: string
+  deadline_ms: number
+  all_or_nothing: boolean
+}
+
+/** hub 1.1.0 rule extras (create_pot / set_rules / propose_rules `extras`; PotView.extras). */
+export interface RawRuleExtras {
+  trust: boolean
+  /** "0" = no one-OK tier */
+  one_ok_cap: string
+  links: boolean
+  goal: RawGoal | null
+}
 
 export interface RawRules {
   instant_cap: string
@@ -88,6 +108,11 @@ export interface RawPotView {
   open_rules_proposal?: number | null
   /** Implemented contract addition (not in contracts-spec §4). */
   closing_in_flight?: boolean
+  /** hub 1.1.0; absent on 1.0.0 (= all off) */
+  extras?: RawRuleExtras
+  policy_version?: number
+  open_links?: number
+  goal_state?: RawGoalState
 }
 
 export interface RawPotSummary {
@@ -142,6 +167,9 @@ export type RawPreviewReason =
   | "too_many_requests"
   | "too_many_pending"
   | "paused"
+  // hub 1.1.0
+  | "goal_not_reached"
+  | "links_off"
 
 export interface RawSpendPreview {
   path: "instant" | "vote" | "blocked"
@@ -154,6 +182,11 @@ export interface RawSpendPreview {
   budget_left: string
   balance_checked: string | null
   client_must_check: string[]
+  /** hub 1.1.0 ("" when blocked) */
+  tier?: RawTier | ""
+  effective_cap?: string
+  trust_level?: number
+  one_ok_cap?: string
 }
 
 export interface RawClosePayout {
@@ -169,6 +202,7 @@ export type RawCloseBlockedReason =
   | "busy"
   | "no_contributions"
   | "nothing_to_refund"
+  | "links_pending"
 
 export interface RawClosePreview {
   pot: string
@@ -199,6 +233,10 @@ export interface RawRequestView {
   created_at_ms: number
   updated_at_ms: number
   expires_at_ms: number
+  /** hub 1.1.0 */
+  tier?: RawTier
+  ok_by?: string | null
+  link_status?: RawLinkStatus | null
 }
 
 export interface RawInviteView {
@@ -251,6 +289,9 @@ export interface RawSpendOutcome {
   status: "approved" | "pending" | "approving" | "rejected" | "payout_failed" | "expired" | "removed" | "refused"
   refusal: RawSpendRefusal | string | null
   approvals_needed: number
+  /** hub 1.1.0 */
+  tier?: RawTier
+  link?: boolean
 }
 
 export interface RawSyncOutcome {
@@ -296,4 +337,104 @@ export interface RawCloseOutcome {
   dust_to?: string
   approvals_needed?: number
   reason?: "balance_unavailable" | "nothing_to_refund" | "add_failed" | string
+}
+
+// ---- hub 1.1.0 (wave 4) views and outcomes; contracts/pot-hub/src/wave4.rs ----
+
+export interface RawTrustView {
+  pot: string
+  account_id: string
+  enabled: boolean
+  level: number
+  max_level: number
+  streak: number
+  step: number
+  next_level_in: number
+  min_qualifying: string
+  settled: number
+  settled_amount: string
+  declined: number
+  last_declined_ms: number | null
+  base_cap: string
+  multiplier: number
+  effective_cap: string
+  budget_left: string
+  instant_up_to: string
+  one_ok_cap: string
+}
+
+export interface RawGoalView {
+  pot: string
+  amount: string
+  deadline_ms: number
+  all_or_nothing: boolean
+  total_contributed: string
+  state: Exclude<RawGoalState, "none">
+  reached_at_ms: number | null
+  refund_proposal_id: number | null
+  can_refund: boolean
+  spends_blocked: boolean
+}
+
+export interface RawLinkView {
+  pot: string
+  request_id: number
+  requester: string
+  amount: string
+  category: RawCategory
+  request_status: RawRequestStatus
+  status: RawLinkStatus
+  claim_pk: string
+  expires_at_ms: number
+  receiver_id: string | null
+  funded_at_ms: number | null
+  done_at_ms: number | null
+  claimable: boolean
+}
+
+export type RawRecordMoney =
+  | "paid"
+  | "held_for_link"
+  | "awaiting_funds"
+  | "returned"
+  | "processing"
+  | "awaiting_approval"
+  | "failed"
+  | "declined"
+  | "expired"
+  | "withdrawn"
+  | "void"
+
+export interface RawRecordEntry {
+  request_id: number
+  proposal_id: number | null
+  requester: string
+  payee: string | null
+  link: boolean
+  amount: string
+  category: RawCategory
+  request_ref: string
+  tier: RawTier
+  approved_by: "rules" | "one_ok" | "group" | null
+  ok_by: string | null
+  status: RawRequestStatus
+  money: RawRecordMoney
+  link_status: RawLinkStatus | null
+  created_at_ms: number
+  updated_at_ms: number
+}
+
+export interface RawOkOutcome {
+  request_id: number
+  ok: boolean
+  status: string
+  reason?: "objection" | "not_pending" | "not_open" | "not_in_dao_group" | "pot_not_open" | "dao_unavailable" | "approve_failed" | "stale" | string
+}
+
+export interface RawLinkOutcome {
+  request_id: number
+  ok: boolean
+  status: RawLinkStatus
+  receiver_id: string | null
+  reason?: "transfer_failed" | "stale" | string
 }

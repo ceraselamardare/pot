@@ -6,7 +6,7 @@
 use near_sdk::json_types::U128;
 use near_sdk::{near, AccountId, NearToken};
 
-use crate::types::{Category, Limits, Path, Preset, Reason, Rules};
+use crate::types::{Category, Goal, Limits, Path, Preset, Reason, RuleExtras, Rules, Tier};
 
 #[near(serializers = [json])]
 #[derive(Clone, Debug, PartialEq)]
@@ -64,6 +64,10 @@ pub enum PotEvent {
         path: Path,
         reason: Reason,
         approvals_needed: u32,
+        /// wave 4: "instant" | "one_ok" | "group"
+        tier: Tier,
+        /// wave 4: the payee is whoever holds a claim link (receiver_id = the hub, as escrow)
+        link: bool,
     },
     #[event_version("1.0.0")]
     SpendAutoApproved {
@@ -110,4 +114,28 @@ pub enum PotEvent {
     },
     #[event_version("1.0.0")]
     ConfigChanged { by: AccountId, config: ConfigCore },
+    // ---- wave 4 (hub 1.1.0) ----
+    /// The Pot's rule extras (at creation, or after a rules change that carried them).
+    #[event_version("1.1.0")]
+    RuleExtrasSet { pot: AccountId, extras: RuleExtras, rules_version: u32, policy_version: u8 },
+    /// A one-OK request was approved: `by` gave the OK, the hub voted as rulebot.
+    #[event_version("1.1.0")]
+    SpendOkApproved { pot: AccountId, request_id: u32, proposal_id: u64, requester: AccountId, by: AccountId, amount: U128 },
+    #[event_version("1.1.0")]
+    TrustLevelChanged { pot: AccountId, member: AccountId, from: u8, to: u8, settled: u32, declined: u32, cause: String },
+    #[event_version("1.1.0")]
+    LinkFunded { pot: AccountId, request_id: u32, amount: U128, expires_at_ms: u64 },
+    #[event_version("1.1.0")]
+    LinkClaimed { pot: AccountId, request_id: u32, receiver_id: AccountId, amount: U128 },
+    #[event_version("1.1.0")]
+    LinkReturned { pot: AccountId, request_id: u32, amount: U128, by: AccountId, moved: bool },
+    #[event_version("1.1.0")]
+    LinkVoided { pot: AccountId, request_id: u32 },
+    #[event_version("1.1.0")]
+    GoalReached { pot: AccountId, goal: Goal, total: U128 },
+    /// The hub proposed (and will approve) the refund close of a missed all-or-nothing goal.
+    #[event_version("1.1.0")]
+    GoalRefundProposed { pot: AccountId, proposal_id: u64, goal: Goal, total: U128 },
+    #[event_version("1.1.0")]
+    GoalRefunded { pot: AccountId, proposal_id: u64 },
 }

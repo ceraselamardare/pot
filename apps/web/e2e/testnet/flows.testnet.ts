@@ -9,7 +9,7 @@
 // Every UI claim is checked against the chain through @pot/sdk views (e2e/testnet/chain.ts).
 import { fileURLToPath } from "node:url"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { typeAmount } from "../fixtures/pot"
+import { spendFlow, typeAmount } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, nearBalance, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -162,8 +162,7 @@ test("E-c: instant spend → Approved by Pot rules → the balance drops on chai
   await expect(sheet).toBeVisible()
   await typeAmount(B, "20")
   await expect(sheet.getByText("This will be approved instantly")).toBeVisible()
-  await sheet.getByRole("button", { name: /Groceries/ }).click()
-  await sheet.getByRole("button", { name: "Get $20 back" }).click()
+  await spendFlow(B, { reason: "Groceries", submit: "Get $20 back" })
   await expect(sheet.getByText("Checking Pot rules…")).toBeVisible()
   await expect(sheet.locator("[data-capsule]").getByText("Approved by Pot rules")).toBeVisible({ timeout: 30_000 })
   await expect(sheet.getByText("$20 sent to you")).toBeVisible({ timeout: 30_000 })
@@ -194,8 +193,7 @@ test("E-d: over the instant limit → needs 2 of 2 → the friend approves → e
   const sheet = A.getByRole("dialog", { name: `Spend from ${POT_NAME}` })
   await typeAmount(A, "120")
   await expect(sheet.getByText("This needs 2 of 2 approvals")).toBeVisible()
-  await sheet.getByRole("button", { name: /Tickets/ }).click()
-  await sheet.getByRole("button", { name: "Ask the group" }).click()
+  await spendFlow(A, { reason: "Tickets", submit: "Ask the group" })
   await expect(sheet.getByText("Sent to the group")).toBeVisible({ timeout: 45_000 })
   await expect(sheet.getByText("Approvals · 1 of 2")).toBeVisible({ timeout: 30_000 })
   await sheet.getByRole("button", { name: "Done" }).click()

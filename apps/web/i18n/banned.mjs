@@ -57,6 +57,13 @@ export const BANNED_CI = [
   "Rulebot",
   "on-?chain",
   "organizers",
+  // "Snap the receipt" (2026-11-01): say "read privately" / "a sealed computer", never the machinery
+  "AI",
+  "TEEs?",
+  "LLMs?",
+  "OCR",
+  "attestations?",
+  "enclaves?",
 ]
 
 /** Case-sensitive banned patterns. */

@@ -3,7 +3,7 @@
 // object; snake_case; amounts are U128 strings). Shapes mirror contracts/pot-hub/src/events.rs.
 // Sputnik emits no NEP-297 events; the token emits nep141 `ft_transfer`.
 
-import type { RawCategory, RawLimits, RawPath, RawPreset, RawReason, RawRules } from "./hub-raw.ts"
+import type { RawCategory, RawGoal, RawLimits, RawPath, RawPreset, RawReason, RawRuleExtras, RawRules, RawTier } from "./hub-raw.ts"
 
 export interface RawPayoutItem {
   account_id: string
@@ -26,6 +26,10 @@ export interface HubEventDataMap {
     path: RawPath
     reason: RawReason
     approvals_needed: number
+    /** hub 1.1.0 */
+    tier?: RawTier
+    /** hub 1.1.0: a pay-by-link request (receiver_id = the hub's escrow) */
+    link?: boolean
   }
   spend_auto_approved: {
     pot: string
@@ -67,6 +71,18 @@ export interface HubEventDataMap {
       paused: boolean
     }
   }
+  // ---- hub 1.1.0 (event version "1.1.0") ----
+  rule_extras_set: { pot: string; extras: RawRuleExtras; rules_version: number; policy_version: number }
+  spend_ok_approved: { pot: string; request_id: number; proposal_id: number; requester: string; by: string; amount: string }
+  trust_level_changed: { pot: string; member: string; from: number; to: number; settled: number; declined: number; cause: "settled" | "declined" }
+  link_funded: { pot: string; request_id: number; amount: string; expires_at_ms: number }
+  link_claimed: { pot: string; request_id: number; receiver_id: string; amount: string }
+  /** moved: false = the escrow payment had bounced, the money never left the Pot */
+  link_returned: { pot: string; request_id: number; amount: string; by: string; moved: boolean }
+  link_voided: { pot: string; request_id: number }
+  goal_reached: { pot: string; goal: RawGoal; total: string }
+  goal_refund_proposed: { pot: string; proposal_id: number; goal: RawGoal; total: string }
+  goal_refunded: { pot: string; proposal_id: number }
 }
 
 export type HubEventName = keyof HubEventDataMap
@@ -85,6 +101,16 @@ export const HUB_EVENT_NAMES: readonly HubEventName[] = [
   "rules_change_proposed",
   "proposal_synced",
   "config_changed",
+  "rule_extras_set",
+  "spend_ok_approved",
+  "trust_level_changed",
+  "link_funded",
+  "link_claimed",
+  "link_returned",
+  "link_voided",
+  "goal_reached",
+  "goal_refund_proposed",
+  "goal_refunded",
 ]
 
 /** A typed hub event (discriminated by `event`). */

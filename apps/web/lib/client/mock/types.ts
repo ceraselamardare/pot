@@ -35,6 +35,30 @@ export interface RequestRec {
   voteAt: Record<string, number>
   createdAt: number
   decidedAt?: number
+  /** hub 1.1.0: how it gets approved (absent = 1.0.0: instant or the group) */
+  tier?: Tier
+  /** the member whose OK approved a one-OK request */
+  okBy?: string | null
+  /** hub 1.1.0 pay by link: the payee is whoever holds the link (receiver = LINK_RECEIVER, the hub's escrow) */
+  link?: LinkRec
+}
+
+/** A pay-by-link request's link (the hub's LinkRecord twin; contracts-wave4 D4-6 lifecycle). */
+export interface LinkRec {
+  /** "ed25519:…" of the link key; its secret lives only in the link's #fragment */
+  pk: string
+  expiresAt: number
+  /** who it's for, the requester's own words (off-chain, like a memo) */
+  label?: string
+  status: "awaiting_funds" | "funded" | "claiming" | "claimed" | "returning" | "returned" | "void"
+  fundedAt?: number
+  doneAt?: number
+  /** who claimed it (a person id in the mock) */
+  claimer?: string
+  /** who sent the money back: the requester (cancelled) or anyone after expiry */
+  returnedBy?: string
+  /** fixtures only: a seeded link's secret (a real one lives only on the requester's device) */
+  demoSecret?: string
 }
 
 export interface EventRec {
@@ -82,6 +106,9 @@ export interface RulesRec {
 export interface RulesProposalRec extends ProposalRec {
   from: RulesRec
   rules: RulesRec
+  /** hub 1.1.0: the extras asked for (absent = keep the current ones) */
+  fromExtras?: ExtrasRec
+  extras?: ExtrasRec
 }
 
 export interface CloseRec extends ProposalRec {
@@ -91,6 +118,8 @@ export interface CloseRec extends ProposalRec {
   balance: number
   dust: number
   dustTo: string | null
+  /** hub 1.1.0: the all-or-nothing goal's refund (the hub proposed and approved it; no one asked) */
+  refund?: boolean
 }
 
 export interface PotRec {
@@ -119,6 +148,14 @@ export interface PotRec {
   closedAt?: number | null
   /** member id of whoever added money last (dust goes to them, D-09) */
   lastContributor?: string | null
+  /** hub 1.1.0 rule extras; absent = a Pot made before 1.1.0 (everything off) */
+  extras?: ExtrasRec
+  /** 2 = the hub may approve its own goal-refund close (all-or-nothing Pots) */
+  policyVersion?: number
+  /** earned trust per member id (kept even with trust off: the public record) */
+  trust?: Record<string, TrustRec>
+  /** the all-or-nothing / soft goal's progress (the goal itself is in `extras.goal`) */
+  goalState?: GoalStateRec
 }
 
 /** A comment on a request (the mock's stand-in for the request_comment table). */
@@ -196,6 +233,32 @@ export interface RequestVM {
   voteAt?: Record<string, number>
   /** comments on this request that aren't removed (the feed's commentCounts on testnet) */
   comments?: number
+  /** hub 1.1.0: instant / one OK / the group (absent = 1.0.0) */
+  tier?: Tier
+  /** whose OK approved a one-OK request */
+  okBy?: PersonVM | null
+  /** hub 1.1.0 pay by link: set for link requests (the receiver is then the link's label or "someone with the link") */
+  link?: LinkVM
+}
+
+/**
+ * A payment link as the UI shows it (lib/client/paylink/link.ts linkStatusOf):
+ *  waiting = not approved/funded yet · ready = funded, can be claimed · busy = a claim/return is in flight ·
+ *  claimed · expired = funded but past its date (on its way back) · returned = back in the Pot · void = never paid.
+ */
+export type LinkStatusVM = "waiting" | "ready" | "busy" | "claimed" | "expired" | "returned" | "void"
+
+export interface LinkVM {
+  status: LinkStatusVM
+  /** the requester's own words for who it's for (members only) */
+  label: string | null
+  expiresAt: number
+  /** who claimed it: their display name when they use Pot, else null ("someone") */
+  claimer: PersonVM | null
+  /** claimed / returned at */
+  doneAt: number | null
+  /** returned because it expired (true) or because the requester cancelled it (false) */
+  returnedOnExpiry: boolean
 }
 
 /** One comment in a request's thread (newest at the bottom). */
@@ -219,6 +282,8 @@ export type FeedItemVM =
   | { key: string; kind: "joined"; at: number; actor: PersonVM; txHash?: string }
   | { key: string; kind: "contribution"; at: number; actor: PersonVM; amount: Micro; txHash?: string }
   | { key: string; kind: "request"; at: number; request: RequestVM; txHash?: string }
+  /** hub 1.1.0: the goal was reached / the all-or-nothing refund started / everyone got their money back */
+  | { key: string; kind: "goal"; at: number; state: "reached" | "refunding" | "refunded"; amount: Micro; txHash?: string }
 
 export interface MemberVM {
   person: PersonVM
@@ -227,6 +292,8 @@ export interface MemberVM {
   getsBack: Micro
   spentInstant: Micro
   isMe: boolean
+  /** hub 1.1.0 earned trust (absent on 1.0.0 data) */
+  trust?: TrustVM | null
 }
 
 /** A close request (P-9): what the group votes on, decoded from the DAO proposal itself (testnet). */
@@ -267,6 +334,9 @@ export interface RulesChangeVM {
   expiresAt: number
   /** when each member approved/declined (mock only) */
   voteAt?: Record<string, number>
+  /** hub 1.1.0: the extras before / asked for (absent = unchanged) */
+  fromExtras?: ExtrasVM
+  toExtras?: ExtrasVM
 }
 
 /** What closing now would pay (hub preview_close on testnet; the sdk prorata twin in the mock). */
@@ -318,6 +388,12 @@ export interface PotVM {
   moneyUnit?: Micro
   /** null on testnet when this device doesn't hold a live link's secret (make a new one) */
   invite: { pk: string; secret: string; expiresAt: number; usesLeft: number; createdBy: PersonVM } | null
+  /** hub 1.1.0 rule extras (absent on 1.0.0 data = everything off) */
+  extras?: ExtrasVM
+  /** the Pot's goal with a date (hub 1.1.0 extras.goal + get_goal), null without one */
+  goalDetail?: GoalVM | null
+  /** 1 or 2 (2 = all-or-nothing goals possible) */
+  policyVersion?: number
 }
 
 export interface PotCardVM {
@@ -332,4 +408,90 @@ export interface PotCardVM {
   goal: Micro | null
   totalIn: Micro
   members: PersonVM[]
+  /** hub 1.1.0: the Pot's goal with a date, for the card's chip */
+  goalDetail?: GoalVM | null
+  /** hub 1.1.0: my earned trust in this Pot */
+  myTrust?: TrustVM | null
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// hub 1.1.0 (wave 4): earned trust, the one-OK tier, the goal with a date (all or nothing)
+
+/** How a request gets approved: by the rules (instant), one other member's OK, or the group's majority. */
+export type Tier = "instant" | "one_ok" | "group"
+
+export interface GoalRec {
+  /** cents */
+  amount: number
+  deadline: number
+  allOrNothing: boolean
+}
+
+export interface ExtrasRec {
+  trust: boolean
+  /** cents; 0 = one-OK off */
+  oneOkCap: number
+  links: boolean
+  goal: GoalRec | null
+}
+
+/** A member's record (contracts TrustRecord): +1 level per 3 qualifying paid spends, −1 per declined request. */
+export interface TrustRec {
+  level: number
+  streak: number
+  settled: number
+  /** cents */
+  settledAmount: number
+  declined: number
+  lastDeclinedAt?: number | null
+}
+
+export interface GoalStateRec {
+  reachedAt?: number | null
+  /** the hub's refund close: started at (phase 1), done at (phase 2) */
+  refundStartedAt?: number | null
+  refundedAt?: number | null
+  /** cents per member, what the refund paid */
+  refunds?: { account: string; amount: number }[]
+}
+
+export interface ExtrasVM {
+  trust: boolean
+  /** 0n = off */
+  oneOkCap: Micro
+  links: boolean
+}
+
+export interface TrustVM {
+  enabled: boolean
+  /** 0 New · 1 Trusted · 2 Very trusted */
+  level: number
+  maxLevel: number
+  /** qualifying paid spends still needed for the next level (0 at the top or with trust off) */
+  nextLevelIn: number
+  step: number
+  /** a spend counts toward a level from this amount */
+  minQualifying: Micro
+  settled: number
+  declined: number
+  baseCap: Micro
+  /** baseCap × (1 + level) with trust on */
+  effectiveCap: Micro
+  /** min(effectiveCap, what's left of the per-person limit) */
+  instantUpTo: Micro
+  /** the cap at the next level, null at the top or with trust off */
+  nextCap: Micro | null
+}
+
+export type GoalStateVM = "collecting" | "reached" | "missed" | "refundable" | "refunding" | "refunded"
+
+export interface GoalVM {
+  amount: Micro
+  deadline: number
+  allOrNothing: boolean
+  totalIn: Micro
+  state: GoalStateVM
+  reachedAt: number | null
+  /** an all-or-nothing goal not reached yet: every spend waits */
+  spendsBlocked: boolean
 }

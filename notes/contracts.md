@@ -1,5 +1,9 @@
 # Contracts: progress, deviations, open issues
 
+> **Wave 4 (2026-11-01): hub 1.1.0** adds earned trust, the one-OK tier, pay by link and the all-or-nothing goal,
+> with a `migrate` from the deployed 1.0.0 state. Design, interface, invariant amendments and the human's deploy steps:
+> [contracts-wave4.md](contracts-wave4.md). Not deployed.
+
 > Owner: the contracts engineer. Spec: plan/contracts-spec.md (v1.0, Rev 5). Last updated 2026-10-22.
 > Only sandbox work was done here: no testnet or mainnet transactions and no git.
 > Toolchain per D-12: Rust 1.93.0 (`contracts/rust-toolchain.toml`), near-sdk and

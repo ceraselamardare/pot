@@ -7,7 +7,7 @@
 //    this device's invite): refetched when `seq` or the balance changes, and every 3 s while a vote is open
 //    (votes land on the DAO, which the hub's `seq` only sees after the relayer's `sync`).
 //  - Every chain value keeps its block height (Viewed<T>); actions settle when views reach their block (§3.5).
-import type { Api, ClosePreview, Micro, MemberView, PotSummary, PotView, Proposal, RequestView, Viewed } from "@pot/sdk"
+import type { Api, ClosePreview, GoalView, LinkView, Micro, MemberView, PotSummary, PotView, Proposal, RequestView, TrustView, Viewed } from "@pot/sdk"
 import { useQueries, useQuery, type QueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { daoOf, sdkConfig } from "../config"
@@ -19,6 +19,8 @@ import { loadInvite } from "./invites"
 import { refreshQuery } from "./refresh"
 import { useLiveSession } from "./session"
 import { DEFAULT_GOAL_EACH, liveCardVM, livePotVM, type LiveBundle, type LiveContext } from "./vm"
+import { readGoal, readTrusts } from "./wave4"
+import { readLinks } from "./vm-paylink"
 import type { AvatarId } from "@/lib/avatars"
 
 export const qk = {
@@ -39,6 +41,12 @@ export interface Bundle {
   invite: LiveBundle["invite"]
   /** hub preview_close at the live balance (open Pots only) */
   closePreview: ClosePreview | null
+  /** hub 1.1.0: every member's earned trust ([] on a 1.0.0 hub) */
+  trusts?: TrustView[]
+  /** hub 1.1.0: the goal with a date (null without one) */
+  goal?: GoalView | null
+  /** hub 1.1.0 pay by link: get_link per link request */
+  links?: Record<number, LinkView>
   /** lowest block height among the chain reads in it */
   blockHeight: number
 }
@@ -73,7 +81,7 @@ export async function fetchBundle(qc: QueryClient, dao: string): Promise<Bundle>
   const pot = view.value
   if (!pot) return { members: [], requests: [], proposalIds: [], feed: null, invite: null, closePreview: null, blockHeight: view.blockHeight }
   const from = Math.max(0, pot.requestCount - 50)
-  const [members, requests, feed, stored, closePreview] = await Promise.all([
+  const [members, requests, feed, stored, closePreview, trusts, goal] = await Promise.all([
     c.hub.getMembers(dao as never, balance.value),
     pot.requestCount > 0 ? c.hub.getRequests(dao as never, from, 50) : Promise.resolve({ value: [] as RequestView[], blockHeight: view.blockHeight }),
     fetchFeed(dao),
@@ -84,6 +92,9 @@ export async function fetchBundle(qc: QueryClient, dao: string): Promise<Bundle>
           .then((v) => v.value)
           .catch(() => null)
       : Promise.resolve(null),
+    // hub 1.1.0 views: only for Pots with trust on / a goal (a 1.0.0 hub reads as "everything off" and has no views)
+    pot.extras?.trust ? readTrusts(dao, c) : Promise.resolve([] as TrustView[]),
+    pot.extras?.goal ? readGoal(dao, c) : Promise.resolve(null),
   ])
   const ids = requests.value.map((r) => r.proposalId).filter((x): x is number => x !== null)
   if (pot.closeProposalId !== undefined && pot.closeProposalId !== null) ids.push(pot.closeProposalId)
@@ -100,6 +111,9 @@ export async function fetchBundle(qc: QueryClient, dao: string): Promise<Bundle>
     feed,
     invite,
     closePreview,
+    trusts,
+    goal,
+    links: await readLinks(dao, requests.value, c),
     blockHeight: Math.min(members.blockHeight, requests.blockHeight),
   }
 }

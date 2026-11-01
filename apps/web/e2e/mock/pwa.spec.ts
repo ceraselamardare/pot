@@ -3,7 +3,7 @@
 // mocked POST /api/push/subscription, the app badge, the service worker file, and the per-invite link preview.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, spendFlow, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 const UA = {
@@ -288,8 +288,7 @@ test.describe("push permission (after install, with a reason; D-42)", () => {
     await page.addInitScript(() => localStorage.setItem("pot.push", JSON.stringify({ prompted: true, snoozedUntil: 0, subscribed: true })))
     await page.goto("/p/lisbon-trip?sheet=spend")
     const sheet = await openedSheet(page, "Spend from Lisbon Trip")
-    await typeAmount(page, "300")
-    await sheet.getByRole("button", { name: "Ask the group" }).click()
+    await spendFlow(page, { amount: "300", submit: "Ask the group" })
     await expect(sheet.getByText("Sent to the group")).toBeVisible()
     await sheet.getByRole("button", { name: "Done" }).click()
     await becomePerson(page, "sam")

@@ -7,6 +7,8 @@
 //   scripts/run deploy lock-token      delete every key of usdc.<root> (S-4), then verify the empty key list
 //   scripts/run deploy hub             deploy + init pot-hub (float 0.05, relayers = [users.<root>], reserve 0.5)
 //   scripts/run deploy redeploy-hub    layout-compatible code update (without-init-call), then status
+//   scripts/run deploy upgrade-hub     hub 1.0.0 → 1.1.0 (wave 4): DeployContract + `migrate` in ONE tx
+//                                      (notes/contracts-wave4.md); refuses unless the chain runs 1.0.0
 //   scripts/run deploy fund <account> <NEAR>   top up from the root (e.g. the hub or the relayer)
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
@@ -88,6 +90,21 @@ function hubInit() {
   }
 }
 
+/**
+ * Wave 4: the 1.1.0 state layout appends three maps, so the new code must run `migrate` in the same
+ * transaction as the deploy (near-cli-rs `with-init-call` = one tx with DeployContract + FunctionCall).
+ * A deploy without it would leave every hub call failing on state deserialization.
+ */
+async function upgradeHub() {
+  const before = await view<{ version: string }>(IDS.hub, "get_config")
+  if (before.version !== "1.0.0") fail(`${IDS.hub} runs ${before.version}, not 1.0.0: nothing to migrate (use redeploy-hub for a 1.1.x code update)`)
+  if (!cliDeploy(IDS.hub, WASM.hub, { method: "migrate", args: {} }).ok) fail("hub upgrade (deploy + migrate)")
+  const after = await view<{ version: string }>(IDS.hub, "get_config")
+  console.log(`${IDS.hub} version ${before.version} → ${after.version}`)
+  if (after.version !== "1.1.0") process.exitCode = 1
+  await status()
+}
+
 async function hub(redeploy: boolean) {
   const a = await account(IDS.hub)
   if (!a) fail(`${IDS.hub} missing: run accounts`)
@@ -151,11 +168,14 @@ switch (mode) {
   case "redeploy-hub":
     await hub(true)
     break
+  case "upgrade-hub":
+    await upgradeHub()
+    break
   case "fund":
     if (!x || !y) fail("fund <account> <NEAR>")
     nearCli(["tokens", IDS.root, "send-near", x!, `${y} NEAR`, "network-config", "testnet", "sign-with-legacy-keychain", "send"])
     break
   default:
-    console.log("usage: scripts/run deploy status | accounts | token | lock-token | hub | redeploy-hub | fund <account> <NEAR>")
+    console.log("usage: scripts/run deploy status | accounts | token | lock-token | hub | redeploy-hub | upgrade-hub | fund <account> <NEAR>")
     process.exit(1)
 }

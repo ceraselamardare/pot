@@ -4,7 +4,7 @@
 // The mobile projects save notes/screens/you-{day,night}.png (balance + activity).
 import { fileURLToPath } from "node:url"
 import { expect, test, type Locator, type Page } from "@playwright/test"
-import { asPerson, axe, brandChecks, openedSheet, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, brandChecks, openedSheet, spendFlow } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 const TX_URL = /^https:\/\/testnet\.nearblocks\.io\/txns\/[1-9A-HJ-NP-Za-km-z]{43,44}$/
@@ -21,9 +21,7 @@ async function instantSpend(page: Page) {
   await page.goto("/p/lisbon-trip")
   await page.getByRole("button", { name: "Spend" }).click()
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
-  await typeAmount(page, "84")
-  await sheet.getByRole("button", { name: /Groceries/ }).click()
-  await sheet.getByRole("button", { name: "Get $84 back" }).click()
+  await spendFlow(page, { amount: "84", reason: "Groceries", submit: "Get $84 back" })
   await expect(sheet.getByText("$84 sent to you")).toBeVisible()
   // the result screen's receipt
   await expectReceipt(sheet.getByRole("link", { name: "Receipt for $84 sent to you, opens the explorer" }))

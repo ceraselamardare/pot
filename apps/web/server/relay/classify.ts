@@ -247,6 +247,41 @@ export function classify(o: FinalOutcome, m: PolicyMatch, c: ClassifyContext): C
         payout === "failed",
       )
     }
+    case "R13": {
+      // hub 1.1.0 ok_request: the hub approves as rulebot on this OK; the payout is a detached promise (D7)
+      if (fin.kind === "failure") return innerFail(fin.error)
+      const v = obj(fin.kind === "value" ? fin.json : null)
+      if (!v) return innerFail("ok_request: no outcome", "UNKNOWN")
+      const ev = potEvent("spend_ok_approved")
+      const payout = payoutState(o, m.potId ?? "", c.usdcId)
+      const result: RelayResult = {
+        type: "ok",
+        requestId: Number(v.request_id ?? m.requestId ?? 0),
+        proposalId: ev ? Number(evData(ev).proposal_id) : null,
+        approved: v.ok === true,
+        status: String(v.status ?? "unknown"),
+        ...(v.reason ? { reason: String(v.reason) } : {}),
+      }
+      if (v.ok !== true) return { ...innerFail(`ok_request: ${String(v.reason ?? "refused")}`, `OK_${String(v.reason ?? "refused").toUpperCase()}`), result }
+      return ok(result, payout === "failed")
+    }
+    case "R14":
+    case "R15": {
+      // hub 1.1.0 claim_link / reclaim_link: LinkOutcome {request_id, ok, status, receiver_id, reason?}
+      if (fin.kind === "failure") return innerFail(fin.error)
+      const v = obj(fin.kind === "value" ? fin.json : null)
+      if (!v) return innerFail("link: no outcome", "UNKNOWN")
+      const result: RelayResult = {
+        type: "link",
+        requestId: Number(v.request_id ?? m.requestId ?? 0),
+        ok: v.ok === true,
+        status: String(v.status ?? "unknown"),
+        ...(typeof v.receiver_id === "string" ? { receiverId: v.receiver_id as `${string}` } : {}),
+        ...(v.reason ? { reason: String(v.reason) } : {}),
+      }
+      if (v.ok !== true) return { ...innerFail(`link: ${String(v.reason ?? "failed")}`, `LINK_${String(v.reason ?? "failed").toUpperCase()}`), result }
+      return ok(result)
+    }
     case "TEST": {
       if (fin.kind === "failure") return innerFail(fin.error)
       const failed = firstFailure(o)

@@ -4,7 +4,7 @@
 
 import { KeyPairEd25519, PublicKey } from "near-api-js"
 import { base58Encode, base64Decode, base64Encode } from "../encoding.ts"
-import { generateInviteSeed, invitePkToParam, joinMessageBytes, secretToSeed, seedToSecret } from "../invite.ts"
+import { claimMessageBytes, generateInviteSeed, invitePkToParam, joinMessageBytes, secretToSeed, seedToSecret } from "../invite.ts"
 import type { PublicKeyStr } from "../types/ids.ts"
 
 export interface InviteKey {
@@ -48,6 +48,26 @@ export function verifyJoin(invitePk: PublicKeyStr | string, daoId: string, joine
     const sig = base64Decode(signatureB64)
     if (sig.length !== 64) return false
     return PublicKey.from(invitePk).verify(joinMessageBytes(daoId, joiner), sig)
+  } catch {
+    return false
+  }
+}
+
+/** hub 1.1.0: a new pay-by-link key (same shape as an invite key: the secret goes in the #fragment). */
+export const generateClaimKey = (): InviteKey => generateInvite()
+
+/** Signs `pot-claim:v1:<hub>:<dao>:<request_id>:<receiver>` with the link seed (or `#secret`) → padded base64. */
+export function signClaim(seedOrSecret: Uint8Array | string, hubId: string, daoId: string, requestId: number, receiver: string): string {
+  const seed = typeof seedOrSecret === "string" ? secretToSeed(seedOrSecret) : seedOrSecret
+  return base64Encode(keyPairFromSeed(seed).sign(claimMessageBytes(hubId, daoId, requestId, receiver)).signature)
+}
+
+/** Verifies a claim signature as the hub's `env::ed25519_verify` does. */
+export function verifyClaim(claimPk: PublicKeyStr | string, hubId: string, daoId: string, requestId: number, receiver: string, signatureB64: string): boolean {
+  try {
+    const sig = base64Decode(signatureB64)
+    if (sig.length !== 64) return false
+    return PublicKey.from(claimPk).verify(claimMessageBytes(hubId, daoId, requestId, receiver), sig)
   } catch {
     return false
   }

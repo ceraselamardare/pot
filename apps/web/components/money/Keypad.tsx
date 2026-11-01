@@ -61,7 +61,7 @@ export function Keypad({
           disabled={disabled}
           aria-label={k === "del" ? t("a11y.key.delete") : k === "." ? t("a11y.key.decimal") : k}
           onClick={() => onChange(keypadPress(value, k))}
-          className="grid h-14 place-items-center rounded-md bg-surface-sunken font-display text-title text-ink transition-[background-color,transform] duration-120 ease-standard hover:bg-line active:scale-[.97] active:bg-line disabled:opacity-50 motion-reduce:active:scale-100"
+          className="grid h-14 place-items-center rounded-md bg-surface-sunken [@media(max-height:680px)]:h-12 font-display text-title text-ink transition-[background-color,transform] duration-120 ease-standard hover:bg-line active:scale-[.97] active:bg-line disabled:opacity-50 motion-reduce:active:scale-100"
         >
           {k === "del" ? <Delete aria-hidden className="size-6" strokeWidth={2} /> : k}
         </button>

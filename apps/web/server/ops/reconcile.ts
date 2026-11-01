@@ -5,8 +5,10 @@
 //   2. open Pots (activity ≤ 14 days): expired vote requests → `sync` (→ "expired" push); payout_failed
 //      requests → `retry_payout` when the DAO's USDC covers them (≤ 3 per proposal per UTC day, shared with
 //      Finalize); missed "needs your approval" pushes re-sent (notification_log dedupes)
+//   2b. hub 1.1.0: missed all-or-nothing goals → refund_unfunded (propose, then approve; back-off: ops/goals.ts)
 //   3. balances (relayer / hub / treasury) and global daily caps → alerts
 //   4. retention deletes
+//   5. pay by link (hub 1.1.0): expired, unclaimed links go back to their Pots (reclaim_link, ≤ 10 per run; ops/links.ts)
 // (The demo-only steps, DAO float top-ups for demo Pots and the demo pool refill, were removed in Rev 9.)
 import "server-only"
 import { and, gt, inArray, sql } from "drizzle-orm"
@@ -19,16 +21,20 @@ import { limit } from "../quotas"
 import { serverRetryPayout, serverSync, type RelayDeps } from "../relay/pipeline"
 import { reconcileStaleRelays } from "../relay/reconcile"
 import { checkBalances, checkGlobalCaps, type BalanceReport } from "./balances"
+import { refundUnfundedGoals, type GoalsReport } from "./goals"
 import { runRetention } from "./retention"
+import { reclaimExpiredLinks, type ReclaimReport } from "./links"
 
 export interface ReconcileReport {
   skipped?: "busy"
   ms: number
   relays?: Awaited<ReturnType<typeof reconcileStaleRelays>>
   pots?: { scanned: number; expiredSynced: number; payoutRetries: number; approvalPushes: number }
+  goals?: GoalsReport
   balances?: BalanceReport
   caps?: Awaited<ReturnType<typeof checkGlobalCaps>>
   retention?: Record<string, number>
+  links?: ReclaimReport
   errors: string[]
 }
 
@@ -54,9 +60,11 @@ export async function runReconcile(
   try {
     report.relays = await step("relays", () => reconcileStaleRelays(deps, { requestId: opts.holder }))
     report.pots = await step("pots", () => reconcilePots(deps, `${cause}:${opts.holder}`))
+    report.goals = await step("goals", () => refundUnfundedGoals(deps, `${cause}:${opts.holder}`, (opts.now ?? new Date()).getTime()))
     report.balances = await step("balances", () => checkBalances(deps))
     report.caps = await step("caps", () => checkGlobalCaps(deps.db))
     report.retention = await step("retention", () => runRetention(deps.db))
+    report.links = await step("links", () => reclaimExpiredLinks(deps, `${cause}:${opts.holder}`))
   } finally {
     await releaseLease(deps.db, "cron:reconcile", opts.holder).catch(() => undefined)
     report.ms = Date.now() - started

@@ -43,12 +43,20 @@ export async function eventually<T>(read: () => Promise<T>, ok: (v: T) => boolea
 export const potBalance = async (slug: string) => (await chain.usdc.balanceOf(dao(slug))).value
 export const usdcOf = async (account: string) => (await chain.usdc.balanceOf(account as never)).value
 
-/** The signed-in account of a browser context (GET /api/session with its cookies). */
-export async function accountOf(request: APIRequestContext): Promise<string> {
-  const r = await request.get("/api/session")
-  const j = (await r.json()) as { session: { accountId: string } | null }
-  expect(j.session, "signed in").not.toBeNull()
-  return j.session!.accountId
+/** The signed-in account of a browser context (GET /api/session with its cookies). Waits up to `timeoutMs` for the
+ *  session: walletSignIn only taps the button, and the NEP-413 sign-in (challenge → mock wallet → POST
+ *  /api/session/wallet) lands a moment later. */
+export async function accountOf(request: APIRequestContext, timeoutMs = 30_000): Promise<string> {
+  const end = Date.now() + timeoutMs
+  let session: { accountId: string } | null = null
+  for (;;) {
+    const r = await request.get("/api/session")
+    session = ((await r.json()) as { session: { accountId: string } | null }).session
+    if (session || Date.now() > end) break
+    await new Promise((res) => setTimeout(res, 500))
+  }
+  expect(session, "signed in").not.toBeNull()
+  return session!.accountId
 }
 
 /** Rev 9: the browser signs in with the e2e mock wallet holding this throwaway account's key (accounts.ts). */

@@ -11,7 +11,7 @@ import { t, type MessageKey } from "@/i18n/t"
 import { announce, isOnline } from "./browser"
 import { IS_LIVE } from "./config"
 import { ActionError, isTransportError } from "./errors"
-import type { Rules as SdkRules } from "@pot/sdk"
+import type { RuleExtras, Rules as SdkRules } from "@pot/sdk"
 import { formatUsd, toCents, type Micro } from "./money"
 import * as store from "./mock/store"
 import { mockTxHash } from "./mock/world"
@@ -20,6 +20,8 @@ import type { PersonaId } from "./mock/fixtures"
 import { ops, type OpHandle } from "./ops/store"
 import { coachTrigger } from "./pwa/coach"
 import * as live from "./live/actions"
+import * as liveWave4 from "./live/wave4"
+import { extrasRecOf } from "./wave4-form"
 
 function revertToast(key: MessageKey) {
   toast.error(t(key as "generic.error"))
@@ -78,6 +80,12 @@ export function approveInline(req: RequestVM, actor: string, undoMs = 4000): OpH
   return ops.run(
     { kind: "vote", pot: req.slug, actor, requestId: req.id, amount: req.amount, delayUntil: Date.now() + undoMs },
     async () => {
+      // hub 1.1.0: a one-OK request is approved by one OK (ok_request), not a vote
+      if (canGiveOk(req, actor)) {
+        const ok = await okRequest(req)
+        if (ok !== "approved" && ok !== "failed") throw new Error(ok)
+        return `request:${req.id}`
+      }
       const r = await vote(req, "Approve")
       if (r === "expired" || r === "decided" || r === "not_member") throw new Error(r)
       return `request:${req.id}`
@@ -95,6 +103,10 @@ export interface SpendInput {
   category: Category
   note?: string
   receiver: string
+  /** pay by link (lib/client/paylink/actions.ts): the link key's public half, its date and who it's for */
+  link?: { pk: string; expiresAt: number; label?: string }
+  /** the request's op id (testnet), when the caller needs it before sending */
+  requestRef?: string
 }
 
 export interface SpendResult {
@@ -108,8 +120,9 @@ export interface SpendResult {
 }
 
 export async function requestSpend(slug: string, input: SpendInput): Promise<SpendResult> {
-  if (IS_LIVE) return live.requestSpend(slug, input)
-  const r = await store.requestSpend(slug, { amountCents: toCents(input.amount), category: input.category, note: input.note, receiver: input.receiver })
+  if (IS_LIVE)
+    return live.requestSpend(slug, { ...input, link: input.link ? { claimPk: input.link.pk, expiresAtMs: input.link.expiresAt } : undefined })
+  const r = await store.requestSpend(slug, { amountCents: toCents(input.amount), category: input.category, note: input.note, receiver: input.receiver, ...(input.link ? { link: input.link } : {}) })
   const payout = r.payout === "sent" ? "sent" : "pending"
   return { id: r.id, path: r.path, payout, final: Promise.resolve(payout), txHash: mockTxHash(`${slug}:request:${r.id}`) }
 }
@@ -122,10 +135,12 @@ export interface CreateInput {
   /** the Pot rules from the Create form; sent as preset "custom" + these rules (no templates) */
   rules: SdkRules
   invite: { pk: string; secret: string }
+  /** hub 1.1.0: trust, the one-OK ceiling, the goal (always sent: explicit beats the hub's defaults) */
+  extras?: RuleExtras
 }
 
 export async function createPot(input: CreateInput): Promise<string> {
-  const slug = await (IS_LIVE ? live.createPot(input) : store.createPot(input))
+  const slug = await (IS_LIVE ? live.createPot(input) : store.createPot({ ...input, extras: input.extras ? extrasRecOf(input.extras) : undefined }))
   coachTrigger(slug, "pot_created") // F-23: or after creating a Pot
   return slug
 }
@@ -161,6 +176,8 @@ export async function voteClose(slug: string, proposalId: number, v: "Approve" |
 export interface RulesInput {
   instantCap: Micro
   memberBudget: Micro
+  /** hub 1.1.0: the extras to ask for; absent = keep the Pot's current ones */
+  extras?: RuleExtras
 }
 
 type RulesPot = { slug: string; rules: { instantPayees: "members" | "members_and_allowlist"; payeeAllowlist?: string[]; expiryDays: number } }
@@ -184,14 +201,28 @@ const toRec = (pot: RulesPot, r: RulesInput) => ({
 
 /** Several members: ask the group (propose_rules + own approval at 300 Tgas). */
 export async function proposeRules(pot: RulesPot, r: RulesInput): Promise<{ proposalId: number | null; status: "needs" | "approved" }> {
-  return IS_LIVE ? live.proposeRules(pot.slug, toSdkRules(pot, r)) : store.proposeRules(pot.slug, toRec(pot, r))
+  return IS_LIVE ? live.proposeRules(pot.slug, toSdkRules(pot, r), r.extras) : store.proposeRules(pot.slug, toRec(pot, r), r.extras ? extrasRecOf(r.extras) : undefined)
 }
 
 /** Sole member: the change applies at once (set_rules). */
 export async function setRules(pot: RulesPot, r: RulesInput): Promise<void> {
-  return IS_LIVE ? live.setRules(pot.slug, toSdkRules(pot, r)) : store.setRules(pot.slug, toRec(pot, r))
+  return IS_LIVE ? live.setRules(pot.slug, toSdkRules(pot, r), r.extras) : store.setRules(pot.slug, toRec(pot, r), r.extras ? extrasRecOf(r.extras) : undefined)
 }
 
 export async function voteRules(slug: string, proposalId: number, v: "Approve" | "Reject"): Promise<VoteResult> {
   return IS_LIVE ? live.voteRules(slug, proposalId, v) : store.voteRules(slug, v)
+}
+
+// ------------------------------------------------------------------------------------------------- hub 1.1.0
+
+export type OkResult = "approved" | "failed" | "objection" | "decided" | "expired" | "self" | "not_one_ok" | "not_member"
+
+/** Can `me` give the one OK on this request (not the requester, no "no" yet, still waiting)? */
+export function canGiveOk(r: Pick<RequestVM, "tier" | "status" | "requester" | "declines">, me: string | null): boolean {
+  return !!me && r.tier === "one_ok" && r.status === "needs" && r.requester.id !== me && r.declines.length === 0
+}
+
+/** The one OK on a one-OK request (hub ok_request; relayer R13): the hub then approves it as the rules. */
+export async function okRequest(req: Pick<RequestVM, "slug" | "id" | "proposalId">): Promise<OkResult> {
+  return IS_LIVE ? liveWave4.okRequest(req.slug, req.id) : store.okRequest(req.slug, req.id)
 }

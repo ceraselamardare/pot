@@ -25,7 +25,7 @@ import type { PotVM } from "@/lib/client/mock/types"
 import { formatUsd } from "@/lib/client/money"
 import { useNow } from "@/lib/client/time"
 
-type ErrorKey = "close.busy" | "close.error" | "close.in_flight" | "close.cooldown" | "close.payouts_pending" | "close.nothing" | "relayer.cap"
+type ErrorKey = "close.busy" | "close.error" | "close.in_flight" | "close.cooldown" | "close.payouts_pending" | "close.nothing" | "close.links_pending" | "relayer.cap"
 
 type Phase =
   | { tag: "idle" }
@@ -53,6 +53,8 @@ export function closeErrorKey(e: unknown): ErrorKey {
       return "close.payouts_pending"
     case "ERR_NO_CONTRIBUTIONS":
       return "close.nothing"
+    case "ERR_LINKS_PENDING":
+      return "close.links_pending"
   }
   if (e instanceof ActionError && e.cls === "rate_limited") return "relayer.cap"
   return "close.error"
@@ -132,7 +134,9 @@ export function CloseSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
           ? "close.nothing"
           : pot.closePreview?.blockedReason === "payouts_pending"
             ? "close.payouts_pending"
-            : null
+            : pot.closePreview?.blockedReason === "links_pending"
+              ? "close.links_pending"
+              : null
 
   const title =
     mode === "closed"

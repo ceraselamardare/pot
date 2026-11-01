@@ -57,7 +57,7 @@ fn panics_with<R>(code: &str, f: impl FnOnce() -> R) {
 
 fn create(hub: &mut PotHub, creator: &str, slug: &str, ms: u64) {
     set_ctx(creator, "relayer.near", ms, 0, vec![]);
-    let _ = hub.create_pot(slug.into(), "x".into(), Preset::Trip, None, None, None, None);
+    let _ = hub.create_pot(slug.into(), "x".into(), Preset::Trip, None, None, None, None, None);
 }
 
 /// Creates and confirms a Pot (create_pot + on_pot_created Ok).
@@ -66,7 +66,7 @@ fn make_pot(hub: &mut PotHub, creator: &str, slug: &str, ms: u64) -> AccountId {
     let dao = acc(&format!("{slug}.pots.near"));
     set_ctx("pots.near", "relayer.near", ms, 0, vec![PromiseResult::Successful(vec![])]);
     let rules = Preset::Trip.default_rules().unwrap();
-    let _ = hub.on_pot_created(dao.clone(), slug.into(), "x".into(), None, Preset::Trip, rules, acc(creator), None, NearToken::from_millinear(50), true, (ms / DAY) as u32);
+    let _ = hub.on_pot_created(dao.clone(), slug.into(), "x".into(), None, Preset::Trip, rules, acc(creator), None, NearToken::from_millinear(50), true, (ms / DAY) as u32, None, None);
     dao
 }
 
@@ -152,7 +152,7 @@ fn sync_expiry_uses_dao_submission_time() {
     let dao = make_pot(&mut hub, "maya.near", "boat", T0);
     // a vote-path request (over cap)
     set_ctx("maya.near", "relayer.near", T0, 0, vec![]);
-    let _ = hub.request_spend(dao.clone(), U128(300_000_000), acc("maya.near"), Category::Tickets, "abcdefgh1".into());
+    let _ = hub.request_spend(dao.clone(), U128(300_000_000), acc("maya.near"), Category::Tickets, "abcdefgh1".into(), None);
     let policy = br#"{"roles":[{"name":"member","kind":{"Group":["maya.near"]}},{"name":"rulebot","kind":{"Group":["pots.near"]}}]}"#;
     set_ctx(
         "pots.near",

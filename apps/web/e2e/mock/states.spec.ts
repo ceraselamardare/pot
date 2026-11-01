@@ -1,7 +1,7 @@
 // Degraded and edge states (M-10, M-15, M-05, M-21 c): offline banner + disabled money CTAs, revert-with-toast,
 // reduced motion (no burst, the 1.2 s beat stays), inline approve with Undo, Appearance switching.
 import { expect, test } from "@playwright/test"
-import { asPerson, becomePerson, openedSheet, typeAmount } from "../fixtures/pot"
+import { asPerson, becomePerson, openedSheet, spendFlow, typeAmount } from "../fixtures/pot"
 
 test("offline: banner, cached numbers stay, money buttons explain; back online", async ({ page, context }) => {
   await asPerson(page, "maya")
@@ -40,8 +40,7 @@ test.describe("reduced motion", () => {
     await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?sheet=spend")
     const sheet = await openedSheet(page, "Spend from Lisbon Trip")
-    await typeAmount(page, "20")
-    await sheet.getByRole("button", { name: "Get $20 back" }).click()
+    await spendFlow(page, { amount: "20", submit: "Get $20 back" })
     await expect(sheet.getByText("Checking Pot rules…")).toBeVisible()
     const t0 = Date.now()
     const running = await sheet.locator("[data-typing-dots] .pot-dot").first().evaluate((el) => el.getAnimations().length)
@@ -57,8 +56,7 @@ test("inline Approve: 4 s Undo sends nothing", async ({ page }) => {
   await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip?sheet=spend")
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
-  await typeAmount(page, "300")
-  await sheet.getByRole("button", { name: "Ask the group" }).click()
+  await spendFlow(page, { amount: "300", submit: "Ask the group" })
   await sheet.getByRole("button", { name: "Done" }).click()
   await becomePerson(page, "leo")
   const card = page.locator("[data-request-card]").locator("visible=true").first()
@@ -92,8 +90,7 @@ test("a cold deep link to a request opens the Pot with the Approve sheet; closin
   await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip?sheet=spend")
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
-  await typeAmount(page, "300")
-  await sheet.getByRole("button", { name: "Ask the group" }).click()
+  await spendFlow(page, { amount: "300", submit: "Ask the group" })
   await expect(sheet.getByText("Sent to the group")).toBeVisible()
   await page.goto("/p/lisbon-trip?r=12")
   const approve = await openedSheet(page, "Maya asks for $300")

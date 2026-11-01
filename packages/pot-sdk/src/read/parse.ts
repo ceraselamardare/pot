@@ -7,6 +7,12 @@ import type {
   RawClosePreview,
   RawCloseOutcome,
   RawConfigView,
+  RawGoalView,
+  RawLinkOutcome,
+  RawLinkView,
+  RawOkOutcome,
+  RawRecordEntry,
+  RawTrustView,
   RawCreatePotOutcome,
   RawInviteView,
   RawJoinOutcome,
@@ -26,6 +32,12 @@ import type {
   ClosePreview,
   CloseOutcome,
   ConfigView,
+  GoalView,
+  LinkOutcome,
+  LinkView,
+  OkOutcome,
+  RecordEntry,
+  TrustView,
   CreatePotOutcome,
   InviteView,
   JoinOutcome,
@@ -43,7 +55,7 @@ import type {
 } from "../types/hub.ts"
 import type { ActionsLogEntry, Policy, PolicySummary, Proposal, RawActionsLogEntry, RawProposal, VotePolicy } from "../types/dao.ts"
 import type { RawStorageBalance, StorageBalance } from "../types/usdc.ts"
-import { rulesFromRaw } from "../rules.ts"
+import { extrasFromRaw, rulesFromRaw } from "../rules.ts"
 import { toSpendPreviewReason } from "../math/decide.ts"
 
 const big = (s: string | number): bigint => BigInt(s)
@@ -109,6 +121,10 @@ export function parsePotView(r: RawPotView): PotView {
     usdc: r.usdc as AccountId,
     openRulesProposal: opt(r.open_rules_proposal),
     closingInFlight: r.closing_in_flight ?? false,
+    extras: extrasFromRaw(r.extras),
+    policyVersion: r.policy_version ?? 1,
+    openLinks: r.open_links ?? 0,
+    goalState: r.goal_state ?? "none",
   }
 }
 
@@ -171,6 +187,10 @@ export function parseSpendPreview(r: RawSpendPreview): SpendPreview {
     budgetLeft: big(r.budget_left),
     balanceChecked: r.balance_checked === null ? null : big(r.balance_checked),
     clientMustCheck: r.client_must_check,
+    tier: r.tier ? r.tier : r.tier === "" ? null : r.path === "instant" ? "instant" : r.path === "vote" ? "group" : null,
+    effectiveCap: big(r.effective_cap ?? r.instant_cap),
+    trustLevel: r.trust_level ?? 0,
+    oneOkCap: big(r.one_ok_cap ?? "0"),
   }
 }
 
@@ -228,6 +248,9 @@ export function parseRequestView(r: RawRequestView, opts: { payoutSeen?: boolean
     createdAtMs: r.created_at_ms,
     updatedAtMs: r.updated_at_ms,
     expiresAtMs: r.expires_at_ms,
+    tier: r.tier ?? (r.path === "instant" ? "instant" : "group"),
+    okBy: (r.ok_by ?? null) as AccountId | null,
+    linkStatus: r.link_status ?? null,
   }
 }
 
@@ -274,6 +297,8 @@ export const parseSpendOutcome = (r: RawSpendOutcome): SpendOutcome => ({
   status: r.status,
   refusal: r.refusal,
   approvalsNeeded: r.approvals_needed,
+  tier: r.tier ?? (r.path === "instant" ? "instant" : "group"),
+  link: r.link ?? false,
 })
 
 export const parseJoinOutcome = (r: RawJoinOutcome): JoinOutcome => ({ ok: r.ok, status: r.status, proposalId: r.proposal_id, reason: r.reason })
@@ -359,3 +384,95 @@ export const parseActionsLogEntry = (e: RawActionsLogEntry): ActionsLogEntry => 
 
 export const parseStorageBalance = (r: RawStorageBalance | null): StorageBalance | null =>
   r === null ? null : { total: big(r.total), available: big(r.available) }
+
+// ---------------------------------------------------------------- hub 1.1.0 (wave 4)
+
+const optNum = (v: number | null | undefined): number | null => (v === null || v === undefined ? null : v)
+
+export function parseTrustView(r: RawTrustView): TrustView {
+  return {
+    pot: r.pot as DaoId,
+    account: r.account_id as AccountId,
+    enabled: r.enabled,
+    level: r.level,
+    maxLevel: r.max_level,
+    streak: r.streak,
+    step: r.step,
+    nextLevelIn: r.next_level_in,
+    minQualifying: big(r.min_qualifying),
+    settled: r.settled,
+    settledAmount: big(r.settled_amount),
+    declined: r.declined,
+    lastDeclinedMs: optNum(r.last_declined_ms),
+    baseCap: big(r.base_cap),
+    multiplier: r.multiplier,
+    effectiveCap: big(r.effective_cap),
+    budgetLeft: big(r.budget_left),
+    instantUpTo: big(r.instant_up_to),
+    oneOkCap: big(r.one_ok_cap),
+  }
+}
+
+export function parseGoalView(r: RawGoalView): GoalView {
+  return {
+    pot: r.pot as DaoId,
+    amount: big(r.amount),
+    deadlineMs: r.deadline_ms,
+    allOrNothing: r.all_or_nothing,
+    totalIn: big(r.total_contributed),
+    state: r.state,
+    reachedAtMs: optNum(r.reached_at_ms),
+    refundProposalId: optNum(r.refund_proposal_id),
+    canRefund: r.can_refund,
+    spendsBlocked: r.spends_blocked,
+  }
+}
+
+export function parseLinkView(r: RawLinkView): LinkView {
+  return {
+    pot: r.pot as DaoId,
+    requestId: r.request_id,
+    requester: r.requester as AccountId,
+    amount: big(r.amount),
+    category: r.category,
+    requestStatus: r.request_status,
+    status: r.status,
+    claimPk: r.claim_pk as PublicKeyStr,
+    expiresAtMs: r.expires_at_ms,
+    receiver: (r.receiver_id ?? null) as AccountId | null,
+    fundedAtMs: optNum(r.funded_at_ms),
+    doneAtMs: optNum(r.done_at_ms),
+    claimable: r.claimable,
+  }
+}
+
+export function parseRecordEntry(r: RawRecordEntry): RecordEntry {
+  return {
+    requestId: r.request_id,
+    proposalId: r.proposal_id,
+    requester: r.requester as AccountId,
+    payee: (r.payee ?? null) as AccountId | null,
+    link: r.link,
+    amount: big(r.amount),
+    category: r.category,
+    requestRef: r.request_ref,
+    tier: r.tier,
+    approvedBy: r.approved_by,
+    okBy: (r.ok_by ?? null) as AccountId | null,
+    hubStatus: r.status,
+    money: r.money,
+    linkStatus: r.link_status,
+    createdAtMs: r.created_at_ms,
+    updatedAtMs: r.updated_at_ms,
+  }
+}
+
+export const parseOkOutcome = (r: RawOkOutcome): OkOutcome => ({ requestId: r.request_id, ok: r.ok, status: r.status, reason: r.reason })
+
+export const parseLinkOutcome = (r: RawLinkOutcome): LinkOutcome => ({
+  requestId: r.request_id,
+  ok: r.ok,
+  status: r.status,
+  receiver: (r.receiver_id ?? null) as AccountId | null,
+  reason: r.reason,
+})

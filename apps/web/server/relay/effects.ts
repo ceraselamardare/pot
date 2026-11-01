@@ -58,6 +58,12 @@ export function feedKey(e: RawEvent, txHash: string): string {
     case "invite_added":
     case "invite_revoked":
       return `invite:${str(d.invite_pk)}`
+    // pay by link (hub 1.1.0): one row per link step
+    case "link_funded":
+    case "link_claimed":
+    case "link_returned":
+    case "link_voided":
+      return `${e.event}:${str(d.request_id)}`
     default:
       return `${e.event}:${str(d.proposal_id) ?? txHash}`
   }

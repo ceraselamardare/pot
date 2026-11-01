@@ -4,11 +4,12 @@
 // [Approve $300] is the sheet's one marigold; [Decline] stays secondary and expands an optional reason.
 // The meter ticks optimistically (< 100 ms) and reverts with a toast if the approval didn't go through.
 // A group approval gets a calm check and `approve.final`, never the burst (brand: one celebration only).
-import { Check, Clock, Hourglass, X } from "lucide-react"
+import { Check, Clock, Hand, Hourglass, X } from "lucide-react"
 import { useReducer, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
 import { RequestComments } from "@/components/comments/RequestComments"
+import { LinkPanel } from "@/components/paylink/LinkPanel"
 import { Bone } from "@/components/feedback/States"
 import { MoneyText } from "@/components/money/MoneyText"
 import { Avatar } from "@/components/pot/Avatar"
@@ -19,7 +20,7 @@ import { Sheet } from "@/components/sheets/Sheet"
 import { ReceiptLink } from "@/components/receipt/ReceiptLink"
 import { t, tLines, type MessageKey } from "@/i18n/t"
 import { announce, useOnline } from "@/lib/client/browser"
-import { vote } from "@/lib/client/actions"
+import { canGiveOk, okRequest, vote } from "@/lib/client/actions"
 import { useRequest } from "@/lib/client/data"
 import { ActionError } from "@/lib/client/errors"
 import type { PotVM, RequestVM } from "@/lib/client/mock/types"
@@ -80,6 +81,36 @@ function ApproveBody({ pot, r, onClose, actions }: { pot: PotVM; r: RequestVM; o
   const [reason, setReason] = useState("")
   const amountWhole = formatUsd(r.amount, "whole")
   const canDecide = r.status === "needs" && !r.mine && !r.myVote && phase.tag !== "done"
+  // hub 1.1.0 one-OK tier: one OK from anyone but the requester approves it (ok_request, not a vote); after a "no"
+  // (an objection) the group decides by majority as before
+  const oneOk = r.tier === "one_ok"
+  const okPath = canDecide && canGiveOk(r, me)
+
+  const giveOk = async () => {
+    if (!online) return toast(t("approve.offline"))
+    dispatch({ type: "set", phase: { tag: "voting", v: "Approve" } })
+    try {
+      const res = await okRequest(r)
+      if (res === "approved") {
+        const vars = { amount: amountWhole, name: r.receiver.name }
+        announce(t("approve.ok.done", vars))
+        dispatch({ type: "set", phase: { tag: "done", key: "approve.ok.done", vars, tone: "approved" } })
+      } else if (res === "failed") {
+        const vars = { amount: amountWhole }
+        announce(t("approve.ok.failed", vars))
+        dispatch({ type: "set", phase: { tag: "done", key: "approve.ok.failed", vars, tone: "neutral" } })
+      } else if (res === "objection") {
+        const vars = { k: r.k, n: r.n }
+        announce(t("approve.ok.objection", vars))
+        dispatch({ type: "set", phase: { tag: "done", key: "approve.ok.objection", vars, tone: "neutral" } })
+      } else {
+        dispatch({ type: "set", phase: { tag: "done", key: "approve.decided.declined", vars: {}, tone: "neutral" } })
+      }
+    } catch (e) {
+      dispatch({ type: "reset" })
+      toast.error(t(e instanceof ActionError && (e.cls === "relayer_down" || e.cls === "rate_limited") ? "approve.error.relayer" : "approve.ok.error"))
+    }
+  }
 
   const cast = async (v: "Approve" | "Reject") => {
     if (!online) return toast(t("approve.offline"))
@@ -124,8 +155,14 @@ function ApproveBody({ pot, r, onClose, actions }: { pot: PotVM; r: RequestVM; o
         <MoneyText micro={r.amount} variant="hero" className="text-ink" strike={r.status === "declined" || r.status === "expired"} />
         <p className="mt-1 text-body text-ink">{t("approve.reason", { reason: reasonWord(r) })}</p>
       </div>
-      {r.status === "needs" && <p className="rounded-md bg-surface-sunken p-3 text-body text-ink">{whyText(r)}</p>}
-      <ApprovalTimeline r={r} me={me} optimistic={phase.tag === "voting" && phase.v === "Approve"} />
+      {r.status === "needs" && <p className="rounded-md bg-surface-sunken p-3 text-body text-ink">{oneOk && r.declines.length === 0 ? t("approve.why.one_ok", { name: r.requester.name }) : whyText(r)}</p>}
+      {oneOk && r.declines.length === 0 && r.status === "needs" ? (
+        <OneOkLine r={r} potName={pot.name} />
+      ) : (
+        <ApprovalTimeline r={r} me={me} optimistic={phase.tag === "voting" && phase.v === "Approve"} />
+      )}
+      {/* pay by link (hub 1.1.0): where the link is; the requester shares it again or cancels it */}
+      {r.link && <LinkPanel pot={pot} r={r} />}
       <dl className="flex flex-col divide-y divide-line rounded-md border border-line">
         <div className="flex min-h-12 items-center justify-between gap-3 px-3">
           <dt className="text-body-sm text-ink-muted">{t("approve.after.label")}</dt>
@@ -181,6 +218,24 @@ function ApproveBody({ pot, r, onClose, actions }: { pot: PotVM; r: RequestVM; o
                   {t("approve.decline.cancel")}
                 </Button>
               </>
+            ) : okPath ? (
+              <>
+                {!online && <p className="text-body-sm text-ink-muted">{t("approve.offline")}</p>}
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  aria-disabled={!online || undefined}
+                  disabled={phase.tag === "voting"}
+                  aria-busy={phase.tag === "voting" || undefined}
+                  onClick={giveOk}
+                  data-ok-cta
+                >
+                  {phase.tag === "voting" ? t("approve.cta.oking") : t("approve.cta.ok", { amount: amountWhole })}
+                </Button>
+                <Button className="w-full" disabled={phase.tag === "voting"} onClick={() => dispatch({ type: "set", phase: { tag: "declining" } })}>
+                  {t("approve.cta.decline")}
+                </Button>
+              </>
             ) : canDecide ? (
               <>
                 {!online && <p className="text-body-sm text-ink-muted">{t("approve.offline")}</p>}
@@ -227,6 +282,14 @@ function statusLine(r: RequestVM, phase: Phase, now: number, me: string | null) 
     const [title, body] = splitLine(t(phase.key, phase.vars as never))
     return { icon: phase.tone === "approved" ? ok : phase.tone === "declined" ? no : wait, title, body }
   }
+  if (r.mine && r.status === "needs" && r.tier === "one_ok" && r.declines.length === 0) {
+    const [title, body] = tLines("approve.ok.own")
+    return { icon: <Hand aria-hidden className="size-5 text-waiting" strokeWidth={2.25} />, title, body }
+  }
+  if (r.tier === "one_ok" && r.status === "needs" && r.declines.length > 0) {
+    const [title, body] = tLines("approve.ok.objection", { k: r.k, n: r.n })
+    return { icon: wait, title, body }
+  }
   if (r.mine && r.status === "needs") {
     return { icon: wait, title: t("approve.own.counted", { remaining: Math.max(0, r.k - r.approvals.length) }), body: t("approve.own.hint") }
   }
@@ -235,7 +298,9 @@ function statusLine(r: RequestVM, phase: Phase, now: number, me: string | null) 
   }
   switch (r.status) {
     case "approved": {
-      const [title, body] = tLines("approve.decided.approved", { amount: amountWhole, name: r.receiver.name })
+      const [title, body] = r.okBy
+        ? tLines("approve.decided.ok", { okName: r.okBy.id === me ? t("feed.you") : r.okBy.name, amount: amountWhole, name: r.receiver.name })
+        : tLines("approve.decided.approved", { amount: amountWhole, name: r.receiver.name })
       return { icon: ok, title, body }
     }
     case "declined": {
@@ -258,4 +323,28 @@ function statusLine(r: RequestVM, phase: Phase, now: number, me: string | null) 
 function splitLine(s: string): [string, string | null] {
   const i = s.indexOf(" · ")
   return i < 0 ? [s, null] : [s.slice(0, i), s.slice(i + 3)]
+}
+
+/** hub 1.1.0: who can approve a one-OK request (anyone but the requester), in place of the k-of-n timeline. */
+function OneOkLine({ r, potName }: { r: RequestVM; potName: string }) {
+  return (
+    <section aria-labelledby={`one-ok-${r.id}`} className="flex flex-col gap-2" data-one-ok>
+      <h3 id={`one-ok-${r.id}`} className="text-label text-ink">
+        {t("approve.one_ok.header")}
+      </h3>
+      <p className="flex items-center gap-3 text-body-sm text-ink">
+        <span className="grid size-6 place-items-center rounded-pill bg-approved text-surface">
+          <Check aria-hidden className="size-4" strokeWidth={3} />
+        </span>
+        <Avatar person={r.requester} size="xs" />
+        {t("approve.timeline.asked", { name: r.requester.name })}
+      </p>
+      <p className="flex items-center gap-3 text-body-sm text-ink-muted">
+        <span className="grid size-6 place-items-center">
+          <Hand aria-hidden className="size-5 text-waiting" strokeWidth={2.25} />
+        </span>
+        {t("approve.one_ok.who", { potName, name: r.requester.name })}
+      </p>
+    </section>
+  )
 }

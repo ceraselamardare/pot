@@ -11,7 +11,7 @@
 //   DATABASE_URL=postgres://pot:pot@localhost:54329/pot_comments DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot_comments \
 //   scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts comments
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { typeAmount } from "../fixtures/pot"
+import { spendFlow } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, potBalance, usd, useWallet, walletSignIn } from "./chain"
 
@@ -92,9 +92,7 @@ test("setup: Ana creates one Pot, Ben joins and adds $150, Ana asks the group fo
   await expect(hero(A)).toHaveText("$150.00", { timeout: 30_000 })
   await A.getByRole("button", { name: "Spend", exact: true }).click()
   const sheet = A.getByRole("dialog", { name: `Spend from ${POT_NAME}` })
-  await typeAmount(A, "120")
-  await sheet.getByRole("button", { name: /Tickets/ }).click()
-  await sheet.getByRole("button", { name: "Ask the group" }).click()
+  await spendFlow(A, { amount: "120", reason: "Tickets", submit: "Ask the group" })
   await expect(sheet.getByText("Sent to the group")).toBeVisible({ timeout: 45_000 })
   await sheet.getByRole("button", { name: "Done" }).click()
   const req = await eventually(

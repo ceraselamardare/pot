@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { reasonWord, inWords } from "@/components/pot/Feed"
 import { t } from "@/i18n/t"
 import { announce } from "@/lib/client/browser"
-import { approveInline } from "@/lib/client/actions"
+import { approveInline, canGiveOk } from "@/lib/client/actions"
 import { formatUsd } from "@/lib/client/money"
 import type { RequestVM } from "@/lib/client/mock/types"
 import { ops as opsStore, useOps } from "@/lib/client/ops/store"
@@ -36,6 +36,9 @@ export function RequestCard({
   const ops = useOps()
   const op = ops.find((o) => o.kind === "vote" && o.pot === r.slug && o.requestId === r.id && o.status !== "cancelled")
   const amountWhole = formatUsd(r.amount, "whole")
+  // hub 1.1.0: a one-OK request takes one OK from anyone but the requester (approveInline sends ok_request)
+  const ok = canGiveOk(r, me)
+  const approveLabel = ok ? t("approve.cta.ok", { amount: amountWhole }) : t("approve.cta.approve", { amount: amountWhole })
   const approve = () => {
     const h = approveInline(r, me)
     if (h) announce(t("approve.undo.label"))
@@ -65,7 +68,7 @@ export function RequestCard({
             {t("feed.pending", { name: r.requester.name, amount: amountWhole, reason: reasonWord(r) })}
           </span>
           <span className="mt-2 flex flex-wrap items-center gap-2">
-            <StatusChip status="needs">{t("approve.progress", { count: r.approvals.length, k: r.k })}</StatusChip>
+            <StatusChip status="needs">{r.tier === "one_ok" && r.declines.length === 0 ? t("feed.pending.one_ok") : t("approve.progress", { count: r.approvals.length, k: r.k })}</StatusChip>
             <span className="text-body-sm text-ink-muted">{t("approve.expires", { relativeTime: inWords(r.expiresAt, now) })}</span>
             <CommentCount n={r.comments} />
           </span>
@@ -98,9 +101,9 @@ export function RequestCard({
         </div>
       ) : (
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button onClick={approve} aria-label={t("approve.cta.approve", { amount: amountWhole })}>
+          <Button onClick={approve} aria-label={approveLabel} data-inline-ok={ok || undefined}>
             <Check aria-hidden strokeWidth={2.25} />
-            {t("approve.cta.approve", { amount: amountWhole })}
+            {approveLabel}
           </Button>
           <Button onClick={() => openRequest(r.id, r.slug)}>{t("approve.cta.decline")}</Button>
         </div>

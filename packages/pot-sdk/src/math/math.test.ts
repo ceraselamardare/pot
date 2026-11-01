@@ -57,7 +57,7 @@ describe("spend decision (twin of PotHub::decide)", () => {
     amount: 84_000_000n,
   }
   it("D-61: $84 instant, $300 over cap, budget, payee, new member", () => {
-    expect(decideSpend(base)).toEqual({ ok: true, path: "instant", reason: "within_rules" })
+    expect(decideSpend(base)).toEqual({ ok: true, path: "instant", reason: "within_rules", tier: "instant" })
     expect(decideSpend({ ...base, amount: 100_000_000n })).toMatchObject({ path: "instant" }) // inclusive cap (T-21)
     expect(decideSpend({ ...base, amount: 101_000_000n })).toMatchObject({ path: "vote", reason: "over_cap" })
     expect(decideSpend({ ...base, amount: 300_000_000n })).toMatchObject({ path: "vote", reason: "over_cap" })

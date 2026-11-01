@@ -27,10 +27,20 @@ export interface NotifyDeps {
 type Category = "groceries" | "food" | "transport" | "stay" | "tickets" | "other"
 
 export type NotifyEvent =
-  | { type: "approval_needed"; subject: "spend" | "close" | "rules"; pot: string; proposalId: number; actor: string; amount?: string; category?: string }
-  | { type: "request_resolved"; pot: string; proposalId: number; requester: string; status: "approved" | "declined" | "expired"; amount?: string; category?: string }
+  /** `tier: "one_ok"` (hub 1.1.0): one OK from anyone else approves it ("Sam needs one OK") */
+  | { type: "approval_needed"; subject: "spend" | "close" | "rules"; pot: string; proposalId: number; actor: string; amount?: string; category?: string; tier?: "one_ok" | "group" }
+  /** `okBy` (hub 1.1.0): approved by that member's one OK */
+  | { type: "request_resolved"; pot: string; proposalId: number; requester: string; status: "approved" | "declined" | "expired"; amount?: string; category?: string; okBy?: string }
+  /** hub 1.1.0 earned trust: the member's level went up ("You're now Trusted in Lisbon Trip") */
+  | { type: "trust_up"; pot: string; member: string; level: number }
+  /** hub 1.1.0 goal: reached (everyone), missed → refund started, refunded (everyone who got money back) */
+  | { type: "goal"; pot: string; state: "reached" | "missed" | "refunded"; goal?: string; recipients?: string[] }
   | { type: "money_arrived"; pot: string; actor: string; amount: string; txHash: string }
   | { type: "pot_closed"; pot: string; recipients: string[] }
+  /** pay by link (hub 1.1.0): the requester learns their link was claimed (`claimer` = the account, named only if a Pot user) */
+  | { type: "link_claimed"; pot: string; requestId: number; requester: string; claimer: string; amount?: string }
+  /** pay by link: an unclaimed link's money came back (cancelled by its requester, or after its date): every member */
+  | { type: "link_returned"; pot: string; requestId: number; by: string; requester?: string; amount?: string }
   /** a comment on a request: `requester` audience = the requester; `thread` = earlier commenters (never the author) */
   | {
       type: "comment"
@@ -67,8 +77,16 @@ export function eventKey(ev: NotifyEvent): string {
       return `contribution:${ev.txHash}`
     case "pot_closed":
       return `closed:${ev.pot}`
+    case "trust_up":
+      return `trust:${ev.pot}:${ev.member}:${ev.level}`
+    case "goal":
+      return `goal:${ev.pot}:${ev.state}`
     case "comment":
       return `comment:${ev.pot}:${ev.requestId}:${ev.commentId}:${ev.audience}`
+    case "link_claimed":
+      return `link_claimed:${ev.pot}:${ev.requestId}`
+    case "link_returned":
+      return `link_returned:${ev.pot}:${ev.requestId}`
   }
 }
 
@@ -85,8 +103,14 @@ async function recipientAccounts(deps: NotifyDeps, ev: NotifyEvent): Promise<str
     return ev.recipients.filter((a) => a !== ev.actor && active.has(a))
   }
   if (ev.type === "request_resolved") return [ev.requester]
+  if (ev.type === "trust_up") return [ev.member]
+  if (ev.type === "goal" && ev.recipients?.length) return ev.recipients
+  if (ev.type === "link_claimed") return ev.requester ? [ev.requester] : []
   const members = (await deps.hub.getMembers(ev.pot, { fresh: true }).catch(() => [])).filter((m) => m.status === "active").map((m) => m.account_id)
   if (ev.type === "money_arrived") return members.filter((a) => a !== ev.actor)
+  if (ev.type === "goal") return members
+  // a returned link: everyone in the Pot (the money is theirs again), except a requester who cancelled it themselves
+  if (ev.type === "link_returned") return members.filter((a) => a !== ev.by)
   // approval_needed: members who haven't voted, minus the requester
   const p = await deps.hub.getProposal(ev.pot, ev.proposalId).catch(() => null)
   const voted = new Set(Object.keys(p?.votes ?? {}))
@@ -112,7 +136,13 @@ interface Rendered {
   data: Record<string, unknown>
 }
 
-function render(ev: NotifyEvent, names: Map<string, string>, potName: string, slug: string, extra: { approvers?: string[]; expiresInSec?: number }): Rendered {
+function render(
+  ev: NotifyEvent,
+  names: Map<string, string>,
+  potName: string,
+  slug: string,
+  extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string },
+): Rendered {
   const name = (a: string) => names.get(a) ?? t("person.fallback")
   switch (ev.type) {
     case "approval_needed": {
@@ -124,6 +154,14 @@ function render(ev: NotifyEvent, names: Map<string, string>, potName: string, sl
         return { title: t("rules.change.pending", { name: name(ev.actor) }), body: t("notif.close.body_plain"), path: `/p/${slug}?r=${ev.proposalId}`, push, data }
       if (ev.subject === "close")
         return { title: t("notif.close.title", { name: name(ev.actor), potName }), body: t("notif.close.body_plain"), path: `/p/${slug}?r=${ev.proposalId}`, push, data }
+      if (ev.tier === "one_ok")
+        return {
+          title: t("notif.one_ok.title", { name: name(ev.actor) }),
+          body: t("notif.one_ok.body", { amount: money(ev.amount), reason: reasonWord(ev.category), potName }),
+          path: `/p/${slug}?r=${ev.proposalId}`,
+          push,
+          data: { ...data, tier: "one_ok" },
+        }
       return {
         title: t("notif.approval.title", { name: name(ev.actor) }),
         body: t("notif.approval.body", { amount: money(ev.amount), reason: reasonWord(ev.category), potName }),
@@ -135,6 +173,14 @@ function render(ev: NotifyEvent, names: Map<string, string>, potName: string, sl
     case "request_resolved": {
       const push: PushOptions = { ttl: DAY, urgency: "normal", topic: topic(ev.pot, ev.proposalId) }
       const data = { pot: ev.pot, proposalId: ev.proposalId, subject: "spend", status: ev.status }
+      if (ev.status === "approved" && ev.okBy)
+        return {
+          title: t("notif.approved.title", { amount: money(ev.amount) }),
+          body: t("notif.ok_approved.body", { name: name(ev.okBy), reason: reasonWord(ev.category) }),
+          path: `/p/${slug}`,
+          push,
+          data,
+        }
       if (ev.status === "approved") {
         const who = (extra.approvers ?? []).map(name)
         return {
@@ -170,6 +216,43 @@ function render(ev: NotifyEvent, names: Map<string, string>, potName: string, sl
         push: { ttl: DAY, urgency: "normal", topic: topic(ev.pot, `comment:${ev.requestId}`) },
         data: { pot: ev.pot, requestId: ev.requestId, subject: "comment" },
       }
+    }
+    case "link_claimed": {
+      // lock-screen safe: the claimer's display name only when they use Pot, never an account id
+      const who = names.get(ev.claimer)
+      return {
+        title: t("notif.link.claimed.title", { amount: money(ev.amount) }),
+        body: who ? t("notif.link.claimed.body", { name: who, potName }) : t("notif.link.claimed.body_someone", { potName }),
+        path: `/p/${slug}?r=${ev.requestId}`,
+        push: { ttl: DAY, urgency: "normal", topic: topic(ev.pot, `link:${ev.requestId}`) },
+        data: { pot: ev.pot, requestId: ev.requestId, subject: "link" },
+      }
+    }
+    case "link_returned": {
+      const cancelled = !!ev.requester && ev.by === ev.requester
+      return {
+        title: t("notif.link.returned.title", { amount: money(ev.amount), potName }),
+        body: cancelled ? t("notif.link.returned.body_cancelled", { name: name(ev.by) }) : t("notif.link.returned.body"),
+        path: `/p/${slug}`,
+        push: { ttl: DAY, urgency: "low", topic: topic(ev.pot, `link:${ev.requestId}`) },
+        data: { pot: ev.pot, requestId: ev.requestId, subject: "link" },
+      }
+    }
+    case "trust_up":
+      return {
+        title: t("notif.trust.title", { level: t(`trust.level.${Math.max(0, Math.min(2, ev.level))}` as "trust.level.0"), potName }),
+        body: extra.trustCap ? t("notif.trust.body", { amount: extra.trustCap }) : undefined,
+        path: `/p/${slug}?tab=rules`,
+        push: { ttl: DAY, urgency: "low", topic: topic(ev.pot, `trust:${ev.member}`) },
+        data: { pot: ev.pot, subject: "trust", level: ev.level },
+      }
+    case "goal": {
+      const push: PushOptions = { ttl: DAY, urgency: "normal", topic: topic(ev.pot, "goal") }
+      const data = { pot: ev.pot, subject: "goal", state: ev.state }
+      if (ev.state === "reached")
+        return { title: t("notif.goal.reached.title", { potName }), body: t("notif.goal.reached.body", { goal: extra.goal ?? money(ev.goal) }), path: `/p/${slug}`, push, data }
+      if (ev.state === "missed") return { title: t("notif.goal.missed.title", { potName }), body: t("notif.goal.missed.body"), path: `/p/${slug}`, push, data }
+      return { title: t("notif.goal.refunded.title"), body: t("notif.goal.refunded.body", { potName }), path: `/p/${slug}`, push, data }
     }
     case "pot_closed":
       return {
@@ -208,13 +291,22 @@ export async function notify(deps: NotifyDeps, ev: NotifyEvent): Promise<NotifyR
   const pv = potRow ? null : await hub.getPot(ev.pot).catch(() => null)
   const slug = potRow?.slug ?? pv?.slug ?? ev.pot.split(".")[0]!
   const potName = potRow?.name ?? pv?.name ?? slug
-  const extra: { approvers?: string[]; expiresInSec?: number } = {}
+  const extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string } = {}
+  // hub 1.1.0: the new instant limit = the Pot's instant limit × (1 + level)
+  if (ev.type === "trust_up") {
+    const cap = (pv ?? (await hub.getPot(ev.pot).catch(() => null)))?.rules?.instant_cap
+    if (cap && /^[0-9]+$/.test(cap)) extra.trustCap = formatUsdShort(BigInt(cap) * BigInt(1 + ev.level))
+  }
+  if (ev.type === "goal" && ev.goal) extra.goal = money(ev.goal)
   const nameAccounts = new Set<string>()
   if (ev.type === "approval_needed" || ev.type === "money_arrived") nameAccounts.add(ev.actor)
+  if (ev.type === "request_resolved" && ev.okBy) nameAccounts.add(ev.okBy)
   if (ev.type === "comment") {
     nameAccounts.add(ev.actor)
     nameAccounts.add(ev.requester)
   }
+  if (ev.type === "link_claimed") nameAccounts.add(ev.claimer)
+  if (ev.type === "link_returned") nameAccounts.add(ev.by)
   if ((ev.type === "approval_needed" && ev.subject === "spend") || (ev.type === "request_resolved" && ev.status === "approved")) {
     const p = await hub.getProposal(ev.pot, ev.proposalId).catch(() => null)
     if (p && ev.type === "request_resolved") {
@@ -336,6 +428,8 @@ const s = (v: unknown) => (v === undefined || v === null ? undefined : String(v)
 
 export function eventsToNotifications(events: RawEvent[], txHash: string): NotifyEvent[] {
   const out: NotifyEvent[] = []
+  // hub 1.1.0: a goal refund also closes the Pot; its own push ("Everyone got their money back") replaces "Pot closed"
+  const refunded = new Set(events.filter((e) => e.standard === "pot" && e.event === "goal_refunded").map((e) => s(obj(e.data).pot)))
   for (const e of events) {
     if (e.standard !== "pot") continue
     const d = obj(e.data)
@@ -347,7 +441,33 @@ export function eventsToNotifications(events: RawEvent[], txHash: string): Notif
         break
       case "spend_requested":
         if (d.path === "vote" && d.proposal_id !== undefined && d.proposal_id !== null)
-          out.push({ type: "approval_needed", subject: "spend", pot, proposalId: Number(d.proposal_id), actor: s(d.requester) ?? "", amount: s(d.amount), category: s(d.category) })
+          out.push({
+            type: "approval_needed",
+            subject: "spend",
+            pot,
+            proposalId: Number(d.proposal_id),
+            actor: s(d.requester) ?? "",
+            amount: s(d.amount),
+            category: s(d.category),
+            ...(d.tier === "one_ok" ? { tier: "one_ok" as const } : {}),
+          })
+        break
+      case "spend_ok_approved":
+        // hub 1.1.0: one member's OK approved it → "Approved: $180 is on its way · Sam gave the OK…" to the requester
+        if (d.proposal_id !== undefined && d.proposal_id !== null)
+          out.push({ type: "request_resolved", pot, proposalId: Number(d.proposal_id), requester: s(d.requester) ?? "", status: "approved", amount: s(d.amount), okBy: s(d.by) })
+        break
+      case "trust_level_changed":
+        if (d.cause === "settled" && Number(d.to) > Number(d.from) && s(d.member)) out.push({ type: "trust_up", pot, member: s(d.member)!, level: Number(d.to) })
+        break
+      case "goal_reached":
+        out.push({ type: "goal", pot, state: "reached", goal: s(obj(d.goal).amount) })
+        break
+      case "goal_refund_proposed":
+        out.push({ type: "goal", pot, state: "missed" })
+        break
+      case "goal_refunded":
+        out.push({ type: "goal", pot, state: "refunded" })
         break
       case "close_proposed":
         out.push({ type: "approval_needed", subject: "close", pot, proposalId: Number(d.proposal_id), actor: s(d.by) ?? "" })
@@ -356,10 +476,22 @@ export function eventsToNotifications(events: RawEvent[], txHash: string): Notif
         out.push({ type: "approval_needed", subject: "rules", pot, proposalId: Number(d.proposal_id), actor: s(d.by) ?? "" })
         break
       case "pot_closed": {
+        if (refunded.has(pot)) {
+          const recipients = Array.isArray(d.payouts) ? (d.payouts as Obj[]).map((p) => s(p.account_id)).filter((x): x is string => !!x) : []
+          for (const n of out) if (n.type === "goal" && n.pot === pot && n.state === "refunded") n.recipients = recipients
+          break
+        }
         const payouts = Array.isArray(d.payouts) ? (d.payouts as Obj[]).map((p) => s(p.account_id)).filter((x): x is string => !!x) : []
         out.push({ type: "pot_closed", pot, recipients: payouts })
         break
       }
+      case "link_claimed":
+        if (d.request_id !== undefined && s(d.receiver_id))
+          out.push({ type: "link_claimed", pot, requestId: Number(d.request_id), requester: "", claimer: s(d.receiver_id)!, amount: s(d.amount) })
+        break
+      case "link_returned":
+        if (d.request_id !== undefined) out.push({ type: "link_returned", pot, requestId: Number(d.request_id), by: s(d.by) ?? "", amount: s(d.amount) })
+        break
       case "proposal_synced": {
         const status = s(d.hub_status)
         const map: Record<string, "approved" | "declined" | "expired"> = { approved: "approved", paid: "approved", rejected: "declined", expired: "expired" }
@@ -385,6 +517,14 @@ export async function notifyFromEvents(deps: NotifyDeps, events: RawEvent[], txH
         const r = reqs.find((x) => x.proposal_id === ev.proposalId)
         if (r) Object.assign(ev, { requester: ev.requester || r.requester, amount: r.amount, category: r.category })
         if (!ev.requester) continue
+      }
+      // pay by link: the event names the request, not the requester; the hub's request record does
+      if ((ev.type === "link_claimed" && !ev.requester) || (ev.type === "link_returned" && ev.requester === undefined)) {
+        const r = (await deps.hub.getRequests(ev.pot, ev.requestId, 1).catch(() => [])).find((x) => x.request_id === ev.requestId)
+        if (ev.type === "link_claimed") {
+          if (!r) continue
+          ev.requester = r.requester
+        } else ev.requester = r?.requester ?? ""
       }
       out.push(await notify(deps, ev))
     } catch (e) {

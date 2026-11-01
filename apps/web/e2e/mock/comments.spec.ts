@@ -5,7 +5,7 @@
 // The mobile projects save notes/screens/comments-{day,night}.png (the sheet with the thread).
 import { fileURLToPath } from "node:url"
 import { expect, test, type Locator, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, spendFlow } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 test.use({ reducedMotion: "reduce" })
@@ -15,9 +15,7 @@ async function mayaAsks(page: Page) {
   await page.goto("/p/lisbon-trip")
   await page.getByRole("button", { name: "Spend", exact: true }).click()
   const sheet = await openedSheet(page, "Spend from Lisbon Trip")
-  await typeAmount(page, "300")
-  await sheet.getByRole("button", { name: /Tickets/ }).click()
-  await sheet.getByRole("button", { name: "Ask the group" }).click()
+  await spendFlow(page, { amount: "300", reason: "Tickets", submit: "Ask the group" })
   await expect(sheet.getByText("Sent to the group")).toBeVisible()
   await sheet.getByRole("button", { name: "Done" }).click()
   await expect(page.getByRole("dialog")).toBeHidden()

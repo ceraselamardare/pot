@@ -6,12 +6,14 @@
 //  - Identity keys: contribution:<txHash> | request:<requestId> | join:<account> | created:<dao>.
 //  - Expiry is computed client-side (Sputnik sets it lazily).
 //  - The balance is usdc.ft_balance_of(dao), never balanceEstimate (it ignores close payouts).
-import { decodeCloseKind, decodeRulesKind, type Api, type ClosePreview, type MemberView, type PotView, type Proposal, type RequestView, type InviteView } from "@pot/sdk"
+import { decodeCloseKind, decodeRulesKind, type Api, type ClosePreview, type GoalView, type MemberView, type PotView, type Proposal, type RequestView, type InviteView, type LinkView, type TrustView } from "@pot/sdk"
 import { t } from "@/i18n/t"
 import type { Micro } from "../money"
 import { getsBack } from "../rules"
 import type { Rules } from "../rules"
 import type { Category, ClosePreviewVM, CloseVM, FeedItemVM, MemberVM, PersonVM, PotCardVM, PotVM, ReqReason, RequestStatusVM, RequestVM, RulesChangeVM, Vote } from "../mock/types"
+import { extrasVMOf, goalFeedOf, goalVMOf, trustVMOf } from "./vm-wave4"
+import { liveLinkParts, type FeedWithLinks } from "./vm-paylink"
 import { initialsOf } from "../mock/world"
 import { avatarOrNull, type AvatarId } from "@/lib/avatars"
 
@@ -36,6 +38,12 @@ export interface LiveBundle {
   proposals: Record<number, Proposal>
   feed: Api.FeedRes | null
   invite: LiveInvite | null
+  /** hub 1.1.0 get_trusts (absent / [] on a 1.0.0 hub) */
+  trusts?: TrustView[]
+  /** hub 1.1.0 get_goal (null without a goal) */
+  goal?: GoalView | null
+  /** hub 1.1.0 pay by link: get_link per link request (its date, claimer) */
+  links?: Record<number, LinkView>
 }
 
 export interface LiveContext {
@@ -152,6 +160,10 @@ export function liveRequestVM(b: LiveBundle, r: RequestView, ctx: LiveContext, p
     balanceAfter: b.balance > r.amount ? b.balance - r.amount : 0n,
     comments: b.feed?.commentCounts?.[String(r.id)] ?? 0,
     ...receiptOfRequest(b, r),
+    ...(r.tier ? { tier: r.tier } : {}),
+    ...(r.okBy ? { okBy: person(r.okBy) } : {}),
+    // pay by link: where the link is, who it's for, who claimed it (vm-paylink.ts)
+    ...liveLinkParts(r, status, b.links?.[r.id], b.feed as FeedWithLinks | null, ctx.now, person, (a) => b.members.some((m) => m.account === a && m.status === "active")),
   }
 }
 
@@ -175,6 +187,7 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
   const active = b.members.filter((m) => m.status === "active")
   const totalIn = v.totalIn
   const preview = v.status === "open" ? (b.closePreview ?? null) : null
+  const trustBy = new Map((b.trusts ?? []).map((x) => [x.account as string, x]))
   const members: MemberVM[] = active
     .map((m) => {
       // preview_close at the live balance is authoritative (pro-rata + dust); then get_members' own answer
@@ -194,6 +207,7 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
         spentShare: m.contributed > back ? m.contributed - back : 0n,
         spentInstant: m.instantUsed,
         isMe: m.account === ctx.me,
+        ...(trustBy.has(m.account) ? { trust: trustVMOf(trustBy.get(m.account)!) } : {}),
       }
     })
     .sort((a, c) => (a.isMe === c.isMe ? (a.person.joinIndex ?? 0) - (c.person.joinIndex ?? 0) : a.isMe ? -1 : 1))
@@ -217,7 +231,7 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
     const missing = m.contributed - (serverIn.get(m.account) ?? 0n)
     if (missing > 0n) feed.push({ key: `contribution:chain:${m.account}`, kind: "contribution", at: m.joinedAtMs + 1, actor: person(m.account), amount: missing })
   }
-  for (const r of reqs) feed.push({ key: `request:${r.id}`, kind: "request", at: r.decidedAt ?? r.createdAt, request: r, ...(r.txHash ? { txHash: r.txHash } : {}) })
+  for (const r of reqs) feed.push({ key: `request:${r.id}`, kind: "request", at: r.link?.doneAt ?? r.decidedAt ?? r.createdAt, request: r, ...(r.txHash ? { txHash: r.txHash } : {}) })
   const close = closeVM(b, ctx, person)
   if (close) {
     const p = b.proposals[close.proposalId]
@@ -225,6 +239,8 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
     feed.push({ key: `close:${close.proposalId}`, kind: "close_requested", at, actor: close.proposer, k: close.k, ...receiptOf(b, `close:${close.proposalId}`) })
   }
   if (v.status === "closed") feed.push({ key: `closed:${b.dao}`, kind: "closed", at: v.closedAtMs ?? ctx.now, ...receiptOf(b, `closed:${b.dao}`) })
+  const goalDetail = goalVMOf(v, b.goal ?? null, ctx.now)
+  feed.push(...goalFeedOf(b.dao, v, b.goal ?? null, ctx.now))
   const rulesChange = rulesChangeVM(b, ctx, person)
   if (rulesChange && rulesChange.status === "needs")
     feed.push({ key: `rules:${rulesChange.proposalId}`, kind: "rules_requested", at: rulesChange.createdAt, actor: rulesChange.proposer, k: rulesChange.k })
@@ -242,7 +258,8 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
     creator: person(v.creator),
     balance: b.balance,
     totalIn,
-    goal: goalEach === null ? null : goalEach * BigInt(Math.max(3, v.memberCount)),
+    // hub 1.1.0: the goal with a date (on chain) wins over this device's "$X each" estimate
+    goal: goalDetail ? goalDetail.amount : goalEach === null ? null : goalEach * BigInt(Math.max(3, v.memberCount)),
     goalEach,
     rules: {
       instantCap: v.rules.instantCap,
@@ -277,6 +294,8 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
             createdBy: person(inviteView?.createdBy ?? ctx.me ?? v.creator),
           }
         : null,
+    ...(v.extras ? { extras: extrasVMOf(v.extras), policyVersion: v.policyVersion ?? 1 } : {}),
+    goalDetail,
   }
 }
 
@@ -374,6 +393,7 @@ function rulesChangeVM(b: LiveBundle, ctx: LiveContext, person: (a: string) => P
     status,
     createdAt,
     expiresAt,
+    ...(decoded.extras ? { toExtras: extrasVMOf(decoded.extras), fromExtras: extrasVMOf(b.view.extras ?? { trust: false, oneOkCap: 0n, links: false, goal: null }) } : {}),
   }
 }
 
@@ -390,5 +410,7 @@ export function liveCardVM(p: PotVM): PotCardVM {
     goal: p.goal,
     totalIn: p.totalIn,
     members: p.members.map((m) => m.person).sort((a, c) => (a.joinIndex ?? 0) - (c.joinIndex ?? 0)),
+    goalDetail: p.goalDetail ?? null,
+    myTrust: p.me?.trust ?? null,
   }
 }
