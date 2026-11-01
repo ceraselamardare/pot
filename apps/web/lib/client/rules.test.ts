@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { dollars } from "./money"
-import { approvalsNeeded, getsBack, previewSpend, TRIP_RULES, type PreviewInput } from "./rules"
+import { approvalsNeeded, getsBack, previewSpend, DEFAULT_RULES, type PreviewInput } from "./rules"
 
 describe("approvalsNeeded (majority, quorum 1)", () => {
   it.each([
@@ -17,7 +17,7 @@ describe("previewSpend (frontend-architecture §3.7)", () => {
   const base: PreviewInput = {
     amount: dollars(84),
     balance: dollars(450),
-    rules: TRIP_RULES,
+    rules: DEFAULT_RULES,
     memberCount: 3,
     used: 0n,
     contributed: dollars(150),

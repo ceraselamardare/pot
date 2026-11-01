@@ -4,7 +4,7 @@ import { approvalsNeeded as sdkApprovals, buildInviteLink, invitePkFromParam, pa
 import { LISBON_EXPECTED, lisbonTrip } from "@pot/sdk/testing"
 import { describe, expect, it } from "vitest"
 import { inviteLink } from "../invite"
-import { previewSpend, TRIP_RULES } from "../rules"
+import { previewSpend, DEFAULT_RULES } from "../rules"
 import { dollars } from "../money"
 import { PORTO_INVITE } from "./fixtures"
 import { potView, requestSpend, seedWorld, vote } from "./world"
@@ -32,8 +32,8 @@ describe("mock world ≡ @pot/sdk/testing (D-61)", () => {
   })
 
   it("k of n and the instant/vote split agree with the hub's decide()", () => {
-    for (const n of [1, 2, 3, 4, 5, 10]) expect(previewSpend({ amount: 1n, balance: 1n, rules: TRIP_RULES, memberCount: n, used: 0n, contributed: 1n, receiverIsMember: true }).k).toBe(sdkApprovals(n))
-    const base = { balance: dollars(450), rules: TRIP_RULES, memberCount: 3, used: 0n, contributed: dollars(150), receiverIsMember: true }
+    for (const n of [1, 2, 3, 4, 5, 10]) expect(previewSpend({ amount: 1n, balance: 1n, rules: DEFAULT_RULES, memberCount: n, used: 0n, contributed: 1n, receiverIsMember: true }).k).toBe(sdkApprovals(n))
+    const base = { balance: dollars(450), rules: DEFAULT_RULES, memberCount: 3, used: 0n, contributed: dollars(150), receiverIsMember: true }
     expect(previewSpend({ ...base, amount: dollars(84) }).path).toBe("instant")
     expect(previewSpend({ ...base, amount: dollars(300) }).reason).toBe("over_cap")
   })

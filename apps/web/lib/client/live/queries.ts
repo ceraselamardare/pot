@@ -19,6 +19,7 @@ import { loadInvite } from "./invites"
 import { refreshQuery } from "./refresh"
 import { useLiveSession } from "./session"
 import { DEFAULT_GOAL_EACH, liveCardVM, livePotVM, type LiveBundle, type LiveContext } from "./vm"
+import type { AvatarId } from "@/lib/avatars"
 
 export const qk = {
   potsOf: (me: string) => ["potsOf", me] as const,
@@ -142,7 +143,7 @@ export const proposalsQuery = (dao: string, ids: number[]) => ({
     q.state.data && Object.values(q.state.data.byId).some((p) => p.status === "InProgress") ? 3000 : false,
 })
 
-/** Off-chain "$X each" goal: the creator's choice on this device, else the Trip preset's $150 (D-61). */
+/** Off-chain "$X each" goal: the creator's choice on this device, else Create's suggested $150 (D-61). */
 export function goalEachOf(slug: string): Micro | null {
   try {
     const v = localStorage.getItem(`pot.goal.${slug}`)
@@ -165,8 +166,8 @@ function useChangeDetector(dao: string, view: PotView | null | undefined, balanc
   }, [dao, sig])
 }
 
-function ctxOf(me: string | null, myName: string | undefined, now: number, slug: string): LiveContext {
-  return { me, myName, now, goalEach: goalEachOf(slug) }
+function ctxOf(me: string | null, myName: string | undefined, now: number, slug: string, myAvatar?: AvatarId | null): LiveContext {
+  return { me, myName, myAvatar, now, goalEach: goalEachOf(slug) }
 }
 
 export type LivePotState =
@@ -190,6 +191,7 @@ export function useLivePot(slug: string, every: number | false = 3000): LivePotS
   useChangeDetector(dao, pot, balance.data?.value)
   const me = session ? session.accountId : null
   const myName = session?.displayName
+  const myAvatar = session?.avatar ?? null
   const state = useMemo((): LivePotState & { why?: string } => {
     if (session === undefined || now === 0) return { state: "loading", why: "session" }
     if (view.isError && !view.data) return { state: "not_found" }
@@ -199,11 +201,11 @@ export function useLivePot(slug: string, every: number | false = 3000): LivePotS
     if (bundle.data.proposalIds.length && !proposals.data) return { state: "loading", why: "proposals" }
     const vm = livePotVM(
       { dao, usdcId: sdkConfig().usdcId, hubId: sdkConfig().hubId, view: pot, balance: balance.data.value, ...bundle.data, proposals: proposals.data?.byId ?? {} },
-      ctxOf(me, myName, now, slug),
+      ctxOf(me, myName, now, slug, myAvatar),
     )
     if (!vm.me) return { state: "not_member", name: vm.name }
     return { state: "ready", data: vm }
-  }, [session, now, view.isError, view.data, balance.data, pot, bundle.data, proposals.data, dao, me, myName, slug])
+  }, [session, now, view.isError, view.data, balance.data, pot, bundle.data, proposals.data, dao, me, myName, myAvatar, slug])
   // Once ready, a transient refetch never drops the screen back to its skeleton (that would unmount open
   // sheets mid-flow); the last ready view stays until fresh data arrives.
   const [last, setLast] = useState<{ slug: string; state: LivePotState } | null>(null)
@@ -213,7 +215,7 @@ export function useLivePot(slug: string, every: number | false = 3000): LivePotS
 }
 
 /** Several Pots at list cadence (Pots home, Requests): 10 s heartbeat, bundles on change. */
-function useLivePots(daos: string[]): (PotVM | null)[] | null {
+export function useLivePots(daos: string[]): (PotVM | null)[] | null {
   const session = useLiveSession()
   const now = useNow()
   const qc = queryClient()
@@ -245,7 +247,7 @@ function useLivePots(daos: string[]): (PotVM | null)[] | null {
     if (!view || bal === undefined || !b) return null
     const ps = proposals[i]?.data
     if (b.proposalIds.length && !ps) return null
-    return livePotVM({ dao, usdcId: sdkConfig().usdcId, hubId: sdkConfig().hubId, view, balance: bal, ...b, proposals: ps?.byId ?? {} }, ctxOf(me, session?.displayName, now, view.slug))
+    return livePotVM({ dao, usdcId: sdkConfig().usdcId, hubId: sdkConfig().hubId, view, balance: bal, ...b, proposals: ps?.byId ?? {} }, ctxOf(me, session?.displayName, now, view.slug, session?.avatar))
   })
 }
 

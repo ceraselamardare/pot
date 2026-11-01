@@ -11,8 +11,10 @@ import { t, type MessageKey } from "@/i18n/t"
 import { announce, isOnline } from "./browser"
 import { IS_LIVE } from "./config"
 import { ActionError, isTransportError } from "./errors"
+import type { Rules as SdkRules } from "@pot/sdk"
 import { formatUsd, toCents, type Micro } from "./money"
 import * as store from "./mock/store"
+import { mockTxHash } from "./mock/world"
 import type { Category, RequestVM } from "./mock/types"
 import type { PersonaId } from "./mock/fixtures"
 import { ops, type OpHandle } from "./ops/store"
@@ -42,7 +44,8 @@ export function addMoney(
   return ops.run(
     { kind: "add", pot: pot.slug, actor, amount },
     async () => {
-      if (!IS_LIVE) return void (await store.addMoney(pot.slug, toCents(amount)))
+      // the mock has no deposit ledger: an arrived any-chain deposit is added as it lands (net zero for own dollars)
+      if (!IS_LIVE) return void (await store.addMoney(pot.slug, toCents(amount), opts.context?.depositIntentId ? "demo" : opts.source))
       try {
         return await live.addMoney(pot.slug, amount, opts)
       } catch (e) {
@@ -100,13 +103,15 @@ export interface SpendResult {
   payout: "sent" | "failed" | "pending" | "refused"
   /** resolves with the final payout (testnet two-phase answer); the mock is final at once */
   final: Promise<"sent" | "failed" | "pending" | "refused">
+  /** the request's transaction (its receipt) */
+  txHash?: string
 }
 
 export async function requestSpend(slug: string, input: SpendInput): Promise<SpendResult> {
   if (IS_LIVE) return live.requestSpend(slug, input)
   const r = await store.requestSpend(slug, { amountCents: toCents(input.amount), category: input.category, note: input.note, receiver: input.receiver })
   const payout = r.payout === "sent" ? "sent" : "pending"
-  return { id: r.id, path: r.path, payout, final: Promise.resolve(payout) }
+  return { id: r.id, path: r.path, payout, final: Promise.resolve(payout), txHash: mockTxHash(`${slug}:request:${r.id}`) }
 }
 
 export interface CreateInput {
@@ -114,6 +119,8 @@ export interface CreateInput {
   emoji: string
   cover: number
   goalEachCents: number | null
+  /** the Pot rules from the Create form; sent as preset "custom" + these rules (no templates) */
+  rules: SdkRules
   invite: { pk: string; secret: string }
 }
 
@@ -156,20 +163,24 @@ export interface RulesInput {
   memberBudget: Micro
 }
 
-const toSdkRules = (pot: { rules: { instantPayees: "members" | "members_and_allowlist" } }, r: RulesInput) => ({
+type RulesPot = { slug: string; rules: { instantPayees: "members" | "members_and_allowlist"; payeeAllowlist?: string[]; expiryDays: number } }
+
+// a change to the amounts keeps who instant payments go to (the named people included)
+const toSdkRules = (pot: RulesPot, r: RulesInput): SdkRules => ({
   instantCap: r.instantCap,
   memberBudget: r.memberBudget,
   instantPayees: pot.rules.instantPayees,
-  payeeAllowlist: [] as never[],
+  payeeAllowlist: pot.rules.instantPayees === "members" ? [] : ((pot.rules.payeeAllowlist ?? []) as SdkRules["payeeAllowlist"]),
 })
 
-const toRec = (pot: { rules: { expiryDays: number } }, r: RulesInput) => ({
+const toRec = (pot: RulesPot, r: RulesInput) => ({
   instantCap: toCents(r.instantCap),
   memberBudget: toCents(r.memberBudget),
   expiryDays: pot.rules.expiryDays,
+  instantPayees: pot.rules.instantPayees,
+  payeeAllowlist: pot.rules.instantPayees === "members" ? [] : [...(pot.rules.payeeAllowlist ?? [])],
 })
 
-type RulesPot = { slug: string; rules: { instantPayees: "members" | "members_and_allowlist"; expiryDays: number } }
 
 /** Several members: ask the group (propose_rules + own approval at 300 Tgas). */
 export async function proposeRules(pot: RulesPot, r: RulesInput): Promise<{ proposalId: number | null; status: "needs" | "approved" }> {

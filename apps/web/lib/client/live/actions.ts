@@ -219,6 +219,7 @@ export interface LiveCreateInput {
   emoji: string
   cover: number
   goalEachCents: number | null
+  rules: Rules
   invite: { pk: string; secret: string }
 }
 
@@ -233,7 +234,7 @@ export async function createPot(input: LiveCreateInput): Promise<string> {
     let r: RelayOk
     try {
       r = await send(
-        { type: "create_pot", slug: s as never, name: input.name.trim(), preset: "trip", rules: null, invitePk: input.invite.pk as PublicKeyStr, emoji: input.emoji },
+        { type: "create_pot", slug: s as never, name: input.name.trim(), preset: "custom", rules: input.rules, invitePk: input.invite.pk as PublicKeyStr, emoji: input.emoji },
         { context: { meta: { gradient: String(input.cover) } } },
       )
     } catch (e) {

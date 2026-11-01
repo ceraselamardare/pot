@@ -9,6 +9,7 @@ import type { Config } from "../config"
 import { ApiError } from "../http/errors"
 import { b64url, random, sha256Hex } from "../util/crypto"
 import { readCookie, sessionCookieName, type SessionHint, emailHint } from "./cookies"
+import { avatarOrNull, type AvatarId } from "@/lib/avatars"
 
 export type SessionKind = (typeof session.$inferSelect)["kind"]
 export type AppUser = typeof appUser.$inferSelect
@@ -112,6 +113,8 @@ export interface SessionInfo {
   accountId: string
   displayName: string
   avatarTint: AppUser["avatarTint"]
+  /** brand avatar (pot-01..pot-10), null = initials */
+  avatar: AvatarId | null
   emailHint?: string
   expiresAt: string
   usdcRegistered: boolean
@@ -130,6 +133,7 @@ export function sessionInfo(s: {
     accountId: s.user.nearAccount,
     displayName: s.user.displayName,
     avatarTint: s.user.avatarTint,
+    avatar: avatarOrNull(s.user.avatar),
     expiresAt: s.expiresAt.toISOString(),
     usdcRegistered: s.user.usdcRegistered,
   }

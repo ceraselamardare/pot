@@ -2,9 +2,10 @@
 // AppShell parts (frontend-architecture §1.2, §2.1; ux-spec §2, §4.20; design-direction 02 §1, §2 bp-lg):
 //  - TabBar: Pots · Requests · You at the bottom on phones (56 px + safe area); a 64 px top bar from bp-lg.
 //    The Requests badge counts what waits on you, in `ink` with `surface` numerals (never `declined` red).
+//    The person's own Pot dollars ride along: the You tab's label on phones, a pill at the end of the top bar.
 //  - SessionGate: signed out → SignedOutScreen; signed in → the tab content.
 //  - OfflineBanner + one polite LiveRegion per screen.
-import { House, Inbox, UserRound, WifiOff } from "lucide-react"
+import { Coins, House, Inbox, UserRound, WifiOff } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef, type ReactNode } from "react"
@@ -14,7 +15,8 @@ import { Glyph } from "@/components/brand/Glyph"
 import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import { useAnnouncement, useOnline } from "@/lib/client/browser"
-import { useMe, useWaitingCount } from "@/lib/client/data"
+import { useMe, useOwnDollars, useWaitingCount } from "@/lib/client/data"
+import { formatUsd } from "@/lib/client/money"
 import { IS_LIVE } from "@/lib/client/config"
 import { signOut as endSession } from "@/lib/client/session"
 import { cn } from "@/lib/client/cn"
@@ -42,14 +44,23 @@ function Badge({ n, className }: { n: number; className?: string }) {
   )
 }
 
-function navLabel(key: (typeof NAV)[number]["key"], waiting: number) {
-  return key === "requests.title" && waiting > 0 ? `${t(key)}, ${t("requests.badge.a11y", { n: waiting })}` : t(key)
+function navLabel(key: (typeof NAV)[number]["key"], waiting: number, balance?: string) {
+  if (key === "requests.title" && waiting > 0) return `${t(key)}, ${t("requests.badge.a11y", { n: waiting })}`
+  if (key === "you.title" && balance) return `${t(key)}, ${t("nav.balance.a11y", { amount: balance })}`
+  return t(key)
+}
+
+/** The signed-in person's own Pot dollars as "$84.00" (shared query with You → "Your Pot dollars"); undefined while loading. */
+function useNavBalance(account: string | null): string | undefined {
+  const micro = useOwnDollars(account, true)
+  return micro === undefined ? undefined : formatUsd(micro)
 }
 
 export function TabBar() {
   const pathname = usePathname()
   const waiting = useWaitingCount()
   const me = useMe()
+  const balance = useNavBalance(me ?? null)
   if (!me) return null
   return (
     <nav
@@ -64,7 +75,7 @@ export function TabBar() {
               <Link
                 href={href}
                 aria-current={on ? "page" : undefined}
-                aria-label={navLabel(key, waiting)}
+                aria-label={navLabel(key, waiting, balance)}
                 className={cn(
                   // labels cap at the viewport: three tabs always fit at 200 % text (F-25)
                   "flex h-full min-w-0 flex-col items-center justify-center gap-0.5 font-sans text-body-sm [font-size:min(var(--text-body-sm),3.8vw)]",
@@ -75,7 +86,13 @@ export function TabBar() {
                   <Icon aria-hidden className="size-6" strokeWidth={on ? 2.25 : 2} />
                   {key === "requests.title" && <Badge n={waiting} className="absolute -top-1.5 -right-3" />}
                 </span>
-                {t(key)}
+                {key === "you.title" && balance ? (
+                  <span data-nav-balance className="tabular-nums">
+                    {balance}
+                  </span>
+                ) : (
+                  t(key)
+                )}
               </Link>
             </li>
           )
@@ -89,6 +106,7 @@ export function TopBar() {
   const pathname = usePathname()
   const waiting = useWaitingCount()
   const me = useMe()
+  const balance = useNavBalance(me ?? null)
   return (
     <header className="hidden border-b border-line bg-ground lg:block">
       <div className="mx-auto flex h-16 max-w-app items-center justify-between px-6">
@@ -117,6 +135,19 @@ export function TopBar() {
                   </li>
                 )
               })}
+              {balance && (
+                <li className="ml-2 border-l border-line pl-3">
+                  <Link
+                    href="/you"
+                    aria-label={t("nav.balance.a11y", { amount: balance })}
+                    data-nav-balance
+                    className="flex h-11 items-center gap-2 rounded-pill px-3 text-label text-ink hover:bg-surface-sunken"
+                  >
+                    <Coins aria-hidden className="size-4 text-ink-muted" strokeWidth={2} />
+                    <span className="tabular-nums">{balance}</span>
+                  </Link>
+                </li>
+              )}
             </ul>
           </nav>
         )}

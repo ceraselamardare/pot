@@ -1,3 +1,43 @@
+> **2026-11-01: Your balance, your history, receipts.** You → "Your Pot dollars" (`components/activity/YourBalance.tsx`,
+> token `ft_balance_of(me)` on the 10 s heartbeat; mock = spends paid to you + close refunds − own-dollar adds,
+> `world.ownDollarsOf`) and "Your activity" (`YourActivity.tsx`, by day, 30 a page). Data: `GET /api/me/activity`
+> (`server/features/activity.ts`: feed_event rows I caused + close refunds naming me + my relayed approvals/declines from
+> relay_log, minus my automatic approval of my own asks; merged cursor) ⊕ chain views of my Pots
+> (`lib/client/activity.ts` `activityOfPerson`, `mergeActivity`: chain wins on status, server on time/receipt; keys in
+> `lib/activity-api.ts`). Members → tap a person → `?sheet=person&who=` (`PersonActivitySheet`). Quiet "Receipt ↗"
+> (`components/receipt/ReceiptLink.tsx`, only for a base58 32-byte hash, new tab, `rel=noopener`) on feed rows, history
+> rows, the spend result and the Approve sheet; "View on explorer ↗" (the Pot account) under the Rules tab. Add sheet: the
+> own-dollars source is disabled at $0 and offers "Use all $X". The mock gives settled items stand-in hashes
+> (`mockTxHash`) so receipts render as on testnet; votes have none (no receipt). Live approvals seen only on chain use the
+> request's time (Sputnik keeps no vote time). Tests: `server/features/activity.test.ts`, `lib/client/activity.test.ts`,
+> `components/__tests__/activity.test.tsx`, `e2e/mock/activity.spec.ts`, `e2e/testnet/activity.testnet.ts`.
+> Screens: `notes/screens/you-{day,night}.png`.
+
+> **2026-11-01: brand avatars.** Ten pictures (`brand/avatars/README.md`; files in `apps/web/public/avatars/pot-01..10.svg`,
+> byte-identical copies in `brand/avatars/`) a person may pick in You → Profile → Avatar (`components/app-shell/AvatarPicker.tsx`:
+> native radios in a fieldset, "Use my initials" first = default, 48 px tiles, saves itself after a 400 ms settle, "Saving…/Saved"
+> status, failure reverts + toast; no marigold). `Avatar` renders `person.avatar` (`PersonVM.avatar`), else the unchanged initials
+> seat; unknown ids fall back to initials (`lib/avatars.ts`). Data: `app_user.avatar` + CHECK (**migration `0002_user_avatar.sql` —
+> apply it to the local/preview DB before running a new live build**, or app_user selects fail), `PATCH /api/me {avatar}` (new route;
+> strict, active device), `GET /api/session` `session.avatar`, feed `profiles[a].avatar`, invite landing seats (`displayProfiles`).
+> Mock: `World.avatars` + `store.setAvatar` (fail hook `pot.mock.fail = "avatar"`). Tests: `components/__tests__/avatars.test.tsx`,
+> `server/features/profile.test.ts`, `lib/client/mock/avatars.test.ts`, `lib/client/live/vm.test.ts` (2 added), e2e `e2e/mock/avatars.spec.ts`.
+> Screens: `notes/screens/avatars-{day,night}.png` (contact sheet), `avatars-picker-*`, `avatars-pot-*`.
+
+> **2026-11-01: Create uses customizable "Pot rules", no templates.** Step 2 is one form (`CreatePotSheet` `RulesStep`,
+> logic in `lib/client/create-rules.ts`, machine events in `machines/create.ts`): instant limit and per-person limit as
+> inline amount fields (defaults $100 / $200; $0 allowed with a helper line; per-person ≥ instant; relayer bounds
+> $1,000 / $100,000), "Members only" / "Members and people I name" (≤ 10 names, format / duplicate / hub-Pot-token
+> checks), the editable "$X each" goal, the fixed rules as plain lines, `create.rules.footer`. Creation always sends
+> `preset: "custom"` + the rules (live and mock). Client `Rules` gained `payeeAllowlist` (a rules change keeps it);
+> `TRIP_RULES` → `DEFAULT_RULES`. The Rules tab drops the "Trip rules" badge and shows the Pot's own rules (a $0 limit
+> reads "Every spend needs k of n approvals", named people listed, leftovers and size rows). Landing label "Pot rules";
+> `/j` goal no longer depends on the preset. The `/demo` tour is unchanged (its copy moved to `tour.create.*`; only
+> `demo.f.rules_null` reworded). Relayer `checkRules` now also refuses the hub, its Pots and the token in the named list.
+> Tests: `lib/client/create-rules.test.ts`, `components/__tests__/create-rules.test.tsx`, policy rows, mock `flows (d)` +
+> `screens` "Create step 2", testnet `e2e/testnet/create-rules.testnet.ts` (one Pot, `get_rules` + `preview_spend` $30 → vote).
+> Screens: `notes/screens/create-rules-{day,night}.png`.
+
 # Frontend notes: wave 1 (F-02, F-04, F-06, F-07, F-13/F-15/F-16 UI) on mocks
 
 > Written 2026-10-22 by the frontend engineer. Specs: plan/frontend-architecture.md, plan/ux-spec.md, plan/design-direction/, brand/README.md + tokens.json, decisions.md Rev 7.
@@ -361,3 +401,66 @@ Defaults in brackets. Sources: plan/design-direction/README.md (DD), 01 (DD-01),
   still drain the tab's 100/min FIFO bucket, and the bundle never landed under a burst of changes. Use
   `lib/client/live/refresh.ts` `refreshQuery()` (no cancel, one trailing refetch). `invalidatePot` passes
   `cancelRefetch: false`. The open proposals' votes are read through `signingChain()` (unbudgeted, ≤ 1 call / 3 s).
+
+## Back in multi-step sheets (2026-11-01)
+Request: "We should have a back button in this flow, if I want to change something without closing it" (the
+"Add from another wallet or exchange" sheet had only ✕).
+
+- **Pattern:** the Create flow's: a ghost **[‹ Back]** (Lucide `chevron-left` + `sheet.back` "Back") under the step's
+  primary, full width, `SheetBack` in `components/sheets/Sheet.tsx`. It's never marigold, so each screen keeps
+  exactly one marigold button. Create step 2 and the /demo tour's Create scene use the same component and copy
+  (`create.back` was renamed to `sheet.back`).
+- **One history entry per step.** `lib/client/sheet.ts` stores `potSheet` (the depth) in `history.state` on every
+  entry it pushes:
+  - `pushSheetStep()` pushes the next step.
+  - `sheetStepBack()` is `history.back()` when the entry below is the same sheet's. Otherwise (a deep link straight
+    to a later step) it replaces the entry with the previous step, so the person stays in the app.
+  - `closeSheet()` unwinds every step with `history.go(-depth)`, so ✕ on step 3 lands on the Pot, not on step 2.
+    A cold deep link (depth 0) is still stripped with `replaceState`.
+
+  As a result the in-sheet [Back] and the browser's or Android's Back are the same move. The old module-level
+  `pushedUrl` is gone.
+- **Add money** (`components/sheets/AddFlow.tsx`, `lib/client/machines/add-flow.ts`):
+  - The steps are amount + source (`?sheet=add`) → network (`&src=xc&amount=`) → address + QR (`&d=`, now pushed
+    rather than replaced) → tracking (the stepper on that same entry).
+  - The reducer keeps what was typed, the source and the picked network while the flow is open. Back from the
+    address step finds the network still picked, and Back from the network step finds the amount still there.
+    Leaving the flow (no `?sheet=add`) resets everything.
+  - The "‹ Base · Change" pill on the address step does the same thing as [Back].
+- **No Back once money is on its way.** That means after [Simulate sending] (or a real send), or on any stepper
+  state. The reasons:
+  - The transfer can't be undone. Going back to the address or network picker would suggest you can change the
+    network or amount of money that is already moving, and a second [Get address] would create a second deposit.
+  - The stepper already says "You can close this screen. We'll let you know when it arrives", and the Pot card
+    keeps showing progress.
+
+  So the reducer marks the flow `tracking`. A browser Back from there closes the whole flow (`closing` →
+  `closeSheet()`) instead of stepping back into the address step, the same as ✕. While Simulate is busy, [Back]
+  is disabled. "Get a new address" on an expired deposit is the one way back to the network step from the
+  stepper (`NEW_ADDRESS`).
+- **Create:** step 2 is `?step=rules` (pushed). Browser Back on step 2 returns to step 1 with everything kept,
+  instead of closing the sheet, and Forward goes to step 2 again. Step 3 (creating) has no Back.
+- **Accessibility:** `Sheet` takes `stepKey`. When the step changes inside an open sheet, focus moves to the
+  step's heading (`[data-step-heading]`: the network legend, or the address step's `h3`; otherwise the sheet
+  title), and the sheet's own `role="status"` region reads it. The app's live region sits outside the modal.
+  Going back to the Add sheet reopens it, so the drawer focuses its title. [Back] is a real `<button>` with a text
+  label, and the chevron is `aria-hidden`.
+- **Other multi-step sheets were checked:**
+  - Spend, Close, Rules change and "Confirm it's you" are each one form followed by a result or progress, so
+    there is no step to go back to. Their result states are in flight, and only Done or ✕ apply.
+  - Approve's "Decline" sub-step already has its cancel button ("Cancel", `approve.decline.cancel`). It is a
+    confirm rather than a URL step, so the browser's Back still closes that sheet.
+- **Tests:**
+  - `lib/client/machines/add-flow.test.ts` (Back keeps the amount, source and network; no Back from tracking;
+    Back out of tracking closes the flow).
+  - `lib/client/sheet.test.ts` (jsdom history: push, pop, unwind, deep link, cold link).
+  - `components/__tests__/create-rules.test.tsx`, "Create: Back".
+  - e2e `deposit.spec.ts`, "Back: …": address → Back → network (Solana kept, heading focused, announced) → Back →
+    Add sheet ($100 kept) → forward → the browser's Back twice → closed. After "Simulate sending" there is no
+    Back, and the browser's Back closes the flow. It also covers "✕ on the address step closes the whole flow",
+    with axe and the one-marigold rule on both steps.
+  - e2e `flows.spec.ts`, "Create: step 2 [Back] and the browser's Back…".
+- **Results:**
+  - `pnpm typecheck`, `pnpm lint` and `pnpm test` (763 passed, 9 skipped) are green.
+  - `NEXT_DIST_DIR=.next-back NEXT_PUBLIC_DATA_SOURCE=mock next build` passes.
+  - The mock e2e suite against `next start -p 3500` gave **216 passed, 21 skipped** (3 projects).

@@ -14,6 +14,7 @@ import { reasonWord } from "@/components/pot/Feed"
 import { ApprovalTimeline } from "@/components/pot/RequestCard"
 import { Button } from "@/components/ui/button"
 import { Sheet } from "@/components/sheets/Sheet"
+import { ReceiptLink } from "@/components/receipt/ReceiptLink"
 import { t, tLines, type MessageKey } from "@/i18n/t"
 import { announce, useOnline } from "@/lib/client/browser"
 import { vote } from "@/lib/client/actions"
@@ -134,6 +135,8 @@ function ApproveBody({ pot, r, onClose }: { pot: PotVM; r: RequestVM; onClose: (
           </div>
         )}
       </dl>
+      {/* the request's own transaction: a quiet receipt, never a button */}
+      <ReceiptLink txHash={r.txHash} what={t("feed.pending", { name: r.requester.name, amount: amountWhole, reason: reasonWord(r) })} className="-mt-2 self-start" />
 
       {status && (
         <div className="flex items-start gap-3 rounded-md bg-surface-sunken p-3" data-approve-status>

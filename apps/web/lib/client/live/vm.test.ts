@@ -177,3 +177,21 @@ describe("names and covers", () => {
     expect(coverOf("lisbon-trip")).toBeGreaterThanOrEqual(0)
   })
 })
+
+describe("brand avatars (feed profiles → every PersonVM)", () => {
+  it("members' chosen avatars reach seats, feed items and requests; no choice = initials (null)", () => {
+    const b = bundle({ feed: feed({ profiles: { [ana]: { name: "Ana", tint: "peach", avatar: "pot-03" }, [ben]: { name: "Ben", tint: "sage", avatar: null } } }) })
+    const vm = livePotVM(b, { me: ben, now: NOW, goalEach: null })
+    expect(vm.members.find((m) => m.person.id === ana)!.person.avatar).toBe("pot-03")
+    expect(vm.members.find((m) => m.person.id === ben)!.person.avatar).toBeNull()
+    const vote = vm.feed.find((f) => f.kind === "request" && f.request.id === 2)
+    expect(vote?.kind === "request" && vote.request.requester.avatar).toBe("pot-03")
+  })
+
+  it("my own seat follows the session at once (before the feed refetches); unknown ids fall back to initials", () => {
+    const b = bundle({ feed: feed({ profiles: { [ana]: { name: "Ana", tint: "peach", avatar: "pot-99" as never }, [ben]: { name: "Ben", tint: "sage", avatar: "pot-01" } } }) })
+    const vm = livePotVM(b, { me: ben, myAvatar: "pot-08", now: NOW, goalEach: null })
+    expect(vm.me?.person.avatar).toBe("pot-08")
+    expect(vm.members.find((m) => m.person.id === ana)!.person.avatar).toBeNull()
+  })
+})

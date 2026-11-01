@@ -4,9 +4,12 @@
 // is no viewport branching at hydration. `surface`, radius-lg (top corners on phones), shadow-sheet, the
 // --pot-scrim backdrop, a grabber, a visible 44 px ✕ (WCAG 2.5.7), focus on the title when it opens.
 // Enter 360 ms ease-enter, exit 280 ms ease-exit; reduced motion: a 120 ms fade.
+// Multi-step sheets pass `stepKey`: when the step changes inside an open sheet (Next, Back, the browser's Back),
+// focus moves to the step's heading ([data-step-heading], else the sheet title) and the live region reads it.
 import { Drawer } from "@base-ui/react/drawer"
-import { X } from "lucide-react"
+import { ChevronLeft, X } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
+import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import { cn } from "@/lib/client/cn"
 
@@ -26,6 +29,7 @@ export function Sheet({
   wide,
   theme,
   className,
+  stepKey,
 }: {
   open: boolean
   onClose: () => void
@@ -52,10 +56,35 @@ export function Sheet({
   theme?: "night"
   /** extra classes on the popup */
   className?: string
+  /** the step a multi-step sheet shows; a change moves focus to the new step's heading and announces it */
+  stepKey?: string | number
 }) {
   const titleRef = useRef<HTMLHeadingElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  // the step shown since this opening (null while closed: the opening itself focuses the title)
+  const shownStep = useRef<string | number | null>(null)
+  // the step's heading, read by the sheet's own live region (the app's region is outside the modal)
+  const [stepSaid, setStepSaid] = useState("")
+  useEffect(() => {
+    if (!open) {
+      shownStep.current = null
+      return
+    }
+    if (stepKey === undefined) return
+    if (shownStep.current === null || shownStep.current === stepKey) {
+      shownStep.current = stepKey
+      return
+    }
+    shownStep.current = stepKey
+    // the new step is committed: its heading exists now (the Back button that had focus is gone)
+    const target = popupRef.current?.querySelector<HTMLElement>("[data-step-heading]") ?? titleRef.current
+    if (!target) return
+    target.focus()
+    setStepSaid(target.textContent?.trim() ?? "")
+  }, [open, stepKey])
   const popup = (
     <Drawer.Popup
+      ref={popupRef}
       initialFocus={titleRef}
       aria-label={label}
       data-theme={theme}
@@ -97,6 +126,11 @@ export function Sheet({
           <X aria-hidden className="size-6" strokeWidth={2} />
         </Drawer.Close>
       </div>
+      {stepKey !== undefined && (
+        <p role="status" aria-live="polite" className="sr-only" data-step-live>
+          {stepSaid}
+        </p>
+      )}
       <ScrollBody label={label ?? title}>{children}</ScrollBody>
       {footer && (
         <div className="shrink-0 border-t border-line bg-surface px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom)+var(--drawer-keyboard-inset,0px))] md:rounded-b-lg md:px-6 md:pb-6">
@@ -122,6 +156,19 @@ export function Sheet({
     >
       {keyboard ? <Drawer.VirtualKeyboardProvider>{portal}</Drawer.VirtualKeyboardProvider> : portal}
     </Drawer.Root>
+  )
+}
+
+/**
+ * [Back] in a multi-step sheet (the Create flow's pattern): a ghost button under the step's primary, so the one
+ * marigold stays the primary. Never shown on a sheet's first step or once money is on its way.
+ */
+export function SheetBack({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <Button variant="ghost" className="w-full" onClick={onClick} disabled={disabled} data-sheet-back>
+      <ChevronLeft aria-hidden strokeWidth={2} />
+      {t("sheet.back")}
+    </Button>
   )
 }
 

@@ -10,6 +10,32 @@ export interface Messages {
   "a11y.selected": undefined
   "a11y.skip": undefined
   "a11y.tabs.nav": undefined
+  "activity.added": { who: string | number; amount: string | number }
+  "activity.asked.instant": { who: string | number; amount: string | number; reason: string | number }
+  "activity.asked.vote": { who: string | number; amount: string | number; reason: string | number }
+  "activity.chip.added": undefined
+  "activity.chip.declined": undefined
+  "activity.chip.received": undefined
+  "activity.close_asked": { who: string | number }
+  "activity.created": { who: string | number }
+  "activity.joined": { who: string | number }
+  "activity.path.instant": undefined
+  "activity.path.vote": undefined
+  "activity.person.done": undefined
+  "activity.person.empty": undefined
+  "activity.person.title": { name: string | number }
+  "activity.person.title.you": { potName: string | number }
+  "activity.refund": { who: string | number; amount: string | number }
+  "activity.rules_asked": { who: string | number }
+  "activity.rules_changed": { who: string | number }
+  "activity.voted.approve": { who: string | number; name: string | number; amount: string | number }
+  "activity.voted.approve.other": { who: string | number }
+  "activity.voted.close.approve": { who: string | number }
+  "activity.voted.close.reject": { who: string | number }
+  "activity.voted.reject": { who: string | number; name: string | number; amount: string | number }
+  "activity.voted.reject.other": { who: string | number }
+  "activity.voted.rules.approve": { who: string | number }
+  "activity.voted.rules.reject": { who: string | number }
   "add.after": { potName: string | number; balance: string | number }
   "add.after.goal": { potName: string | number; balance: string | number }
   "add.amount.label": undefined
@@ -26,9 +52,11 @@ export interface Messages {
   "add.sending": { amount: string | number }
   "add.source.demo": undefined
   "add.source.label": undefined
+  "add.source.max": { available: string | number }
   "add.source.other_hint": undefined
   "add.source.other_wallet": undefined
   "add.source.pot_dollars": { available: string | number }
+  "add.source.pot_dollars.none": undefined
   "add.source.short": { amount: string | number }
   "add.source.soon": undefined
   "add.source.test_pill": undefined
@@ -135,6 +163,16 @@ export interface Messages {
   "auth.failed": undefined
   "auth.popup_blocked": undefined
   "auth.service_down": undefined
+  "avatar.pot-01": undefined
+  "avatar.pot-02": undefined
+  "avatar.pot-03": undefined
+  "avatar.pot-04": undefined
+  "avatar.pot-05": undefined
+  "avatar.pot-06": undefined
+  "avatar.pot-07": undefined
+  "avatar.pot-08": undefined
+  "avatar.pot-09": undefined
+  "avatar.pot-10": undefined
   "chip.approved": undefined
   "chip.declined": undefined
   "chip.expired": undefined
@@ -232,7 +270,6 @@ export interface Messages {
   "confirm.waiting": undefined
   "confirm.wallet_pays": undefined
   "confirm.why.new_device": undefined
-  "create.back": undefined
   "create.cover": undefined
   "create.cover.color": undefined
   "create.cover.swatch": { n: string | number }
@@ -241,19 +278,51 @@ export interface Messages {
   "create.error.limit": undefined
   "create.error.name": undefined
   "create.error.relayer": undefined
+  "create.goal.amount.invalid": undefined
+  "create.goal.amount.label": undefined
   "create.goal.each": { amount: string | number }
+  "create.goal.each.after": undefined
   "create.goal.label": undefined
   "create.name.count": { count: string | number }
   "create.name.label": undefined
   "create.name.placeholder": undefined
-  "create.preset.club": undefined
-  "create.preset.soon": undefined
-  "create.preset.team": undefined
-  "create.preset.trip": undefined
   "create.preview.members": undefined
   "create.preview_hint": undefined
   "create.progress": { potName: string | number }
   "create.progress.ready": undefined
+  "create.rules.amount.invalid": undefined
+  "create.rules.dollar": undefined
+  "create.rules.fix": undefined
+  "create.rules.fixed.expiry": { days: string | number }
+  "create.rules.fixed.leftovers": undefined
+  "create.rules.fixed.majority": undefined
+  "create.rules.fixed.size": { max: string | number }
+  "create.rules.fixed.title": undefined
+  "create.rules.footer": undefined
+  "create.rules.instant.after": undefined
+  "create.rules.instant.before": undefined
+  "create.rules.instant.label": undefined
+  "create.rules.instant.max": { max: string | number }
+  "create.rules.instant.zero": undefined
+  "create.rules.intro": undefined
+  "create.rules.named.add": undefined
+  "create.rules.named.dup": undefined
+  "create.rules.named.empty": undefined
+  "create.rules.named.hint": { max: string | number }
+  "create.rules.named.invalid": undefined
+  "create.rules.named.label": { n: string | number }
+  "create.rules.named.limit": { max: string | number }
+  "create.rules.named.placeholder": undefined
+  "create.rules.named.remove": { n: string | number }
+  "create.rules.named.reserved": undefined
+  "create.rules.payees.legend": undefined
+  "create.rules.payees.members": undefined
+  "create.rules.payees.named": undefined
+  "create.rules.person.after": undefined
+  "create.rules.person.before": undefined
+  "create.rules.person.below": { instantLimit: string | number }
+  "create.rules.person.label": undefined
+  "create.rules.person.max": { max: string | number }
   "create.slow": undefined
   "create.step1.title": undefined
   "create.step2.title": undefined
@@ -878,6 +947,7 @@ export interface Messages {
   "landing.trust": undefined
   "legal.terms": undefined
   "maintenance": undefined
+  "members.activity.hint": undefined
   "members.explainer": undefined
   "members.gets_back": undefined
   "members.header": { n: number }
@@ -899,6 +969,7 @@ export interface Messages {
   "members.totals.left": undefined
   "members.totals.spent": undefined
   "members.you": { name: string | number }
+  "nav.balance.a11y": { amount: string | number }
   "notif.approval.body": { amount: string | number; reason: string | number; potName: string | number }
   "notif.approval.title": { name: string | number }
   "notif.approved.body": { names: string | number; reason: string | number }
@@ -941,6 +1012,8 @@ export interface Messages {
   "pot.closing": undefined
   "pot.cta.add": undefined
   "pot.cta.spend": undefined
+  "pot.explorer": undefined
+  "pot.explorer.label": { potName: string | number }
   "pot.feed.empty.body": { potName: string | number }
   "pot.feed.empty.member": undefined
   "pot.feed.empty.title": undefined
@@ -1005,6 +1078,8 @@ export interface Messages {
   "push.unsupported": undefined
   "receipt.ledger": undefined
   "receipt.line": { amount: string | number; date: string | number }
+  "receipt.link": undefined
+  "receipt.link.label": { what: string | number }
   "receipt.title": undefined
   "relayer.cap": undefined
   "relayer.down.banner": undefined
@@ -1049,9 +1124,13 @@ export interface Messages {
   "rules.expiry": { days: string | number }
   "rules.footer": { creator: string | number }
   "rules.instant": { instantLimit: string | number }
+  "rules.instant.none": { k: string | number; n: string | number }
+  "rules.label": undefined
+  "rules.leftovers": undefined
   "rules.new_member": undefined
-  "rules.preset.trip": undefined
   "rules.recipients": undefined
+  "rules.recipients.named": undefined
+  "rules.size": { max: string | number }
   "rules.threshold": { k: string | number; n: string | number }
   "rules.title": { potName: string | number }
   "session.expired": undefined
@@ -1093,6 +1172,7 @@ export interface Messages {
   "share.rotate.confirm.cancel": undefined
   "share.rotate.confirm.cta": undefined
   "share.title": { potName: string | number }
+  "sheet.back": undefined
   "signin.body": undefined
   "signin.demo": undefined
   "signin.google": undefined
@@ -1163,6 +1243,11 @@ export interface Messages {
   "tour.cover.body": undefined
   "tour.cover.start": undefined
   "tour.cover.title": undefined
+  "tour.create.preset.club": undefined
+  "tour.create.preset.soon": undefined
+  "tour.create.preset.team": undefined
+  "tour.create.preset.trip": undefined
+  "tour.create.title": undefined
   "tour.end.cta": undefined
   "tour.end.home": undefined
   "tour.end.l1": undefined
@@ -1286,11 +1371,27 @@ export interface Messages {
   "xc.title": undefined
   "xc.warning": { token: string | number; network: string | number }
   "you.about_dollars": undefined
+  "you.activity.empty.body": undefined
+  "you.activity.empty.title": undefined
+  "you.activity.error": undefined
+  "you.activity.more": undefined
+  "you.activity.retry": undefined
+  "you.activity.title": undefined
   "you.advanced": undefined
   "you.appearance": undefined
   "you.appearance.auto": undefined
   "you.appearance.day": undefined
   "you.appearance.night": undefined
+  "you.avatar": undefined
+  "you.avatar.failed": undefined
+  "you.avatar.hint": undefined
+  "you.avatar.initials": undefined
+  "you.avatar.saved": undefined
+  "you.avatar.saving": undefined
+  "you.balance.error": undefined
+  "you.balance.helper": undefined
+  "you.balance.no_cashout": undefined
+  "you.balance.title": undefined
   "you.email": undefined
   "you.help": undefined
   "you.install": undefined

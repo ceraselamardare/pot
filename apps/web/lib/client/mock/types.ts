@@ -2,6 +2,7 @@
 // The VM shapes follow frontend-architecture §1.4 / §7.5 so the testnet data layer can produce the same ones.
 import type { Micro } from "../money"
 import type { Rules } from "../rules"
+import type { AvatarId } from "@/lib/avatars"
 
 export type Category = "groceries" | "food" | "transport" | "stay" | "tickets" | "other"
 export type Vote = "Approve" | "Reject"
@@ -43,6 +44,8 @@ export interface EventRec {
   /** cents */
   amount?: number
   at: number
+  /** contribution: where the money came from ("pot_dollars" = the person's own Pot dollars; absent = demo dollars) */
+  source?: "demo" | "pot_dollars"
 }
 
 export interface InviteRec {
@@ -71,6 +74,9 @@ export interface RulesRec {
   /** cents */
   memberBudget: number
   expiryDays: number
+  /** absent in older saved worlds = "members" */
+  instantPayees?: "members" | "members_and_allowlist"
+  payeeAllowlist?: string[]
 }
 
 export interface RulesProposalRec extends ProposalRec {
@@ -119,6 +125,8 @@ export interface World {
   v: 1
   pots: Record<string, PotRec>
   nextRequestId: number
+  /** person id → chosen brand avatar (the mock's stand-in for app_user.avatar); absent = initials */
+  avatars?: Record<string, AvatarId>
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -130,6 +138,8 @@ export interface PersonVM {
   initials: string
   /** join order in this Pot (avatar colour member-((i mod 6) + 1)); null = invited, not joined */
   joinIndex: number | null
+  /** the person's chosen brand avatar (You → Profile); null/absent = initials on the member colour */
+  avatar?: AvatarId | null
 }
 
 export type RequestStatusVM = "needs" | "instant" | "approved" | "declined" | "expired" | "failed"
@@ -165,17 +175,22 @@ export interface RequestVM {
   instantCap: Micro
   memberBudget: Micro
   balanceAfter: Micro
+  /** the transaction that made the request (its receipt), when known */
+  txHash?: string
+  /** when each member approved/declined (mock only; the chain doesn't keep vote times) */
+  voteAt?: Record<string, number>
 }
 
+/** `txHash`: the settled transaction behind the item (its receipt); absent when unknown or still pending. */
 export type FeedItemVM =
-  | { key: string; kind: "created"; at: number; actor: PersonVM }
-  | { key: string; kind: "rules_requested"; at: number; actor: PersonVM; k: number }
-  | { key: string; kind: "rules_changed"; at: number; actor: PersonVM | null }
-  | { key: string; kind: "close_requested"; at: number; actor: PersonVM; k: number }
-  | { key: string; kind: "closed"; at: number }
-  | { key: string; kind: "joined"; at: number; actor: PersonVM }
-  | { key: string; kind: "contribution"; at: number; actor: PersonVM; amount: Micro }
-  | { key: string; kind: "request"; at: number; request: RequestVM }
+  | { key: string; kind: "created"; at: number; actor: PersonVM; txHash?: string }
+  | { key: string; kind: "rules_requested"; at: number; actor: PersonVM; k: number; txHash?: string }
+  | { key: string; kind: "rules_changed"; at: number; actor: PersonVM | null; txHash?: string }
+  | { key: string; kind: "close_requested"; at: number; actor: PersonVM; k: number; txHash?: string }
+  | { key: string; kind: "closed"; at: number; txHash?: string }
+  | { key: string; kind: "joined"; at: number; actor: PersonVM; txHash?: string }
+  | { key: string; kind: "contribution"; at: number; actor: PersonVM; amount: Micro; txHash?: string }
+  | { key: string; kind: "request"; at: number; request: RequestVM; txHash?: string }
 
 export interface MemberVM {
   person: PersonVM
@@ -202,6 +217,8 @@ export interface CloseVM {
   status: "needs" | "approved" | "declined" | "expired" | "failed"
   createdAt?: number
   expiresAt?: number
+  /** when each member approved/declined (mock only) */
+  voteAt?: Record<string, number>
 }
 
 /** A rules change request (P-8): the new rules decoded from the proposal (testnet) next to the current ones. */
@@ -220,6 +237,8 @@ export interface RulesChangeVM {
   status: "needs" | "approved" | "declined" | "expired" | "failed"
   createdAt: number
   expiresAt: number
+  /** when each member approved/declined (mock only) */
+  voteAt?: Record<string, number>
 }
 
 /** What closing now would pay (hub preview_close on testnet; the sdk prorata twin in the mock). */

@@ -9,14 +9,18 @@ export interface Rules {
   /** member_budget: per-person total of instant spends (D-07) */
   memberBudget: Micro
   instantPayees: "members" | "members_and_allowlist"
+  /** people outside the Pot who can get instant payments (≤ 10; empty for "members") */
+  payeeAllowlist: string[]
   /** proposal period in days (D-04: 7 for every Pot) */
   expiryDays: number
 }
 
-export const TRIP_RULES: Rules = {
+/** The Create form's starting values (the old Trip preset): the landing, the /demo tour and the mock seed use them. */
+export const DEFAULT_RULES: Rules = {
   instantCap: 100_000_000n, // $100
   memberBudget: 200_000_000n, // $200
   instantPayees: "members",
+  payeeAllowlist: [],
   expiryDays: 7,
 }
 

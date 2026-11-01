@@ -89,7 +89,7 @@ test("a new device: pending until 'Confirm it's you' adds its key through NEAR A
   const step1 = p2.getByRole("dialog", { name: "Name your Pot" })
   await step1.getByRole("textbox", { name: /Pot name/ }).fill(`Confirm ${RUN}`)
   await step1.getByRole("button", { name: "Next" }).click()
-  await p2.getByRole("dialog", { name: "How should it work?" }).getByRole("button", { name: "Create Pot" }).click()
+  await p2.getByRole("dialog", { name: "Pot rules" }).getByRole("button", { name: "Create Pot" }).click()
 
   const confirm = p2.getByRole("dialog", { name: "Confirm it's you" })
   await expect(confirm).toBeVisible({ timeout: 30_000 })

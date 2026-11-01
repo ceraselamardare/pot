@@ -8,6 +8,7 @@ import { ApiError } from "../http/errors"
 import { DAO, fc, HUB, newKey, signDelegate, TGAS, transfer, USDC, USER, addFullAccessKey } from "../testing/delegates"
 import { decodeSignedDelegate, verifyDelegateSignature } from "./decode"
 import { evaluatePolicy, type PolicyContext } from "./policy"
+import { checkRulesForm } from "@/lib/client/create-rules"
 
 const key = newKey()
 const NOW = 1_793_000_000_000
@@ -94,6 +95,17 @@ const cases: Case[] = [
   ["R2 rules over the instant cap bound", HUB, () => [fc("create_pot", createArgs({ rules: { ...RULES, instant_cap: "1000000001" } }), 300)], "args_invalid"],
   ["R2 allowlist with members-only payees", HUB, () => [fc("create_pot", createArgs({ rules: { ...RULES, payee_allowlist: ["a.testnet"] } }), 300)], "args_invalid"],
   ["R2 allowlist of 11", HUB, () => [fc("create_pot", createArgs({ rules: { ...RULES, instant_payees: "members_and_allowlist", payee_allowlist: Array.from({ length: 11 }, (_, i) => `a${i}.testnet`) } }), 300)], "args_invalid"],
+  // Create "Pot rules" (no templates): preset custom + the form's rules
+  ["R2 custom rules from the Create form ($25 / $60, members only)", HUB, () => [fc("create_pot", createArgs({ preset: "custom", rules: { ...RULES, instant_cap: "25000000", member_budget: "60000000" }, invite_pk: realPk, emoji: "🎿" }), 300)], "R2"],
+  ["R2 custom rules with $0 at a time", HUB, () => [fc("create_pot", createArgs({ preset: "custom", rules: { ...RULES, instant_cap: "0", member_budget: "0" } }), 300)], "R2"],
+  ["R2 custom rules with 10 named people", HUB, () => [fc("create_pot", createArgs({ preset: "custom", rules: { ...RULES, instant_payees: "members_and_allowlist", payee_allowlist: Array.from({ length: 10 }, (_, i) => `p${i}.near`) } }), 300)], "R2"],
+  ["R2 custom rules at the bounds ($1,000 / $100,000)", HUB, () => [fc("create_pot", createArgs({ preset: "custom", rules: { ...RULES, instant_cap: "1000000000", member_budget: "100000000000" } }), 300)], "R2"],
+  ["R2 per-person bound + 1", HUB, () => [fc("create_pot", createArgs({ preset: "custom", rules: { ...RULES, member_budget: "100000000001" } }), 300)], "args_invalid"],
+  ["R2 named list with the hub", HUB, () => [fc("create_pot", createArgs({ preset: "custom", rules: { ...RULES, instant_payees: "members_and_allowlist", payee_allowlist: [HUB] } }), 300)], "args_invalid"],
+  ["R2 named list with a Pot of this hub", HUB, () => [fc("create_pot", createArgs({ preset: "custom", rules: { ...RULES, instant_payees: "members_and_allowlist", payee_allowlist: ["sam.near", DAO] } }), 300)], "args_invalid"],
+  ["R2 named list with the token", HUB, () => [fc("create_pot", createArgs({ preset: "custom", rules: { ...RULES, instant_payees: "members_and_allowlist", payee_allowlist: [USDC] } }), 300)], "args_invalid"],
+  ["R2 named list with a duplicate", HUB, () => [fc("create_pot", createArgs({ preset: "custom", rules: { ...RULES, instant_payees: "members_and_allowlist", payee_allowlist: ["sam.near", "sam.near"] } }), 300)], "args_invalid"],
+  ["R6 set_rules naming the token", HUB, () => [fc("set_rules", { pot: DAO, rules: { ...RULES, instant_payees: "members_and_allowlist", payee_allowlist: [USDC] } }, 30)], "args_invalid"],
   ["R2 emoji with ASCII", HUB, () => [fc("create_pot", createArgs({ emoji: "A" }), 300)], "args_invalid"],
   ["R2 emoji over 16 bytes", HUB, () => [fc("create_pot", createArgs({ emoji: "🇵🇹🇵🇹🇵🇹" }), 300)], "args_invalid"],
   ["R2 bad invite_pk", HUB, () => [fc("create_pot", createArgs({ invite_pk: "ed25519:xyz" }), 300)], "args_invalid"],
@@ -253,6 +265,20 @@ describe("@pot/sdk buildCall ↔ relayer policy (reconciliation)", async () => {
     ["join", { type: "join", pot: DAO, invitePk: realPk, signature: SIG }, "R4"],
     ["create_pot (explicit nulls)", { type: "create_pot", slug: "lisbon-trip-7k2f", name: "Lisbon Trip", preset: "trip", rules: null }, "R2"],
     ["create_pot (custom rules)", { type: "create_pot", slug: "club-2", name: "Club", preset: "custom", rules, invitePk: realPk, emoji: "🏃" }, "R2"],
+    // exactly what the Create sheet sends (lib/client/live/actions createPot): preset custom + the form's rules
+    ...(["members", "members_and_allowlist"] as const).map((payees): [string, Record<string, unknown>, string] => [
+      `create_pot (Create form, ${payees})`,
+      {
+        type: "create_pot",
+        slug: "ski-weekend-a1b2",
+        name: "Ski Weekend",
+        preset: "custom",
+        rules: checkRulesForm({ instant: "25", perPerson: "60", payees, named: [" Sam.near", "bakery.near"] }, { hubId: HUB, usdcId: USDC }).rules,
+        invitePk: realPk,
+        emoji: "🎿",
+      },
+      "R2",
+    ]),
     ["add_invite", { type: "add_invite", pot: DAO, invitePk: realPk }, "R5"],
     ["revoke_invite", { type: "revoke_invite", pot: DAO, invitePk: realPk }, "R5"],
     ["rotate_invite", { type: "rotate_invite", pot: DAO, oldPk: realPk, newPk: realPk }, "R5"],

@@ -1,9 +1,9 @@
 "use client"
 // Share / Invite (ux-spec §4.13, design-direction 01 §3). Get the link into the group chat in two taps, with
 // honest expectations: who can join, until when, how many more people (rev4, H-1). The link is
-// `/j/<slug>?i=<pk>#<secret>`; Copy, Share and the QR all keep the #fragment. The QR (lazy) stays dark on a
-// white plate in Night too, because scanners fail on inverted codes. "Link copied" swaps in place (that swap is
-// the announcement; no extra toast).
+// `/j/<slug>?i=<pk>#<secret>`; Copy, Share and the QR all keep the #fragment. The QR (lazy) replaces the sheet
+// body, so it never needs a scroll on a phone. It stays dark on a white plate in Night too, because scanners fail on
+// inverted codes. "Link copied" swaps in place (that swap is the announcement; no extra toast).
 import { Check, Clock, Copy, QrCode, Share2 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useState, useSyncExternalStore } from "react"
@@ -88,7 +88,7 @@ export function ShareSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
               {copied ? <Check aria-hidden className="text-approved" strokeWidth={2.5} /> : <Copy aria-hidden strokeWidth={2} />}
               {copied ? t("share.copied") : t("share.cta.copy")}
             </Button>
-            <Button onClick={() => setQr((v) => !v)} aria-expanded={qr} disabled={!link}>
+            <Button onClick={() => { setQr((v) => !v); setConfirmRotate(false) }} aria-pressed={qr} disabled={!link}>
               <QrCode aria-hidden strokeWidth={2} />
               {qr ? t("share.cta.qr_hide") : t("share.cta.qr")}
             </Button>
@@ -96,6 +96,21 @@ export function ShareSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
         </div>
       }
     >
+      {qr && link ? (
+        <div className="flex flex-col items-center gap-3 pt-1" data-qr-view>
+          {/* the QR stays dark on a white plate in Night too: scanners fail on inverted codes (surface #fff / ink #2b1b3a) */}
+          <div role="img" aria-label={t("share.qr.alt", { potName: pot.name })} className="rounded-lg bg-white p-4 shadow-card">
+            <QR value={link} size={232} level="M" bgColor="#ffffff" fgColor="#2b1b3a" aria-hidden />
+          </div>
+          <p className="text-body text-ink">{t("share.qr.hint")}</p>
+          {invite && (
+            <p className="flex items-start gap-2 text-body-sm text-ink-muted">
+              <Clock aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={2} />
+              {t("share.expiry", { date: formatDate(invite.expiresAt), usesLeft: invite.usesLeft })}
+            </p>
+          )}
+        </div>
+      ) : (
       <div className="flex flex-col gap-4 pt-1">
         <figure className="rounded-lg bg-surface-sunken p-3">
           <div className="flex items-center gap-3 rounded-md bg-surface p-3 shadow-card">
@@ -141,16 +156,6 @@ export function ShareSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
         </div>
         )}
 
-        {qr && link && (
-          <div className="flex flex-col items-center gap-2">
-            {/* the QR stays dark on a white plate in Night too: scanners fail on inverted codes (surface #fff / ink #2b1b3a) */}
-            <div role="img" aria-label={t("share.qr.alt", { potName: pot.name })} className="rounded-lg bg-white p-4 shadow-card">
-              <QR value={link} size={208} level="M" bgColor="#ffffff" fgColor="#2b1b3a" aria-hidden />
-            </div>
-            <p className="text-body-sm text-ink-muted">{t("share.qr.hint")}</p>
-          </div>
-        )}
-
         {!invite ? null : confirmRotate ? (
           <div className="flex flex-col gap-2 rounded-md bg-surface-sunken p-3">
             <p className="text-body-sm text-ink">{t("share.rotate.confirm")}</p>
@@ -173,6 +178,7 @@ export function ShareSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
           </button>
         )}
       </div>
+      )}
     </Sheet>
   )
 }

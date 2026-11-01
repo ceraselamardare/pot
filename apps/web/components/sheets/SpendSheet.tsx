@@ -14,6 +14,7 @@ import { Avatar } from "@/components/pot/Avatar"
 import { Chip, Segmented } from "@/components/pot/Controls"
 import { ApprovalTimeline } from "@/components/pot/RequestCard"
 import { StatusChip } from "@/components/pot/StatusChip"
+import { ReceiptLink } from "@/components/receipt/ReceiptLink"
 import { Button } from "@/components/ui/button"
 import { Sheet } from "@/components/sheets/Sheet"
 import { t, tLines } from "@/i18n/t"
@@ -71,6 +72,8 @@ export function SpendSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
   const [category, setCategory] = useState<Category | null>(null)
   const [noteOpen, setNoteOpen] = useState(false)
   const [note, setNote] = useState("")
+  /** the request's transaction from the relay (its receipt on the result card) */
+  const [txHash, setTxHash] = useState<string | undefined>()
   const amount = parseKeypad(value)
   const others = pot.members.filter((m) => !m.isMe)
   const to = type === "reimburse" ? me.person.id : (receiver ?? others[0]?.person.id ?? me.person.id)
@@ -103,6 +106,7 @@ export function SpendSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
     setCategory(null)
     setNote("")
     setNoteOpen(false)
+    setTxHash(undefined)
   }
   const close = () => {
     // a running request keeps going; the feed updates (spend.slow)
@@ -119,6 +123,7 @@ export function SpendSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
         note: note.trim() || undefined,
         receiver: to,
       })
+      setTxHash(r.txHash)
       dispatch({ type: "RESULT", outcome: { id: r.id, path: r.path, payout: r.payout } })
       // testnet two-phase answer: the early reply says "approved", the final one says whether it was sent
       if (r.path === "instant" && r.payout === "pending") void r.final.then((payout) => dispatch({ type: "PAYOUT", payout }))
@@ -172,7 +177,7 @@ export function SpendSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
       }
     >
       {result ? (
-        <ResultCard state={state} amount={amount} category={category ?? "other"} pot={pot} receiverName={type === "pay_member" ? toPerson.name : null} />
+        <ResultCard state={state} amount={amount} category={category ?? "other"} pot={pot} receiverName={type === "pay_member" ? toPerson.name : null} txHash={txHash} />
       ) : (
         <div className="flex flex-col gap-4 pt-1">
           <Segmented<SpendType>
@@ -256,12 +261,15 @@ function ResultCard({
   category,
   pot,
   receiverName,
+  txHash,
 }: {
   state: SpendState
   amount: Micro
   category: Category
   pot: PotVM
   receiverName: string | null
+  /** the relay's transaction for this request (a quiet receipt once it's settled) */
+  txHash?: string
 }) {
   const statusRef = useRef<HTMLParagraphElement>(null)
   const outcome = "outcome" in state ? state.outcome : null
@@ -321,6 +329,7 @@ function ResultCard({
           </div>
         </div>
         {request && <ApprovalTimeline r={request} me={pot.me?.person.id ?? null} />}
+        <ReceiptLink txHash={txHash ?? request?.txHash} what={title} className="self-center" />
       </div>
     )
   }
@@ -371,6 +380,7 @@ function ResultCard({
           <StatusChip status={state.tag === "sent" ? "sent" : "sending"} />
         </div>
       )}
+      {state.tag === "sent" && <ReceiptLink txHash={txHash ?? request?.txHash} what={sentLine} className="self-center" />}
       {state.tag === "approvedNotSent" && (
         <div className="flex items-start gap-3 rounded-md bg-surface-sunken p-3">
           <X aria-hidden className="mt-0.5 size-5 shrink-0 text-declined" strokeWidth={2.5} />

@@ -5,6 +5,7 @@
 // (`localStorage['pot.mock.fail'] = 'add' | 'spend' | 'vote' | 'create' | 'join'`) makes the next one fail.
 import { useSyncExternalStore } from "react"
 import { ActionError, classOfReason } from "../errors"
+import type { AvatarId } from "@/lib/avatars"
 import type { PersonaId } from "./fixtures"
 import type { RulesRec, Vote, World } from "./types"
 import * as W from "./world"
@@ -19,7 +20,7 @@ export interface Session {
 }
 
 /** Relay-like latencies (ms). The spend machine adds its own 1.2 s minimum on top. */
-export const LATENCY = { relay: 700, setup: 1400, join: 1100, create: 1600, add: 900 } as const
+export const LATENCY = { relay: 700, setup: 1400, join: 1100, create: 1600, add: 900, profile: 300 } as const
 
 let world: World | null = null
 let session: Session | null | undefined
@@ -140,10 +141,24 @@ export async function join(slug: string): Promise<W.JoinResult> {
   return r.result
 }
 
-export async function addMoney(slug: string, amountCents: number): Promise<void> {
+/** You → Profile → Avatar (the mock's PATCH /api/me). */
+export async function setAvatar(avatar: AvatarId | null): Promise<void> {
+  await sleep(LATENCY.profile)
+  maybeFail("avatar")
+  commit(W.setAvatar(ensureWorld(), me(), avatar))
+}
+
+export async function addMoney(slug: string, amountCents: number, source: "demo" | "pot_dollars" = "demo"): Promise<void> {
   await sleep(LATENCY.add)
   maybeFail("add")
-  commit(W.addMoney(ensureWorld(), slug, me(), amountCents, Date.now()))
+  let next: World
+  try {
+    next = W.addMoney(ensureWorld(), slug, me(), amountCents, Date.now(), source)
+  } catch (e) {
+    if (e instanceof Error && e.message === "insufficient_own") throw new MockRelayError("insufficient_balance")
+    throw e
+  }
+  commit(next)
 }
 
 export interface SpendResult {

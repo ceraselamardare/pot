@@ -13,7 +13,7 @@
 // screen with no next tap (the last beat), the primary is drawn secondary and inert: no marigold is visible. A result
 // screen's [Done] and the share sheet's [Share link] take `active` too (the /demo tour's steps 2, 7, 9 and 11 make
 // them live: a person taps them to go on).
-import { ArrowUpRight, Check, Clock, Plane, Plus, ShieldCheck, Users, Gift, X } from "lucide-react"
+import { ArrowUpRight, Check, ChevronLeft, Clock, Plane, Plus, ShieldCheck, Users, Gift, X } from "lucide-react"
 import { createContext, useContext, type ReactNode } from "react"
 import { Celebration } from "@/components/money/Celebration"
 import { AmountDisplay } from "@/components/money/Keypad"
@@ -38,7 +38,7 @@ import { cn } from "@/lib/client/cn"
 import { PEOPLE } from "@/lib/client/mock/fixtures"
 import type { PersonVM } from "@/lib/client/mock/types"
 import { formatUsd, type Micro } from "@/lib/client/money"
-import { previewSpend, TRIP_RULES } from "@/lib/client/rules"
+import { previewSpend, DEFAULT_RULES } from "@/lib/client/rules"
 import type { AppScene, Category, Persona } from "@/app/demo/_data/types"
 
 /** What every scene can read: the story's numbers at this chapter, decided on the server from the dataset. */
@@ -269,7 +269,7 @@ function CreateName({ story, people: all, you, active, onPrimary }: SceneProps) 
 }
 
 function CreateRules({ story, tapped, active, onPrimary }: SceneProps) {
-  const [trip, ...lines] = t("create.preset.trip").split(" · ")
+  const [trip, ...lines] = t("tour.create.preset.trip").split(" · ")
   if (tapped) {
     const [creating, free] = t("create.progress", { potName: story.potName }).split(" · ")
     return (
@@ -292,7 +292,7 @@ function CreateRules({ story, tapped, active, onPrimary }: SceneProps) {
   return (
     <PhoneSheet
       full
-      title={t("create.step2.title")}
+      title={t("tour.create.title")}
       peek={<div aria-hidden className="absolute inset-0 bg-ground" />}
       footer={
         <div className="flex flex-col gap-2">
@@ -301,7 +301,8 @@ function CreateRules({ story, tapped, active, onPrimary }: SceneProps) {
           </Primary>
           <Inert>
             <Button variant="ghost" className="w-full">
-              {t("create.back")}
+              <ChevronLeft aria-hidden strokeWidth={2} />
+              {t("sheet.back")}
             </Button>
           </Inert>
         </div>
@@ -326,13 +327,13 @@ function CreateRules({ story, tapped, active, onPrimary }: SceneProps) {
             ))}
           </ul>
         </div>
-        {(["create.preset.club", "create.preset.team"] as const).map((k) => (
+        {(["tour.create.preset.club", "tour.create.preset.team"] as const).map((k) => (
           <div key={k} className="flex items-center justify-between rounded-lg bg-surface-sunken p-3">
             <p className="flex items-center gap-2 font-display text-heading text-ink-muted">
-              {k === "create.preset.club" ? <Users aria-hidden className="size-5" strokeWidth={2} /> : <Gift aria-hidden className="size-5" strokeWidth={2} />}
+              {k === "tour.create.preset.club" ? <Users aria-hidden className="size-5" strokeWidth={2} /> : <Gift aria-hidden className="size-5" strokeWidth={2} />}
               {t(k).split(" · ")[0]}
             </p>
-            <span className="rounded-pill bg-surface px-2.5 py-0.5 text-body-sm font-semibold text-ink-muted">{t("create.preset.soon")}</span>
+            <span className="rounded-pill bg-surface px-2.5 py-0.5 text-body-sm font-semibold text-ink-muted">{t("tour.create.preset.soon")}</span>
           </div>
         ))}
         <div className="flex items-center justify-between gap-3 rounded-md border border-line p-3">
@@ -635,7 +636,7 @@ function SpendForm({ story, people: all, you, active, onPrimary, amount, categor
   const preview = previewSpend({
     amount,
     balance: micro(story.potBefore),
-    rules: TRIP_RULES,
+    rules: DEFAULT_RULES,
     memberCount: members.length,
     used,
     contributed: micro(story.ledger[you].contributed),
@@ -665,7 +666,7 @@ function SpendForm({ story, people: all, you, active, onPrimary, amount, categor
           />
         </Inert>
         <AmountDisplay value={String(amount / 1_000_000n)} label={t("spend.amount.label")} />
-        <RulePreview preview={preview} pot={{ rules: TRIP_RULES, balance: micro(story.potBefore) }} used={used} />
+        <RulePreview preview={preview} pot={{ rules: DEFAULT_RULES, balance: micro(story.potBefore) }} used={used} />
         <div>
           <p className="mb-2 text-body-sm text-ink-muted">{t("spend.reason.label")}</p>
           <Inert className="flex gap-2 overflow-hidden">
@@ -760,7 +761,7 @@ function SpendResult({
                 </span>
                 <div>
                   <p className="text-label text-ink">{t("spend.approved")}</p>
-                  <p className="text-body-sm text-ink-muted">{t("feed.instant.rule", { instantLimit: whole(TRIP_RULES.instantCap) })}</p>
+                  <p className="text-body-sm text-ink-muted">{t("feed.instant.rule", { instantLimit: whole(DEFAULT_RULES.instantCap) })}</p>
                 </div>
               </>
             )}
@@ -868,7 +869,7 @@ function Approve({ story, people: all, you, tapped, active, onPrimary, done }: S
         ) : (
           <div className="flex items-start gap-3 rounded-md bg-surface-sunken p-3">
             <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-waiting" strokeWidth={2.25} />
-            <p className="text-body-sm text-ink">{t("approve.why.cap", { instantLimit: whole(TRIP_RULES.instantCap) })}</p>
+            <p className="text-body-sm text-ink">{t("approve.why.cap", { instantLimit: whole(DEFAULT_RULES.instantCap) })}</p>
           </div>
         )}
         <ApprovalTimeline r={{ approvals, declines: [], pending, requester, k }} me={you} />

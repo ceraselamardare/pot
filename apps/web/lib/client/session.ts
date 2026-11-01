@@ -6,7 +6,9 @@
 import { IS_LIVE } from "./config"
 import { PEOPLE, PERSONAS, type PersonaId } from "./mock/fixtures"
 import * as mock from "./mock/store"
-import { initialsOf } from "./mock/world"
+import { avatarOf, initialsOf } from "./mock/world"
+import { avatarOrNull, type AvatarId } from "@/lib/avatars"
+import { useMemo } from "react"
 import { liveSignOut, useLiveSession, type SessionInfo } from "./live/session"
 import { nameFromAccount } from "./live/vm"
 
@@ -23,19 +25,25 @@ export interface MeInfo {
   persona?: PersonaId
   /** avatar colour slot */
   joinIndex: number
+  /** the chosen brand avatar (You → Profile); null = initials */
+  avatar: AvatarId | null
 }
 
 function useMockMe(): MeInfo | null | undefined {
   const s = mock.useSession()
-  if (s === undefined) return undefined
-  if (!s) return null
-  const p = PEOPLE[s.persona]
-  return { id: s.persona, name: p.name, initials: initialsOf(p.name), emailHint: p.emailHint, account: p.account, kind: "mock", persona: s.persona, joinIndex: PERSONAS.indexOf(s.persona) }
+  const world = mock.useWorld()
+  const avatar = s && world ? avatarOf(world, s.persona) : null
+  return useMemo(() => {
+    if (s === undefined) return undefined
+    if (!s) return null
+    const p = PEOPLE[s.persona]
+    return { id: s.persona, name: p.name, initials: initialsOf(p.name), emailHint: p.emailHint, account: p.account, kind: "mock", persona: s.persona, joinIndex: PERSONAS.indexOf(s.persona), avatar }
+  }, [s, avatar])
 }
 
 export function infoOf(s: SessionInfo): MeInfo {
   const name = s.displayName || nameFromAccount(s.accountId) || s.accountId
-  return { id: s.accountId, name, initials: initialsOf(name), emailHint: s.emailHint, account: s.accountId, kind: s.kind, joinIndex: 0 }
+  return { id: s.accountId, name, initials: initialsOf(name), emailHint: s.emailHint, account: s.accountId, kind: s.kind, joinIndex: 0, avatar: avatarOrNull(s.avatar) }
 }
 
 function useLiveMe(): MeInfo | null | undefined {

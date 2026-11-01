@@ -34,7 +34,7 @@ test("simulate a deposit → it arrives on chain → one tap adds it to the Pot 
     const step1 = page.getByRole("dialog", { name: "Name your Pot" })
     await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
     await step1.getByRole("button", { name: "Next" }).click()
-    await page.getByRole("dialog", { name: "How should it work?" }).getByRole("button", { name: "Create Pot" }).click()
+    await page.getByRole("dialog", { name: "Pot rules" }).getByRole("button", { name: "Create Pot" }).click()
     await expect(page).toHaveURL(/\/p\/deposit-trip-[a-z0-9-]+\?sheet=share$/, { timeout: 60_000 })
     const slug = new URL(page.url()).pathname.split("/")[2]!
     const share = page.getByRole("dialog", { name: `Invite friends to ${POT_NAME}` })

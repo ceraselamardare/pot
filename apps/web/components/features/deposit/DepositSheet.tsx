@@ -3,18 +3,22 @@
 // `&d=<id>` address + QR → DepositStepper. On testnet the address is simulated: a "Testnet demo" pill, a QR that
 // reads "DO NOT SEND" under a "Test only · Do not send" band, and [Simulate sending $150] as the one marigold
 // button (Copy is hidden, design-direction open question 7). Real mode (mainnet clip) shows [Copy Base address].
+// Steps 2-3 of the Add money flow (components/sheets/AddFlow.tsx): each is its own history entry, with a [Back]
+// under the primary (network → the Add sheet, address → the network, the picked network kept). No Back once the
+// money is on its way (the stepper): ✕ and "You can close this screen" apply.
 import { ArrowLeft, Check, ChevronDown, Clock, TriangleAlert } from "lucide-react"
 import dynamic from "next/dynamic"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Callout, ProgressSteps } from "@/components/feedback/States"
 import { TypingDots } from "@/components/feedback/TypingDots"
-import { Sheet } from "@/components/sheets/Sheet"
+import { Sheet, SheetBack } from "@/components/sheets/Sheet"
 import { Button } from "@/components/ui/button"
 import { t, tLines } from "@/i18n/t"
 import { useOnline } from "@/lib/client/browser"
 import { cn } from "@/lib/client/cn"
 import type { PotVM } from "@/lib/client/mock/types"
-import { replaceSheet } from "@/lib/client/sheet"
+import type { AddStep } from "@/lib/client/machines/add-flow"
+import { closeSheet, pushSheetStep } from "@/lib/client/sheet"
 import { deposits, invalidateDeposits, newDepositKey, potKey, useDeposit, useXcChains, xcKeys, type DepositView, type SimScenario, type XcChain } from "@/lib/deposit"
 import { queryClient } from "@/lib/client/query"
 import { useNow } from "@/lib/client/time"
@@ -25,20 +29,18 @@ const QR = dynamic(() => import("qrcode.react").then((m) => m.QRCodeSVG), { ssr:
 
 const reasonOf = (e: unknown): string => (e as { reason?: string })?.reason ?? "failed"
 
-/** ?d=<id> in place (replaceState: the sheet's history entry stays one entry). */
-function setDepositParam(id: string | null) {
-  const u = new URL(window.location.href)
-  if (id) u.searchParams.set("d", id)
-  else u.searchParams.delete("d")
-  window.history.replaceState(null, "", `${u.pathname}${u.search}`)
-}
-
 export function DepositSheet({
   pot,
   open,
   depositId,
   amount,
   actor,
+  step,
+  chain,
+  onChain,
+  onTracking,
+  onBack,
+  onNewAddress,
 }: {
   pot: PotVM
   open: boolean
@@ -46,30 +48,69 @@ export function DepositSheet({
   /** what to add, from the Add sheet (?amount=) */
   amount: bigint
   actor: string
+  /** the flow's step: "tracking" = money on its way (no Back) */
+  step: AddStep | null
+  /** the picked network, kept by the flow across Back */
+  chain: XcChain | null
+  onChain: (c: XcChain) => void
+  /** the deposit left "waiting for you to send" */
+  onTracking: () => void
+  onBack: (from: AddStep) => void
+  onNewAddress: () => void
 }) {
-  // closing never cancels a deposit; it leaves the Pot screen without the sheet (and its src/d params)
-  const close = () => replaceSheet(null)
+  // closing never cancels a deposit; it leaves the Pot screen without the sheet (every step's entry unwinds)
+  const close = closeSheet
   return (
-    <Sheet open={open} onClose={close} title={t("xc.title")} description={t("xc.subtitle", { amount: usdShort(amount), potName: pot.name })}>
-      <div className="pb-2" data-deposit-sheet>
+    <Sheet
+      open={open}
+      onClose={close}
+      title={t("xc.title")}
+      description={t("xc.subtitle", { amount: usdShort(amount), potName: pot.name })}
+      stepKey={depositId ? "address" : "network"}
+    >
+      <div className="pb-2" data-deposit-sheet data-step={step ?? undefined}>
         {depositId ? (
-          <DepositPanel key={depositId} id={depositId} pot={pot} actor={actor} onClose={close} />
+          <DepositPanel
+            key={depositId}
+            id={depositId}
+            pot={pot}
+            actor={actor}
+            onClose={close}
+            onTracking={onTracking}
+            onBack={() => onBack("address")}
+            onNewAddress={onNewAddress}
+          />
         ) : (
-          <NetworkStep pot={pot} amount={amount} open={open} />
+          <NetworkStep pot={pot} amount={amount} open={open} chain={chain} onChain={onChain} onBack={() => onBack("network")} />
         )}
       </div>
     </Sheet>
   )
 }
 
-function NetworkStep({ pot, amount, open }: { pot: PotVM; amount: bigint; open: boolean }) {
+function NetworkStep({
+  pot,
+  amount,
+  open,
+  chain,
+  onChain: setChain,
+  onBack,
+}: {
+  pot: PotVM
+  amount: bigint
+  open: boolean
+  chain: XcChain | null
+  onChain: (c: XcChain) => void
+  onBack: () => void
+}) {
   const chains = useXcChains(open)
   const online = useOnline()
-  const [chain, setChain] = useState<XcChain | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const list = chains.data?.chains ?? []
-  const picked = chain ?? list.find((c) => c.status !== "paused")?.id ?? null
+  // the kept choice, unless it's paused now; else the first open network
+  const kept = chain && list.some((c) => c.id === chain && c.status !== "paused") ? chain : null
+  const picked = kept ?? list.find((c) => c.status !== "paused")?.id ?? null
 
   const go = async () => {
     if (!picked || busy) return
@@ -78,7 +119,8 @@ function NetworkStep({ pot, amount, open }: { pot: PotVM; amount: bigint; open: 
     try {
       const q = await deposits.quote({ pot: potKey(pot.slug), chain: picked, amount: amount.toString(), idempotencyKey: newDepositKey() })
       if (!q.depositIntentId) throw new Error("no_intent")
-      setDepositParam(q.depositIntentId)
+      // the address is its own step (a history entry): Back returns to this network, still picked
+      pushSheetStep((p) => p.set("d", q.depositIntentId!))
     } catch (e) {
       const r = reasonOf(e)
       setError(
@@ -101,7 +143,9 @@ function NetworkStep({ pot, amount, open }: { pot: PotVM; amount: bigint; open: 
   return (
     <div className="flex flex-col gap-4" data-network-step>
       <fieldset>
-        <legend className="mb-2 text-label text-ink">{t("xc.network.label")}</legend>
+        <legend tabIndex={-1} className="mb-2 text-label text-ink outline-none" data-step-heading>
+          {t("xc.network.label")}
+        </legend>
         <div role="radiogroup" aria-label={t("xc.network.label")} className="flex flex-col overflow-hidden rounded-md border border-line">
           {chains.isPending
             ? [0, 1, 2, 3].map((i) => <div key={i} className="h-14 border-b border-line bg-surface-sunken last:border-b-0" aria-hidden />)
@@ -162,15 +206,38 @@ function NetworkStep({ pot, amount, open }: { pot: PotVM; amount: bigint; open: 
           t("xc.cta.quote")
         )}
       </Button>
+      <SheetBack onClick={onBack} disabled={busy} />
     </div>
   )
 }
 
-function DepositPanel({ id, pot, actor, onClose }: { id: string; pot: PotVM; actor: string; onClose: () => void }) {
+function DepositPanel({
+  id,
+  pot,
+  actor,
+  onClose,
+  onTracking,
+  onBack,
+  onNewAddress,
+}: {
+  id: string
+  pot: PotVM
+  actor: string
+  onClose: () => void
+  onTracking: () => void
+  onBack: () => void
+  onNewAddress: () => void
+}) {
   const q = useDeposit(id)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const d = q.data
+  const untouched = !!d && d.status === "PENDING_DEPOSIT" && !(d.simulated?.sent ?? false)
+  // money on its way (or already here): from now on no Back, only ✕ / Done
+  const tracking = !!d && !untouched
+  useEffect(() => {
+    if (tracking) onTracking()
+  }, [tracking, onTracking])
 
   const simulate = async (scenario?: SimScenario, amount?: bigint) => {
     if (busy) return
@@ -195,7 +262,6 @@ function DepositPanel({ id, pot, actor, onClose }: { id: string; pot: PotVM; act
         ))}
       </div>
     )
-  const untouched = d.status === "PENDING_DEPOSIT" && !(d.simulated?.sent ?? false)
   if (untouched)
     return (
       <AddressStep
@@ -203,7 +269,7 @@ function DepositPanel({ id, pot, actor, onClose }: { id: string; pot: PotVM; act
         busy={busy}
         error={error}
         onSimulate={simulate}
-        onChange={() => setDepositParam(null)}
+        onChange={onBack}
       />
     )
   return (
@@ -213,7 +279,7 @@ function DepositPanel({ id, pot, actor, onClose }: { id: string; pot: PotVM; act
           {error}
         </p>
       )}
-      <DepositStepper d={d} pot={pot} actor={actor} onClose={onClose} onNewAddress={() => setDepositParam(null)} onTopUp={(m) => void simulate(undefined, m)} busy={busy} />
+      <DepositStepper d={d} pot={pot} actor={actor} onClose={onClose} onNewAddress={onNewAddress} onTopUp={(m) => void simulate(undefined, m)} busy={busy} />
     </>
   )
 }
@@ -247,7 +313,9 @@ function AddressStep({
     <div className="flex flex-col gap-4" data-address-step>
       {sim && <SimPill />}
       <div>
-        <p className="font-display text-heading text-ink">{t("xc.instructions", { amountToken: tokenAmount(amount), token: "USDC", network })}</p>
+        <h3 tabIndex={-1} className="font-display text-heading text-ink outline-none" data-step-heading>
+          {t("xc.instructions", { amountToken: tokenAmount(amount), token: "USDC", network })}
+        </h3>
         <p className="mt-1 text-body-sm text-ink-muted">{t("xc.instructions.min", { minAmount: `${tokenAmount(BigInt(d.minAmountIn))} USDC` })}</p>
       </div>
 
@@ -339,6 +407,8 @@ function AddressStep({
           {copied ? t("xc.copied") : t("xc.copy_network", { network })}
         </Button>
       )}
+      {/* Back to the network picker (the picked network kept); gone once "Simulate sending" is pressed */}
+      <SheetBack onClick={onChange} disabled={busy} />
 
       <ProgressSteps
         label={t("xc.tab.progress")}

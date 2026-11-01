@@ -1,7 +1,7 @@
 // How it works (#how; plan/design-direction/03-landing.md §3): the whole loop in five beats. Each step is a short
 // title, one sentence and a live fragment built from the app's own components with the D-61 numbers, so a judge
 // gets the product from the fragments alone and an AI judge reads them as text:
-//   1. the Trip rules as sentences · 2. Maya's invite in the chat, Leo is in, $450 of $450 collected ·
+//   1. the Pot rules as sentences · 2. Maya's invite in the chat, Leo is in, $450 of $450 collected ·
 //   3. $84 approved by Pot rules → $366.00 · 4. $300 needs 2 of 3 approvals, 1 of 2 so far, Leo's push → $66.00 ·
 //   5. the refund table, $150.00 in → $22.00 back each.
 // Phones: five stacked cards in an <ol>. lg: a 2-2-1 bento (setup pair, then instant beside group, the page's key
@@ -31,7 +31,7 @@ import { StatusChip } from "@/components/pot/StatusChip"
 import { t, tLines } from "@/i18n/t"
 import { cn } from "@/lib/client/cn"
 import { dollars, formatUsd, type Micro } from "@/lib/client/money"
-import { approvalsNeeded, TRIP_RULES } from "@/lib/client/rules"
+import { approvalsNeeded, DEFAULT_RULES } from "@/lib/client/rules"
 import { CHAT_CAST } from "./ChatThread"
 import { InviteBubble } from "./InviteBubble"
 import { PushCard } from "./PushCard"
@@ -45,8 +45,8 @@ import type { StickerName } from "./stickers"
 const { maya: MAYA, sam: SAM, leo: LEO } = CHAT_CAST
 const N = 3
 const K = approvalsNeeded(N) // 2 of 3
-const INSTANT_LIMIT = formatUsd(TRIP_RULES.instantCap, "whole") // "$100"
-const MEMBER_LIMIT = formatUsd(TRIP_RULES.memberBudget, "whole") // "$200"
+const INSTANT_LIMIT = formatUsd(DEFAULT_RULES.instantCap, "whole") // "$100"
+const MEMBER_LIMIT = formatUsd(DEFAULT_RULES.memberBudget, "whole") // "$200"
 const POT = t("create.name.placeholder") // "Lisbon Trip"
 
 /** Sentences keep whole dollars ("$84 sent to you"); displayed amounts go through MoneyText ("$84.00"). */
@@ -235,8 +235,8 @@ function Balance({ from, micro, at }: { from: Micro; micro: Micro; at: number })
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Step 1: the Lisbon Trip with Trip rules, the rules as sentences (the Rules tab's look).
-// Story (ends 640 ms): the Pot-name card is already there (the armed frame) → "Trip rules" (160) → the three rules,
+// Step 1: the Lisbon Trip with its rules, the rules as sentences (the Rules tab's look).
+// Story (ends 640 ms): the Pot-name card is already there (the armed frame) → "Pot rules" (160) → the three rules,
 // 60 ms apart (240/300/360). The bold values don't animate on their own.
 
 function RulesFragment() {
@@ -253,7 +253,7 @@ function RulesFragment() {
         <p className="min-w-0 flex-1 truncate font-display text-heading text-ink">{POT}</p>
       </div>
       <p data-seq="fade" data-at="160" className="mt-4 px-1 text-label text-ink">
-        {t("rules.preset.trip")}
+        {t("rules.label")}
       </p>
       <ul className="mt-1 flex flex-col">
         {rows.map(({ id, Icon, text }, i) => (

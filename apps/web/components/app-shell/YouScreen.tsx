@@ -5,6 +5,9 @@ import { Bell, ChevronRight, CircleHelp, Download, LogOut, Settings2 } from "luc
 import Link from "next/link"
 import { useSyncExternalStore } from "react"
 import { Avatar } from "@/components/pot/Avatar"
+import { YourActivity } from "@/components/activity/YourActivity"
+import { YourBalance } from "@/components/activity/YourBalance"
+import { AvatarSetting } from "@/components/app-shell/AvatarPicker"
 import { Segmented } from "@/components/pot/Controls"
 import { signOut } from "@/components/app-shell/Shell"
 import { pageTitle, t } from "@/i18n/t"
@@ -112,14 +115,23 @@ export function YouScreen() {
       <title>{pageTitle(t("you.title"))}</title>
       <main id="main" className="mx-auto w-full max-w-flow px-4 pb-8 md:px-6">
         <h1 className="pt-5 pb-4 font-display text-title text-ink">{t("you.title")}</h1>
+        {/* your own Pot dollars, outside any Pot (components/activity) */}
+        <YourBalance account={me.id} />
         <section className="flex items-center gap-4 rounded-lg bg-surface p-4 shadow-card">
-          <Avatar person={{ name: me.name, initials: me.initials, joinIndex: me.joinIndex }} size="lg" />
+          <Avatar person={{ name: me.name, initials: me.initials, joinIndex: me.joinIndex, avatar: me.avatar }} size="lg" />
           <div className="min-w-0">
             <p className="font-display text-heading text-ink">{me.name}</p>
             {me.emailHint && <p className="text-body-sm [overflow-wrap:anywhere] text-ink-muted">{me.emailHint}</p>}
             {me.kind === "mock" && <p className="text-body-sm text-ink-muted">{t("you.profile.demo")}</p>}
           </div>
         </section>
+
+        <section className="mt-4 rounded-lg bg-surface p-4" data-you-avatar>
+          <AvatarSetting />
+        </section>
+
+        {/* what you did across your Pots (components/activity) */}
+        <YourActivity meId={me.id} />
 
         <section aria-labelledby="you-settings" className="mt-6">
           <h2 id="you-settings" className="mb-2 px-1 text-label text-ink-muted">

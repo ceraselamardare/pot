@@ -84,6 +84,8 @@ export const appUser = pgTable(
     emailHash: text("email_hash"),
     displayName: text("display_name").notNull(),
     avatarTint: text("avatar_tint", { enum: TINTS }).notNull(),
+    /** brand avatar id (pot-01..pot-10) or null for initials (PATCH /api/me) */
+    avatar: text("avatar"),
     notifyEmail: boolean("notify_email").notNull().default(true),
     onboardState: text("onboard_state", { enum: ["creating", "ready", "failed"] }).notNull().default("ready"),
     onboardLeaseUntil: ts("onboard_lease_until"),
@@ -99,6 +101,7 @@ export const appUser = pgTable(
     // Rev 9: only real sign-ins (NEAR Auth, NEAR wallets); the demo/dev kinds are gone
     check("app_user_kind_ck", sql`${t.kind} in ('near-auth', 'wallet')`),
     check("app_user_name_ck", sql`char_length(${t.displayName}) between 1 and 40`),
+    check("app_user_avatar_ck", sql`${t.avatar} is null or ${t.avatar} ~ '^pot-(0[1-9]|10)$'`),
   ],
 )
 

@@ -110,8 +110,12 @@ function hasFormatOrControl(s: string): boolean {
   return false
 }
 
-/** Rules bounds (R2, R6, R7; contracts-spec §3.8). Returns nothing or throws args_invalid. */
-export function checkRules(r: unknown, field = "rules"): void {
+/**
+ * Rules bounds (R2, R6, R7; contracts-spec §3.8). Returns nothing or throws args_invalid. With `ids`, it also
+ * refuses what the hub's validate_rules refuses on chain (ERR_RULES_INVALID): the hub, any Pot of this hub and
+ * the token in the named-people list, so a Create form mistake never costs a sponsored transaction.
+ */
+export function checkRules(r: unknown, field = "rules", ids?: { hubId: string; usdcId: string }): void {
   if (typeof r !== "object" || r === null || Array.isArray(r)) return deny("args_invalid", field)
   const o = r as Obj
   keys(o, ["instant_cap", "member_budget", "instant_payees", "payee_allowlist"])
@@ -125,6 +129,8 @@ export function checkRules(r: unknown, field = "rules"): void {
   if (new Set(list as string[]).size !== (list as string[]).length) deny("args_invalid", `${field}.payee_allowlist`, "dup")
   if (o.instant_payees === "members" && (list as string[]).length > 0)
     deny("args_invalid", `${field}.payee_allowlist`, "members_only")
+  if (ids && (list as string[]).some((a) => a === ids.hubId || a.endsWith(`.${ids.hubId}`) || a === ids.usdcId))
+    deny("args_invalid", `${field}.payee_allowlist`, "reserved")
   if (Buffer.byteLength(JSON.stringify(r)) > 1024) deny("args_invalid", field, "too_large")
 }
 
@@ -268,7 +274,7 @@ function r2(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyC
   if (!["trip", "club", "team", "custom"].includes(o.preset as string)) deny("args_invalid", "preset")
   if (o.rules === undefined || o.rules === null) {
     if (o.preset === "custom") deny("args_invalid", "rules", "custom_needs_rules")
-  } else checkRules(o.rules)
+  } else checkRules(o.rules, "rules", ctx)
   if (o.invite_pk !== undefined && o.invite_pk !== null) {
     if (typeof o.invite_pk !== "string" || !parseEd25519PublicKey(o.invite_pk)) deny("args_invalid", "invite_pk")
   }
@@ -408,7 +414,7 @@ function r6r7(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: Polic
   const o = argsObject(call)
   keys(o, ["pot", "rules"])
   const pot = potArg(o, ctx.hubId)
-  checkRules(o.rules)
+  checkRules(o.rules, "rules", ctx)
   intentMust(ctx, propose ? "propose_rules" : "set_rules")
   return {
     rule: propose ? "R7" : "R6",

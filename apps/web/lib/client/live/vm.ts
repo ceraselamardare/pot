@@ -13,6 +13,7 @@ import { getsBack } from "../rules"
 import type { Rules } from "../rules"
 import type { Category, ClosePreviewVM, CloseVM, FeedItemVM, MemberVM, PersonVM, PotCardVM, PotVM, ReqReason, RequestStatusVM, RequestVM, RulesChangeVM, Vote } from "../mock/types"
 import { initialsOf } from "../mock/world"
+import { avatarOrNull, type AvatarId } from "@/lib/avatars"
 
 export interface LiveInvite {
   pk: string
@@ -41,8 +42,10 @@ export interface LiveContext {
   me: string | null
   /** the session's display name, for my own row when the feed has no profile yet */
   myName?: string
+  /** the session's chosen avatar, for my own row when the feed has no profile yet */
+  myAvatar?: AvatarId | null
   now: number
-  /** off-chain "$X each" goal in Micro, or null (D-61: the Trip preset suggests $150) */
+  /** off-chain "$X each" goal in Micro, or null (D-61: Create suggests $150) */
   goalEach: Micro | null
 }
 
@@ -86,7 +89,9 @@ function people(b: LiveBundle, ctx: LiveContext) {
       (account === ctx.me && ctx.myName ? ctx.myName : null) ??
       nameFromAccount(account) ??
       t("person.fallback")
-    const p: PersonVM = { id: account, name, initials: initialsOf(name) || "•", joinIndex: joinIndex.get(account) ?? null }
+    // my own picture comes from the session (updated the moment I pick one); everyone else's from the feed profiles
+    const avatar = avatarOrNull(account === ctx.me && ctx.myAvatar !== undefined ? ctx.myAvatar : profiles[account]?.avatar)
+    const p: PersonVM = { id: account, name, initials: initialsOf(name) || "•", joinIndex: joinIndex.get(account) ?? null, avatar }
     cache.set(account, p)
     return p
   }
@@ -145,7 +150,22 @@ export function liveRequestVM(b: LiveBundle, r: RequestView, ctx: LiveContext, p
     instantCap: v.rules.instantCap,
     memberBudget: v.rules.memberBudget,
     balanceAfter: b.balance > r.amount ? b.balance - r.amount : 0n,
+    ...receiptOfRequest(b, r),
   }
+}
+
+/** The feed route's transaction for a request (matched by its request_ref, else its proposal id). */
+function receiptOfRequest(b: LiveBundle, r: RequestView): { txHash?: string } {
+  const it = b.feed?.items.find(
+    (x) => x.type === "request" && !!x.txHash && ((!!x.requestRef && x.requestRef === r.requestRef) || (r.proposalId !== null && x.proposalId === r.proposalId)),
+  )
+  return it?.txHash ? { txHash: it.txHash } : {}
+}
+
+/** The feed route's transaction behind a key (`join:<account>`, `close:<id>`, `closed:<dao>`). */
+function receiptOf(b: LiveBundle, key: string): { txHash?: string } {
+  const tx = b.feed?.items.find((x) => x.key === key && !!x.txHash)?.txHash
+  return tx ? { txHash: tx } : {}
 }
 
 export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
@@ -182,28 +202,28 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
   // feed merge: server history (contributions with receipts) ⊕ chain (joins, requests, missing contributions)
   const feed: FeedItemVM[] = [{ key: `created:${b.dao}`, kind: "created", at: v.createdAtMs, actor: person(v.creator) }]
   for (const m of active) {
-    if (m.account !== v.creator) feed.push({ key: `join:${m.account}`, kind: "joined", at: m.joinedAtMs, actor: person(m.account) })
+    if (m.account !== v.creator) feed.push({ key: `join:${m.account}`, kind: "joined", at: m.joinedAtMs, actor: person(m.account), ...receiptOf(b, `join:${m.account}`) })
   }
   const serverIn = new Map<string, Micro>()
   for (const it of b.feed?.items ?? []) {
     if (it.type !== "contribution" || !it.amount) continue
     const amount = BigInt(it.amount)
     serverIn.set(it.actor, (serverIn.get(it.actor) ?? 0n) + amount)
-    feed.push({ key: it.key, kind: "contribution", at: Date.parse(it.at), actor: person(it.actor), amount })
+    feed.push({ key: it.key, kind: "contribution", at: Date.parse(it.at), actor: person(it.actor), amount, ...(it.txHash ? { txHash: it.txHash } : {}) })
   }
   for (const m of active) {
     // money the chain counts but the feed route never saw (seeded by script, or relayed elsewhere)
     const missing = m.contributed - (serverIn.get(m.account) ?? 0n)
     if (missing > 0n) feed.push({ key: `contribution:chain:${m.account}`, kind: "contribution", at: m.joinedAtMs + 1, actor: person(m.account), amount: missing })
   }
-  for (const r of reqs) feed.push({ key: `request:${r.id}`, kind: "request", at: r.decidedAt ?? r.createdAt, request: r })
+  for (const r of reqs) feed.push({ key: `request:${r.id}`, kind: "request", at: r.decidedAt ?? r.createdAt, request: r, ...(r.txHash ? { txHash: r.txHash } : {}) })
   const close = closeVM(b, ctx, person)
   if (close) {
     const p = b.proposals[close.proposalId]
     const at = p ? Number(p.submissionTimeNs / 1_000_000n) : ctx.now
-    feed.push({ key: `close:${close.proposalId}`, kind: "close_requested", at, actor: close.proposer, k: close.k })
+    feed.push({ key: `close:${close.proposalId}`, kind: "close_requested", at, actor: close.proposer, k: close.k, ...receiptOf(b, `close:${close.proposalId}`) })
   }
-  if (v.status === "closed") feed.push({ key: `closed:${b.dao}`, kind: "closed", at: v.closedAtMs ?? ctx.now })
+  if (v.status === "closed") feed.push({ key: `closed:${b.dao}`, kind: "closed", at: v.closedAtMs ?? ctx.now, ...receiptOf(b, `closed:${b.dao}`) })
   const rulesChange = rulesChangeVM(b, ctx, person)
   if (rulesChange && rulesChange.status === "needs")
     feed.push({ key: `rules:${rulesChange.proposalId}`, kind: "rules_requested", at: rulesChange.createdAt, actor: rulesChange.proposer, k: rulesChange.k })
@@ -227,6 +247,7 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
       instantCap: v.rules.instantCap,
       memberBudget: v.rules.memberBudget,
       instantPayees: v.rules.instantPayees,
+      payeeAllowlist: [...(v.rules.payeeAllowlist ?? [])],
       expiryDays: Math.max(1, Math.round(v.proposalPeriodMs / DAY)),
     },
     k: v.approvalsNeeded,
@@ -305,10 +326,11 @@ function closePreviewVM(p: ClosePreview, person: (a: string) => PersonVM): Close
   }
 }
 
-const toWebRules = (r: { instantCap: Micro; memberBudget: Micro; instantPayees: Rules["instantPayees"] }, expiryDays: number): Rules => ({
+const toWebRules = (r: { instantCap: Micro; memberBudget: Micro; instantPayees: Rules["instantPayees"]; payeeAllowlist?: readonly string[] }, expiryDays: number): Rules => ({
   instantCap: r.instantCap,
   memberBudget: r.memberBudget,
   instantPayees: r.instantPayees,
+  payeeAllowlist: [...(r.payeeAllowlist ?? [])],
   expiryDays,
 })
 

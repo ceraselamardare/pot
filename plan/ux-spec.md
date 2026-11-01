@@ -357,7 +357,7 @@ States: E `requests.empty.*` · L (3 card skeletons) · O/X as Approve · OFF (c
 **Purpose:** a Pot in under a minute. **Primary actions:** [Next] → [Create Pot] → [Share link].
 **Steps:**
 1. `create.step1.title`: name + emoji/cover (cover optional).
-2. `create.step2.title`: preset cards **Trip** (selected) · Club (soon) · Team (soon); "Everyone chips in (optional)" chip "$150 each" (sets the goal = $150 × invited count, editable).
+2. `create.step2.title` "Pot rules" (2026-11-01: **no templates**; every Pot is created with `preset: "custom"` + explicit rules): each editable rule is a sentence with an inline amount — "Anyone can spend up to [$100] at a time without asking" ($0 = every spend needs the group, with a helper line), "Each person can spend up to [$200] in total without asking" (≥ the instant limit), "Instant payments can go to: (•) Members only ( ) Members and people I name" (≤ 10 names); "Everyone chips in (optional)" with an editable "[$150] each" (app-side goal); the fixed rules as plain lines (more than half the group for bigger spends · leftovers back in proportion · 7-day expiry · up to 40 people); `create.rules.footer`.
 3. "Creating Lisbon Trip…" (≤ 15 s, P-2) → Share step (§4.13).
 
 | State | Behaviour |

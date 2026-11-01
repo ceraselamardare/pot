@@ -2,6 +2,7 @@
 import { z } from "zod"
 import { INTENTS } from "../relay/types"
 import { MICRO_RE, OPKEY_RE, PK_RE } from "../util/ids"
+import { AVATAR_IDS } from "@/lib/avatars"
 
 export const opKey = z.string().regex(OPKEY_RE)
 export const publicKey = z.string().regex(PK_RE)
@@ -20,6 +21,11 @@ export const sessionCreateReq = z.strictObject({
 })
 
 export const deviceLoginReq = z.strictObject({ accountId, devicePublicKey: publicKey, pop })
+
+/** PATCH /api/me: only the brand avatar so far (one of AVATAR_IDS, or null for initials); at least one field. */
+export const profilePatchReq = z
+  .strictObject({ avatar: z.enum(AVATAR_IDS).nullable().optional() })
+  .refine((v) => Object.keys(v).length > 0, { message: "empty", path: ["avatar"] })
 
 export const logoutReq = z.strictObject({ pushEndpoint: z.string().max(1024).optional(), forgetDevice: z.boolean().optional() })
 

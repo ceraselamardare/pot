@@ -4,17 +4,20 @@
 //  - testnet: TanStack queries over @pot/sdk ChainViews + the feed route (lib/client/live/queries.ts), with the
 //    3 s visible-only heartbeat. Both return the same view models, so components don't change.
 // NEXT_PUBLIC_DATA_SOURCE is inlined at build time: each build runs one branch, so hook order is stable.
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { IS_LIVE } from "./config"
 import { useNow } from "./time"
 import { useWorld } from "./mock/store"
 import * as W from "./mock/world"
 import type { PotCardVM, PotVM, RequestVM } from "./mock/types"
 import { useLiveCards, useLivePot, useLiveRequests, useLiveUsdcBalance } from "./live/queries"
-import type { Micro } from "./money"
+import { cents, type Micro } from "./money"
+import { activityOfPerson, mergeActivity } from "./activity"
+import { PAGE as ACTIVITY_PAGE, useLiveActivity, type ActivityState } from "./live/activity"
 import { useMe } from "./session"
 
 export { useMe, useMeInfo } from "./session"
+export type { ActivityState } from "./live/activity"
 
 export type Loadable<T> =
   | { state: "loading" }
@@ -88,6 +91,33 @@ export function useWaitingCount(): number {
   return r?.waiting.length ?? 0
 }
 
-const noDollars = (): Micro | undefined => 0n
-/** The signed-in person's own Pot dollars (usdc.ft_balance_of(me)); 0 in the mock. */
-export const useOwnDollars: (account: string | null, enabled: boolean) => Micro | undefined = IS_LIVE ? useLiveUsdcBalance : noDollars
+/** The mock's own Pot dollars: what Pots paid this person minus what they added from them (world.ownDollarsOf). */
+function useMockOwnDollars(account: string | null): Micro | undefined {
+  const world = useWorld()
+  return useMemo(() => (world && account ? cents(W.ownDollarsOf(world, account)) : undefined), [world, account])
+}
+/** The signed-in person's own Pot dollars (usdc.ft_balance_of(me), 10 s heartbeat while `enabled`). */
+export const useOwnDollars: (account: string | null, enabled: boolean) => Micro | undefined = IS_LIVE ? useLiveUsdcBalance : useMockOwnDollars
+
+function useMockActivity(): ActivityState {
+  const world = useWorld()
+  const me = useMe()
+  const now = useNow()
+  const [shown, setShown] = useState(ACTIVITY_PAGE)
+  const all = useMemo(() => {
+    if (!world || !me || !now) return null
+    const items = Object.values(world.pots)
+      .filter((p) => W.isMember(p, me))
+      .flatMap((p) => {
+        const v = W.potView(world, p.slug, me, now)
+        return v ? activityOfPerson(v, me) : []
+      })
+    return mergeActivity([], items)
+  }, [world, me, now])
+  if (me === undefined || (me && !all)) return { state: "loading" }
+  const items = all ?? []
+  return { state: "ready", items: items.slice(0, shown), hasMore: items.length > shown, loadMore: () => setShown((n) => n + ACTIVITY_PAGE), loadingMore: false }
+}
+
+/** "Your activity" on You: my own actions across my Pots, newest first (server history ⊕ chain on testnet). */
+export const useMyActivity: () => ActivityState = IS_LIVE ? useLiveActivity : useMockActivity

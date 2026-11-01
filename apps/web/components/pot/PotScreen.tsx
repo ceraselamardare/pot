@@ -18,15 +18,15 @@ import { PotHeader } from "@/components/pot/PotParts"
 import { RequestCard } from "@/components/pot/RequestCard"
 import { MembersTab, RulesTab } from "@/components/pot/Tabs"
 import { TabList } from "@/components/pot/Controls"
-import { AddMoneySheet } from "@/components/sheets/AddMoneySheet"
+import { AddFlow } from "@/components/sheets/AddFlow"
 import { ApproveSheet } from "@/components/sheets/ApproveSheet"
 import { ClosedMoment, CloseSheet } from "@/components/sheets/CloseSheet"
 import { RulesSheet } from "@/components/sheets/RulesSheet"
+import { PersonActivitySheet } from "@/components/activity/PersonActivitySheet"
 import { CoachCard } from "@/components/pwa/Coach"
 import { ShareSheet } from "@/components/sheets/ShareSheet"
 import { SpendSheet } from "@/components/sheets/SpendSheet"
 import { DepositCards, useArrivedDeposit } from "@/components/features/deposit/DepositCard"
-import { DepositSheet, depositAmount } from "@/components/features/deposit/DepositSheet"
 import { pageTitle, t } from "@/i18n/t"
 import { announce } from "@/lib/client/browser"
 import { usePot } from "@/lib/client/data"
@@ -73,14 +73,13 @@ function PotLoaded({ pot }: { pot: PotVM }) {
   const ops = useOps()
   const potOps = ops.filter((o) => o.pot === pot.slug)
   const [tab, setTab] = useTabParam<Tab>(TABS, "activity")
-  const { sheet, requestId, amount } = useSheetParams()
+  const { sheet, requestId } = useSheetParams()
   const me = pot.me!
   const meId = me.person.id
   const title = pageTitle(pot.name)
 
   const { params } = useSheetParams()
-  // integrations (D-50): ?sheet=add&src=xc[&d=<id>] is the any-chain deposit; an arrived one takes the marigold
-  const xc = sheet === "add" && params.get("src") === "xc"
+  // integrations (D-50): ?sheet=add&src=xc[&d=<id>] is the any-chain deposit (AddFlow); an arrived one takes the marigold
   const arrived = useArrivedDeposit(pot.slug)
   const pid = params.get("pid")
   // a push deep link: ?pid=<proposal id> → the sheet for whatever that proposal is (frontend-architecture §8.2)
@@ -231,13 +230,13 @@ function PotLoaded({ pot }: { pot: PotVM }) {
         </aside>
       </main>
 
-      <AddMoneySheet pot={pot} open={sheet === "add" && !xc} onClose={closeSheet} prefill={amount} />
-      <DepositSheet pot={pot} open={xc} depositId={params.get("d")} amount={depositAmount(pot, amount)} actor={meId} />
+      <AddFlow pot={pot} actor={meId} />
       <SpendSheet pot={pot} open={sheet === "spend"} onClose={closeSheet} />
       <ShareSheet pot={pot} open={sheet === "share"} onClose={closeSheet} />
       <ApproveSheet pot={pot} requestId={requestId} onClose={closeSheet} />
       <CloseSheet pot={pot} open={sheet === "close"} onClose={closeSheet} />
       <RulesSheet pot={pot} open={sheet === "rules"} onClose={closeSheet} />
+      <PersonActivitySheet pot={pot} who={params.get("who")} open={sheet === "person" && !!params.get("who")} onClose={closeSheet} />
     </>
   )
 }

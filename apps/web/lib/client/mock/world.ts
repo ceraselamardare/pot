@@ -1,7 +1,10 @@
 // The mock world: pure functions over a JSON-safe `World` (seed, actions, selectors). The client store
 // (store.ts) persists it in localStorage and adds latency; server components call seedWorld() for /j and
 // /demo. The money rules mirror the hub (D-05, D-07, D-08, D-09) so the beats and copy match testnet.
-import { prorata } from "@pot/sdk"
+import { prorata, type Rules as SdkRules } from "@pot/sdk"
+import { sha256 } from "@noble/hashes/sha2.js"
+import { base58 } from "@scure/base"
+import { avatarOrNull, type AvatarId } from "@/lib/avatars"
 import { cents, type Micro } from "../money"
 import { approvalsNeeded, expiresAt, previewSpend, type Rules } from "../rules"
 import { DAY, HOUR, LISBON_INVITE, MIN, PEOPLE, PORTO_INVITE } from "./fixtures"
@@ -99,10 +102,30 @@ export const initialsOf = (name: string): string =>
     .map((w) => w[0]!.toUpperCase())
     .join("")
 
+// The view being built reads avatars from its world. Views are synchronous, so each exported view sets this on
+// entry (withAvatars) instead of threading `w` through every helper that builds a PersonVM.
+let viewAvatars: Record<string, AvatarId> = {}
+function withAvatars(w: World) {
+  viewAvatars = w.avatars ?? {}
+}
+
 function person(pot: PotRec, id: string): PersonVM {
   const name = nameOf(id)
   const m = pot.members.find((x) => x.id === id)
-  return { id, name, initials: initialsOf(name), joinIndex: m ? m.joinIndex : null }
+  return { id, name, initials: initialsOf(name), joinIndex: m ? m.joinIndex : null, avatar: avatarOrNull(viewAvatars[id]) }
+}
+
+/** A person's chosen avatar (null = initials). */
+export function avatarOf(w: World, id: string): AvatarId | null {
+  return avatarOrNull(w.avatars?.[id])
+}
+
+/** Pick (or clear, with null) a person's brand avatar. */
+export function setAvatar(w: World, id: string, avatar: AvatarId | null): World {
+  const avatars = { ...(w.avatars ?? {}) }
+  if (avatar) avatars[id] = avatar
+  else delete avatars[id]
+  return { ...w, avatars }
 }
 
 function rulesOf(pot: PotRec): Rules {
@@ -110,7 +133,14 @@ function rulesOf(pot: PotRec): Rules {
 }
 
 export function rulesFromRec(r: RulesRec): Rules {
-  return { instantCap: cents(r.instantCap), memberBudget: cents(r.memberBudget), instantPayees: "members", expiryDays: r.expiryDays }
+  const instantPayees = r.instantPayees ?? "members"
+  return {
+    instantCap: cents(r.instantCap),
+    memberBudget: cents(r.memberBudget),
+    instantPayees,
+    payeeAllowlist: instantPayees === "members" ? [] : [...(r.payeeAllowlist ?? [])],
+    expiryDays: r.expiryDays,
+  }
 }
 
 function clonePot(w: World, slug: string): [World, PotRec] | null {
@@ -145,7 +175,7 @@ export function joinPot(w: World, slug: string, who: string, now: number): { wor
   return { world, result: "joined" }
 }
 
-export function addMoney(w: World, slug: string, who: string, amountCents: number, now: number): World {
+export function addMoney(w: World, slug: string, who: string, amountCents: number, now: number, source: "demo" | "pot_dollars" = "demo"): World {
   const c = clonePot(w, slug)
   if (!c) throw new Error("not_found")
   const [world, pot] = c
@@ -155,8 +185,32 @@ export function addMoney(w: World, slug: string, who: string, amountCents: numbe
   m.contributed += amountCents
   pot.balance += amountCents
   pot.lastContributor = who
-  pot.events.push({ id: `c-${who}-${now}`, kind: "contribution", actor: who, amount: amountCents, at: now })
+  if (source === "pot_dollars" && amountCents > ownDollarsOf(w, who)) throw new Error("insufficient_own")
+  pot.events.push({ id: `c-${who}-${now}`, kind: "contribution", actor: who, amount: amountCents, at: now, ...(source === "pot_dollars" ? { source } : {}) })
   return world
+}
+
+/**
+ * A person's own Pot dollars in the mock (cents): what Pots paid them (approved spends with them as the receiver,
+ * refunds at close) minus what they added from their own Pot dollars. Demo dollars are claimed as they are added,
+ * so none sit around unused here.
+ */
+export function ownDollarsOf(w: World, who: string): number {
+  let total = 0
+  for (const pot of Object.values(w.pots)) {
+    for (const r of pot.requests) if (r.receiver === who && r.status === "paid") total += r.amount
+    if (pot.status === "closed" && pot.close?.status === "approved") total += pot.close.payouts.find((p) => p.account === who)?.amount ?? 0
+    for (const e of pot.events) if (e.kind === "contribution" && e.actor === who && e.source === "pot_dollars") total -= e.amount ?? 0
+  }
+  return Math.max(0, total)
+}
+
+/**
+ * A stand-in receipt for the mock world: a stable 32-byte base58 id per settled item, so the receipt links render
+ * exactly as on testnet (where every one is a real transaction hash from the relay or the feed).
+ */
+export function mockTxHash(seed: string): string {
+  return base58.encode(sha256(new TextEncoder().encode(`pot-mock|${seed}`)))
 }
 
 export interface SpendInput {
@@ -448,7 +502,21 @@ export interface CreateInput {
   emoji: string
   cover: number
   goalEachCents: number | null
+  /** the Create form's rules (Micro); absent = the default rules */
+  rules?: SdkRules
   invite: { pk: string; secret: string }
+}
+
+/** The Create form's rules → the mock's record (cents, like the hub's 6 decimals floored to the cent). */
+export function rulesRecOf(r: SdkRules | undefined): RulesRec {
+  if (!r) return TRIP
+  return {
+    instantCap: Number(r.instantCap / 10_000n),
+    memberBudget: Number(r.memberBudget / 10_000n),
+    expiryDays: 7,
+    instantPayees: r.instantPayees,
+    payeeAllowlist: r.instantPayees === "members" ? [] : [...r.payeeAllowlist],
+  }
 }
 
 /** Slug = kebab(name) ≤ 24 chars + "-" + 4 base36 chars (frontend-architecture §5.10). */
@@ -464,7 +532,7 @@ export function createPot(w: World, who: string, input: CreateInput, now: number
     status: "open",
     createdAt: now,
     goalEach: input.goalEachCents,
-    rules: TRIP,
+    rules: rulesRecOf(input.rules),
     balance: 0,
     members: [member(who, 0, 0, now)],
     requests: [],
@@ -536,6 +604,8 @@ function requestVM(pot: PotRec, r: RequestRec, me: string | null, now: number): 
     instantCap: cents(pot.rules.instantCap),
     memberBudget: cents(pot.rules.memberBudget),
     balanceAfter: cents(Math.max(0, pot.balance - r.amount)),
+    txHash: mockTxHash(`${pot.slug}:request:${r.id}`),
+    voteAt: { ...r.voteAt },
   }
 }
 
@@ -566,6 +636,7 @@ function closeVM(pot: PotRec, c: CloseRec, me: string | null, now: number): Clos
     status: proposalStatus(pot, c, now),
     createdAt: c.createdAt,
     expiresAt: expiresAt(c.createdAt, pot.rules),
+    voteAt: { ...c.voteAt },
   }
 }
 
@@ -585,6 +656,7 @@ function rulesChangeVM(pot: PotRec, p: RulesProposalRec, me: string | null, now:
     status: proposalStatus(pot, p, now),
     createdAt: p.createdAt,
     expiresAt: expiresAt(p.createdAt, pot.rules),
+    voteAt: { ...p.voteAt },
   }
 }
 
@@ -610,6 +682,7 @@ function closePreviewVM(pot: PotRec, math: ReturnType<typeof closeMath>): CloseP
 }
 
 export function potView(w: World, slug: string, me: string | null, now: number): PotVM | null {
+  withAvatars(w)
   const pot = w.pots[slug]
   if (!pot) return null
   const totalIn = pot.members.reduce((s, m) => s + m.contributed, 0)
@@ -641,16 +714,19 @@ export function potView(w: World, slug: string, me: string | null, now: number):
   const feed: FeedItemVM[] = [
     ...pot.events.map((e: EventRec): FeedItemVM => {
       const actor = person(pot, e.actor)
-      if (e.kind === "contribution") return { key: e.id, kind: "contribution", at: e.at, actor, amount: cents(e.amount ?? 0) }
-      return { key: e.id, kind: e.kind, at: e.at, actor }
+      const txHash = mockTxHash(`${pot.slug}:${e.id}`)
+      if (e.kind === "contribution") return { key: e.id, kind: "contribution", at: e.at, actor, amount: cents(e.amount ?? 0), txHash }
+      return { key: e.id, kind: e.kind, at: e.at, actor, txHash }
     }),
-    ...reqs.map((r): FeedItemVM => ({ key: `request:${r.id}`, kind: "request", at: r.decidedAt ?? r.createdAt, request: r })),
-    ...(pot.close ? [{ key: `close:${pot.close.id}`, kind: "close_requested" as const, at: pot.close.createdAt, actor: person(pot, pot.close.proposer), k: approvalsNeeded(pot.members.length) }] : []),
-    ...(pot.status === "closed" && pot.closedAt ? [{ key: `closed:${pot.slug}`, kind: "closed" as const, at: pot.closedAt }] : []),
-    ...(pot.rulesProposal && pot.rulesProposal.status === "proposed"
-      ? [{ key: `rules:${pot.rulesProposal.id}`, kind: "rules_requested" as const, at: pot.rulesProposal.createdAt, actor: person(pot, pot.rulesProposal.proposer), k: approvalsNeeded(pot.members.length) }]
+    ...reqs.map((r): FeedItemVM => ({ key: `request:${r.id}`, kind: "request", at: r.decidedAt ?? r.createdAt, request: r, txHash: r.txHash })),
+    ...(pot.close
+      ? [{ key: `close:${pot.close.id}`, kind: "close_requested" as const, at: pot.close.createdAt, actor: person(pot, pot.close.proposer), k: approvalsNeeded(pot.members.length), txHash: mockTxHash(`${pot.slug}:close:${pot.close.id}`) }]
       : []),
-    ...(pot.ruleChanges ?? []).map((c, i): FeedItemVM => ({ key: `rules-changed:${i}`, kind: "rules_changed", at: c.at, actor: c.group ? null : person(pot, c.by) })),
+    ...(pot.status === "closed" && pot.closedAt ? [{ key: `closed:${pot.slug}`, kind: "closed" as const, at: pot.closedAt, txHash: mockTxHash(`${pot.slug}:closed`) }] : []),
+    ...(pot.rulesProposal && pot.rulesProposal.status === "proposed"
+      ? [{ key: `rules:${pot.rulesProposal.id}`, kind: "rules_requested" as const, at: pot.rulesProposal.createdAt, actor: person(pot, pot.rulesProposal.proposer), k: approvalsNeeded(pot.members.length), txHash: mockTxHash(`${pot.slug}:rules:${pot.rulesProposal.id}`) }]
+      : []),
+    ...(pot.ruleChanges ?? []).map((c, i): FeedItemVM => ({ key: `rules-changed:${i}`, kind: "rules_changed", at: c.at, actor: c.group ? null : person(pot, c.by), txHash: mockTxHash(`${pot.slug}:rules-changed:${i}`) })),
   ].sort((a, b) => b.at - a.at)
   const goalEach = pot.goalEach === null ? null : cents(pot.goalEach)
   return {
@@ -692,6 +768,7 @@ export function potView(w: World, slug: string, me: string | null, now: number):
 }
 
 export function potsOf(w: World, me: string, now: number): PotCardVM[] {
+  withAvatars(w)
   return Object.values(w.pots)
     .filter((p) => isMember(p, me))
     .sort((a, b) => b.createdAt - a.createdAt)
@@ -720,6 +797,7 @@ export interface RequestsVM {
 }
 
 export function requestsOf(w: World, me: string, now: number): RequestsVM {
+  withAvatars(w)
   const all: RequestVM[] = []
   for (const p of Object.values(w.pots)) {
     if (!isMember(p, me)) continue
@@ -738,6 +816,7 @@ export function waitingCount(w: World, me: string, now: number): number {
 }
 
 export function requestView(w: World, slug: string, id: number, me: string | null, now: number): RequestVM | null {
+  withAvatars(w)
   const pot = w.pots[slug]
   const r = pot?.requests.find((x) => x.id === id)
   return pot && r ? requestVM(pot, r, me, now) : null

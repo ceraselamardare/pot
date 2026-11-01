@@ -20,7 +20,7 @@ describe("create machine (frontend-architecture §5.10)", () => {
     expect(createReducer(bad, { type: "NAME", value: "Ab" }).nameError).toBe(false)
   })
 
-  it("name → preset → creating → created", () => {
+  it("name → rules → creating → created", () => {
     const s = run([{ type: "NAME", value: "Lisbon Trip" }, { type: "EMOJI", value: "🇵🇹" }, { type: "NEXT" }, { type: "SUBMIT" }])
     expect(s).toMatchObject({ step: 3, status: "creating", emoji: "🇵🇹" })
     expect(createReducer(s, { type: "SLOW" }).slow).toBe(true)
@@ -30,6 +30,23 @@ describe("create machine (frontend-architecture §5.10)", () => {
   it("a relay failure goes back to step 2 with the error, keeping the input", () => {
     const s = run([{ type: "NAME", value: "Lisbon Trip" }, { type: "NEXT" }, { type: "SUBMIT" }, { type: "FAILED", key: "create.error.relayer" }])
     expect(s).toMatchObject({ step: 2, status: "error", error: "create.error.relayer", name: "Lisbon Trip" })
+  })
+
+  it("rule fields keep what was typed as clean amounts; payees and attempts", () => {
+    const s = run([
+      { type: "NAME", value: "Ski Weekend" },
+      { type: "NEXT" },
+      { type: "RULE_AMOUNT", field: "instant", value: "$25" },
+      { type: "RULE_AMOUNT", field: "perPerson", value: "60.505" },
+      { type: "PAYEES", value: "members_and_allowlist" },
+      { type: "NAMED", index: 0, value: "sam.near" },
+      { type: "NAMED_ADD" },
+      { type: "GOAL_AMOUNT", value: "1,200" },
+      { type: "ATTEMPT" },
+    ])
+    expect(s.rules).toEqual({ instant: "25", perPerson: "60.50", payees: "members_and_allowlist", named: ["sam.near", ""] })
+    expect(s).toMatchObject({ goalText: "1200", attempted: true, step: 2 })
+    expect(createReducer(s, { type: "SUBMIT" })).toMatchObject({ step: 3, attempted: false })
   })
 
   it("the goal toggle and Back", () => {

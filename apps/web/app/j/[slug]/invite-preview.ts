@@ -10,7 +10,8 @@ import { seedWorld, potView, initialsOf } from "@/lib/client/mock/world"
 import type { PersonVM } from "@/lib/client/mock/types"
 import { coverOf, DEFAULT_GOAL_EACH, nameFromAccount } from "@/lib/client/live/vm"
 import { t } from "@/i18n/t"
-import { displayNames, serverChain, serverSdkConfig } from "@/app/_lib/chain"
+import { displayNames, displayProfiles, serverChain, serverSdkConfig } from "@/app/_lib/chain"
+import type { AvatarId } from "@/lib/avatars"
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/
 
@@ -105,9 +106,11 @@ async function livePreview(slug: string, invitePk: string | null, now: number): 
     })(),
   ])
   const active = invite.state === "active"
-  const names = active ? await displayNames([...members.map((m) => m.account as string), ...(invite.view ? [invite.view.createdBy as string] : [])]) : new Map<string, string>()
-  const nameOf = (a: string) => names.get(a) ?? nameFromAccount(a) ?? t("person.fallback")
-  const goalEach = pot.preset === "trip" ? DEFAULT_GOAL_EACH : null
+  const profiles = active ? await displayProfiles([...members.map((m) => m.account as string), ...(invite.view ? [invite.view.createdBy as string] : [])]) : new Map<string, { name: string; avatar: AvatarId | null }>()
+  const nameOf = (a: string) => profiles.get(a)?.name ?? nameFromAccount(a) ?? t("person.fallback")
+  // the "$X each" goal is off-chain (the creator's device); a visitor sees Create's suggested $150, like members do
+  // (live/queries goalEachOf). It no longer depends on a preset: every new Pot is "custom" with its own rules.
+  const goalEach = DEFAULT_GOAL_EACH
   return {
     slug,
     name: pot.name,
@@ -125,7 +128,7 @@ async function livePreview(slug: string, invitePk: string | null, now: number): 
           .sort((a, b) => a.joinIndex - b.joinIndex)
           .map((m) => {
             const name = nameOf(m.account)
-            return { id: m.account, name, initials: initialsOf(name) || "•", joinIndex: m.joinIndex }
+            return { id: m.account, name, initials: initialsOf(name) || "•", joinIndex: m.joinIndex, avatar: profiles.get(m.account)?.avatar ?? null }
           })
       : null,
     inviter: active && invite.view ? nameOf(invite.view.createdBy) : null,

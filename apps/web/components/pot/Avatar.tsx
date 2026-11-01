@@ -1,7 +1,12 @@
 // Member avatars (brand README §4): colour member-((joinIndex mod 6) + 1) by join order in that Pot, eggplant
 // `on-brand` initials in both themes. Invited-but-not-joined: surface-sunken with ink-muted initials.
+// A person who picked a brand avatar (You → Profile, brand/avatars/README.md) shows that picture instead, on every
+// screen; without one (or with an unknown id) it is exactly the initials seat above.
+import { avatarOrNull, avatarSrc } from "@/lib/avatars"
 import { cn } from "@/lib/client/cn"
 import type { PersonVM } from "@/lib/client/mock/types"
+
+type AvatarPerson = Pick<PersonVM, "name" | "initials" | "joinIndex" | "avatar">
 
 const TINT = ["bg-member-1", "bg-member-2", "bg-member-3", "bg-member-4", "bg-member-5", "bg-member-6"] as const
 
@@ -23,29 +28,37 @@ export function Avatar({
   className,
   decorative = true,
 }: {
-  person: Pick<PersonVM, "name" | "initials" | "joinIndex">
+  person: AvatarPerson
   size?: keyof typeof SIZE
   /** a 2 px ring in the colour the avatar sits on (stacks, tinted rows) */
   ring?: "ground" | "surface" | "brand-soft"
   className?: string
   decorative?: boolean
 }) {
+  const picture = avatarOrNull(person.avatar)
   return (
     <span
       aria-hidden={decorative || undefined}
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : person.name}
+      data-avatar={picture ?? "initials"}
       className={cn(
         "inline-grid shrink-0 place-items-center rounded-pill font-sans font-bold select-none",
         SIZE[size],
-        avatarTint(person.joinIndex),
+        picture ? "overflow-hidden bg-surface-sunken" : avatarTint(person.joinIndex),
         ring === "ground" && "ring-2 ring-ground",
         ring === "surface" && "ring-2 ring-surface",
         ring === "brand-soft" && "ring-2 ring-brand-soft",
         className,
       )}
     >
-      {person.initials}
+      {picture ? (
+        // a static brand SVG from public/ (no next/image: nothing to optimise, and it renders in server components)
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={avatarSrc(picture)} alt="" width={96} height={96} draggable={false} decoding="async" className="size-full" />
+      ) : (
+        person.initials
+      )}
     </span>
   )
 }
@@ -58,7 +71,7 @@ export function AvatarStack({
   ring = "ground",
   className,
 }: {
-  people: Pick<PersonVM, "id" | "name" | "initials" | "joinIndex">[]
+  people: (AvatarPerson & Pick<PersonVM, "id">)[]
   max?: number
   size?: keyof typeof SIZE
   ring?: "ground" | "surface"

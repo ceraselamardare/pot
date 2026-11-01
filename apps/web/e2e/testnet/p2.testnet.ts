@@ -68,7 +68,7 @@ test("setup: A creates one Pot, B joins, both add money", async () => {
   const step1 = A.getByRole("dialog", { name: "Name your Pot" })
   await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
   await step1.getByRole("button", { name: "Next" }).click()
-  await A.getByRole("dialog", { name: "How should it work?" }).getByRole("button", { name: "Create Pot" }).click()
+  await A.getByRole("dialog", { name: "Pot rules" }).getByRole("button", { name: "Create Pot" }).click()
   await expect(A).toHaveURL(/\/p\/rules-trip-[a-z0-9]+-[a-z0-9]{4}\?sheet=share$/, { timeout: 60_000 })
   slug = new URL(A.url()).pathname.split("/")[2]!
   const share = A.getByRole("dialog", { name: `Invite friends to ${POT_NAME}` })

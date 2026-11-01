@@ -7,6 +7,7 @@ import { inArray } from "drizzle-orm"
 import { getDb } from "@/db/client"
 import { appUser } from "@/db/schema"
 import { getConfig } from "@/server/config"
+import { avatarOrNull, type AvatarId } from "@/lib/avatars"
 
 let views: ChainViews | null = null
 let cfgCache: SdkConfig | null = null
@@ -35,6 +36,20 @@ export function serverChain(): ChainViews {
   })
   views = createChainViews(serverSdkConfig(), rpc)
   return views
+}
+
+/** Display names and chosen avatars from our DB (best effort; an empty map when the DB is unreachable). */
+export async function displayProfiles(accounts: string[]): Promise<Map<string, { name: string; avatar: AvatarId | null }>> {
+  if (!accounts.length) return new Map()
+  try {
+    const rows = await getDb()
+      .select({ a: appUser.nearAccount, n: appUser.displayName, av: appUser.avatar })
+      .from(appUser)
+      .where(inArray(appUser.nearAccount, accounts))
+    return new Map(rows.map((r) => [r.a, { name: r.n, avatar: avatarOrNull(r.av) }]))
+  } catch {
+    return new Map()
+  }
 }
 
 /** Display names from our DB (best effort; an empty map when the DB is unreachable). */

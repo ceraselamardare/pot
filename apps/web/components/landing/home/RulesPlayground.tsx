@@ -34,7 +34,7 @@ import { prefersReducedMotion } from "@/lib/client/browser"
 import { cn } from "@/lib/client/cn"
 import { APPROVED_MS, MIN_CHECKING_MS } from "@/lib/client/machines/spend"
 import { dollars, formatUsd, type Micro } from "@/lib/client/money"
-import { approvalsNeeded, previewSpend, TRIP_RULES, type SpendPreview } from "@/lib/client/rules"
+import { approvalsNeeded, previewSpend, DEFAULT_RULES, type SpendPreview } from "@/lib/client/rules"
 import { LiveMoney } from "./motion/LiveMoney"
 import { Layers, RulesChip, RulesSegmented, useGlide, type Layer } from "./RulesParts"
 import { Section, SectionHead } from "./Section"
@@ -68,8 +68,8 @@ type RuleId = "instant" | "group" | "person"
 
 /** Sentences and buttons keep whole dollars ("Spend $84"); displayed amounts use MoneyText ("$84.00"). */
 const whole = (m: Micro) => formatUsd(m, "whole")
-const INSTANT_LIMIT = whole(TRIP_RULES.instantCap)
-const MEMBER_LIMIT = whole(TRIP_RULES.memberBudget)
+const INSTANT_LIMIT = whole(DEFAULT_RULES.instantCap)
+const MEMBER_LIMIT = whole(DEFAULT_RULES.memberBudget)
 
 // ---------------------------------------------------------------------------------------------------------
 // State: the Pot (balance, Maya's spends without asking), the picker, the last spend's outcome, and the outcome the
@@ -130,7 +130,7 @@ function previewFor(s: Pick<State, "amount" | "balance" | "used">): SpendPreview
   return previewSpend({
     amount: s.amount,
     balance: s.balance,
-    rules: TRIP_RULES,
+    rules: DEFAULT_RULES,
     memberCount: PEOPLE.length,
     used: s.used,
     contributed: MAYA_PUT_IN,
@@ -471,7 +471,7 @@ function RuleList({ highlight, used }: { highlight: RuleId | null; used: Micro }
   ] as const
   return (
     <div>
-      <h3 className="text-label text-ink">{t("rules.preset.trip")}</h3>
+      <h3 className="text-label text-ink">{t("rules.label")}</h3>
       {/* the highlight keeps the page's gutter on phones; it hangs into the column's margin only beside the card */}
       <ul className="mt-1 flex flex-col gap-1 @3xl/try:-mx-3">
         {rows.map(({ id, Icon, text, sub }) => (

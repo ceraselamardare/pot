@@ -81,7 +81,7 @@ test("E-a: a new person (NEAR wallet) creates a Pot and gets the share link", as
   await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
   await step1.getByRole("radio", { name: "🎿" }).click()
   await step1.getByRole("button", { name: "Next" }).click()
-  const step2 = A.getByRole("dialog", { name: "How should it work?" })
+  const step2 = A.getByRole("dialog", { name: "Pot rules" })
   await step2.getByRole("button", { name: "Create Pot" }).click()
   await expect(A.getByText("Free: we cover the setup.")).toBeVisible()
 

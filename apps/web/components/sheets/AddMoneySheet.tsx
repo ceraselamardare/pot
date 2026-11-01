@@ -2,8 +2,10 @@
 // Add money (ux-spec §4.7, design-direction 01 §4): reads like a sentence — amount, source, outcome, button,
 // keypad. Demo dollars are preselected on testnet. The sheet closes at once on submit; the feed shows
 // "Adding $150…" with "Sending…" and the hero "+$150 on the way" until it lands.
+// The first step of the Add money flow (components/sheets/AddFlow.tsx): what is typed and the source are kept by
+// the flow, so Back from the network step finds them as they were.
 import { Info } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Callout } from "@/components/feedback/States"
 import { AmountDisplay, Keypad } from "@/components/money/Keypad"
 import { Chip } from "@/components/pot/Controls"
@@ -16,7 +18,8 @@ import { useOwnDollars } from "@/lib/client/data"
 import { formatUsd, parseKeypad, toKeypad, type Micro } from "@/lib/client/money"
 import type { PotVM } from "@/lib/client/mock/types"
 import { cn } from "@/lib/client/cn"
-import { openSheet } from "@/lib/client/sheet"
+import type { AddSource } from "@/lib/client/machines/add-flow"
+import { pushSheetStep } from "@/lib/client/sheet"
 
 const NOTE_KEY = "pot.usdcNote.seen"
 
@@ -28,23 +31,28 @@ function noteSeen(): boolean {
   }
 }
 
-type Source = "demo" | "pot_dollars"
-
 export function AddMoneySheet({
   pot,
   open,
   onClose,
   prefill,
+  typed,
+  onTyped: setTyped,
+  source,
+  onSource: setSource,
 }: {
   pot: PotVM
   open: boolean
   onClose: () => void
   /** ?amount= from "Add my $150 share" */
   prefill: string | null
+  /** the keypad as typed (null = untouched: the prefill shows), kept by the flow across Back */
+  typed: string | null
+  onTyped: (value: string) => void
+  source: AddSource
+  onSource: (value: AddSource) => void
 }) {
   const online = useOnline()
-  const [typed, setTyped] = useState<string | null>(null)
-  const [source, setSource] = useState<Source>("demo")
   const [hideNote, setHideNote] = useState(false)
   const suggested = pot.goalEach
   const fallback =
@@ -56,21 +64,21 @@ export function AddMoneySheet({
   const value = typed ?? fallback
   const amount = parseKeypad(value)
   // the person's own Pot dollars (usdc.ft_balance_of(me), 10 s while open); 0 in the mock
-  const ownDollars: Micro = useOwnDollars(pot.me?.person.id ?? null, open) ?? 0n
+  const ownRead = useOwnDollars(pot.me?.person.id ?? null, open)
+  const ownDollars: Micro = ownRead ?? 0n
+  // none at all (read, and zero): the source can't be picked; with some, "Use all $X" fills the amount
+  const noOwn = ownRead !== undefined && ownRead === 0n
+  useEffect(() => {
+    if (open && noOwn && source === "pot_dollars") setSource("demo")
+  }, [open, noOwn, source, setSource])
   const short = source === "pot_dollars" && amount > ownDollars
   const valid = amount > 0n && !short
   const after = pot.balance + amount
   const reachesGoal = pot.goal !== null && pot.totalIn < pot.goal && pot.totalIn + amount >= pot.goal
   const showNote = open && !hideNote && !noteSeen()
 
-  const reset = () => {
-    setTyped(null)
-    setSource("demo")
-  }
-  const close = () => {
-    reset()
-    onClose()
-  }
+  // closing resets the flow (AddFlow: no ?sheet=add → RESET)
+  const close = onClose
   const submit = () => {
     if (!valid || !pot.me) return
     if (!online) return
@@ -81,6 +89,7 @@ export function AddMoneySheet({
     ...(suggested ? [{ label: t("add.chip.share", { suggested: formatUsd(suggested, "whole") }), amount: suggested }] : []),
     { label: formatUsd(50_000_000n, "whole"), amount: 50_000_000n },
     { label: formatUsd(100_000_000n, "whole"), amount: 100_000_000n },
+    ...(source === "pot_dollars" && ownDollars > 0n ? [{ label: t("add.source.max", { available: formatUsd(ownDollars) }), amount: ownDollars }] : []),
   ]
 
   return (
@@ -130,12 +139,19 @@ export function AddMoneySheet({
             checked={source === "pot_dollars"}
             onSelect={() => setSource("pot_dollars")}
             label={t("add.source.pot_dollars", { available: formatUsd(ownDollars) })}
-            sub={short ? t("add.source.short", { amount: formatUsd(amount, "whole") }) : undefined}
+            sub={noOwn ? t("add.source.pot_dollars.none") : short ? t("add.source.short", { amount: formatUsd(amount, "whole") }) : undefined}
+            disabled={noOwn}
           />
           {/* integrations (D-50): the any-chain deposit (?src=xc), with the amount typed here */}
           <SourceRow
             checked={false}
-            onSelect={() => openSheet("add", amount > 0n ? { src: "xc", amount: value } : { src: "xc" })}
+            onSelect={() =>
+              pushSheetStep((p) => {
+                p.set("src", "xc")
+                if (amount > 0n) p.set("amount", value)
+                else p.delete("amount")
+              })
+            }
             label={t("add.source.other_wallet")}
             sub={t("add.source.other_hint")}
           />

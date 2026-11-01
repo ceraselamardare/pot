@@ -1,5 +1,8 @@
 // Create Pot as a typed reducer (frontend-architecture §5.10, ux-spec §4.12, design-direction 01 §3).
-// Step 1 name + emoji + colour → step 2 preset (Trip) + optional "$150 each" → step 3 creating → share.
+// Step 1 name + emoji + colour → step 2 the Pot rules (instant limit, per-person limit, who instant payments go
+// to; lib/client/create-rules.ts) + optional "$150 each" → step 3 creating → share. No templates: every Pot is
+// created with preset "custom" and the rules as typed.
+import { DEFAULT_RULES_FORM, MAX_NAMED, sanitizeAmount, type PayeeChoice, type RulesForm } from "../create-rules"
 
 export const NAME_MIN = 2
 export const NAME_MAX = 40
@@ -17,7 +20,11 @@ export interface CreateState {
   emoji: string
   cover: number
   goalOn: boolean
-  goalEachCents: number
+  /** the "$X each" amount as typed (dollars) */
+  goalText: string
+  rules: RulesForm
+  /** [Create Pot] was pressed with something to fix: show every inline error */
+  attempted: boolean
   nameError: boolean
   status: "editing" | "creating" | "error"
   slow: boolean
@@ -32,6 +39,14 @@ export type CreateEvent =
   | { type: "NEXT" }
   | { type: "BACK" }
   | { type: "GOAL"; on: boolean }
+  | { type: "GOAL_AMOUNT"; value: string }
+  | { type: "RULE_AMOUNT"; field: "instant" | "perPerson"; value: string }
+  | { type: "PAYEES"; value: PayeeChoice }
+  | { type: "NAMED"; index: number; value: string }
+  | { type: "NAMED_ADD" }
+  | { type: "NAMED_REMOVE"; index: number }
+  /** [Create Pot] with something to fix (the sheet checks the form; see checkRulesForm) */
+  | { type: "ATTEMPT" }
   | { type: "SUBMIT" }
   | { type: "SLOW" }
   | { type: "CREATED"; slug: string }
@@ -44,7 +59,9 @@ export const initialCreate: CreateState = {
   emoji: "✈️",
   cover: 0,
   goalOn: true,
-  goalEachCents: 15_000,
+  goalText: "150",
+  rules: DEFAULT_RULES_FORM,
+  attempted: false,
   nameError: false,
   status: "editing",
   slow: false,
@@ -64,6 +81,22 @@ export function createReducer(s: CreateState, e: CreateEvent): CreateState {
       return { ...s, cover: e.value }
     case "GOAL":
       return { ...s, goalOn: e.on }
+    case "GOAL_AMOUNT":
+      return { ...s, goalText: sanitizeAmount(e.value) }
+    case "RULE_AMOUNT":
+      return { ...s, rules: { ...s.rules, [e.field]: sanitizeAmount(e.value) } }
+    case "PAYEES":
+      return { ...s, rules: { ...s.rules, payees: e.value } }
+    case "NAMED":
+      return { ...s, rules: { ...s.rules, named: s.rules.named.map((v, i) => (i === e.index ? e.value.slice(0, 64) : v)) } }
+    case "NAMED_ADD":
+      return s.rules.named.length >= MAX_NAMED ? s : { ...s, rules: { ...s.rules, named: [...s.rules.named, ""] } }
+    case "NAMED_REMOVE": {
+      const named = s.rules.named.filter((_, i) => i !== e.index)
+      return { ...s, rules: { ...s.rules, named: named.length ? named : [""] } }
+    }
+    case "ATTEMPT":
+      return s.step === 2 ? { ...s, attempted: true } : s
     case "NEXT":
       if (s.step !== 1) return s
       return validateName(s.name) ? { ...s, step: 2, nameError: false } : { ...s, nameError: true }
@@ -71,7 +104,7 @@ export function createReducer(s: CreateState, e: CreateEvent): CreateState {
       return s.step === 2 && s.status !== "creating" ? { ...s, step: 1 } : s
     case "SUBMIT":
       if (s.step !== 2 || s.status === "creating") return s
-      return { ...s, step: 3, status: "creating", slow: false, error: null }
+      return { ...s, step: 3, status: "creating", slow: false, error: null, attempted: false }
     case "SLOW":
       return s.status === "creating" ? { ...s, slow: true } : s
     case "CREATED":

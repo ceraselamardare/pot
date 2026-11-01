@@ -14,6 +14,7 @@ import type { SessionCtx } from "../session/store"
 import { b64url, fromB64url } from "../util/crypto"
 import { daoSlug, SLUG_RE } from "../util/ids"
 import { ensurePot, isMember } from "./notes"
+import { avatarOrNull } from "@/lib/avatars"
 
 export type FeedApiItem = Api.FeedApiItem
 
@@ -130,10 +131,10 @@ export async function getFeed(
     ]
     if (accounts.length) {
       const users = await db
-        .select({ a: appUser.nearAccount, n: appUser.displayName, t: appUser.avatarTint })
+        .select({ a: appUser.nearAccount, n: appUser.displayName, t: appUser.avatarTint, av: appUser.avatar })
         .from(appUser)
         .where(inArray(appUser.nearAccount, accounts))
-      body.profiles = Object.fromEntries(users.map((u) => [u.a, { name: u.n, tint: u.t, avatarUrl: null }]))
+      body.profiles = Object.fromEntries(users.map((u) => [u.a, { name: u.n, tint: u.t, avatarUrl: null, avatar: avatarOrNull(u.av) }]))
     }
   }
 

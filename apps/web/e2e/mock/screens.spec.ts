@@ -113,3 +113,33 @@ test("signed out: the app shell offers the demo", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Sign in to Pot" })).toBeVisible()
   await check(page, "one")
 })
+
+test("Create step 2: Pot rules (defaults, $0, people I name, errors)", async ({ page }, info) => {
+  await asPerson(page, "maya")
+  await page.goto("/pots?sheet=create")
+  const step1 = await openedSheet(page, "Name your Pot")
+  await step1.getByRole("textbox", { name: /Pot name/ }).fill("Ski Weekend")
+  await step1.getByRole("button", { name: "Next" }).click()
+  const step2 = await openedSheet(page, "Pot rules")
+  await check(page, "one")
+  if (info.project.name !== "desktop") {
+    // the whole form in one review image: grow the viewport to the sheet's content (still 390 wide)
+    const h = await step2.evaluate((d) => Math.max(844, ...[...d.querySelectorAll("*")].map((e) => e.scrollHeight)) + 420)
+    await page.setViewportSize({ width: 390, height: Math.min(h, 2400) })
+    await page.waitForTimeout(400)
+    await page.screenshot({ path: `${SCREENS}create-rules-${info.project.name === "mobile-night" ? "night" : "day"}.png` })
+    await page.setViewportSize({ width: 390, height: 844 })
+  }
+  // $0 at a time: the helper line
+  await step2.getByRole("textbox", { name: "Anyone can spend up to this much at a time without asking" }).fill("0")
+  await expect(step2.getByText("With $0, every spend needs more than half the group to approve.")).toBeVisible()
+  // people I name: fields, an invalid name, the errors after [Create Pot]
+  await step2.getByRole("radio", { name: "Members and people I name" }).check()
+  await step2.getByRole("textbox", { name: "Person 1" }).fill("Not a name")
+  await step2.getByRole("button", { name: "Add a person" }).click()
+  await step2.getByRole("textbox", { name: "Person 2" }).fill("sam.near")
+  await step2.getByRole("button", { name: "Create Pot" }).click()
+  await expect(step2.getByText("This doesn't look like a name. Names look like sam.near.")).toBeVisible()
+  await expect(step2.getByRole("textbox", { name: "Person 1" })).toBeFocused()
+  await check(page, "one")
+})

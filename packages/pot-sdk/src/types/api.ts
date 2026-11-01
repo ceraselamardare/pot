@@ -22,6 +22,8 @@ export type OpKey = string
 export type SessionKind = "near-auth" | "wallet"
 export type Category = "groceries" | "food" | "transport" | "stay" | "tickets" | "other"
 export type AvatarTint = "peach" | "sand" | "sage" | "mist" | "lilac" | "rose"
+/** A brand avatar (apps/web/public/avatars/<id>.svg, brand/avatars/README.md). null/absent = initials. */
+export type AvatarId = "pot-01" | "pot-02" | "pot-03" | "pot-04" | "pot-05" | "pot-06" | "pot-07" | "pot-08" | "pot-09" | "pot-10"
 /** Cover gradient token from the design system (D-61: emoji + gradient only). */
 export type GradientId = string
 /** Device-key proof: ts = Unix ms, sig = base64url Ed25519 signature (§4.2). */
@@ -183,6 +185,8 @@ export interface SessionInfo {
   accountId: AccountId
   displayName: string
   avatarTint: AvatarTint
+  /** the chosen brand avatar; null = initials */
+  avatar?: AvatarId | null
   /** "m•••@gmail.com" (landing.signed_in_as) */
   emailHint?: string
   expiresAt: IsoTime
@@ -270,9 +274,11 @@ export interface ProfilePatch {
   displayName?: string
   avatarTint?: AvatarTint
   notifyEmail?: boolean
+  /** a brand avatar, or null to go back to initials (the only field the route accepts so far) */
+  avatar?: AvatarId | null
 }
 export interface ProfileRes extends Ok {
-  profile: { displayName: string; avatarTint: AvatarTint; notifyEmail: boolean }
+  profile: { displayName: string; avatarTint: AvatarTint; notifyEmail: boolean; avatar: AvatarId | null }
 }
 
 // ---------------------------------------------------------------- §2.2 devices
@@ -520,7 +526,7 @@ export interface FeedRes extends Ok {
   /** newest first */
   items: FeedApiItem[]
   /** members only (rev4 M-7); others get {} */
-  profiles: Record<AccountId, { name: string; tint: AvatarTint; avatarUrl?: null }>
+  profiles: Record<AccountId, { name: string; tint: AvatarTint; avatarUrl?: null; avatar?: AvatarId | null }>
   /** requestRef → text; members only */
   memos?: Record<string, string>
   /** proposalId → account → text; members only */

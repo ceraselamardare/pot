@@ -7,13 +7,16 @@
 // which would read as a goal bar). [Ask the group to change a rule] (secondary: the hero's Add money stays the
 // one marigold) opens the change sheet; while a change waits (≤ 1 per Pot, ERR_RULES_PENDING) a waiting card with
 // [Review] replaces it. A sole member changes the rules directly (set_rules).
-import { Clock, Hourglass, UserCheck, UserRound, Users, Zap } from "lucide-react"
+import { HUB_LIMITS } from "@pot/sdk"
+import { Clock, Hourglass, Undo2, UserCheck, UserRound, Users, UsersRound, Zap } from "lucide-react"
 import { useState } from "react"
 import { Avatar } from "@/components/pot/Avatar"
 import { MoneyText } from "@/components/money/MoneyText"
 import { inWords } from "@/components/pot/Feed"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { Sheet } from "@/components/sheets/Sheet"
+import { ExplorerAccountLink } from "@/components/receipt/ReceiptLink"
+import { daoOf } from "@/lib/client/config"
 import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import { formatUsd } from "@/lib/client/money"
@@ -62,7 +65,15 @@ export function MembersTab({ pot, compact }: { pot: PotVM; compact?: boolean }) 
             refund: formatUsd(m.getsBack),
           })}`
           return (
-            <li key={m.person.id} aria-label={sentence} className="flex min-h-16 items-center gap-3 rounded-md bg-surface p-3">
+            <li key={m.person.id} aria-label={sentence} className="list-none">
+              {/* tap a person: what they did in this Pot (?sheet=person&who=, components/activity/PersonActivitySheet) */}
+              <button
+                type="button"
+                onClick={() => openSheet("person", { who: m.person.id })}
+                aria-label={`${name}. ${t("members.activity.hint")}`}
+                data-member={m.person.id}
+                className="flex min-h-16 w-full items-center gap-3 rounded-md bg-surface p-3 text-left hover:bg-surface-sunken"
+              >
               <Avatar person={m.person} size="md" />
               <div className="min-w-0 flex-1">
                 <p className="text-label text-ink">{name}</p>
@@ -74,6 +85,7 @@ export function MembersTab({ pot, compact }: { pot: PotVM; compact?: boolean }) 
                 <p className="text-body-sm text-ink-muted">{t("members.gets_back")}</p>
                 <MoneyText micro={m.getsBack} className="text-ink" />
               </div>
+              </button>
             </li>
           )
         })}
@@ -118,11 +130,14 @@ function HowItsWorkedOut() {
 /** The rules as plain sentences (shared by the Rules tab and the change sheet's preview). */
 export function ruleSentences(rules: Rules, k: number, n: number) {
   return {
-    instant: t("rules.instant", { instantLimit: formatUsd(rules.instantCap, "whole") }),
+    // an instant limit of $0: nothing is approved without asking (the hub sends every spend to the group)
+    instant: rules.instantCap > 0n ? t("rules.instant", { instantLimit: formatUsd(rules.instantCap, "whole") }) : t("rules.instant.none", { k, n }),
     threshold: t("rules.threshold", { k, n }),
     budget: t("rules.budget", { memberBudget: formatUsd(rules.memberBudget, "whole") }),
-    recipients: t("rules.recipients"),
+    recipients: rules.instantPayees === "members_and_allowlist" && rules.payeeAllowlist.length > 0 ? t("rules.recipients.named") : t("rules.recipients"),
     expiry: t("rules.expiry", { days: rules.expiryDays }),
+    leftovers: t("rules.leftovers"),
+    size: t("rules.size", { max: HUB_LIMITS.maxMembers }),
   }
 }
 
@@ -131,29 +146,36 @@ export function RulesTab({ pot }: { pot: PotVM }) {
   const budget = pot.rules.memberBudget
   const pct = budget > 0n ? Math.min(100, Number((used * 100n) / budget)) : 0
   const sentences = ruleSentences(pot.rules, pot.k, pot.n)
-  const rows = [
+  const none = pot.rules.instantCap <= 0n
+  const named = pot.rules.instantPayees === "members_and_allowlist" ? pot.rules.payeeAllowlist : []
+  // the Pot's own rules (no template names): with a $0 instant limit the "bigger spends" and per-person rows
+  // say nothing new, so the first row carries the approvals
+  const rows: { icon: typeof Zap; text: string; meter?: boolean; list?: string[] }[] = [
     { icon: Zap, text: sentences.instant },
-    { icon: Users, text: sentences.threshold },
-    { icon: UserRound, text: sentences.budget, meter: true },
-    { icon: UserCheck, text: sentences.recipients },
+    ...(none ? [] : [{ icon: Users, text: sentences.threshold }, { icon: UserRound, text: sentences.budget, meter: true }]),
+    { icon: UserCheck, text: sentences.recipients, list: named.length ? named : undefined },
     { icon: Hourglass, text: sentences.expiry },
+    { icon: Undo2, text: sentences.leftovers },
+    { icon: UsersRound, text: sentences.size },
   ]
   return (
     <section aria-labelledby="rules-h" className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="rules-h" className="font-display text-heading text-ink">
-          {t("rules.title", { potName: pot.name })}
-        </h2>
-        <span className="inline-flex h-7 items-center rounded-pill bg-surface-sunken px-3 text-body-sm font-semibold text-ink">
-          {t("rules.preset.trip")}
-        </span>
-      </div>
-      <ul className="flex flex-col gap-2">
-        {rows.map(({ icon: Icon, text, meter }) => (
+      <h2 id="rules-h" className="font-display text-heading text-ink">
+        {t("rules.title", { potName: pot.name })}
+      </h2>
+      <ul className="flex flex-col gap-2" data-rules-list>
+        {rows.map(({ icon: Icon, text, meter, list }) => (
           <li key={text} className="flex gap-3 rounded-md bg-surface p-4">
             <Icon aria-hidden className="mt-0.5 size-6 shrink-0 text-ink" strokeWidth={2} />
             <div className="min-w-0 flex-1">
               <p className="text-body text-ink tabular-nums">{text}</p>
+              {list && (
+                <ul className="mt-1.5 flex flex-col gap-0.5 text-body-sm break-all text-ink-muted" data-rules-named>
+                  {list.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              )}
               {meter && pot.me && (
                 <div className="mt-3">
                   <div aria-hidden className="h-1.5 overflow-hidden rounded-pill bg-surface-sunken">
@@ -169,6 +191,10 @@ export function RulesTab({ pot }: { pot: PotVM }) {
       {pot.me && pot.me.contributed === 0n && <p className="text-body-sm text-ink-muted">{t("rules.new_member")}</p>}
       <p className="text-body-sm text-ink-muted">{t("rules.footer", { creator: pot.creator.name })}</p>
       <RulesChange pot={pot} />
+      {/* the Pot's own account on the explorer: quiet, for people who want to check (never marigold) */}
+      <p className="-mt-1">
+        <ExplorerAccountLink account={daoOf(pot.slug)} label={t("pot.explorer.label", { potName: pot.name })} />
+      </p>
     </section>
   )
 }
