@@ -13,7 +13,7 @@ vi.mock("@/lib/deposit", async () => {
   const types = await import("@/lib/deposit/types")
   return { ...types, addArrived, arrivedAmount: (d: DepositView) => BigInt(d.amountOut ?? d.amountIn) }
 })
-const { DepositStepper } = await import("./DepositStepper")
+const { DepositStepper, missingOf } = await import("./DepositStepper")
 const { tokenAmount, shortAddress, safeHref } = await import("./format")
 
 beforeAll(() => {
@@ -103,6 +103,15 @@ describe("DepositStepper", () => {
     expect(onTopUp).toHaveBeenCalledWith(28_500_000n)
   })
 
+  it("incomplete with the rest already sent (not spotted yet): no second 'send more', it says the rest is on its way", () => {
+    const onTopUp = vi.fn()
+    renderStepper(view({ status: "INCOMPLETE_DEPOSIT", step: 1, depositedAmount: "120000000", simulated: { sent: true, sentAmount: "148500000" } }), { onTopUp })
+    expect(screen.getByText("The rest is on its way")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /^Simulate sending/ })).toBeNull()
+    expect(missingOf({ minAmountIn: "148500000", depositedAmount: "120000000", simulated: { sent: true, sentAmount: "130000000" } })).toBe(18_500_000n)
+    expect(missingOf({ minAmountIn: "148500000", depositedAmount: "120000000" })).toBe(28_500_000n)
+  })
+
   it("refunded / failed say whether money moved and offer support; expired offers a new address", () => {
     renderStepper(view({ status: "REFUNDED", step: 3, refundReason: "NO_LIQUIDITY" }))
     expect(screen.getByText("Your money is safe and wasn't added to the Pot.")).toBeTruthy()
@@ -152,5 +161,26 @@ describe("mock deposit API (the server's simulator, in the browser)", () => {
     expect((await listed).deposits.map((d) => d.id)).toEqual([id])
     expect((await mockDeposits.markAdded(id)).status).toBe("ADDED")
     expect(Date.now()).toBeGreaterThan(start)
+  })
+
+  it("partial: 'send more' tapped twice before the top-up is spotted → one top-up, no error, then it arrives (2026-11-02)", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout"] })
+    const run = async <T,>(p: Promise<T>): Promise<T> => {
+      await vi.advanceTimersByTimeAsync(300)
+      return p
+    }
+    const q = await run(mockDeposits.quote({ pot: "x.hub", chain: "sol", amount: "5000000", idempotencyKey: "k2" }))
+    const id = q.depositIntentId!
+    const { profile } = await run(mockDeposits.simulate({ depositIntentId: id, scenario: "partial", idempotencyKey: "s1" }))
+    vi.setSystemTime(Date.now() + profile.pendingSec * 1000 + 500)
+    const inc = await run(mockDeposits.status(id))
+    expect(inc).toMatchObject({ status: "INCOMPLETE_DEPOSIT", depositedAmount: "4000000", minAmountIn: "4950000" })
+    await run(mockDeposits.simulate({ depositIntentId: id, amount: "950000", idempotencyKey: "s2" }))
+    // the second tap: same label on screen, nothing more sent, no error
+    await run(mockDeposits.simulate({ depositIntentId: id, amount: "950000", idempotencyKey: "s3" }))
+    const still = await run(mockDeposits.status(id))
+    expect(still).toMatchObject({ status: "INCOMPLETE_DEPOSIT", simulated: { sent: true, sentAmount: "4950000" } })
+    vi.setSystemTime(Date.now() + (profile.pendingSec + profile.processingSec) * 1000 + 1000)
+    expect(await run(mockDeposits.status(id))).toMatchObject({ status: "SUCCESS", amountOut: "4949505" })
   })
 })

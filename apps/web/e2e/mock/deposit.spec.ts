@@ -95,6 +95,29 @@ test("partial: less than needed → top up the rest → converting → arrived",
   await expect(sheet.getByText(/Your \$148\.4\d arrived/)).toBeVisible()
 })
 
+test("partial (2026-11-02): after 'send more' it says the rest is on its way, never offers it twice, then one tap adds it", async ({ page }) => {
+  const sheet = await openDeposit(page)
+  await getAddress(page, "Solana")
+  await sheet.getByRole("button", { name: "Try a problem instead" }).click()
+  await sheet.getByRole("button", { name: "Send less than needed" }).click()
+  await sent(page)
+  await page.clock.fastForward(40_000)
+  await statusIs(page, "INCOMPLETE_DEPOSIT", 8_000)
+  await sheet.getByRole("button", { name: "Simulate sending $28.50 more" }).click()
+  // Solana takes ~30 s to spot the rest: meanwhile no second "send more" (it used to be offered, then refused)
+  await expect(sheet.getByText("The rest is on its way")).toBeVisible()
+  await expect(sheet.getByRole("button", { name: /^Simulate sending/ })).toHaveCount(0)
+  await expect(sheet.getByRole("alert")).toHaveCount(0)
+  await statusIs(page, "INCOMPLETE_DEPOSIT")
+  // spotted (~30 s), then converting (~12 s): past both
+  await page.clock.fastForward(40_000)
+  await page.waitForTimeout(400)
+  await page.clock.fastForward(20_000)
+  await statusIs(page, "SUCCESS", 8_000)
+  await sheet.getByRole("button", { name: "Add it to the Pot" }).click()
+  await statusIs(page, "ADDED", 8_000)
+})
+
 test('slow: "Taking longer than usual" at 5 min of converting, then it arrives', async ({ page }) => {
   const sheet = await openDeposit(page)
   await getAddress(page, "Arbitrum")

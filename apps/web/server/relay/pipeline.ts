@@ -160,6 +160,22 @@ function mapRpc<T>(p: Promise<T>): Promise<T> {
 // ---------------------------------------------------------------------------------------------
 // step 10: chain reads
 
+/** api-spec §3: a delegate may live at most this many blocks past the final head... */
+export const MAX_DELEGATE_TTL = 600n
+/** ...plus this slack for a signer whose head is ahead of our final read (optimistic, another RPC). */
+export const TTL_SKEW = 30n
+
+/** The highest delegate nonce still in flight for a key; rows whose delegate expired (≤ head) don't count. */
+export function inflightNonce(rows: { nonce: string; mbh: number | null }[], head: number): bigint | null {
+  let max: bigint | null = null
+  for (const r of rows) {
+    if (r.mbh !== null && r.mbh !== undefined && Number(r.mbh) < head) continue
+    const n = BigInt(r.nonce)
+    if (max === null || n > max) max = n
+  }
+  return max
+}
+
 interface ChainContext {
   head: number
   potView: PotView | null
@@ -168,10 +184,11 @@ interface ChainContext {
 async function chainChecks(deps: RelayDeps, actor: Actor, d: DecodedDelegate, m: PolicyMatch): Promise<ChainContext> {
   const { rpc, hub, db } = deps
   const now = deps.now?.() ?? Date.now()
-  const inflightP = db.execute<{ max: string | null }>(sql`
-    SELECT max(delegate_nonce)::text AS max FROM relay_log
+  const inflightP = db.execute<{ nonce: string; mbh: number | null }>(sql`
+    SELECT delegate_nonce::text AS nonce, max_block_height AS mbh FROM relay_log
     WHERE sender_id = ${d.senderId} AND delegate_public_key = ${d.publicKey}
-      AND status IN ('validated', 'signed', 'submitted', 'pending')`)
+      AND status IN ('validated', 'signed', 'submitted', 'pending') AND delegate_nonce IS NOT NULL
+    ORDER BY delegate_nonce DESC LIMIT 100`)
   const potP = m.potId && m.rule !== "R2" ? hub.getPot(m.potId) : Promise.resolve(null)
   const [head, ak, inflight, potView] = await Promise.all([
     mapRpc(block(rpc, { finality: "final" })),
@@ -182,7 +199,9 @@ async function chainChecks(deps: RelayDeps, actor: Actor, d: DecodedDelegate, m:
   const h = BigInt(head.height)
   if (d.maxBlockHeight <= h + 10n)
     throw new ApiError("expired", { detail: { maxBlockHeight: Number(d.maxBlockHeight), head: head.height } })
-  if (d.maxBlockHeight > h + 600n)
+  // ≤ head + 600 (api-spec), plus a little slack: wallets (Meteor: optimistic head + 600) count from a head a few
+  // blocks ahead of our `final` read, and a delegate relayed within a second of signing used to be refused
+  if (d.maxBlockHeight > h + MAX_DELEGATE_TTL + TTL_SKEW)
     throw new ApiError("ttl_too_long", { detail: { maxBlockHeight: Number(d.maxBlockHeight), head: head.height } })
   if (!ak) throw new ApiError("key_not_found")
   if (ak.permission !== "FullAccess") {
@@ -200,9 +219,10 @@ async function chainChecks(deps: RelayDeps, actor: Actor, d: DecodedDelegate, m:
   const nonceHead = BigInt(Math.max(head.height, ak.block_height)) + 2n
   if (d.nonce >= nonceHead * 1_000_000n)
     throw new ApiError("bad_request", { detail: { field: "nonce", why: "too_large" } })
-  const maxInflight = inflight.rows[0]?.max
-  if (maxInflight !== null && maxInflight !== undefined && d.nonce <= BigInt(maxInflight))
-    throw new ApiError("nonce_pending", { retryAfterMs: 2_000 })
+  // an in-flight row whose delegate is past its max_block_height can never execute any more (a lost broadcast the
+  // reconcile pass hasn't marked yet): it must not block this key's next action (2026-11-02)
+  const maxInflight = inflightNonce(inflight.rows, head.height)
+  if (maxInflight !== null && d.nonce <= maxInflight) throw new ApiError("nonce_pending", { retryAfterMs: 2_000 })
 
   if (m.rule === "R2") {
     const [acct, existing] = await Promise.all([

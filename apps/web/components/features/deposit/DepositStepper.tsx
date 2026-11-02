@@ -116,17 +116,23 @@ export function DepositStepper({
 
   let result: ReactNode = null
   if (d.status === "INCOMPLETE_DEPOSIT") {
-    const missing = BigInt(d.minAmountIn) - BigInt(d.depositedAmount ?? "0")
-    const [title, body] = tLines("xc.incomplete", { missing: `${tokenAmount(missing > 0n ? missing : 0n)} USDC`, deadline: formatTime(Date.parse(d.deadline)) })
-    result = (
-      <Result icon={<Clock strokeWidth={2} />} tone="waiting" title={title} body={body}>
-        {d.mode === "simulated" && onTopUp && (
-          <Button variant="primary" className="w-full" disabled={busy || !online} aria-busy={busy || undefined} onClick={() => onTopUp(missing)}>
-            {t("xc.sim.top_up", { amount: usdShort(missing) })}
-          </Button>
-        )}
-      </Result>
-    )
+    const missing = missingOf(d)
+    if (missing === 0n) {
+      // the rest was sent and is on its way (not spotted yet): no second "send more" (2026-11-02)
+      const [title, body] = tLines("xc.incomplete.rest_sent", { network })
+      result = <Result icon={<Clock strokeWidth={2} />} tone="waiting" title={title} body={body} data="rest-sent" />
+    } else {
+      const [title, body] = tLines("xc.incomplete", { missing: `${tokenAmount(missing)} USDC`, deadline: formatTime(Date.parse(d.deadline)) })
+      result = (
+        <Result icon={<Clock strokeWidth={2} />} tone="waiting" title={title} body={body} data="incomplete">
+          {d.mode === "simulated" && onTopUp && (
+            <Button variant="primary" className="w-full" disabled={busy || !online} aria-busy={busy || undefined} onClick={() => onTopUp(missing)}>
+              {t("xc.sim.top_up", { amount: usdShort(missing) })}
+            </Button>
+          )}
+        </Result>
+      )
+    }
   } else if (d.status === "REFUNDED") {
     const [title, body] = tLines("xc.refunded")
     result = <Result icon={<X strokeWidth={2.5} />} tone="declined" title={title} body={body} support />
@@ -237,6 +243,17 @@ export function SimPill() {
   )
 }
 
+/**
+ * What is still missing of an INCOMPLETE deposit: the minimum minus everything sent (the simulator also counts a
+ * top-up that is on its way but not spotted yet), never below 0.
+ */
+export function missingOf(d: Pick<DepositView, "minAmountIn" | "depositedAmount" | "simulated">): bigint {
+  const detected = BigInt(d.depositedAmount ?? "0")
+  const sent = BigInt(d.simulated?.sentAmount ?? "0")
+  const m = BigInt(d.minAmountIn) - (sent > detected ? sent : detected)
+  return m > 0n ? m : 0n
+}
+
 function Result({
   icon,
   tone,
@@ -244,6 +261,7 @@ function Result({
   body,
   children,
   support,
+  data,
 }: {
   icon: ReactNode
   tone: "waiting" | "declined" | "ink"
@@ -251,9 +269,11 @@ function Result({
   body: string | null
   children?: ReactNode
   support?: boolean
+  /** data-result value (e2e hook) */
+  data?: string
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line" data-result>
+    <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line" data-result={data ?? ""}>
       <div className="flex items-start gap-3">
         <span
           aria-hidden

@@ -43,7 +43,7 @@ import {
   type XcChain,
 } from "./assets"
 import { quoteBody, type OneClickClient, type QuoteResponse } from "./client"
-import { jitterFor, shortenedDeadline, simAmountOut, simProfile, simStatus, type SimScenario, type SimState } from "./sim"
+import { jitterFor, planSimSend, shortenedDeadline, simAmountOut, simProfile, simSent, simStatus, type SimScenario, type SimState } from "./sim"
 import { errText } from "../../util/errtext"
 
 export interface OneClickDeps {
@@ -339,32 +339,35 @@ export async function simulate(deps: OneClickDeps, s: SessionCtx, body: Simulate
     return { startedAt: new Date(prev.sends[0]?.at ?? now).toISOString(), profile, replayed: true }
 
   const quoted = BigInt(row.amountIn)
-  const sent = (prev?.sends ?? []).reduce((a, x) => a + BigInt(x.amount), 0n)
   const scenario: SimScenario = prev?.scenario ?? body.scenario ?? "ok"
-  if (prev && prev.sends.length > 0) {
-    // only a partial deposit can be topped up, and only while it is INCOMPLETE
-    const cur = await refresh(deps, row, now)
-    if (scenario !== "partial" || cur.status !== "INCOMPLETE_DEPOSIT")
-      throw new ApiError("bad_request", { detail: { field: "depositIntentId", why: "already_sent" } })
-  } else if (row.status !== "PENDING_DEPOSIT" || now >= row.deadline.getTime()) {
+  let status: string = row.status
+  if (prev && prev.sends.length > 0) status = (await refresh(deps, row, now)).status
+  else if (row.status !== "PENDING_DEPOSIT" || now >= row.deadline.getTime())
     throw new ApiError("bad_request", { detail: { field: "depositIntentId", why: "not_pending" } })
-  }
 
-  const required = BigInt(row.minAmountIn ?? row.amountIn)
-  const amount =
-    body.amount !== undefined
-      ? BigInt(body.amount)
-      : scenario === "expired"
-        ? 0n
-        : sent > 0n
-          ? required - sent > 0n
-            ? required - sent
-            : 0n
-          : scenario === "partial"
-            ? (quoted * 8n) / 10n
-            : quoted
+  // a partial deposit can be topped up while INCOMPLETE, with what is still missing; a second tap while the
+  // first top-up is still on its way answers like the first one (2026-11-02: it was `amount_too_high`)
   const cap = quoted < SIM_MAX ? quoted : SIM_MAX
-  if (amount < 0n || sent + amount > cap) throw new ApiError("amount_too_high", { detail: { maximum: (cap - sent).toString() } })
+  const plan = planSimSend(
+    prev,
+    {
+      status,
+      scenario,
+      required: BigInt(row.minAmountIn ?? row.amountIn),
+      quoted,
+      cap,
+      deadlineMs: row.deadline.getTime(),
+      ...(body.amount !== undefined ? { amount: BigInt(body.amount) } : {}),
+    },
+    now,
+  )
+  if (plan.kind === "already_sent")
+    return { startedAt: new Date(prev?.sends[0]?.at ?? now).toISOString(), profile, replayed: true, topUp: "already_sent" }
+  if (plan.kind === "refused") {
+    if (plan.why === "amount_too_high") throw new ApiError("amount_too_high", { detail: { maximum: (plan.maximum ?? 0n).toString() } })
+    throw new ApiError("bad_request", { detail: { field: "depositIntentId", why: plan.why } })
+  }
+  const amount = plan.amount
   if (scenario !== "expired" && amount === 0n) throw new ApiError("bad_request", { detail: { field: "amount" } })
 
   // rev4 H-3: ≤ $500 per person per UTC day, inside the global faucet cap
@@ -639,7 +642,9 @@ export function statusBody(row: Row, cfg: Config): Record<string, unknown> {
     depositAddress: row.depositAddress,
     qrText: row.mode === "simulated" ? SIM_QR_TEXT : row.depositAddress,
     ...(row.correlationId ? { correlationId: row.correlationId } : {}),
-    ...(row.simScenario ? { scenario: row.simScenario, simulated: { sent: (simOf(row)?.sends.length ?? 0) > 0 } } : {}),
+    ...(row.simScenario
+      ? { scenario: row.simScenario, simulated: { sent: (simOf(row)?.sends.length ?? 0) > 0, sentAmount: simSent(simOf(row)).toString() } }
+      : {}),
     deadline: row.deadline.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     ...(row.processingSince ? { processingSince: row.processingSince.toISOString() } : {}),

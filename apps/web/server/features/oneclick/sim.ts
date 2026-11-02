@@ -85,7 +85,9 @@ export function simStatus(
   const enough = arrived >= o.required
 
   if (sim.scenario === "partial" && !enough) {
-    if (nowMs >= deadline + REFUND_LAG_SEC * 1000)
+    // the rest sent before the deadline still counts once it's detected (like 1Click): no refund meanwhile
+    const sentInTime = sentBy(sim, deadline)
+    if (nowMs >= deadline + REFUND_LAG_SEC * 1000 && sentInTime < o.required)
       return { status: "REFUNDED", depositedAmount: arrived, refundedAmount: arrived, refundReason: "PARTIAL_DEPOSIT", updatedAt: deadline + REFUND_LAG_SEC * 1000 }
     return { status: "INCOMPLETE_DEPOSIT", depositedAmount: arrived, updatedAt: detectedAt }
   }
@@ -110,6 +112,45 @@ export function simStatus(
     return { status: "REFUNDED", depositedAmount: arrived, refundedAmount: arrived, refundReason: "NO_LIQUIDITY", updatedAt: doneAt }
   if (sim.scenario === "failed") return { status: "FAILED", depositedAmount: arrived, refundedAmount: 0n, refundReason: null, updatedAt: doneAt }
   return { status: "SUCCESS", depositedAmount: arrived, amountOut: simAmountOut(arrived, o.withdrawFee ?? 0n), updatedAt: doneAt }
+}
+
+/** Everything "sent" so far (detected or not), base units. */
+export const simSent = (sim: Pick<SimState, "sends"> | null | undefined): bigint => (sim?.sends ?? []).reduce((a, s) => a + BigInt(s.amount), 0n)
+
+/** What was sent before `atMs` (a send at the deadline itself is late). */
+const sentBy = (sim: SimState, atMs: number): bigint => sim.sends.filter((s) => s.at < atMs).reduce((a, s) => a + BigInt(s.amount), 0n)
+
+export type SimSendPlan =
+  /** send this much now (a first send, or the missing part of a partial one) */
+  | { kind: "send"; amount: bigint }
+  /** a top-up whose rest was already sent and is waiting to be detected: answer as done, send nothing */
+  | { kind: "already_sent" }
+  | { kind: "refused"; why: "already_sent" | "too_late" | "amount_too_high"; maximum?: bigint }
+
+/**
+ * What one "Simulate sending" tap does (server and browser mock alike). A partial deposit can be topped up, but only
+ * with what is still missing (`required − everything sent`, not what has been detected), only before its deadline,
+ * and a second tap while the first top-up is still on its way is the same top-up (a no-op), never a refusal.
+ */
+export function planSimSend(
+  sim: SimState | null,
+  o: { status: string; scenario: SimScenario; required: bigint; quoted: bigint; cap: bigint; deadlineMs: number; amount?: bigint },
+  nowMs: number,
+): SimSendPlan {
+  const sent = simSent(sim)
+  if (sim && sim.sends.length > 0) {
+    if (o.scenario !== "partial" || o.status !== "INCOMPLETE_DEPOSIT") return { kind: "refused", why: "already_sent" }
+    const missing = o.required - sent
+    if (missing <= 0n) return { kind: "already_sent" }
+    if (nowMs >= o.deadlineMs) return { kind: "refused", why: "too_late" }
+    // the caller's amount is what the screen thought was missing (it only counts what was detected): never more
+    const amount = o.amount !== undefined && o.amount < missing ? o.amount : missing
+    if (amount <= 0n) return { kind: "refused", why: "amount_too_high", maximum: o.cap - sent }
+    return { kind: "send", amount: sent + amount > o.cap ? o.cap - sent : amount }
+  }
+  const amount = o.amount !== undefined ? o.amount : o.scenario === "expired" ? 0n : o.scenario === "partial" ? (o.quoted * 8n) / 10n : o.quoted
+  if (amount < 0n || amount > o.cap) return { kind: "refused", why: "amount_too_high", maximum: o.cap }
+  return { kind: "send", amount }
 }
 
 /** A short deadline for scenarios that end at the deadline (`partial`, `expired`): send time + profile + 60 s. */

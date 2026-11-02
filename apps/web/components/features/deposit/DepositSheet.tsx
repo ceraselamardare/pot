@@ -248,7 +248,11 @@ function DepositPanel({
       await queryClient().invalidateQueries({ queryKey: xcKeys.one(id) })
       invalidateDeposits(pot.slug, id)
     } catch (e) {
-      setError(reasonOf(e) === "quota_exceeded" ? t("xc.sim.limit") : t("generic.error"))
+      const r = reasonOf(e)
+      // a top-up refused because the time ran out: say so (the stepper turns "Stopped" on its own)
+      setError(r === "quota_exceeded" ? t("xc.sim.limit") : r === "bad_request" && amount !== undefined ? t("xc.sim.too_late") : t("generic.error"))
+      // whatever happened, show where the transfer really is
+      await queryClient().invalidateQueries({ queryKey: xcKeys.one(id) })
     } finally {
       setBusy(false)
     }

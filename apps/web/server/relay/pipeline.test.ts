@@ -15,7 +15,7 @@ import { ApiError } from "../http/errors"
 import { DAO, fc, HUB, newKey, signDelegate, USDC } from "../testing/delegates"
 import { RELAYER, NEAR, insertUser, seedChain, testConfig } from "../testing/env"
 import { event, FakeChain, FakeSubmitter, HEAD, methodOf, panic, plainOutcome, relayedOutcome, valueOf, type Script } from "../testing/fakeChain"
-import { relay, type Actor, type RelayDeps } from "./pipeline"
+import { inflightNonce, relay, type Actor, type RelayDeps } from "./pipeline"
 import { getRelay } from "./status"
 import { sha256Hex } from "../util/crypto"
 
@@ -168,7 +168,7 @@ describe("refused before submission (api-spec §8 Relayer safety)", () => {
     ["ft_transfer_call to a non-hub receiver", () => send([fc("ft_transfer_call", { receiver_id: "evil.testnet", amount: "1", msg: JSON.stringify({ pot: DAO }) }, 100, 1n)]), "args_invalid"],
     ["300 Tgas ft_transfer_call", () => send([fc("ft_transfer_call", { receiver_id: HUB, amount: "1", msg: JSON.stringify({ pot: DAO }) }, 300, 1n)]), "gas_cap"],
     ["stale max_block_height", () => send([contribution()], { mbh: BigInt(HEAD + 10) }), "expired"],
-    ["max_block_height too far", () => send([contribution()], { mbh: BigInt(HEAD + 601) }), "ttl_too_long"],
+    ["max_block_height too far", () => send([contribution()], { mbh: BigInt(HEAD + 631) }), "ttl_too_long"],
     ["replayed nonce", () => send([contribution()], { nonce: 1_000n }), "nonce_used"],
     ["unknown receiver", () => send([fc("x", {})], { receiver: "evil.testnet" }), "receiver_not_allowed"],
     ["sender ≠ session account", () => send([contribution()], { sender: "someone.testnet" }), "sender_mismatch"],
@@ -222,6 +222,29 @@ describe("refused before submission (api-spec §8 Relayer safety)", () => {
     })
     const r = await send([contribution()], { nonce: 4_000n })
     expect(r.body.reason).toBe("nonce_pending")
+  })
+
+  it("an in-flight row whose delegate already expired (a lost broadcast) doesn't block the key's next action", async () => {
+    await t.db.insert(relayLog).values({
+      id: "rl_lost",
+      requestId: "x",
+      op: "relay",
+      senderId: USER,
+      receiverId: USDC,
+      delegatePublicKey: key.getPublicKey().toString(),
+      delegateNonce: "5000",
+      maxBlockHeight: HEAD - 1,
+      status: "pending",
+    })
+    const r = await send([contribution()], { nonce: 4_000n })
+    expect(r.status).toBe(200)
+    expect(inflightNonce([{ nonce: "7", mbh: HEAD - 1 }, { nonce: "6", mbh: HEAD + 5 }, { nonce: "5", mbh: null }], HEAD)).toBe(6n)
+    expect(inflightNonce([{ nonce: "7", mbh: String(HEAD - 1) as unknown as number }], HEAD)).toBeNull()
+  })
+
+  it("a wallet's delegate a few blocks past head + 600 (its head was ahead of our final read) is accepted", async () => {
+    const r = await send([contribution()], { mbh: BigInt(HEAD + 603) })
+    expect(r.status).toBe(200)
   })
 
   it("the first delegate of a key added a block ago passes the nonce bound (optimistic head, not final)", async () => {

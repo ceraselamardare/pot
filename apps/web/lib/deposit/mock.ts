@@ -3,7 +3,7 @@
 // the stepper, the network picker and the one-tap add are exercised without a server. Deterministic e2e hooks:
 // localStorage['pot.mock.xcPaused'] = "base,…" pauses networks.
 import { CHAIN_LABEL, MIN_AMOUNT, SIM_QR_TEXT, stepOf, TYPICAL_SECONDS, XC_CHAINS } from "@/server/features/oneclick/assets"
-import { jitterFor, shortenedDeadline, simAmountOut, simProfile, simStatus, type SimState } from "@/server/features/oneclick/sim"
+import { jitterFor, planSimSend, shortenedDeadline, simAmountOut, simProfile, simSent, simStatus, type SimState } from "@/server/features/oneclick/sim"
 import type { DepositApi, DepositView, QuoteNumbers, SimScenario, XcChain } from "./types"
 
 const KEY = "pot.mock.deposits"
@@ -44,7 +44,7 @@ function save(all: MockIntent[]) {
   } catch {}
 }
 
-const err = (reason: string) => Object.assign(new Error(reason), { reason, cls: "specific" })
+const err = (reason: string, why?: string) => Object.assign(new Error(reason), { reason, cls: "specific", ...(why ? { why } : {}) })
 
 function numbers(chain: XcChain, amount: bigint): QuoteNumbers {
   const out = simAmountOut(amount)
@@ -93,7 +93,7 @@ function view(i: MockIntent): DepositView {
     ...(i.destinationTxHash ? { destinationTxHash: i.destinationTxHash } : {}),
     depositAddress: i.depositAddress,
     qrText: SIM_QR_TEXT,
-    ...(i.sim ? { scenario: i.sim.scenario, simulated: { sent: i.sim.sends.length > 0 } } : {}),
+    ...(i.sim ? { scenario: i.sim.scenario, simulated: { sent: i.sim.sends.length > 0, sentAmount: simSent(i.sim).toString() } } : {}),
     deadline: new Date(i.deadline).toISOString(),
     updatedAt: new Date(i.updatedAt).toISOString(),
     ...(i.processingSince ? { processingSince: new Date(i.processingSince).toISOString() } : {}),
@@ -191,13 +191,16 @@ export const mockDeposits: DepositApi & { markAdded(id: string): Promise<Deposit
       profile = simProfile(i.chain, jitter)
       if (i.sim?.keys.includes(req.idempotencyKey)) return i
       const scenario: SimScenario = i.sim?.scenario ?? req.scenario ?? "ok"
-      const sent = (i.sim?.sends ?? []).reduce((a, s) => a + BigInt(s.amount), 0n)
-      if (i.sim && i.sim.sends.length > 0 && !(scenario === "partial" && i.status === "INCOMPLETE_DEPOSIT")) throw err("bad_request")
       const quoted = BigInt(i.amountIn)
-      const required = BigInt(i.numbers.minAmountIn)
-      const amount =
-        req.amount !== undefined ? BigInt(req.amount) : scenario === "expired" ? 0n : sent > 0n ? required - sent : scenario === "partial" ? (quoted * 8n) / 10n : quoted
-      if (sent + amount > quoted) throw err("amount_too_high")
+      // the server's rules (sim.ts planSimSend): a second tap while the top-up is on its way is the same top-up
+      const plan = planSimSend(
+        i.sim,
+        { status: i.status, scenario, required: BigInt(i.numbers.minAmountIn), quoted, cap: quoted < SIM_MAX ? quoted : SIM_MAX, deadlineMs: i.deadline, ...(req.amount !== undefined ? { amount: BigInt(req.amount) } : {}) },
+        now,
+      )
+      if (plan.kind === "already_sent") return i
+      if (plan.kind === "refused") throw err(plan.why === "amount_too_high" ? "amount_too_high" : "bad_request", plan.why)
+      const amount = plan.amount
       const sim: SimState & { keys: string[] } = {
         scenario,
         jitter,

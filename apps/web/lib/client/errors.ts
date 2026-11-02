@@ -45,6 +45,7 @@ export function classOfReason(reason: string, status?: number): ErrorClass {
     case "expired":
     case "nonce_used":
     case "nonce_pending":
+    case "ttl_too_long": // api-spec §1.2: re-sign once (a device key signs with TTL 200; a wallet's signing head moved on)
       return "retryable"
     case "bad_signature":
     case "key_not_found":

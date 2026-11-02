@@ -18,7 +18,8 @@ import { stepOf } from "./assets"
 import { createOneClick, quoteBody, quoteHash, stableStringify, verifyQuoteSignature, type OneClickClient, type QuoteResponse } from "./client"
 import fixtures from "./fixtures/dry-quotes.json"
 import { createQuote, deliver, depositStatus, listChains, listDeposits, simulate, type OneClickDeps } from "./service"
-import { jitterFor, simAmountOut, simProfile, simStatus, type SimState } from "./sim"
+import { jitterFor, planSimSend, simAmountOut, simProfile, simSent, simStatus, type SimState } from "./sim"
+import { readQuota } from "@/db/quota"
 
 const quotes = fixtures as unknown as Record<string, QuoteResponse>
 
@@ -136,6 +137,35 @@ describe("simulator timeline (api-spec §2.7 profiles, ± 20 % jitter)", () => {
     expect(simStatus(topped, o, 40_000).status).toBe("INCOMPLETE_DEPOSIT")
     expect(simStatus(topped, o, 50_000)).toMatchObject({ status: "PROCESSING", processingSince: 47_000 })
     expect(simStatus(topped, o, 60_000)).toMatchObject({ status: "SUCCESS", depositedAmount: 148_500_000n })
+  })
+  it("partial: the rest sent before the deadline is not refunded while it's still on its way (2026-11-02)", () => {
+    // the top-up at 75 s (deadline 77 s) is spotted at 92 s, after deadline + 10 s
+    const late = send("partial", [[0, 120_000_000n], [75_000, 28_500_000n]], 77_000)
+    expect(simStatus(late, o, 88_000)).toMatchObject({ status: "INCOMPLETE_DEPOSIT", depositedAmount: 120_000_000n })
+    expect(simStatus(late, o, 92_000 + 1)).toMatchObject({ status: "PROCESSING", processingSince: 92_000 })
+    expect(simStatus(late, o, 92_000 + 12_000 + 1)).toMatchObject({ status: "SUCCESS", depositedAmount: 148_500_000n })
+    // sent after the deadline: refunded as before
+    const tooLate = send("partial", [[0, 120_000_000n], [77_000, 28_500_000n]], 77_000)
+    expect(simStatus(tooLate, o, 88_000)).toMatchObject({ status: "REFUNDED", refundReason: "PARTIAL_DEPOSIT" })
+  })
+  it("planSimSend: a second 'send more' while the first is on its way is the same top-up, never a refusal", () => {
+    const base = { scenario: "partial" as const, required: 4_950_000n, quoted: 5_000_000n, cap: 5_000_000n, deadlineMs: 100_000 }
+    const first = send("partial", [[0, 4_000_000n]], 100_000)
+    // the screen asks for the missing $0.95 (what it saw arrive): sent
+    expect(planSimSend(first, { ...base, status: "INCOMPLETE_DEPOSIT", amount: 950_000n }, 40_000)).toEqual({ kind: "send", amount: 950_000n })
+    // the owner's second tap, same label (the top-up wasn't spotted yet): nothing more is sent, no error
+    const topped = send("partial", [[0, 4_000_000n], [40_000, 950_000n]], 100_000)
+    expect(simSent(topped)).toBe(4_950_000n)
+    expect(planSimSend(topped, { ...base, status: "INCOMPLETE_DEPOSIT", amount: 950_000n }, 42_000)).toEqual({ kind: "already_sent" })
+    // a bigger amount than what's missing is trimmed to what's missing
+    expect(planSimSend(first, { ...base, status: "INCOMPLETE_DEPOSIT", amount: 1_000_000n }, 40_000)).toEqual({ kind: "send", amount: 950_000n })
+    // after the deadline: too late; a converting / ok deposit can't take more
+    expect(planSimSend(first, { ...base, status: "INCOMPLETE_DEPOSIT" }, 100_000)).toEqual({ kind: "refused", why: "too_late" })
+    expect(planSimSend(topped, { ...base, status: "PROCESSING" }, 80_000)).toEqual({ kind: "refused", why: "already_sent" })
+    // first sends: partial = 80 %, ok = the quote, above the cap refused
+    expect(planSimSend(null, { ...base, status: "PENDING_DEPOSIT" }, 0)).toEqual({ kind: "send", amount: 4_000_000n })
+    expect(planSimSend(null, { ...base, scenario: "ok", status: "PENDING_DEPOSIT" }, 0)).toEqual({ kind: "send", amount: 5_000_000n })
+    expect(planSimSend(null, { ...base, scenario: "ok", status: "PENDING_DEPOSIT", amount: 5_000_001n }, 0)).toMatchObject({ kind: "refused", why: "amount_too_high" })
   })
   it("no_liquidity → REFUNDED; failed → FAILED with nothing refunded; slow stays converting 6 min", () => {
     expect(simStatus(send("no_liquidity", [[0, 150_000_000n]]), o, 17_000 + 20_001)).toMatchObject({ status: "REFUNDED", refundReason: "NO_LIQUIDITY" })
@@ -285,7 +315,7 @@ describe("POST /api/oneclick/quote", () => {
 })
 
 describe("simulate → status → delivery → ADDED", () => {
-  async function newIntent(amount = "150000000", chain: "arb" | "base" = "arb", s = me) {
+  async function newIntent(amount = "150000000", chain: "arb" | "base" | "sol" = "arb", s = me) {
     const q = await createQuote(deps, s, { pot: DAO, chain, amount, idempotencyKey: key(100 + ++keyN) })
     return String(q.depositIntentId)
   }
@@ -397,6 +427,31 @@ describe("simulate → status → delivery → ADDED", () => {
     clock += 60_000
     const s = await depositStatus(deps, me, id)
     expect(["PROCESSING", "SUCCESS"]).toContain(s.status)
+  })
+
+  it("partial on Solana, the owner's case: 'send $0.95 more' tapped twice → one top-up, no error, then it arrives", async () => {
+    // the FLEX numbers for $5 (minimum $4.95), as on testnet
+    deps.oneclick = { ...deps.oneclick, quote: async () => Promise.reject(new ApiError("quote_failed")) }
+    const id = await newIntent("5000000", "sol")
+    await simulate(deps, me, { depositIntentId: id, scenario: "partial", idempotencyKey: key(30) })
+    clock += 60_000
+    const inc = await depositStatus(deps, me, id)
+    expect(inc).toMatchObject({ status: "INCOMPLETE_DEPOSIT", depositedAmount: "4000000", simulated: { sent: true, sentAmount: "4000000" } })
+    expect(inc.minAmountIn).toBe("4950000")
+    const missing = "950000"
+    await simulate(deps, me, { depositIntentId: id, amount: missing, idempotencyKey: key(31) })
+    // still INCOMPLETE until the top-up is spotted, but the body says the rest was sent
+    const still = await depositStatus(deps, me, id)
+    expect(still).toMatchObject({ status: "INCOMPLETE_DEPOSIT", simulated: { sentAmount: inc.minAmountIn } })
+    const charged = await readQuota(t.db, `user:${me.user.id}`, "xc_sim_usd")
+    // the second tap (same label, new key): answered like the first, nothing more sent or charged
+    const again = await simulate(deps, me, { depositIntentId: id, amount: missing, idempotencyKey: key(32) })
+    expect(again).toMatchObject({ replayed: true, topUp: "already_sent" })
+    expect(await readQuota(t.db, `user:${me.user.id}`, "xc_sim_usd")).toBe(charged)
+    clock += 3 * 60_000
+    await depositStatus(deps, me, id)
+    await runDeferred()
+    expect(await depositStatus(deps, me, id)).toMatchObject({ status: "SUCCESS", depositedAmount: inc.minAmountIn })
   })
 
   it("failed / no_liquidity / expired end in their terminal states without any delivery", async () => {

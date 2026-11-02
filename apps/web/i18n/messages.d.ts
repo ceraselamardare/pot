@@ -44,10 +44,16 @@ export interface Messages {
   "add.chip.share": { suggested: string | number }
   "add.cta": { amount: string | number }
   "add.cta.empty": undefined
+  "add.error.busy": undefined
+  "add.error.closed": undefined
   "add.error.generic": undefined
   "add.error.insufficient_own": { available: string | number }
   "add.error.max": { max: string | number }
+  "add.error.not_approved": undefined
+  "add.error.not_member": undefined
+  "add.error.other_account": undefined
   "add.error.relayer": undefined
+  "add.error.sign_in_again": undefined
   "add.finish_pending.body": { amount: string | number; potName: string | number }
   "add.finish_pending.title": { amount: string | number }
   "add.offline": undefined
@@ -1950,6 +1956,7 @@ export interface Messages {
   "xc.expired": undefined
   "xc.failed": undefined
   "xc.incomplete": { missing: string | number; deadline: string | number }
+  "xc.incomplete.rest_sent": { network: string | number }
   "xc.instructions": { amountToken: string | number; token: string | number; network: string | number }
   "xc.instructions.min": { minAmount: string | number }
   "xc.memo": { memo: string | number }
@@ -1974,6 +1981,7 @@ export interface Messages {
   "xc.sim.scenario.no_liquidity": undefined
   "xc.sim.scenario.partial": undefined
   "xc.sim.scenario.slow": undefined
+  "xc.sim.too_late": undefined
   "xc.sim.top_up": { amount: string | number }
   "xc.slow": undefined
   "xc.status.added": undefined

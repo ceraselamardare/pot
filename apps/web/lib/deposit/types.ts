@@ -60,7 +60,8 @@ export interface DepositView {
   qrText: string
   correlationId?: string
   scenario?: SimScenario
-  simulated?: { sent: boolean }
+  /** simulator: whether anything was "sent", and how much in total (detected or still on its way), base units */
+  simulated?: { sent: boolean; sentAmount?: string }
   deadline: string
   updatedAt: string
   processingSince?: string

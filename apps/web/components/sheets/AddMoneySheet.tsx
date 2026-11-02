@@ -63,10 +63,14 @@ export function AddMoneySheet({
         ? toKeypad(suggested - pot.me.contributed)
         : ""
   const value = typed ?? fallback
-  const amount = parseKeypad(value)
   // the person's own Pot dollars (usdc.ft_balance_of(me), 10 s while open); 0 in the mock
   const ownRead = useOwnDollars(pot.me?.person.id ?? null, open)
   const ownDollars: Micro = ownRead ?? 0n
+  // "Use all $X" adds every last micro-dollar (an arrived transfer is e.g. $4.949505; the keypad holds cents, so it
+  // used to add $4.94 and leave the rest behind) while the keypad still shows what the chip put there
+  const [allOf, setAllOf] = useState<Micro | null>(null)
+  const useAll = allOf !== null && source === "pot_dollars" && allOf === ownDollars && value === toKeypad(allOf)
+  const amount = useAll ? allOf : parseKeypad(value)
   // none at all (read, and zero): the source can't be picked; with some, "Use all $X" fills the amount
   const noOwn = ownRead !== undefined && ownRead === 0n
   useEffect(() => {
@@ -89,11 +93,11 @@ export function AddMoneySheet({
     const h = addMoney(pot, amount, pot.me.person.id, { source })
     if (h) close()
   }
-  const chips: { label: string; amount: Micro }[] = [
+  const chips: { label: string; amount: Micro; all?: boolean }[] = [
     ...(suggested ? [{ label: t("add.chip.share", { suggested: formatUsd(suggested, "whole") }), amount: suggested }] : []),
     { label: formatUsd(50_000_000n, "whole"), amount: 50_000_000n },
     { label: formatUsd(100_000_000n, "whole"), amount: 100_000_000n },
-    ...(source === "pot_dollars" && ownDollars > 0n ? [{ label: t("add.source.max", { available: formatUsd(ownDollars) }), amount: ownDollars }] : []),
+    ...(source === "pot_dollars" && ownDollars > 0n ? [{ label: t("add.source.max", { available: formatUsd(ownDollars) }), amount: ownDollars, all: true }] : []),
   ]
 
   return (
@@ -130,7 +134,15 @@ export function AddMoneySheet({
       )}
       <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0" role="group" aria-label={t("add.amount.label")}>
         {chips.map((c) => (
-          <Chip key={c.label} selected={amount === c.amount} onClick={() => setTyped(toKeypad(c.amount))} className="rounded-pill">
+          <Chip
+            key={c.label}
+            selected={amount === c.amount}
+            onClick={() => {
+              setTyped(toKeypad(c.amount))
+              setAllOf(c.all ? c.amount : null)
+            }}
+            className="rounded-pill"
+          >
             <span className="tabular-nums">{c.label}</span>
           </Chip>
         ))}

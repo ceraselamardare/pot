@@ -30,9 +30,39 @@ function revertToast(key: MessageKey) {
   toast.error(t(key as "generic.error"))
 }
 
-const errorKeyOf = (e: unknown, relayer: MessageKey, generic: MessageKey): MessageKey => {
-  if (e instanceof ActionError && e.cls === "rate_limited") return "relayer.cap"
-  return isTransportError(e) ? relayer : generic
+/**
+ * The Add money failure copy (2026-11-02: every refusal used to read "That didn't go through", whatever the cause).
+ * Transport / capacity problems keep `add.error.relayer` / `relayer.cap`; a known reason gets its own words.
+ */
+export function addErrorKey(e: unknown): MessageKey {
+  if (e instanceof ActionError) {
+    if (e.cls === "rate_limited") return "relayer.cap"
+    if (isTransportError(e)) return "add.error.relayer"
+    switch (e.reason) {
+      case "wallet_account_mismatch":
+      case "sender_mismatch":
+        return "add.error.other_account"
+      case "reconnect_wallet":
+      case "key_not_found":
+      case "key_not_allowed":
+      case "bad_signature":
+      case "not_signed_in":
+        return "add.error.sign_in_again"
+      case "wallet_declined":
+        return "add.error.not_approved"
+      case "nonce_pending":
+      case "nonce_used":
+      case "expired":
+      case "ttl_too_long":
+        return "add.error.busy"
+      case "pot_closed":
+        return "add.error.closed"
+      case "not_a_member":
+        return "add.error.not_member"
+    }
+    return "add.error.generic"
+  }
+  return "add.error.relayer"
 }
 
 export function addMoney(
@@ -54,7 +84,9 @@ export function addMoney(
       try {
         return await live.addMoney(pot.slug, amount, opts)
       } catch (e) {
-        errorKey = errorKeyOf(e, "add.error.relayer", "add.error.generic")
+        errorKey = addErrorKey(e)
+        // the reason behind the toast, for anyone looking (support, the console): the copy stays plain words
+        if (e instanceof ActionError) console.warn(`[add money] ${e.cls}: ${e.reason}${e.requestId ? ` (${e.requestId})` : ""}`)
         throw e
       }
     },

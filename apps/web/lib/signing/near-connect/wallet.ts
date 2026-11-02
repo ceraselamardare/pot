@@ -111,23 +111,49 @@ const connectorActions = (call: ReturnType<typeof buildCall>): ConnectorAction[]
   })
 
 /**
+ * The wallet NEAR Connect remembers for this browser. If it lost it (its saved choice is gone, or the wallet's
+ * frame can't list accounts any more), connect once more right here: the person picks their wallet again and the
+ * action goes on, instead of failing every time with nothing to do about it.
+ */
+async function connectedWallet(c: ConnectorLike): Promise<Awaited<ReturnType<ConnectorLike["getConnectedWallet"]>>> {
+  try {
+    return await c.getConnectedWallet()
+  } catch {
+    try {
+      await c.connect()
+      return await c.getConnectedWallet()
+    } catch {
+      throw new ActionError("needs_device", "reconnect_wallet")
+    }
+  }
+}
+
+/**
  * A wallet session's action: gasless through our relayer when the wallet can sign delegates, else the wallet sends
  * it (its own gas). Same RelayOk shape for the callers.
  */
-export async function walletSend(intent: ActionIntent, opts: { opId?: string; context?: Api.RelayContext } = {}): Promise<RelayOk> {
+export async function walletSend(
+  intent: ActionIntent,
+  opts: { opId?: string; context?: Api.RelayContext; /** the Pot session's account: the wallet must sign as it */ accountId?: string } = {},
+): Promise<RelayOk> {
   const c = await connector()
-  let connected: Awaited<ReturnType<ConnectorLike["getConnectedWallet"]>>
-  try {
-    connected = await c.getConnectedWallet()
-  } catch {
-    throw new ActionError("needs_device", "reconnect_wallet")
-  }
+  const connected = await connectedWallet(c)
+  // The wallet signs as ITS current account. If that isn't the account signed in to Pot (another account picked in
+  // the wallet, or another one used in this browser), the relayer would refuse it as sender_mismatch: say so first.
+  if (opts.accountId && connected.accounts.length > 0 && !connected.accounts.some((a) => a.accountId === opts.accountId))
+    throw new ActionError("needs_device", "wallet_account_mismatch")
   const wallet = connected.wallet
   const opId = opts.opId ?? (intent.type === "request_spend" ? opKeyOfRef(intent.requestRef) : newOpKey())
   if (wallet.manifest.features.signDelegateActions) {
     const call = buildCall(intent, sdkConfig())
     for (let attempt = 0; ; attempt++) {
-      const { signedDelegateActions } = await wallet.signDelegateActions({ delegateActions: [{ receiverId: call.receiverId, actions: connectorActions(call) }] })
+      let signedDelegateActions: string[]
+      try {
+        ;({ signedDelegateActions } = await wallet.signDelegateActions({ delegateActions: [{ receiverId: call.receiverId, actions: connectorActions(call) }] }))
+      } catch (e) {
+        // closed / declined / failed in the wallet: nothing was signed, so nothing was sent
+        throw new ActionError("failed", "wallet_declined", { message: String(e).slice(0, 200) })
+      }
       const b64 = signedDelegateActions[0]
       if (!b64) throw new ActionError("failed", "wallet_no_signature")
       try {

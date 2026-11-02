@@ -69,6 +69,51 @@ usual" at 5 min, incomplete with [Simulate sending $X more], refunded / failed w
 `DepositCards` on the Pot (progress card; arrived card takes the marigold, the hero's Add money turns secondary).
 Client: `lib/deposit/` (live API, the browser mock over sim.ts, TanStack hooks polling 3-4 s while moving, `addArrived`).
 
+### 1b. Underpaid deposit + adding from a wallet session (bug fix, 2026-11-02)
+
+The owner on usepot.xyz (Meteor wallet account `humanquiche3671.testnet`, Pot `halloween-2026-qe0j`): a simulated
+Solana deposit of $5 with "Send less than needed" ($4.00) → [Simulate sending $0.95 more] → "Something went wrong";
+the money still arrived ($4.949505, treasury `ft_transfer` `CvNgYyBteKo2TxUnLM8qsXSjtWHU7LJYqQQuJGCTzf46`); then every
+Add (the arrived card's one tap, and $3 through the Add sheet) said "That didn't go through. Nothing left your account."
+with nothing on chain (the account's key nonce is still …002: no third delegate ever reached the chain).
+
+- **"Send more" error, reproduced on testnet** (prod-like local build, VERCEL_ENV=production, no QUOTA overrides): the
+  first tap is accepted, but the stepper stays INCOMPLETE until the top-up is *spotted* (Solana ≈ 30 s) and keeps
+  offering the same button; the second tap got `422 amount_too_high {maximum: "50000"}` (4.95 already sent + 0.95 > the
+  $5 quote) → `generic.error`. Fix: `sim.ts planSimSend()` (server and browser mock): a top-up sends only what is still
+  missing of *everything sent*; a second tap while it is on its way answers `200 {replayed: true, topUp:
+  "already_sent"}` (no charge); a top-up after the deadline is `bad_request why: too_late` (`xc.sim.too_late`). The
+  status body adds `simulated.sentAmount`; the stepper shows "The rest is on its way" (`xc.incomplete.rest_sent`) with
+  no button. `simStatus`: the rest sent before the deadline is not refunded while it is still being spotted.
+- **"Add" error: not reproducible with the e2e mock wallet** (the same flow, one tap of $4.949505, $3 and the rest all
+  went through on testnet), so it is wallet-side or a refusal before sending. Every candidate path is now covered and
+  says what happened instead of `add.error.generic`: `walletSend` checks the wallet's current account against the Pot
+  session before asking to sign (`wallet_account_mismatch` → `add.error.other_account`; the relayer's `sender_mismatch`
+  maps there too), reconnects once if NEAR Connect lost the wallet (else `reconnect_wallet` → `add.error.sign_in_again`),
+  a closed/declined wallet prompt is `wallet_declined` → `add.error.not_approved` (was the "try again in a minute"
+  copy); `nonce_pending` / `expired` / `ttl_too_long` → `add.error.busy`; `pot_closed`, `not_a_member` their own copy.
+  The reason (and requestId) is logged with `console.warn("[add money] …")`. Relayer: `ttl_too_long` is now
+  `retryable` on the client (api-spec §1.2 "auto, once"); the server allows head + 600 **+ 30 blocks** (Meteor signs
+  with optimistic head + 600, our check reads `final`, so a delegate relayed within ~1.5 s of signing was refused);
+  an in-flight relay_log row whose delegate is already past its `max_block_height` no longer blocks the key with
+  `nonce_pending` (a lost broadcast used to block every later action of that key until the daily reconcile cron).
+- **To confirm the owner's real cause:** on the preview Neon DB, `SELECT created_at, status, reason, response FROM
+  relay_log WHERE sender_id = 'humanquiche3671.testnet' ORDER BY created_at DESC LIMIT 10;` (rejected relays are
+  recorded with their reason). No row after 15:15:30 UTC → it failed in the browser before the relay (wallet step).
+- **"Use all $X"** in the Add sheet now adds the exact balance ($1.949505), not the keypad's cents ($1.94, which left
+  $0.009505 behind).
+- Tests: `oneclick.test.ts` (+3: planSimSend, the late rest, the owner's double tap end to end),
+  `pipeline.test.ts` (+2: expired in-flight row, TTL slack; the ttl case moved to head + 631), `deposit.test.tsx` (+2),
+  `lib/client/add-errors.test.ts` (16: walletSend mismatch/reconnect/declined, addErrorKey), mock e2e
+  `deposit.spec.ts` ("partial (2026-11-02)…"), testnet `e2e/testnet/deposit-partial.testnet.ts` (green 2026-11-02:
+  second tap `200 already_sent`, delivery 4949505, `$3` `8KCez9cqCEv2DW5usNffsv3Bfy9j99kZgL9U2ifDNTDD`, use-all
+  1.949505 `9MSN1gnjnvoUioomyMT9MoFQoBB4XseiBW8LSCnaHGf1`).
+- Gates: typecheck clean; `pnpm --filter web lint` clean (2059 strings, 0 banned); web unit suite 1419 passed / 17
+  skipped (private DB `pot_xcbug`); mock build + full mock e2e (`NEXT_PUBLIC_DATA_SOURCE=mock` is needed: `next build`
+  loads `.env.production`, which says testnet) 364 passed / 37 skipped + the new partial case's clock fixed, then
+  `deposit.spec.ts` 27/27. Testnet cost of the 3 runs: hub sponsorship 0.19 NEAR (3 Pots, mostly the parked DAO
+  floats), ≈ 0.025 NEAR of account creation from the holding account, relayer gas.
+
 ## 2. NEAR Connect wallet login (B-10, F-19)
 
 - `server/features/wallet/nep413.ts`: the exact NEP-413 bytes (`u32_le(2³¹+413) ‖ borsh{message, nonce[32],

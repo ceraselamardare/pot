@@ -84,7 +84,7 @@ export interface SendOptions {
 export async function send(intent: ActionIntent, opts: SendOptions = {}): Promise<RelayOk> {
   const session = await ensureLiveSession()
   // integrations (F-19): a wallet session signs with its wallet (a gasless delegate when it can, else self-paid)
-  if (session?.kind === "wallet") return (await import("@/lib/signing/near-connect/wallet")).walletSend(intent, opts)
+  if (session?.kind === "wallet") return (await import("@/lib/signing/near-connect/wallet")).walletSend(intent, { ...opts, accountId: session.accountId })
   try {
     return await sendOnce(intent, opts, session)
   } catch (e) {
