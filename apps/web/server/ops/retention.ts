@@ -3,6 +3,7 @@
 import "server-only"
 import { sql, type SQL } from "drizzle-orm"
 import type { DbOrTx } from "@/db/client"
+import { errText } from "../util/errtext"
 
 const BATCH = 5_000
 
@@ -48,7 +49,7 @@ export async function runRetention(db: DbOrTx): Promise<Record<string, number>> 
       out[r.name] = res.rowCount ?? 0
     } catch (e) {
       out[r.name] = -1
-      console.error(JSON.stringify({ level: "error", where: "retention", table: r.name, err: String(e).slice(0, 200) }))
+      console.error(JSON.stringify({ level: "error", where: "retention", table: r.name, err: errText(e, 200) }))
     }
   }
   return out

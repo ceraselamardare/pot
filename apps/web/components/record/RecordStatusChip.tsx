@@ -15,6 +15,10 @@ const CHIP: Record<RecordStatus, ChipStatus> = {
   cancelled: "expired",
 }
 
-export function RecordStatusChip({ s }: { s: RecordStatus }) {
-  return <StatusChip status={CHIP[s]}>{statusWord(s)}</StatusChip>
+export function RecordStatusChip({ s, size }: { s: RecordStatus; size?: "md" | "sm" }) {
+  return (
+    <StatusChip status={CHIP[s]} size={size}>
+      {statusWord(s)}
+    </StatusChip>
+  )
 }

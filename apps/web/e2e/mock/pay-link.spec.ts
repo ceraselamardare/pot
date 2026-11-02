@@ -2,7 +2,7 @@
 // spec opts in with localStorage['pot.mock.seed'] = 'showcase'):
 //  1. Maya pays "Someone else" $50 by link → approved by the rules → the Share card (Share / Copy / QR replaces the
 //     card) → a guest (Alex) opens /c/surf-camp/<id>#<secret> → [Get $50] → "$50 is yours" with their Pot dollars and a
-//     receipt; the fragment is gone; Maya's feed says "Claimed by Alex".
+//     receipt; the fragment is gone; Maya's feed row says "Claimed" (its name: "… Claimed by Alex").
 //  2. Signed out on a seeded link: [Get $30] → sign in (the mock signs the guest in as Alex) → claimed.
 //  3. The group's path: $350 → "Waiting for the group's OK" on the claim page (it updates by itself) → Sam approves →
 //     ready; then Maya cancels → the money is back and the claim page says the payment was cancelled.
@@ -76,20 +76,19 @@ test("Maya pays someone else $50 by link; a guest claims it; the feed says who",
   await axe(page)
   const s2 = shot(info, "share")
   if (s2) await page.screenshot({ path: s2 })
-  // the QR replaces the card (dark on a white plate in Night too)
-  await sheet.getByRole("button", { name: "Show QR code" }).click()
+  // QR first: the card always shows the QR (dark on a white plate in Night too); the raw link is never shown
   await expect(sheet.locator("[data-qr-view]")).toBeVisible()
   await expect(sheet.getByRole("img", { name: "QR code for the $50 payment link" })).toBeVisible()
-  await axe(page)
-  await sheet.getByRole("button", { name: "Hide QR code" }).click()
-  await expect(sheet.locator("[data-paylink-url]")).toBeVisible()
+  await expect(sheet.locator("[data-paylink-url]")).toBeHidden()
+  await expect(sheet.getByRole("button", { name: /QR code/ })).toHaveCount(0)
   await sheet.getByRole("button", { name: "Done" }).click()
   await expect(page.getByRole("dialog")).toBeHidden()
 
   // the feed: a link waiting to be claimed (money out of the Pot)
-  const row = page.locator("[data-feed] li", { hasText: "Maya sent Casa Lisboa host a $50 payment link" }).first()
-  await expect(row).toContainText("Link sent · waiting to be claimed")
-  await expect(row.locator("[data-status='link-ready']")).toHaveText("Waiting to be claimed")
+  // the compact row says "Link sent"; its name has the whole story
+  const row = page.getByRole("button", { name: /^Maya sent Casa Lisboa host a \$50 payment link/ }).first()
+  await expect(row).toHaveAccessibleName(/Link sent · waiting to be claimed/)
+  await expect(row.locator("[data-status='link-ready']")).toHaveText("Link sent")
   await expect(page.locator("[data-balance-hero], main").first()).toContainText("$460")
 
   // a guest opens it (the same browser stands in for their phone)
@@ -124,11 +123,11 @@ test("Maya pays someone else $50 by link; a guest claims it; the feed says who",
   // Maya's feed: claimed by Alex
   await becomePerson(page, "maya")
   await page.goto("/p/surf-camp")
-  const claimed = page.locator("[data-feed] li", { hasText: "Maya sent Casa Lisboa host a $50 payment link" }).first()
-  await expect(claimed).toContainText("Claimed by Alex")
+  const claimed = page.getByRole("button", { name: /^Maya sent Casa Lisboa host a \$50 payment link/ }).first()
+  await expect(claimed).toHaveAccessibleName(/Claimed by Alex/)
   await expect(claimed.locator("[data-status='link-claimed']")).toHaveText("Claimed")
   // the request sheet tells the same story; no share or cancel any more
-  await claimed.getByRole("button").first().click()
+  await claimed.click()
   const req = await openedSheet(page, /Maya asked for \$50/)
   await expect(req.locator("[data-link-panel='claimed']")).toContainText("Claimed by Alex")
   await expect(req.getByRole("button", { name: "Cancel and return the money" })).toHaveCount(0)
@@ -165,8 +164,9 @@ test("the group's path: waiting for the OK (updates by itself) → approved → 
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("pot.paylinks.v1") ?? "{}") as Record<string, { secret: string }>)
   const [key, { secret }] = Object.entries(stored).find(([k]) => k.startsWith("surf-camp:"))!
   const id = Number(key.split(":")[1])
-  const row = page.locator("[data-feed] li", { hasText: "Maya wants to pay $350 by link" }).first()
-  await expect(row).toContainText("Waiting for the group's OK")
+  const row = page.getByRole("button", { name: /^Maya wants to pay \$350 by link/ }).first()
+  await expect(row).toHaveAccessibleName(/Waiting for the group's OK/)
+  await expect(row.locator("[data-status='needs']")).toHaveText("Waiting 1 of 2")
 
   // the claim page while the group decides
   const guest = await context.newPage()
@@ -201,8 +201,9 @@ test("the group's path: waiting for the OK (updates by itself) → approved → 
   await share.getByRole("button", { name: "Yes, cancel it" }).click()
   await expect(page.getByText("Link cancelled. $350 is back in Surf Camp.").first()).toBeVisible()
   await expect(page.getByRole("dialog")).toBeHidden()
-  const back = page.locator("[data-feed] li", { hasText: "payment link" }).filter({ hasText: "$350" }).first()
-  await expect(back).toContainText("Returned to the Pot")
+  const back = page.locator("[data-feed]").getByRole("button", { name: /payment link.*\$350|\$350 payment link/ }).first()
+  await expect(back).toHaveAccessibleName(/Returned to the Pot/)
+  await expect(back.locator("[data-status='link-returned']")).toHaveText("Returned")
   // the secret is forgotten on Maya's device
   expect(await page.evaluate((k) => !!JSON.parse(localStorage.getItem("pot.paylinks.v1") ?? "{}")[k], key)).toBe(false)
 
@@ -242,8 +243,8 @@ test("every other state: expired, already claimed, missing or wrong secret, unkn
   // the Pot's feed tells the same stories (Maya's view)
   await becomePerson(page, "maya")
   await page.goto("/p/surf-camp")
-  await expect(page.locator("[data-feed] li", { hasText: "Taxi driver" }).first()).toContainText("Nobody took it in time")
-  await expect(page.locator("[data-feed] li", { hasText: "Beach bar" }).first()).toContainText("Claimed by Alex")
+  await expect(page.locator("[data-feed]").getByRole("button", { name: /Taxi driver/ }).first()).toHaveAccessibleName(/Nobody took it in time/)
+  await expect(page.locator("[data-feed]").getByRole("button", { name: /Beach bar/ }).first()).toHaveAccessibleName(/Claimed by Alex/)
   await brandChecks(page, { marigold: "at-most-one" })
   await axe(page)
 })

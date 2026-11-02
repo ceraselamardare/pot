@@ -57,8 +57,9 @@ test("instant spend with a scanned receipt: the row says Receipt attached and op
   await sheet.getByRole("button", { name: "Done" }).click()
   await expect(page.getByRole("dialog")).toBeHidden()
 
-  // the row: an instant spend is a button now, with the indicator (icon + word) once the details are saved
-  const row = page.locator("[data-feed] li", { hasText: "Maya got $46.12 back" })
+  // the row: an instant spend is a button, with the receipt mark (an icon; "Receipt attached" in its name and for
+  // screen readers) once the details are saved
+  const row = page.locator("[data-feed] li").filter({ has: page.getByRole("button", { name: /^Maya got \$46\.12 back/ }) })
   await expect(row.locator("[data-receipt-indicator]")).toHaveText("Receipt attached")
   await expect(row.locator("[data-receipt-indicator] svg")).toHaveCount(1)
   await row.getByRole("button").first().click()
@@ -155,7 +156,7 @@ test("the showcase's saved receipt links to its check; edited details show the w
   await asPerson(page, "sam")
   await page.goto("/p/ski-chalet")
   await expect(page.getByRole("heading", { level: 1, name: "Ski Chalet" })).toBeVisible()
-  const row = page.locator("[data-feed] li", { hasText: "Maya got $35 back" })
+  const row = page.locator("[data-feed] li").filter({ has: page.getByRole("button", { name: /^Maya got \$35 back/ }) })
   await expect(row.locator("[data-receipt-indicator]")).toBeVisible()
   await row.getByRole("button").first().click()
   let details = await openedSheet(page, "Maya asked for $35")

@@ -1,25 +1,37 @@
 "use client"
 // ActivityFeed + FeedItem (ux-spec §3, §5.5; design-direction 02 §2.5). A <ul> grouped by day headings.
-// Money rows: avatar, a sentence that carries the words, a muted sub-line and the amount column ("+ $150.00" in
-// `approved`, "− $84.00" in ink). The instant spend row is tinted brand-soft with ink text and only the check in
-// `approved` (approved-on-brand-soft fails 4.5:1 in Day). System events are quiet centred lines.
+// Money rows are compact (CompactRow, 2026-11-02): avatar + reason badge, "Maya · Groceries", a meta line with the
+// status chip (icon + one word), receipt and comment marks and the time, and the amount column ("+ $150.00" in
+// `approved`, "− $84.00" in ink). Every spend row opens its details sheet, where the explanations live; its name
+// says it all in words. Instant spends sit on the same surface as every other row: the "Instant" chip says it
+// (no brand-soft tint; 2026-11-02). System events are quiet centred lines.
 // Pending ops render on top with "Sending…"; a failed one fades out (the toast says what happened).
-import { Check, DoorClosed, Flag, Hand, PartyPopper, Scale, Undo2, UserPlus } from "lucide-react"
+import { DoorClosed, Flag, Hand, PartyPopper, Scale, Undo2, UserPlus } from "lucide-react"
 import { Fragment } from "react"
-import { CommentCount } from "@/components/comments/RequestComments"
 import { LinkRow } from "@/components/paylink/LinkRow"
-import { Avatar } from "@/components/pot/Avatar"
 import { MoneyText } from "@/components/money/MoneyText"
-import { StatusChip } from "@/components/pot/StatusChip"
-import { ReceiptLink, ReceiptSpace } from "@/components/receipt/ReceiptLink"
-import { ReceiptIndicator } from "@/components/receipt/ReceiptIndicator"
+import {
+  chipGround,
+  CommentMark,
+  CompactRow,
+  LeadAvatar,
+  PlusIcon,
+  ReceiptMark,
+  reasonBadge,
+  reasonTitle,
+  rowLabel,
+  rowWhen,
+  RowTitle,
+  type RowGround,
+} from "@/components/pot/CompactRow"
+import { StatusChip, type ChipStatus } from "@/components/pot/StatusChip"
+import { ReceiptLink } from "@/components/receipt/ReceiptLink"
 import { t } from "@/i18n/t"
 import { formatUsd } from "@/lib/client/money"
 import type { Category, FeedItemVM, PersonVM, RequestVM } from "@/lib/client/mock/types"
 import type { PendingOp } from "@/lib/client/ops/store"
 import { openRequest } from "@/lib/client/sheet"
-import { ago, dayLabel, formatDate } from "@/lib/client/time"
-import { cn } from "@/lib/client/cn"
+import { dayLabel, formatDate } from "@/lib/client/time"
 import { isTxHash } from "@/lib/client/explorer"
 
 export function reasonWord(r: Pick<RequestVM, "category" | "note">): string {
@@ -31,66 +43,6 @@ export function names(people: Pick<PersonVM, "name">[]): string {
   if (list.length <= 1) return list[0] ?? ""
   if (list.length === 2) return t("feed.and", { a: list[0]!, b: list[1]! })
   return t("feed.and", { a: list.slice(0, -1).join(", "), b: list[list.length - 1]! })
-}
-
-export function Row({
-  avatar,
-  main,
-  sub,
-  amount,
-  tint,
-  onOpen,
-  chip,
-  fading,
-  label,
-  txHash,
-}: {
-  avatar: PersonVM
-  main: string
-  sub?: React.ReactNode
-  amount?: React.ReactNode
-  tint?: boolean
-  onOpen?: () => void
-  chip?: React.ReactNode
-  fading?: boolean
-  label?: string
-  /** the settled transaction: a quiet "Receipt ↗" in the row's corner, beside (never inside) the row's button */
-  txHash?: string
-}) {
-  const receipt = isTxHash(txHash)
-  const body = (
-    <>
-      <Avatar person={avatar} size="sm" ring={tint ? "brand-soft" : "surface"} className="mt-0.5" />
-      <div className="min-w-0 flex-1">
-        <p className="text-body text-pretty text-ink">{main}</p>
-        {sub && <div className={cn("mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm", tint ? "text-ink" : "text-ink-muted")}>{sub}</div>}
-        {chip && <div className="mt-2 flex flex-wrap items-center gap-2">{chip}</div>}
-      </div>
-      {(amount || receipt) && (
-        <div className={cn("shrink-0 pt-0.5 text-right", receipt && "flex flex-col items-end justify-between gap-1 self-stretch")}>
-          {amount ?? <span />}
-          {receipt && <ReceiptSpace />}
-        </div>
-      )}
-    </>
-  )
-  const cls = cn(
-    "flex w-full items-start gap-3 rounded-md p-3 text-left transition-[opacity,background-color] duration-200",
-    tint ? "bg-brand-soft" : "bg-surface",
-    fading && "opacity-0",
-  )
-  return (
-    <li className={cn("pot-enter list-none", receipt && "relative")}>
-      {onOpen ? (
-        <button type="button" onClick={onOpen} aria-label={label} className={cn(cls, "hover:bg-surface-sunken", tint && "hover:bg-brand-soft")}>
-          {body}
-        </button>
-      ) : (
-        <div className={cls}>{body}</div>
-      )}
-      {receipt && <ReceiptLink txHash={txHash} what={main} className="absolute right-3 bottom-2.5" />}
-    </li>
-  )
 }
 
 function SystemLine({ icon, text, txHash }: { icon: React.ReactNode; text: string; txHash?: string }) {
@@ -110,142 +62,102 @@ function SystemLine({ icon, text, txHash }: { icon: React.ReactNode; text: strin
   )
 }
 
-export function RequestRow({ r, now, sentKey }: { r: RequestVM; now: number; sentKey?: boolean }) {
-  // pay by link (hub 1.1.0): where the link is now ("waiting to be claimed", "Claimed by Alex", "Returned to the Pot")
-  if (r.link) return <LinkRow r={r} />
+/** A spend's status in the row: the chip (icon + one word) and what it means, in words, for the row's name. */
+export function spendStatus(r: RequestVM, now: number, opts: { sentKey?: boolean; ground?: RowGround } = {}) {
+  const g = chipGround(opts.ground ?? "surface")
+  const chip = (status: ChipStatus, word?: string) => (
+    <StatusChip size="sm" ground={g} status={opts.sentKey ? "sent" : status}>
+      {opts.sentKey ? undefined : word}
+    </StatusChip>
+  )
   const amountWhole = formatUsd(r.amount, "whole")
   const reason = reasonWord(r)
-  const open = () => openRequest(r.id, r.slug)
   switch (r.status) {
     case "instant":
-      return (
-        <Row
-          txHash={r.txHash}
-          tint
-          avatar={r.requester}
-          // every spend opens its details (how it was approved, its receipt, comments)
-          onOpen={open}
-          main={t("feed.instant", { name: r.requester.name, amount: amountWhole, reason })}
-          sub={
-            <>
-              <span className="inline-flex items-center gap-1">
-                <Check aria-hidden className="size-4 text-approved" strokeWidth={2.5} />
-                {t("spend.approved")}
-              </span>
-              <span>{t("feed.instant.rule", { instantLimit: formatUsd(r.instantCap, "whole") })}</span>
-              <CommentCount n={r.comments} />
-              {r.hasReceipt && <ReceiptIndicator />}
-            </>
-          }
-          amount={<MoneyText micro={r.amount} sign="out" className="text-ink" />}
-          chip={sentKey ? <StatusChip status="sent" /> : undefined}
-        />
-      )
-    case "needs":
-      return (
-        <Row
-          txHash={r.txHash}
-          avatar={r.requester}
-          onOpen={open}
-          main={t("feed.pending", { name: r.requester.name, amount: amountWhole, reason })}
-          sub={
-            <>
-              <span>{t("approve.expires", { relativeTime: inWords(r.expiresAt, now) })}</span>
-              <CommentCount n={r.comments} />
-              {r.hasReceipt && <ReceiptIndicator />}
-            </>
-          }
-          chip={
-            <StatusChip status="needs">
-              {r.tier === "one_ok" && r.declines.length === 0 ? t("feed.pending.one_ok") : t("approve.progress", { count: r.approvals.length, k: r.k })}
-            </StatusChip>
-          }
-          amount={<MoneyText micro={r.amount} className="text-ink" />}
-        />
-      )
+      return { chip: chip("instant"), sentence: t("feed.instant", { name: r.requester.name, amount: amountWhole, reason }), said: [t("row.a11y.instant")], money: "out" as const }
+    case "needs": {
+      const word = r.tier === "one_ok" && r.declines.length === 0 ? t("feed.pending.one_ok") : t("row.status.waiting", { count: r.approvals.length, k: r.k })
+      return {
+        chip: chip("needs", word),
+        sentence: t("feed.pending", { name: r.requester.name, amount: amountWhole, reason }),
+        said: [r.tier === "one_ok" && r.declines.length === 0 ? word : t("approve.progress", { count: r.approvals.length, k: r.k }), t("approve.expires", { relativeTime: inWords(r.expiresAt, now) })],
+        money: "asked" as const,
+      }
+    }
     case "approved":
-      return (
-        <Row
-          txHash={r.txHash}
-          avatar={r.receiver}
-          onOpen={open}
-          main={t("feed.approved", { amount: amountWhole, name: r.receiver.name, reason })}
-          sub={
-            <>
-              <span>{r.okBy ? t("feed.approved.ok", { name: r.okBy.name }) : t("feed.approved.sub", { names: names(r.approvals) })}</span>
-              <CommentCount n={r.comments} />
-              {r.hasReceipt && <ReceiptIndicator />}
-            </>
-          }
-          chip={<StatusChip status={sentKey ? "sent" : "approved"} />}
-          amount={<MoneyText micro={r.amount} sign="out" className="text-ink" />}
-        />
-      )
+      return {
+        chip: chip("approved", r.okBy ? t("row.status.one_ok") : undefined),
+        sentence: t("feed.approved", { amount: amountWhole, name: r.receiver.name, reason }),
+        said: [r.okBy ? t("feed.approved.ok", { name: r.okBy.name }) : r.approvals.length ? t("feed.approved.sub", { names: names(r.approvals) }) : t("chip.approved")],
+        money: "out" as const,
+      }
     case "declined":
-      return (
-        <Row
-          txHash={r.txHash}
-          avatar={r.requester}
-          onOpen={open}
-          main={t("feed.declined", { name: r.requester.name, amount: amountWhole })}
-          sub={
-            <>
-              <span>{t("feed.declined.sub", { names: names(r.declines) })}</span>
-              <CommentCount n={r.comments} />
-              {r.hasReceipt && <ReceiptIndicator />}
-            </>
-          }
-          chip={<StatusChip status="declined" />}
-          amount={<NotSent r={r} />}
-        />
-      )
+      return {
+        chip: chip("declined", t("row.status.declined")),
+        sentence: t("feed.declined", { name: r.requester.name, amount: amountWhole }),
+        said: [r.declines.length ? t("feed.declined.sub", { names: names(r.declines) }) : t("row.status.declined"), t("chip.not_sent")],
+        money: "struck" as const,
+      }
     case "expired":
-      return (
-        <Row
-          txHash={r.txHash}
-          avatar={r.requester}
-          onOpen={open}
-          main={t("feed.expired", { name: r.requester.name, amount: amountWhole })}
-          sub={
-            <>
-              <span>{t("feed.expired.sub", { date: formatDate(r.expiresAt) })}</span>
-              <CommentCount n={r.comments} />
-              {r.hasReceipt && <ReceiptIndicator />}
-            </>
-          }
-          chip={<StatusChip status="expired" />}
-          amount={<NotSent r={r} />}
-        />
-      )
+      return { chip: chip("expired"), sentence: t("feed.expired", { name: r.requester.name, amount: amountWhole }), said: [t("feed.expired.sub", { date: formatDate(r.expiresAt) }), t("chip.not_sent")], money: "struck" as const }
     case "failed":
-      return (
-        <Row
-          txHash={r.txHash}
-          avatar={r.receiver}
-          onOpen={open}
-          main={t("feed.failed", { amount: amountWhole })}
-          sub={
-            <>
-              <span>{t("feed.failed.sub")}</span>
-              <CommentCount n={r.comments} />
-              {r.hasReceipt && <ReceiptIndicator />}
-            </>
-          }
-          chip={<StatusChip status="failed" />}
-          amount={<MoneyText micro={r.amount} className="text-ink-muted" />}
-        />
-      )
+      return { chip: chip("failed"), sentence: t("feed.failed", { amount: amountWhole }), said: [t("feed.failed.sub")], money: "muted" as const }
   }
 }
 
-function NotSent({ r }: { r: RequestVM }) {
+/** The amount column for a spend: "− $84.00" once paid, "$300.00" while asked, struck (and "Not sent") when it wasn't. */
+export function SpendAmount({ micro, money }: { micro: RequestVM["amount"]; money: "out" | "asked" | "struck" | "muted" }) {
+  if (money === "out") return <MoneyText micro={micro} sign="out" className="text-ink" />
+  if (money === "struck") return <MoneyText micro={micro} strike className="text-ink-muted" />
+  return <MoneyText micro={micro} className={money === "muted" ? "text-ink-muted" : "text-ink"} />
+}
+
+export function RequestRow({
+  r,
+  now,
+  sentKey,
+  at,
+  showPot,
+}: {
+  r: RequestVM
+  now: number
+  sentKey?: boolean
+  /** the feed item's time (else when it was decided, or asked) */
+  at?: number
+  /** lists across Pots (Requests → Your requests): the Pot's name after the reason */
+  showPot?: boolean
+}) {
+  // pay by link (hub 1.1.0): where the link is now ("Link sent", "Claimed", "Returned")
+  if (r.link) return <LinkRow r={r} now={now} at={at} showPot={showPot} />
+  const ground: RowGround = "surface"
+  const s = spendStatus(r, now, { sentKey, ground })
+  // once the group sent it, the row is about the person paid (pay a member); otherwise about who asked
+  const person = r.status === "approved" || r.status === "failed" ? r.receiver : r.requester
+  const when = rowWhen(at ?? r.decidedAt ?? r.createdAt, now)
+  const pot = showPot ? { emoji: r.potEmoji, name: r.potName } : undefined
   return (
-    <span className="flex flex-col items-end">
-      <MoneyText micro={r.amount} strike className="text-ink-muted" />
-      <span className="text-body-sm text-ink-muted">{t("chip.not_sent")}</span>
-    </span>
+    <CompactRow
+      ground={ground}
+      // every spend opens its details (how it was approved, its receipt, comments)
+      onOpen={() => openRequest(r.id, r.slug)}
+      label={rowLabel([s.sentence, ...s.said, pot && pot.name, r.hasReceipt && t("details.receipt.indicator"), !!r.comments && t("comments.count", { n: r.comments }), when.long])}
+      lead={<LeadAvatar person={person} badge={reasonBadge(r)} ground={ground} />}
+      title={<RowTitle who={showPot ? undefined : person.name} what={reasonTitle(r)} pot={pot} />}
+      meta={
+        <>
+          {s.chip}
+          {r.hasReceipt && <ReceiptMark />}
+          <CommentMark n={r.comments} />
+        </>
+      }
+      aside={s.money === "struck" ? t("chip.not_sent") : when.short}
+      amount={<SpendAmount micro={r.amount} money={s.money} />}
+      data-request-row={r.id}
+      data-row-status={r.status}
+    />
   )
 }
+
 
 function inWords(at: number, now: number) {
   const d = at - now
@@ -261,19 +173,29 @@ function FeedItem({ item, now, sentKeys, potName }: { item: FeedItemVM; now: num
       return <SystemLine icon={<PartyPopper strokeWidth={2} />} text={t("feed.created", { name: item.actor.name, potName })} txHash={item.txHash} />
     case "joined":
       return <SystemLine icon={<UserPlus strokeWidth={2} />} text={t("feed.joined", { name: item.actor.name })} txHash={item.txHash} />
-    case "contribution":
+    case "contribution": {
+      const when = rowWhen(item.at, now)
+      const sent = sentKeys.has(item.key)
       return (
-        <Row
-          avatar={item.actor}
-          main={t("feed.contribution", { name: item.actor.name, amount: formatUsd(item.amount, "whole") })}
-          sub={<span>{ago(item.at, now)}</span>}
-          chip={sentKeys.has(item.key) ? <StatusChip status="sent" /> : undefined}
+        <CompactRow
+          label={rowLabel([t("feed.contribution", { name: item.actor.name, amount: formatUsd(item.amount, "whole") }), sent && t("chip.sent"), when.long])}
+          lead={<LeadAvatar person={item.actor} badge={PlusIcon} />}
+          title={<RowTitle who={item.actor.name} what={t("row.added")} />}
+          meta={
+            <>
+              {sent && <StatusChip size="sm" status="sent" />}
+              {/* money in has no details sheet: its proof stays on the row */}
+              {isTxHash(item.txHash) && <ReceiptLink txHash={item.txHash} what={t("feed.contribution", { name: item.actor.name, amount: formatUsd(item.amount, "whole") })} />}
+            </>
+          }
+          aside={when.short}
           amount={<MoneyText micro={item.amount} sign="in" className="text-approved" />}
-          txHash={item.txHash}
+          data-row-status="added"
         />
       )
+    }
     case "request":
-      return <RequestRow r={item.request} now={now} sentKey={sentKeys.has(item.key)} />
+      return <RequestRow r={item.request} now={now} at={item.at} sentKey={sentKeys.has(item.key)} />
     case "close_requested":
       return <SystemLine icon={<Hand strokeWidth={2} />} text={`${t("feed.close_requested", { name: item.actor.name })} · ${t("feed.close_requested.sub", { k: item.k })}`} txHash={item.txHash} />
     case "closed":
@@ -295,13 +217,16 @@ function FeedItem({ item, now, sentKeys, potName }: { item: FeedItemVM; now: num
 export function OpRow({ op, me }: { op: PendingOp; me: PersonVM }) {
   if (op.kind !== "add" || !op.amount) return null
   if (op.status === "confirmed" || op.status === "cancelled") return null
+  const main = t("add.sending", { amount: formatUsd(op.amount, "whole") })
   return (
-    <Row
-      avatar={me}
+    <CompactRow
       fading={op.status === "failed"}
-      main={t("add.sending", { amount: formatUsd(op.amount, "whole") })}
-      chip={<StatusChip status="sending" />}
+      label={rowLabel([main, t("chip.sending")])}
+      lead={<LeadAvatar person={me} badge={PlusIcon} />}
+      title={main}
+      meta={<StatusChip size="sm" status="sending" />}
       amount={<MoneyText micro={op.amount} sign="in" className="text-ink-muted" />}
+      data-row-status="sending"
     />
   )
 }

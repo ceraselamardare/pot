@@ -1,7 +1,7 @@
 "use client"
 // PotHeader (cover tile + H1 + seats + ••• menu) and PotCard (Pots home), design-direction 02 §1-2.
 import { Menu } from "@base-ui/react/menu"
-import { ChevronLeft, EllipsisVertical, ListChecks, LogOut, Share2 } from "lucide-react"
+import { ChevronLeft, EllipsisVertical, Eye, ListChecks, LogOut, Share2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AvatarStack } from "@/components/pot/Avatar"
@@ -53,6 +53,14 @@ export function PotHeader({ pot }: { pot: PotVM }) {
                 <span className="flex flex-col py-1">
                   <span>{t("pot.menu.record")}</span>
                   <span className="text-body-sm text-ink-muted">{t("pot.menu.record.sub")}</span>
+                </span>
+              </Menu.Item>
+              {/* privacy audit 2026-11-02: what's public and what only the Pot sees (the shell's PwaHost opens it) */}
+              <Menu.Item className={itemCls} onClick={() => openSheet("privacy")} data-menu-privacy>
+                <Eye aria-hidden className="size-5" strokeWidth={2} />
+                <span className="flex flex-col py-1">
+                  <span>{t("privacy.menu")}</span>
+                  <span className="text-body-sm text-ink-muted">{t("privacy.menu.sub")}</span>
                 </span>
               </Menu.Item>
               <Menu.Item className={itemCls} onClick={() => openSheet("close")} data-menu-close>

@@ -20,6 +20,7 @@ import { blockTimes, type RelayDeps } from "../relay/pipeline"
 import { applyHubEvents } from "../relay/effects"
 import { TGAS } from "../relay/policy"
 import { newRelayId } from "../util/crypto"
+import { errText } from "../util/errtext"
 
 const RECLAIM_TGAS = 50n
 
@@ -148,7 +149,7 @@ export async function serverReclaimLink(deps: RelayDeps, daoId: string, requestI
     return failed ? "failed" : "sent"
   } catch (e) {
     await db.update(relayLog).set({ status: "failed", reason: "internal", finishedAt: new Date() }).where(eq(relayLog.id, id))
-    await logError({ route: "cron:reclaim_link", relayId: id, reason: "reclaim_link_failed", detail: { err: String(e).slice(0, 300) } })
+    await logError({ route: "cron:reclaim_link", relayId: id, reason: "reclaim_link_failed", detail: { err: errText(e, 300) } })
     return "failed"
   }
 }

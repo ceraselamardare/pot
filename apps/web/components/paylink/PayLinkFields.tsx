@@ -58,7 +58,7 @@ export function LinkReady({ s, statusRef }: { s: LinkShareState; statusRef?: Rea
       <p ref={statusRef} tabIndex={-1} className="font-display text-heading text-ink outline-none">
         {t("paylink.ready.title")}
       </p>
-      {!s.qr && <p className="-mt-2 text-body-sm text-ink-muted">{t("paylink.ready.body", { who, amount: formatUsd(s.amount, "whole") })}</p>}
+      <p className="-mt-2 text-body-sm text-ink-muted">{t("paylink.ready.body", { who, amount: formatUsd(s.amount, "whole") })}</p>
       <LinkShareBody s={s} />
     </div>
   )

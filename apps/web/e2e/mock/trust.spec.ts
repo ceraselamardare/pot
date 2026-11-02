@@ -122,7 +122,8 @@ test("One OK: the requester waits; Leo gives the OK; it's paid and the feed says
   await expect(sheet.locator("[data-approve-status]")).toContainText("Done. Your OK sent $250 to Sam.")
   await page.getByRole("button", { name: "Done" }).click()
   await expect(page.getByRole("dialog")).toBeHidden()
-  await expect(page.locator("[data-feed]").getByText("Approved by Leo's OK").first()).toBeVisible()
+  await expect(page.locator("[data-feed]").getByRole("button", { name: /Approved by Leo's OK/ }).first()).toBeVisible()
+  await expect(page.locator("[data-feed] [data-status='approved']", { hasText: "One OK" }).first()).toBeVisible()
 
   // Sam sees how it was approved
   await becomePerson(page, "sam")
@@ -178,6 +179,17 @@ test("The public Pot record: every spend, how it was approved, a CSV of the same
   expect(lines[0]).toBe("Date,Pot,Person,Amount (USD),Reason,Approved how,Status,Receipt URL")
   expect(lines).toHaveLength(6)
   expect(lines[4]).toMatch(/^\d{4}-\d{2}-\d{2},Ski Chalet,Leo,180\.00,Chalet deposit,One OK by Sam,Paid,https:\/\/testnet\.nearblocks\.io\/txns\/[1-9A-HJ-NP-Za-km-z]{43,44}$/)
+
+  // Share, QR first: the record's link as a QR, [Share link] (the sheet's one marigold) and [Copy link]
+  await page.locator("[data-record-share]").click()
+  const shareRec = await openedSheet(page, "Share Ski Chalet's record")
+  await expect(shareRec.getByRole("img", { name: "QR code for the record of Ski Chalet" })).toBeVisible()
+  await expect(shareRec.locator("[data-record-url]")).toHaveAttribute("data-record-url", /\/p\/ski-chalet\/record$/)
+  await expect(shareRec.getByRole("button", { name: "Copy link" })).toBeVisible()
+  await brandChecks(page, { marigold: "one" })
+  await axe(page)
+  await shareRec.getByRole("button", { name: "Close" }).click()
+  await expect(page.getByRole("dialog")).toBeHidden()
 
   // signed out: the same page, read-only (no way back into the Pot)
   // (an unknown person reads as signed out; removing the key would let asPerson's init script sign Maya back in)

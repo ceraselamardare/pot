@@ -29,6 +29,7 @@ import { registerToken } from "../session/onboard"
 import { applyHubEvents, upsertPotRow } from "./effects"
 import { evaluatePolicy, TGAS, type PolicyMatch } from "./policy"
 import type { RelayOk, RelayPending, RelayResult } from "./types"
+import { errText } from "../util/errtext"
 
 export interface RelayDeps {
   db: Db
@@ -649,7 +650,7 @@ export async function completeRelay(deps: RelayDeps, x: CompleteInput): Promise<
     .where(eq(relayLog.id, x.relayId))
   await adjustQuota(db, x.yocto.subjects, x.yocto.action, c.costYocto - m.estYocto).catch(() => undefined)
   await applyHubEvents(db, { hubId: cfg.hubId, txHash: x.txHash, events: c.rawEvents, blockTimes: times }).catch((e) =>
-    logError({ route: "/api/relay", relayId: x.relayId, reason: "feed_write", detail: { err: String(e).slice(0, 300) } }),
+    logError({ route: "/api/relay", relayId: x.relayId, reason: "feed_write", detail: { err: errText(e, 300) } }),
   )
   if (c.outcome === "inner_failed")
     await logError({ route: "/api/relay", relayId: x.relayId, reason: "inner_failed", detail: { errorCode: c.errorCode } })
@@ -773,7 +774,7 @@ async function serverHubCall(
     if (x.op === "retry_payout" && retryPayoutFailed(r.outcome, x.pot, cfg.usdcId)) await serverSync(deps, x.pot, x.proposalId, id)
   } catch (e) {
     await db.update(relayLog).set({ status: "failed", reason: e instanceof ApiError ? e.reason : "internal", finishedAt: new Date() }).where(eq(relayLog.id, id))
-    await logError({ route: `after:${x.op}`, relayId: id, reason: `${x.op}_failed`, detail: { err: String(e).slice(0, 300) } })
+    await logError({ route: `after:${x.op}`, relayId: id, reason: `${x.op}_failed`, detail: { err: errText(e, 300) } })
   }
 }
 

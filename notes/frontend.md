@@ -1,3 +1,80 @@
+> **2026-11-02: "Who can see what" + the visitor's view (privacy audit; server side and the audit table are in
+> notes/backend.md "Privacy audit 2026-11-02").**
+> - **The sheet** is `components/sheets/PrivacySheet.tsx`, at `?sheet=privacy` (`SheetName` "privacy"). It is
+>   rendered once in the shell's `PwaHost`, so it works on every app screen. The sheet has:
+>   - two short lists, each item a Lucide icon + words:
+>     - "Anyone can see / It's on a public ledger that anyone can read.": money added and spent and when, the kind of
+>       each spend, which accounts are in the Pot, the Pot's name and rules, who approved or declined, that a spend
+>       has a receipt;
+>     - "Only people in this Pot can see / Pot keeps these and shows them only to the Pot's members.": the names and
+>       pictures people chose, notes and reasons for a no, comments, receipts and their items, who a payment link is
+>       for, your activity;
+>   - one line: "Anyone with an invite or payment link sees the Pot's name, who sent it and the amount.";
+>   - [Got it] as a secondary button (no marigold).
+>   Copy is in the `privacy.*` keys. "Network" is banned by the jargon lint, so the sheet says "public ledger" (the
+>   word `advanced.public` already uses).
+> - **Entry points (subtle, never inline):**
+>   - the Pot's ••• menu item "Who can see what · What's private and what's public" (`PotParts.tsx`,
+>     `data-menu-privacy`, between Pot record and Close);
+>   - a You row "Who can see what" under Help;
+>   - the public record's footer button "What's public?" (`RecordScreen`, `data-record-privacy`). The record page is
+>     outside the shell, so it keeps its own open state.
+> - **The visitor's record (mock):** `useMockRecord` maps non-members' rows through `visitorRow`
+>   (`lib/client/record.ts`), like the live path: the account's own first name, no chosen picture, the category word
+>   instead of the note.
+> - **The invite landing (`/j`)** names only the inviter: "Maya and 1 other are in" (`landing.members.with`). The
+>   other seats are plain circles in their join colour. The OG image has plain seats with no initials.
+>   `a11y.spec.ts` and `flows.spec.ts` were updated for the new line.
+> - **Tests:**
+>   - `components/__tests__/privacy-sheet.test.tsx` (3);
+>   - `e2e/mock/privacy.spec.ts` (5 tests × 3 projects; 320 px on mobile-day only): menu → sheet, Back and Got it;
+>     You → sheet; the record as a visitor (no notes, pictures or receipt details; "Receipt attached" stays; the
+>     footer opens the sheet); the invite names the inviter only; 320 px. Every step runs axe and `brandChecks`.
+>   - Screens: `notes/screens/privacy-{sheet,record}-{day,night}.png`.
+
+> **2026-11-02: Compact activity rows.** Feedback (Night screenshot of an instant spend row: "Roundoasis4661 got $12.96
+> back for Piata9 Victoriei · Oct 29 / ✓ Approved by Pot rules  Under the $20 instant limit  🧾 Receipt attached / − $12.96
+> Receipt ↗"): "This new row structure got very crowded now. Use the space more efficiently, use icons, labels, etc."
+> - **Anatomy** (`components/pot/CompactRow.tsx`, ≈ 71 px at 390 × 844): a 40 px lead (the person's avatar with a 20 px
+>   reason badge: ShoppingCart / Utensils / CarTaxiFront / BedDouble / Ticket / Tag, Link2 for pay by link, Plus for money
+>   in) · line 1, one line, truncates: **name** · category ("Maya · Groceries"; "Other" gives way to the note) and the
+>   amount on the right (signed, tabular, colours as before) · line 2 (`body-sm`, wraps at most once at 320 px): a compact
+>   24 px status chip, icon + one word (`StatusChip size="sm"`: Instant (Zap) / One OK / Approved / Waiting 1 of 2 / Needs
+>   one OK / Declined / Expired / Not sent yet / Sent; links: Link sent / Claimed / Returned / Not sent), an icon-only
+>   receipt mark (ReceiptText, sr-only "Receipt attached", `data-receipt-indicator`), 💬 n, and on the right the time
+>   ("10 min ago" today, the clock time on older days under their day heading) or "Not sent" under a struck amount.
+> - **Moved to the details sheet** (which every spend row opens): "Under the $x instant limit", "Approved by Sam and
+>   Leo" / "Declined by …", "Expires in 7 days", the merchant/note, the long link status ("Claimed by Alex") and the
+>   explorer "Receipt ↗". The row is one button whose accessible name says it all in short sentences (`rowLabel`):
+>   "Maya got $35 back for food. Approved instantly by Pot rules. Receipt attached. 2 comments. Oct 30, 12:26 PM".
+>   Rows that open no details (money in, a refund, a join on a person's sheet / You) keep their quiet "Receipt ↗" on the
+>   meta line (beside the row's link on You, over space the row keeps for it). System events stay centred lines.
+> - **Where:** Pot feed (`RequestRow`, contributions, `OpRow`), pay-by-link rows (`LinkRow`), a person's activity and
+>   You → Your activity (`ActivityRow`: lead = the kind's icon tile on a member's sheet, the Pot's cover + kind badge on
+>   You; line 1 short and without the name: "Groceries · Ski Chalet", "Approved Maya's $300", "Added money"; new
+>   `activityTitle`, `rowChip`, `ActivityItemVM.category`), Requests → Your requests (now `RequestRow showPot`: "Tickets ·
+>   🎿 Ski Chalet") and Decided, the Pot's lg "Your requests", and the record's phone cards (avatar + badge, "**Maya** ·
+>   note" + amount, then the record status chip (sm) · how it was approved · 🧾 · date; the explorer link and "See
+>   details" on a third line only when there is one: a public page has no details sheet). The instant row keeps its
+>   brand-soft tint; its chip and badge sit on `surface` (approved-on-brand-soft fails 4.5:1 in Day).
+> - **Copy** (en.json, types regenerated): `chip.instant`, `row.status.*`, `row.a11y.instant`, `row.added`,
+>   `row.reason.*` (title-case categories), `row.activity.*`, `paylink.chip.sent`. Lint 1869 strings, 0 banned.
+> - **Heights** (Ski Chalet mix, 390 × 844, `notes/screens/feed-rows-{before,after}-{day,night}.png`): add money 78 → 71,
+>   waiting vote 130 → 71, instant + receipt + 2 comments 118 → 71, one-OK approved 130 → 71, needs one OK 130 → 71,
+>   declined 130 → 71, pay by link 154 → 71 px. At 320 px only the instant + receipt + comments row wraps (95 px).
+> - **Tests:** new `components/__tests__/compact-rows.test.tsx` (9: names, chips, marks present/absent, struck + "Not
+>   sent", Sent, across Pots, money-in group + its receipt, `rowLabel`); updated `activity.test.tsx`, `paylink.test.tsx`;
+>   e2e selectors moved to role/name (`getByRole("button", { name: /^Maya got \$84 back…/ })`, `toHaveAccessibleName`)
+>   and `data-row-title` / `data-status` in `flows`, `activity`, `pay-link`, `receipt`, `spend-details`, `trust`. Full unit
+>   **1257 passed / 17 skipped**; typecheck clean; lint clean except the privacy agent's in-progress
+>   `server/features/privacy.test.ts` (rules-of-hooks); mock build `NEXT_DIST_DIR=.next-rows` OK; mock e2e (3 projects,
+>   `next start -p 3150`): **330 passed, 33 skipped, 0 failed** (third run; earlier runs had load flakes that passed
+>   on re-run: 7 on mobile-day, then the privacy agent's `privacy.spec` "Pot ••• menu → Who can see what" once).
+> - **Open:** the visible line 1 no longer contains the row's accessible name verbatim (WCAG 2.5.3 label-in-name is
+>   loose for a composite row; the name starts with the same person). The payee of a pay-a-member spend shows only once
+>   the group sent it (as before). "Added money" truncates at 320 px. `activity.path.*` and `requests.mine.row` are
+>   unused now (kept).
+
 > **2026-11-02: Every spend opens its details; receipt details saved with the spend; the fingerprint check.** Server and
 > chain side in notes/backend.md "receipt details saved with a spend".
 > - **Details for every spend:** the request sheet (`ApproveSheet`) is now the details sheet of *every* spend: instant

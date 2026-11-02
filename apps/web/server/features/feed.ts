@@ -18,6 +18,7 @@ import { linkEnrichment } from "./paylink"
 import { receiptIds } from "./receipts/saved"
 import { ensurePot, isMember } from "./notes"
 import { avatarOrNull } from "@/lib/avatars"
+import { errText } from "../util/errtext"
 
 export type FeedApiItem = Api.FeedApiItem
 
@@ -125,7 +126,7 @@ export async function getFeed(
   // saved receipt details (spend_receipt): which spends have one. Everyone sees that much (the public record's
   // "Receipt attached"); the details themselves are members only (GET …/requests/[id]/receipt). Never fails the feed.
   body.receipts = await receiptIds(db, potId).catch((e: unknown) => {
-    console.error(JSON.stringify({ level: "error", where: "feed.receipts", err: String(e).slice(0, 200) }))
+    console.error(JSON.stringify({ level: "error", where: "feed.receipts", err: errText(e, 200) }))
     return []
   })
 
@@ -189,14 +190,14 @@ export async function getFeed(
     // comments on requests (off-chain): how many each request has, for the cards' count
     // (never fails the feed: a DB without migration 0003 just shows no counts)
     body.commentCounts = await commentCounts(db, potId).catch((e: unknown) => {
-      console.error(JSON.stringify({ level: "error", where: "feed.commentCounts", err: String(e).slice(0, 200) }))
+      console.error(JSON.stringify({ level: "error", where: "feed.commentCounts", err: errText(e, 200) }))
       return {}
     })
     // pay by link (hub 1.1.0): who each link is for (the requester's note) and who claimed it (Pot users' names only)
     Object.assign(
       body,
       await linkEnrichment(db, potId, page).catch((e: unknown) => {
-        console.error(JSON.stringify({ level: "error", where: "feed.links", err: String(e).slice(0, 200) }))
+        console.error(JSON.stringify({ level: "error", where: "feed.links", err: errText(e, 200) }))
         return { linkLabels: {}, linkClaimers: {} }
       }),
     )

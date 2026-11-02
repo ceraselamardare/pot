@@ -27,6 +27,8 @@ import { hintCookie } from "../../session/cookies"
 import { hintFor, sessionInfo, type SessionCtx } from "../../session/store"
 import { newRelayId, sha256Hex } from "../../util/crypto"
 import { guardIdOf, verifySigningJwt } from "../nearauth/signing"
+import { logError } from "../../log"
+import { errText } from "../../util/errtext"
 
 export interface DevicesDeps {
   db: Db
@@ -333,7 +335,9 @@ export async function addDevice(deps: DevicesDeps, s: SessionCtx, body: DevicesB
     return r
   } catch (e) {
     if (e instanceof ApiError) throw e
-    return await fail(new ApiError("internal", { message: String(e).slice(0, 200) }))
+    // never the raw error in the answer or the stored response (privacy audit 2026-11-02): it's logged, values hidden
+    await logError({ route: "POST /api/devices", requestId: meta.requestId, reason: "internal", userId: s.user.id, detail: { err: errText(e, 300) } })
+    return await fail(new ApiError("internal"))
   } finally {
     await releaseLease(db, slot, holder).catch(() => undefined)
   }

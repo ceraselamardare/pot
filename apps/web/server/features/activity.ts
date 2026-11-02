@@ -8,11 +8,15 @@
 //    automatic approval of something they asked for is part of the asking, so it isn't listed again.
 // The chain stays the truth for statuses: the client merges these rows with what its chain views say
 // (lib/client/activity.ts) and fills in what this DB never saw.
+// Privacy (audit 2026-11-02): the rows are the person's own (on the public ledger anyway), but other people's chosen
+// names (`profiles`) come only for Pots the person is still an active member of (hub.get_members, like the feed);
+// someone who left a Pot, or a hub that can't be read, gets none (the client falls back to account-derived names).
 import "server-only"
 import { and, desc, eq, inArray, lt, lte, or, sql, type SQL } from "drizzle-orm"
 import type { Db } from "@/db/client"
 import { appUser, feedEvent, pot, relayLog } from "@/db/schema"
 import { activityKey, type ActivityApiItem, type ActivityApiPot, type ActivityApiRes } from "@/lib/activity-api"
+import type { HubReader } from "../chain/hub"
 import { ApiError } from "../http/errors"
 import type { SessionCtx } from "../session/store"
 import { b64url, fromB64url } from "../util/crypto"
@@ -59,7 +63,7 @@ function potOf(r: { potId: string; slug: string | null; name: string | null; emo
 }
 
 export async function getMyActivity(
-  deps: { db: Db },
+  deps: { db: Db; hub: HubReader },
   s: SessionCtx,
   q: { before?: string; limit?: number },
 ): Promise<{ body: Omit<ActivityApiRes, "ok" | "requestId"> }> {
@@ -258,7 +262,16 @@ export async function getMyActivity(
   const more = rows.length > lim || feedRows.length > lim || voteRows.length > lim
   const items = page.map((r) => r.item).filter((x): x is ActivityApiItem => x !== null)
 
-  const actors = [...new Set(items.map((i) => i.about?.actor).filter((x): x is string => !!x))]
+  // names only from Pots I'm still in (fail closed: an unreadable member list gives none)
+  const potsWithActors = [...new Set(items.filter((i) => i.about?.actor).map((i) => i.pot.potId))]
+  const stillIn = new Set<string>()
+  await Promise.all(
+    potsWithActors.map(async (p) => {
+      const ms = await deps.hub.getMembers(p).catch(() => [])
+      if (ms.some((m) => m.account_id === me && m.status === "active")) stillIn.add(p)
+    }),
+  )
+  const actors = [...new Set(items.filter((i) => stillIn.has(i.pot.potId)).map((i) => i.about?.actor).filter((x): x is string => !!x))]
   const profiles: Record<string, { name: string }> = {}
   if (actors.length) {
     const users = await db.select({ a: appUser.nearAccount, n: appUser.displayName }).from(appUser).where(inArray(appUser.nearAccount, actors))

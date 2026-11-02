@@ -62,11 +62,16 @@ describe("ActivityList", () => {
     expect(added.map((l) => l.getAttribute("href"))).toEqual(["/p/lisbon-trip", `https://testnet.nearblocks.io/txns/${HASH}`])
     expect(added[0]!.contains(added[1]!)).toBe(false)
     expect(added[1]!.getAttribute("aria-label")).toBe("Receipt for You added $150, opens the explorer")
-    expect(rows[0]!.textContent).toContain("Added")
+    expect(rows[0]!.textContent).toContain("Added money")
+    // the row's name is the whole sentence; line 1 is short
+    expect(added[0]!.getAttribute("aria-label")).toBe("You added $150. Lisbon Trip. 1 min ago")
     const asked = within(rows[1]!).getAllByRole("link")
     expect(asked.map((l) => l.getAttribute("href"))).toEqual(["/p/lisbon-trip?r=4"])
-    expect(rows[1]!.textContent).toContain("Sent to the group")
-    expect(rows[1]!.textContent).toContain("Needs approval")
+    expect(asked[0]!.getAttribute("aria-label")).toBe("You asked for $300 for Tickets. Waiting. Lisbon Trip. 2 min ago")
+    expect(rows[1]!.querySelector("[data-row-title]")!.textContent).toBe("Tickets · Lisbon Trip")
+    expect(rows[1]!.querySelector('[data-status="needs"]')!.textContent).toBe("Waiting")
+    // a spend's receipt link is in its details sheet, not on the row
+    expect(rows[1]!.querySelector("[data-receipt]")).toBeNull()
   })
 })
 
@@ -109,7 +114,7 @@ describe("YourActivity states", () => {
       loadingMore: false,
     }
     render(<YourActivity meId="maya" />)
-    expect(screen.getByText("You joined")).toBeTruthy()
+    expect(screen.getByRole("link", { name: /^You joined/ })).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Show more" }))
     expect(loadMore).toHaveBeenCalled()
   })

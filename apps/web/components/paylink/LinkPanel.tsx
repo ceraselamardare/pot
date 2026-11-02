@@ -142,15 +142,12 @@ function SharingSheet({ pot, r, secret, open, onClose }: { pot: PotVM; r: Reques
     label: r.link?.label ?? null,
     expiresAt: r.link?.expiresAt ?? 0,
   })
-  const close = () => {
-    s.setQr(false)
-    onClose()
-  }
+  const close = () => onClose()
   return (
     <Sheet open={open} onClose={close} title={t("paylink.share.title", { amount: formatUsd(r.amount, "whole") })} footer={<LinkShareActions s={s} />}>
       <div className="flex flex-col gap-4 pt-1" data-paylink-sheet="ready">
         <LinkShareBody s={s} />
-        {!s.qr && r.mine && <CancelLink pot={pot} r={r} onDone={close} />}
+        {r.mine && <CancelLink pot={pot} r={r} onDone={close} />}
       </div>
     </Sheet>
   )

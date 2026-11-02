@@ -1,6 +1,7 @@
 "use client"
 // The public Pot record's data (/p/<slug>/record), one implementation per data source:
-//  - mock: the browser mock world's Pot (every request), readable signed out too;
+//  - mock: the browser mock world's Pot (every request), readable signed out too; a visitor gets what the live
+//    record gives one (visitorRow: no notes, no chosen names or pictures);
 //  - testnet: hub get_record (hub 1.1.0, every page; get_requests on a 1.0.0 hub) read by anyone over public RPC, plus
 //    the feed route when the visitor is a member (names from the group, notes, receipts). A visitor sees only what's
 //    public on chain: amounts, reasons, account-derived first names.
@@ -16,7 +17,7 @@ import { readRecord } from "./live/wave4"
 import { useWorld } from "./mock/store"
 import type { PersonVM } from "./mock/types"
 import * as W from "./mock/world"
-import { rowsFromEntries, rowsFromRequests, type RecordRow } from "./record"
+import { rowsFromEntries, rowsFromRequests, visitorRow, type RecordRow } from "./record"
 import { useMe } from "./session"
 import { useNow } from "./time"
 
@@ -43,7 +44,9 @@ function useMockRecord(slug: string): RecordState {
     const pot = W.potView(world, slug, me, now)
     if (!pot) return { state: "not_found" }
     const reqs = pot.feed.flatMap((f) => (f.kind === "request" ? [f.request] : []))
-    return { state: "ready", slug, potName: pot.name, emoji: pot.emoji, cover: pot.cover, rows: rowsFromRequests(reqs), member: !!pot.me }
+    const member = !!pot.me
+    const rows = rowsFromRequests(reqs)
+    return { state: "ready", slug, potName: pot.name, emoji: pot.emoji, cover: pot.cover, rows: member ? rows : rows.map((r) => visitorRow(r, nameFromAccount)), member }
   }, [world, me, now, slug])
 }
 

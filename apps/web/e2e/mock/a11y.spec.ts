@@ -111,7 +111,7 @@ test.describe("VoiceOver-style order", () => {
     await expect(h1).toHaveText("Maya invited you to Porto Weekend")
     const order = await readingOrder(page, "main", [
       "Maya invited you to Porto Weekend",
-      "Maya and Sam are in",
+      "Maya and 1 other are in",
       "In the Pot",
       "$300 of $450 collected",
       "No one can take money out alone.",

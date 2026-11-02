@@ -44,6 +44,7 @@ import {
 } from "./assets"
 import { quoteBody, type OneClickClient, type QuoteResponse } from "./client"
 import { jitterFor, shortenedDeadline, simAmountOut, simProfile, simStatus, type SimScenario, type SimState } from "./sim"
+import { errText } from "../../util/errtext"
 
 export interface OneClickDeps {
   db: Db
@@ -583,7 +584,7 @@ export async function deliver(deps: OneClickDeps, id: string): Promise<void> {
   } catch (e) {
     // nothing (or a failed transfer) reached the member: free the lock so the next poll retries
     await db.delete(relayLog).where(eq(relayLog.id, rowId)).catch(() => undefined)
-    await logError({ route: "oneclick.deliver", reason: "sim_delivery", detail: { id, err: String(e).slice(0, 300) } })
+    await logError({ route: "oneclick.deliver", reason: "sim_delivery", detail: { id, err: errText(e, 300) } })
   }
 }
 

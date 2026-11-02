@@ -2,16 +2,17 @@
 //  - mock data source: the fixture world;
 //  - testnet (F-13): @pot/sdk views on the server (hub.get_pot, get_members, get_invite, usdc.ft_balance_of(dao))
 //    plus display names from our DB. The `?i=` invite key is checked against the hub's invite record.
-// Rev 4 privacy (M-7): names and avatars only when `?i=` resolves to an active invite.
+// Privacy (rev4 M-7; audit 2026-11-02, notes/backend.md): what's shared with people who have the invite link is the
+// Pot's name, cover, balance/goal and member count (all public on the ledger) plus the inviter's chosen name, and
+// that name only when `?i=` resolves to an active invite. Never another member's name or picture, notes, comments,
+// receipts or emails: the other seats are plain circles in their join colour.
 import "server-only"
 import { invitePkFromParam, type MemberView } from "@pot/sdk"
 import { IS_LIVE } from "@/lib/client/config"
 import { seedWorld, potView, initialsOf } from "@/lib/client/mock/world"
-import type { PersonVM } from "@/lib/client/mock/types"
 import { coverOf, DEFAULT_GOAL_EACH, nameFromAccount } from "@/lib/client/live/vm"
 import { t } from "@/i18n/t"
-import { displayNames, displayProfiles, serverChain, serverSdkConfig } from "@/app/_lib/chain"
-import type { AvatarId } from "@/lib/avatars"
+import { displayNames, serverChain, serverSdkConfig } from "@/app/_lib/chain"
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/
 
@@ -28,11 +29,22 @@ export interface InvitePreview {
   goalEach: string | null
   instantCap: string
   memberCount: number
-  /** only with an active ?i= */
-  members: PersonVM[] | null
+  /** only with an active ?i=: one seat per member in join order; the inviter's carries their initials, every other
+   *  seat is a plain circle in its join colour (no one else's name or picture) */
+  seats: InviteSeat[] | null
+  /** the inviter's chosen name, only with an active ?i= */
   inviter: string | null
+  /** the inviter is one of the members (the line reads "Maya and 2 others are in") */
+  inviterIsMember: boolean
   inviteState: "active" | "expired" | "used" | "replaced" | "none"
   expiresAt: number | null
+}
+
+export interface InviteSeat {
+  key: string
+  /** the inviter's initials; "" for everyone else */
+  initials: string
+  joinIndex: number
 }
 
 function parsePk(param: string | null): string | null {
@@ -74,8 +86,13 @@ function mockPreview(slug: string, invitePk: string | null, now: number): Invite
     goalEach: pot.goalEach?.toString() ?? null,
     instantCap: pot.rules.instantCap.toString(),
     memberCount: pot.members.length,
-    members: active ? pot.members.map((m) => m.person).sort((a, b) => (a.joinIndex ?? 0) - (b.joinIndex ?? 0)) : null,
+    seats: active
+      ? pot.members
+          .map((m) => ({ key: m.person.id, initials: m.person.id === pot.invite!.createdBy.id ? m.person.initials : "", joinIndex: m.person.joinIndex ?? 0 }))
+          .sort((a, b) => a.joinIndex - b.joinIndex)
+      : null,
     inviter: active ? pot.invite.createdBy.name : null,
+    inviterIsMember: active && pot.members.some((m) => m.person.id === pot.invite!.createdBy.id),
     inviteState,
     expiresAt: active ? pot.invite.expiresAt : null,
   }
@@ -106,8 +123,9 @@ async function livePreview(slug: string, invitePk: string | null, now: number): 
     })(),
   ])
   const active = invite.state === "active"
-  const profiles = active ? await displayProfiles([...members.map((m) => m.account as string), ...(invite.view ? [invite.view.createdBy as string] : [])]) : new Map<string, { name: string; avatar: AvatarId | null }>()
-  const nameOf = (a: string) => profiles.get(a)?.name ?? nameFromAccount(a) ?? t("person.fallback")
+  // the inviter's chosen name only (never the other members')
+  const inviterAccount = active && invite.view ? (invite.view.createdBy as string) : null
+  const inviterName = inviterAccount ? ((await displayNames([inviterAccount])).get(inviterAccount) ?? nameFromAccount(inviterAccount) ?? t("person.fallback")) : null
   // the "$X each" goal is off-chain (the creator's device); a visitor sees Create's suggested $150, like members do
   // (live/queries goalEachOf). It no longer depends on a preset: every new Pot is "custom" with its own rules.
   const goalEach = DEFAULT_GOAL_EACH
@@ -123,29 +141,29 @@ async function livePreview(slug: string, invitePk: string | null, now: number): 
     goalEach: goalEach?.toString() ?? null,
     instantCap: pot.rules.instantCap.toString(),
     memberCount: pot.memberCount,
-    members: active
+    seats: active
       ? members
           .sort((a, b) => a.joinIndex - b.joinIndex)
-          .map((m) => {
-            const name = nameOf(m.account)
-            return { id: m.account, name, initials: initialsOf(name) || "•", joinIndex: m.joinIndex, avatar: profiles.get(m.account)?.avatar ?? null }
-          })
+          .map((m) => ({ key: m.account as string, initials: m.account === inviterAccount && inviterName ? initialsOf(inviterName) || "•" : "", joinIndex: m.joinIndex }))
       : null,
-    inviter: active && invite.view ? nameOf(invite.view.createdBy) : null,
+    inviter: inviterName,
+    inviterIsMember: !!inviterAccount && members.some((m) => m.account === inviterAccount),
     inviteState: invite.state,
     expiresAt: active && invite.view ? invite.view.expiresAtMs : null,
   }
 }
 
-/** What the link-preview image may show (F-24; review-security M-7 rev4): no balance, initials only, never names. */
+/** What the link-preview image may show (F-24; review-security M-7 rev4; audit 2026-11-02): only what the public
+ *  ledger says (name, emoji, count, join order). No balance, and no names or initials: anyone who knows the slug can
+ *  fetch the image, with or without an invite. */
 export interface OgPreview {
   name: string
   emoji: string
   cover: number
   status: "open" | "closing" | "closed"
   memberCount: number
-  /** join order */
-  members: { initials: string; joinIndex: number }[]
+  /** join order (plain seats in their colour) */
+  members: { joinIndex: number }[]
 }
 
 export async function getOgPreview(slug: string, now: number = Date.now()): Promise<OgPreview | null> {
@@ -159,9 +177,7 @@ export async function getOgPreview(slug: string, now: number = Date.now()): Prom
       cover: pot.cover,
       status: pot.status,
       memberCount: pot.members.length,
-      members: pot.members
-        .map((m) => ({ initials: m.person.initials, joinIndex: m.person.joinIndex ?? 0 }))
-        .sort((a, b) => a.joinIndex - b.joinIndex),
+      members: pot.members.map((m) => ({ joinIndex: m.person.joinIndex ?? 0 })).sort((a, b) => a.joinIndex - b.joinIndex),
     }
   }
   const c = serverChain()
@@ -172,16 +188,12 @@ export async function getOgPreview(slug: string, now: number = Date.now()): Prom
     .getMembers(dao as never)
     .then((v) => v.value.filter((m: MemberView) => m.status === "active").sort((a, b) => a.joinIndex - b.joinIndex))
     .catch(() => [] as MemberView[])
-  const names = await displayNames(members.map((m) => m.account as string))
   return {
     name: pot.name,
     emoji: pot.emoji ?? "",
     cover: coverOf(slug),
     status: pot.status,
     memberCount: pot.memberCount,
-    members: members.map((m) => ({
-      initials: initialsOf(names.get(m.account) ?? nameFromAccount(m.account) ?? "") || "•",
-      joinIndex: m.joinIndex,
-    })),
+    members: members.map((m) => ({ joinIndex: m.joinIndex })),
   }
 }

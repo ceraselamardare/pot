@@ -47,6 +47,24 @@ export function recordStatusOf(r: Pick<RequestVM, "status">): RecordStatus {
 }
 
 /** A member's view: the Pot's requests (both data sources produce RequestVMs), oldest first. */
+/**
+ * What a visitor (not in the Pot) sees of a row, the live record's twin (privacy audit 2026-11-02): no notes (the
+ * reason chip's word), no chosen names or pictures (the account's own first name, else "A friend"; initials only).
+ * `nameOf` turns an account into its public first name (live/vm nameFromAccount).
+ */
+export function visitorRow(r: RecordRow, nameOf: (account: string) => string | null): RecordRow {
+  const pub = (p: PersonVM): PersonVM => {
+    const name = nameOf(p.id) ?? t("person.fallback")
+    const initials = name
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase())
+      .join("")
+      .slice(0, 2)
+    return { id: p.id, name, initials: initials || "•", joinIndex: p.joinIndex, avatar: null }
+  }
+  return { ...r, person: pub(r.person), payee: r.payee ? pub(r.payee) : null, okBy: r.okBy ? pub(r.okBy) : null, reason: word(r.category) }
+}
+
 export function rowsFromRequests(reqs: readonly RequestVM[]): RecordRow[] {
   return [...reqs]
     .sort((a, b) => a.createdAt - b.createdAt || a.id - b.id)

@@ -10,6 +10,7 @@ import { createSubmitter, type Submitter } from "./chain/submitter"
 import { getConfig } from "./config"
 import { getPushSender } from "./notify/webpush"
 import type { RelayDeps } from "./relay/pipeline"
+import { errText } from "./util/errtext"
 
 let rpc: RpcClient | undefined
 let hub: HubReader | undefined
@@ -21,6 +22,11 @@ export function getRpc(): RpcClient {
 
 export function getHub(): HubReader {
   return (hub ??= createHubReader(getRpc(), getConfig().hubId))
+}
+
+/** Route-level tests only: the hub reader the routes use (a FakeChain-backed one); undefined resets it. */
+export function setHubForTests(next: HubReader | undefined): void {
+  hub = next
 }
 
 export function getSubmitter(): Submitter {
@@ -38,7 +44,7 @@ export function defer(fn: () => Promise<void>): void {
     try {
       await fn()
     } catch (e) {
-      console.error(JSON.stringify({ level: "error", where: "after", err: String(e).slice(0, 300) }))
+      console.error(JSON.stringify({ level: "error", where: "after", err: errText(e, 300) }))
     }
   })
 }

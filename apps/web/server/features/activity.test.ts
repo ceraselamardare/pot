@@ -10,10 +10,13 @@ import { setDbForTests } from "@/db/client"
 import { appUser, feedEvent, pot, relayLog } from "@/db/schema"
 import { createTestDb, type TestDb } from "@/db/testing"
 import type { ActivityApiItem } from "@/lib/activity-api"
+import { createHubReader, type HubReader } from "../chain/hub"
 import type { Config } from "../config"
+import { setHubForTests } from "../deps"
 import { createSession, loadSession, type SessionCtx } from "../session/store"
 import { HUB } from "../testing/delegates"
-import { insertUser, testConfig } from "../testing/env"
+import { insertUser, seedChain, testConfig } from "../testing/env"
+import { FakeChain } from "../testing/fakeChain"
 import { getMyActivity } from "./activity"
 
 const MAYA = "maya.users.potapp.testnet"
@@ -24,6 +27,9 @@ const TX = (n: number) => `${"9".repeat(40)}${String(n).padStart(4, "A")}`
 
 let t: TestDb
 let cfg: Config
+// who is in each Pot now (hub.get_members): names in `profiles` only for Pots the reader is still in
+let membersOf: Record<string, string[]>
+let hub: HubReader
 beforeAll(async () => {
   t = await createTestDb("activity")
   setDbForTests(t.db)
@@ -35,6 +41,10 @@ afterAll(async () => {
 beforeEach(async () => {
   await t.truncate()
   cfg = testConfig()
+  membersOf = { [LISBON]: [MAYA, SAM], [PORTO]: [MAYA] }
+  const chain = seedChain(new FakeChain())
+  chain.view(HUB, "get_members", (a) => (membersOf[a.pot as string] ?? []).map((account_id) => ({ account_id, status: "active", contributed: "0" })))
+  hub = createHubReader(chain, HUB)
 })
 
 async function sessionFor(account: string, name: string): Promise<{ s: SessionCtx; cookie: string }> {
@@ -111,7 +121,7 @@ describe("GET /api/me/activity", () => {
     const maya = await sessionFor(MAYA, "Maya")
     const sam = await sessionFor(SAM, "Sam")
     await seed(maya.s.user.id, sam.s.user.id)
-    const r = await getMyActivity({ db: t.db }, maya.s, {})
+    const r = await getMyActivity({ db: t.db, hub }, maya.s, {})
     expect(summary(r.body.items)).toEqual([
       "rules_changed:porto-weekend",
       "rules_asked:porto-weekend",
@@ -138,7 +148,7 @@ describe("GET /api/me/activity", () => {
     expect(r.body.nextCursor).toBeUndefined()
 
     // Sam sees only his own: joined, added, asked, the close he asked for, his decline, his refund
-    const rs = await getMyActivity({ db: t.db }, sam.s, {})
+    const rs = await getMyActivity({ db: t.db, hub }, sam.s, {})
     expect(summary(rs.body.items)).toEqual([
       "refund:lisbon-trip:33000000",
       "close_asked:lisbon-trip",
@@ -155,11 +165,11 @@ describe("GET /api/me/activity", () => {
     await seed(maya.s.user.id, sam.s.user.id)
     // a vote at the same instant as a feed row (ties break feed first, then id)
     await t.db.insert(relayLog).values(vote(maya.s.user.id, PORTO, 9, "VoteApprove", 21, 6))
-    const all = (await getMyActivity({ db: t.db }, maya.s, { limit: 100 })).body.items.map((i) => i.key)
+    const all = (await getMyActivity({ db: t.db, hub }, maya.s, { limit: 100 })).body.items.map((i) => i.key)
     const seen: string[] = []
     let before: string | undefined
     for (let pages = 0; pages < 20; pages++) {
-      const r = await getMyActivity({ db: t.db }, maya.s, { limit: 3, before })
+      const r = await getMyActivity({ db: t.db, hub }, maya.s, { limit: 3, before })
       seen.push(...r.body.items.map((i) => i.key))
       before = r.body.nextCursor
       if (!before) break
@@ -167,10 +177,30 @@ describe("GET /api/me/activity", () => {
     expect(seen).toEqual(all)
     expect(new Set(seen).size).toBe(seen.length)
     expect(all).toContain(`voted:porto-weekend:9:${MAYA}`)
-    await expect(getMyActivity({ db: t.db }, maya.s, { before: "garbage" })).rejects.toMatchObject({ reason: "bad_request" })
+    await expect(getMyActivity({ db: t.db, hub }, maya.s, { before: "garbage" })).rejects.toMatchObject({ reason: "bad_request" })
+  })
+
+  it("other people's names only from Pots I'm still in: after leaving (or an unreadable member list) none", async () => {
+    const maya = await sessionFor(MAYA, "Maya")
+    const sam = await sessionFor(SAM, "Sam")
+    await seed(maya.s.user.id, sam.s.user.id)
+    // still in: Sam's name comes with the approvals
+    expect((await getMyActivity({ db: t.db, hub }, maya.s, {})).body.profiles).toEqual({ [SAM]: { name: "Sam" } })
+    // Maya is no longer in Lisbon: her own rows stay (public anyway), Sam's chosen name doesn't
+    membersOf[LISBON] = [SAM]
+    const left = await getMyActivity({ db: t.db, hub: createHubReader(seedChain(new FakeChain()).view(HUB, "get_members", (a) => (membersOf[a.pot as string] ?? []).map((account_id) => ({ account_id, status: "active" }))), HUB) }, maya.s, {})
+    expect(left.body.items.some((i) => i.kind === "voted" && i.about?.actor === SAM)).toBe(true)
+    expect(left.body.profiles).toEqual({})
+    expect(JSON.stringify(left.body)).not.toContain('"Sam"')
+    // joining isn't in yet; a hub that can't be read fails closed
+    const joining = createHubReader(seedChain(new FakeChain()).view(HUB, "get_members", () => [{ account_id: MAYA, status: "joining" }]), HUB)
+    expect((await getMyActivity({ db: t.db, hub: joining }, maya.s, {})).body.profiles).toEqual({})
+    const down = createHubReader(seedChain(new FakeChain()).view(HUB, "get_members", () => { throw new Error("rpc down") }), HUB)
+    expect((await getMyActivity({ db: t.db, hub: down }, maya.s, {})).body.profiles).toEqual({})
   })
 
   it("the route: no session → 401; a session → 200 private no-store; a bad limit → 400", async () => {
+    setHubForTests(hub)
     const { GET } = await import("@/app/api/me/activity/route")
     const anon = await GET(new Request("https://pot.test/api/me/activity"))
     expect(anon.status).toBe(401)
@@ -189,5 +219,6 @@ describe("GET /api/me/activity", () => {
     expect(((await next.json()) as { items: ActivityApiItem[] }).items.map((i) => i.amount)).toEqual(["50000000"])
 
     expect((await GET(new Request("https://pot.test/api/me/activity?limit=abc", { headers: { cookie: maya.cookie } }))).status).toBe(400)
+    setHubForTests(undefined)
   })
 })

@@ -87,9 +87,10 @@ test("scan a dollar receipt on step 1: filled in, announced, on to step 2 with a
   await sheet.getByRole("button", { name: "Done" }).click()
   await expect(page.getByRole("dialog")).toBeHidden()
   // the feed names the spend by its note (the merchant and day from the receipt)
-  const row = page.locator("[data-feed] li", { hasText: "Maya got $84.20 back for Pingo Doce · Oct 28" })
+  // (the compact row shows "Maya · Groceries"; its name carries the note)
+  const row = page.getByRole("button", { name: /^Maya got \$84\.20 back for Pingo Doce · Oct 28\. Approved instantly by Pot rules\./ })
   await expect(row).toBeVisible()
-  await expect(row).toContainText("Approved by Pot rules")
+  await expect(row.locator("[data-status='instant']")).toHaveText("Instant")
 })
 
 test("a euro receipt converts at the day's rate: '€42.50 ≈ $46.12 · rate 1.0852 from today'; the dollars stay editable", async ({ page }, info) => {

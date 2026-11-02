@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Pay by link components over the mock data source (the Surf Camp showcase): the Share card (the link with its
-// #secret, Copy → "Link copied", the QR replacing the card), feed rows ("waiting to be claimed", "Claimed by Alex",
-// "Returned to the Pot"), the Spend sheet's link fields (on / off), and the claim page island end to end (wrong
+// #secret, Copy → "Link copied", the QR replacing the card), feed rows ("Link sent", "Claimed", "Returned"; the
+// row's name "… Claimed by Alex", "… Returned to the Pot"), the Spend sheet's link fields (on / off), and the claim page island end to end (wrong
 // secret, ready → claimed into the guest's Pot dollars).
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
@@ -46,7 +46,7 @@ function Share() {
 }
 
 describe("the Share card", () => {
-  it("shows the link with its #secret, who it's for, the warnings; Copy → 'Link copied'; the QR replaces the card", async () => {
+  it("QR first: the QR carries the link with its #secret (never shown raw), who it's for, the warnings; Copy → 'Link copied'", async () => {
     const user = userEvent.setup()
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true })
@@ -56,15 +56,14 @@ describe("the Share card", () => {
     expect(screen.getByText("For Surf school")).toBeTruthy()
     expect(screen.getByText(/Anyone who has this link can take the money/)).toBeTruthy()
     expect(screen.getByText(/saved only on this device/)).toBeTruthy()
-    // Share is the marigold, Copy and QR are secondary
+    expect(screen.getByRole("img", { name: "QR code for the $30 payment link" })).toBeTruthy()
+    expect((link as HTMLElement).hidden).toBe(true)
+    expect(screen.queryByRole("button", { name: /QR code/ })).toBeNull()
+    // Share is the marigold, Copy is secondary
     expect(screen.getByRole("button", { name: "Share payment link" }).getAttribute("data-variant")).toBe("primary")
     await user.click(screen.getByRole("button", { name: "Copy link" }))
     expect(writeText).toHaveBeenCalledWith(link.getAttribute("data-paylink-url"))
     expect(await screen.findByRole("button", { name: "Link copied" })).toBeTruthy()
-    await user.click(screen.getByRole("button", { name: "Show QR code" }))
-    expect(screen.getByRole("img", { name: "QR code for the $30 payment link" })).toBeTruthy()
-    expect(document.querySelector("[data-paylink-url]")).toBeNull()
-    expect(screen.getByRole("button", { name: "Hide QR code" }).getAttribute("aria-pressed")).toBe("true")
   })
 })
 
@@ -78,11 +77,16 @@ describe("feed rows", () => {
       </ul>,
     )
     const rows = screen.getAllByRole("listitem")
-    expect(rows[0]!.textContent).toContain("Maya sent Surf school a $30 payment link for Surf lessons")
-    expect(rows[0]!.textContent).toContain("Link sent · waiting to be claimed")
+    // the row's name says it all; the row shows the short form ("Maya · Tickets" + "Link sent")
+    const [open, claimed, returned] = screen.getAllByRole("button")
+    expect(open!.getAttribute("aria-label")).toMatch(/^Maya sent Surf school a \$30 payment link for Surf lessons\. Link sent · waiting to be claimed/)
+    expect(rows[0]!.querySelector("[data-row-title]")!.textContent).toBe("Maya · Tickets")
+    expect(rows[0]!.querySelector("[data-status='link-ready']")!.textContent).toBe("Link sent")
     expect(rows[0]!.querySelector("[data-status='link-ready'] svg")).not.toBeNull()
-    expect(rows[1]!.textContent).toContain("Claimed by Alex")
-    expect(rows[2]!.textContent).toContain("Nobody took it in time · Returned to the Pot")
+    expect(claimed!.getAttribute("aria-label")).toContain("Claimed by Alex")
+    expect(rows[1]!.querySelector("[data-status='link-claimed']")!.textContent).toBe("Claimed")
+    expect(returned!.getAttribute("aria-label")).toContain("Nobody took it in time · Returned to the Pot")
+    expect(rows[2]!.querySelector("[data-status='link-returned']")!.textContent).toBe("Returned")
     // money back in the Pot: struck through, never "−"
     expect(rows[2]!.querySelector("[data-money]")!.className).toContain("line-through")
     expect(rows[0]!.querySelector("[data-money]")!.textContent).toContain("−")

@@ -10,7 +10,7 @@ test("(a) invite landing → join → You're in → add $150 → the balance upd
   await page.goto(PORTO_INVITE_URL)
   // the Pot before login (SSR)
   await expect(page.getByRole("heading", { level: 1, name: "Maya invited you to Porto Weekend" })).toBeVisible()
-  await expect(page.getByText("Maya and Sam are in")).toBeVisible()
+  await expect(page.getByText("Maya and 1 other are in")).toBeVisible() // the inviter by name, everyone else a count (privacy audit 2026-11-02)
   await expect(page.locator("[data-money]").first()).toHaveText("$300.00")
   await expect(page.getByText("$300 of $450 collected")).toBeVisible()
   await brandChecks(page, { marigold: "one" })
@@ -43,7 +43,7 @@ test("(a) invite landing → join → You're in → add $150 → the balance upd
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$450.00", { timeout: 10_000 })
   await expect(page.getByText("Added. Porto Weekend now has $450.00.")).toBeVisible()
   await expect(page.getByText("$450 of $450 collected")).toBeVisible()
-  await expect(page.getByText("Leo added $150").first()).toBeVisible()
+  await expect(page.getByRole("group", { name: /^Leo added \$150/ }).first()).toBeVisible()
 })
 
 test("(b) instant spend $84 → Checking Pot rules ≥ 1.2 s → the burst → feed shows Approved by Pot rules", async ({ page }, info) => {
@@ -90,9 +90,11 @@ test("(b) instant spend $84 → Checking Pot rules ≥ 1.2 s → the burst → f
 
   await sheet.getByRole("button", { name: "Done" }).click()
   await expect(page.getByRole("dialog")).toBeHidden()
-  const row = page.locator("[data-feed] li", { hasText: "Maya got $84 back for groceries" })
+  // the compact row: "Maya · Groceries" + the Instant chip; its name says the rest
+  const row = page.getByRole("button", { name: /^Maya got \$84 back for groceries\. Approved instantly by Pot rules\./ })
   await expect(row).toBeVisible()
-  await expect(row.getByText("Approved by Pot rules")).toBeVisible()
+  await expect(row.locator("[data-row-title]")).toHaveText("Maya · Groceries")
+  await expect(row.locator("[data-status='instant']")).toHaveText("Instant")
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$366.00")
 })
 
@@ -133,9 +135,9 @@ test("(c) $300 → needs 2 of 3 → switch to Leo → approve → executed", asy
   await approve.getByRole("button", { name: "Done" }).click()
 
   await page.goto("/p/lisbon-trip")
-  const row = page.locator("[data-feed] li", { hasText: "$300 sent to Maya for tickets" })
+  const row = page.getByRole("button", { name: /^\$300 sent to Maya for tickets\. Approved by Maya and Leo\./ })
   await expect(row).toBeVisible()
-  await expect(row.getByText("Approved by Maya and Leo")).toBeVisible()
+  await expect(row.locator("[data-status='approved']")).toHaveText("Approved")
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$150.00")
 })
 
@@ -188,13 +190,10 @@ test("(d) Create Pot → the share link", async ({ page, context, browserName })
   await share.getByRole("button", { name: "Copy link" }).click()
   await expect(share.getByRole("button", { name: "Link copied" })).toBeVisible()
   if (browserName === "chromium") expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(await link.textContent())
-  await share.getByRole("button", { name: "Show QR code" }).click()
+  // the QR is always the body; the raw link is never shown (Copy and Share carry it)
   await expect(share.getByRole("img", { name: "QR code for the invite link to Ski Weekend" })).toBeVisible()
-  // the QR replaces the body (no scrolling on a phone); hiding it brings the link back
   await expect(link).toBeHidden()
-  await share.getByRole("button", { name: "Hide QR code" }).click()
-  await expect(link).toBeVisible()
-  await expect(share.getByRole("img", { name: "QR code for the invite link to Ski Weekend" })).toBeHidden()
+  await expect(share.getByRole("button", { name: /QR code/ })).toHaveCount(0)
 
   // close: Back to the new Pot, where the creator's empty feed invites friends
   await share.getByRole("button", { name: "Close" }).click()

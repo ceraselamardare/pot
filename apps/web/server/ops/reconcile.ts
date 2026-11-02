@@ -24,6 +24,7 @@ import { checkBalances, checkGlobalCaps, type BalanceReport } from "./balances"
 import { refundUnfundedGoals, type GoalsReport } from "./goals"
 import { runRetention } from "./retention"
 import { reclaimExpiredLinks, type ReclaimReport } from "./links"
+import { errText } from "../util/errtext"
 
 export interface ReconcileReport {
   skipped?: "busy"
@@ -52,8 +53,8 @@ export async function runReconcile(
     try {
       return await fn()
     } catch (e) {
-      report.errors.push(`${name}: ${String(e).slice(0, 160)}`)
-      await logError({ route: "cron:reconcile", reason: `${name}_failed`, detail: { err: String(e).slice(0, 300) } })
+      report.errors.push(`${name}: ${errText(e, 160)}`)
+      await logError({ route: "cron:reconcile", reason: `${name}_failed`, detail: { err: errText(e, 300) } })
       return undefined
     }
   }

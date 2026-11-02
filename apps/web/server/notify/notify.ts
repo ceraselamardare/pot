@@ -15,6 +15,7 @@ import type { Config } from "../config"
 import { sendAlert } from "../alerts"
 import { buildPayload, topic, type NotificationType } from "./payload"
 import type { PushSender, PushOptions } from "./webpush"
+import { errText } from "../util/errtext"
 
 export interface NotifyDeps {
   db: Db
@@ -413,7 +414,7 @@ export async function notifyComment(
     try {
       out.push(await notify(deps, ev))
     } catch (e) {
-      console.error(JSON.stringify({ level: "error", where: "notify", event: "comment", err: String(e).slice(0, 200) }))
+      console.error(JSON.stringify({ level: "error", where: "notify", event: "comment", err: errText(e, 200) }))
     }
   }
   return out
@@ -528,7 +529,7 @@ export async function notifyFromEvents(deps: NotifyDeps, events: RawEvent[], txH
       }
       out.push(await notify(deps, ev))
     } catch (e) {
-      console.error(JSON.stringify({ level: "error", where: "notify", event: ev.type, err: String(e).slice(0, 200) }))
+      console.error(JSON.stringify({ level: "error", where: "notify", event: ev.type, err: errText(e, 200) }))
     }
   }
   return out

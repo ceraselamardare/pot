@@ -78,8 +78,14 @@ function InviteHero({ p }: { p: InvitePreview }) {
   const balance = BigInt(p.balance)
   const totalIn = BigInt(p.totalIn)
   const goal = p.goal ? BigInt(p.goal) : null
-  const names = p.members?.map((m) => m.name) ?? []
-  const namesText = names.length <= 1 ? (names[0] ?? "") : t("feed.and", { a: names.slice(0, -1).join(", "), b: names[names.length - 1]! })
+  // who's in: the inviter by name (with an active invite), everyone else as a count (privacy audit 2026-11-02)
+  const others = p.memberCount - 1
+  const inLine =
+    p.seats && p.inviter && p.inviterIsMember
+      ? others <= 0
+        ? t("landing.members.one", { name: p.inviter })
+        : t("landing.members.with", { name: p.inviter, n: others })
+      : t("landing.members.count", { n: p.memberCount })
   return (
     <div className="flex flex-col gap-5">
       <CoverTile emoji={p.emoji} cover={p.cover} size="banner" />
@@ -87,18 +93,14 @@ function InviteHero({ p }: { p: InvitePreview }) {
         {p.inviter ? t("landing.title", { inviter: p.inviter, potName: p.name }) : t("landing.title.fallback", { potName: p.name })}
       </h1>
       <div className="flex flex-col items-center gap-2">
-        <div aria-hidden className="flex items-center">
-          {p.members?.map((m, idx) => (
-            <Avatar key={m.id} person={m} size="sm" ring="ground" className={idx > 0 ? "-ml-2" : undefined} />
+        <div aria-hidden className="flex items-center" data-invite-seats>
+          {p.seats?.slice(0, 6).map((m, idx) => (
+            <Avatar key={m.key} person={{ name: "", initials: m.initials, joinIndex: m.joinIndex, avatar: null }} size="sm" ring="ground" className={idx > 0 ? "-ml-2" : undefined} />
           ))}
-          <span className="-ml-2 size-8 rounded-pill border-[1.5px] border-dashed border-line-strong bg-ground" />
+          <span className={`${p.seats?.length ? "-ml-2 " : ""}size-8 rounded-pill border-[1.5px] border-dashed border-line-strong bg-ground`} />
         </div>
-        <p className="text-body-sm text-ink-muted">
-          {p.members
-            ? names.length === 1
-              ? t("landing.members.one", { name: names[0]! })
-              : t("landing.members", { names: namesText })
-            : t("landing.members.count", { n: p.memberCount })}
+        <p className="text-body-sm text-ink-muted" data-invite-members>
+          {inLine}
         </p>
       </div>
 

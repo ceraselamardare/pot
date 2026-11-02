@@ -1,5 +1,6 @@
 // You → "Your Pot dollars" + "Your activity", a member's activity sheet (Members tab), the Add sheet's own Pot
-// dollars (Max / none), and the quiet "Receipt ↗" links (feed, history rows, result screens) and the Pot's
+// dollars (Max / none), and the quiet "Receipt ↗" links (money-in feed rows, history rows that open no details,
+// result screens; a spend's is in its details sheet) and the Pot's
 // "View on explorer ↗". Day, Night and desktop; axe 0 serious and the brand checks on each screen.
 // The mobile projects save notes/screens/you-{day,night}.png (balance + activity).
 import { fileURLToPath } from "node:url"
@@ -56,11 +57,13 @@ test("You: your Pot dollars and your activity across Pots, newest first, with re
   await expect(balance.locator("[data-money]")).toHaveText("$84.00")
   await expect(page.getByRole("link", { name: /Your Pot dollars \$84\.00$/ })).toBeVisible()
   const first = activity.locator("[data-activity-list] li").first()
-  await expect(first).toContainText("You got $84 back for groceries")
-  await expect(first).toContainText("Lisbon Trip · Instant ·")
-  await expect(first.locator("[data-status='approved']")).toHaveText("Approved")
+  // compact: "Groceries · Lisbon Trip" + the Instant chip; the row's name is the whole sentence
+  await expect(first.getByRole("link").first()).toHaveAccessibleName(/^You got \$84 back for groceries\. Approved instantly by Pot rules\. Lisbon Trip\./)
+  await expect(first.locator("[data-row-title]")).toHaveText("Groceries · Lisbon Trip")
+  await expect(first.locator("[data-status='instant']")).toHaveText("Instant")
   await expect(activity.getByRole("heading", { name: "Today" })).toBeVisible()
-  await expectReceipt(first.getByRole("link", { name: "Receipt for You got $84 back for groceries, opens the explorer" }))
+  // a spend's explorer receipt is in its details sheet, not on the row
+  await expect(first.locator("[data-receipt]")).toHaveCount(0)
   await brandChecks(page, { marigold: "at-most-one" })
   await axe(page)
   if (info.project.name !== "desktop") {
@@ -96,8 +99,9 @@ test("Members: tap a person → their activity in this Pot (a sheet in the URL),
   await expect(page).toHaveURL(/[?&]sheet=person&who=sam(&|$)/)
   const rows = sheet.locator("[data-activity-list] li")
   await expect(rows).toHaveCount(2)
-  await expect(rows.nth(0)).toContainText("Sam added $150")
-  await expect(rows.nth(1)).toContainText("Sam joined")
+  await expect(rows.nth(0).getByRole("group")).toHaveAccessibleName(/^Sam added \$150\./)
+  await expect(rows.nth(0).locator("[data-row-title]")).toHaveText("Added money")
+  await expect(rows.nth(1).getByRole("group")).toHaveAccessibleName(/^Sam joined\./)
   await expectReceipt(rows.nth(0).getByRole("link", { name: "Receipt for Sam added $150, opens the explorer" }))
   await brandChecks(page, { marigold: "none" })
   await axe(page)
@@ -113,7 +117,7 @@ test("Members: tap a person → their activity in this Pot (a sheet in the URL),
 test("Feed and Rules: quiet receipt links and the Pot on the explorer", async ({ page }) => {
   await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
-  const row = page.locator("[data-feed] li", { hasText: "Sam added $150" })
+  const row = page.locator("[data-feed] li").filter({ has: page.getByRole("group", { name: /^Sam added \$150/ }) })
   await expectReceipt(row.getByRole("link", { name: "Receipt for Sam added $150, opens the explorer" }))
   // quiet: ink-muted text, no marigold, no fill
   const look = await row.getByRole("link").evaluate((a) => ({ bg: getComputedStyle(a).backgroundColor, color: getComputedStyle(a).color }))
@@ -152,5 +156,5 @@ test("Add money: Pot dollars you already have (none → can't pick; some → Use
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$384.00") // landed (the op settles before we leave)
   await page.goto("/you")
   await expect(page.locator("[data-you-balance] [data-money]")).toHaveText("$0.00")
-  await expect(page.locator("[data-you-activity] [data-activity-list] li").first()).toContainText("You added $84")
+  await expect(page.locator("[data-you-activity] [data-activity-list] li").first().getByRole("link").first()).toHaveAccessibleName(/^You added \$84\./)
 })

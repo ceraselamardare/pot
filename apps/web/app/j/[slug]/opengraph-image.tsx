@@ -1,9 +1,10 @@
 // The per-invite link preview (F-24; design-direction 01 §1; frontend-architecture §2.5), 1200×630 in the
 // brand's look (brand/web/og-image.png): a marigold ground, the Pot's cover tile centred in the middle 630 px
 // square (chats crop to a square; at thumbnail size the tile is all that's left), the name in Gabarito 800 in
-// eggplant `on-brand` (8.9:1), initials-only avatars in member colours with "3 friends are in", and the
-// eggplant glyph + lowercase wordmark bottom left. Never a balance (platforms cache previews for days) and never
-// names (review-security M-7). Closed Pot: "Closed". Unknown slug or any error: the static brand image.
+// eggplant `on-brand` (8.9:1), plain seats in member colours with "3 friends are in", and the eggplant glyph +
+// lowercase wordmark bottom left. Never a balance (platforms cache previews for days) and never names or initials
+// (review-security M-7; privacy audit 2026-11-02: anyone who knows the slug can fetch this image, invite or not, so it
+// shows only what the public ledger says). Closed Pot: "Closed". Unknown slug or any error: the static brand image.
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { ImageResponse } from "next/og"
@@ -116,16 +117,9 @@ function Card({ p }: { p: OgPreview }) {
                   borderRadius: 28,
                   border: `4px solid ${C.surface}`,
                   background: C.member[m.joinIndex % 6],
-                  color: C.onBrand,
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 20,
-                  fontWeight: 600,
                 }}
-              >
-                {m.initials}
-              </div>
+              />
             ))}
           </div>
         )}

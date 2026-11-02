@@ -193,6 +193,7 @@ export interface Messages {
   "chip.declined": undefined
   "chip.expired": undefined
   "chip.failed": undefined
+  "chip.instant": undefined
   "chip.needs": undefined
   "chip.not_sent": undefined
   "chip.sending": undefined
@@ -1085,6 +1086,7 @@ export interface Messages {
   "landing.members": { names: string | number }
   "landing.members.count": { n: number }
   "landing.members.one": { name: string | number }
+  "landing.members.with": { name: string | number; n: number }
   "landing.more.email": undefined
   "landing.more.note": undefined
   "landing.more.passkey": undefined
@@ -1195,6 +1197,7 @@ export interface Messages {
   "paylink.chip.expired": undefined
   "paylink.chip.ready": undefined
   "paylink.chip.returned": undefined
+  "paylink.chip.sent": undefined
   "paylink.chip.void": undefined
   "paylink.chip.waiting": undefined
   "paylink.cta": { amount: string | number }
@@ -1310,6 +1313,28 @@ export interface Messages {
   "preview.vote.over_cap": { k: string | number; n: string | number; instantLimit: string | number }
   "preview.vote.over_cap.trust": { k: string | number; n: string | number; limit: string | number }
   "preview.vote.recipient": { k: string | number; n: string | number }
+  "privacy.done": undefined
+  "privacy.links": undefined
+  "privacy.members.activity": undefined
+  "privacy.members.comments": undefined
+  "privacy.members.heading": undefined
+  "privacy.members.links": undefined
+  "privacy.members.names": undefined
+  "privacy.members.notes": undefined
+  "privacy.members.receipts": undefined
+  "privacy.members.why": undefined
+  "privacy.menu": undefined
+  "privacy.menu.sub": undefined
+  "privacy.public.approvals": undefined
+  "privacy.public.heading": undefined
+  "privacy.public.kind": undefined
+  "privacy.public.members": undefined
+  "privacy.public.money": undefined
+  "privacy.public.receipt": undefined
+  "privacy.public.rules": undefined
+  "privacy.public.why": undefined
+  "privacy.record_link": undefined
+  "privacy.title": undefined
   "push.denied": undefined
   "push.error": undefined
   "push.example.app": undefined
@@ -1365,6 +1390,13 @@ export interface Messages {
   "record.receipt.attached": undefined
   "record.receipt.details": undefined
   "record.receipt.details.label": { what: string | number }
+  "record.share": undefined
+  "record.share.body": undefined
+  "record.share.cta": undefined
+  "record.share.message": { potName: string | number; link: string | number }
+  "record.share.qr.alt": { potName: string | number }
+  "record.share.qr.hint": undefined
+  "record.share.title": { potName: string | number }
   "record.status.cancelled": undefined
   "record.status.declined": undefined
   "record.status.expired": undefined
@@ -1401,6 +1433,32 @@ export interface Messages {
   "requests.section.waiting": undefined
   "requests.section.waiting.empty": undefined
   "requests.title": undefined
+  "row.a11y.instant": undefined
+  "row.activity.close_asked": undefined
+  "row.activity.created": undefined
+  "row.activity.joined": undefined
+  "row.activity.refund": undefined
+  "row.activity.rules_asked": undefined
+  "row.activity.rules_changed": undefined
+  "row.activity.voted.approve": { name: string | number; amount: string | number }
+  "row.activity.voted.approve.other": undefined
+  "row.activity.voted.close.approve": undefined
+  "row.activity.voted.close.reject": undefined
+  "row.activity.voted.reject": { name: string | number; amount: string | number }
+  "row.activity.voted.reject.other": undefined
+  "row.activity.voted.rules.approve": undefined
+  "row.activity.voted.rules.reject": undefined
+  "row.added": undefined
+  "row.reason.food": undefined
+  "row.reason.groceries": undefined
+  "row.reason.other": undefined
+  "row.reason.stay": undefined
+  "row.reason.tickets": undefined
+  "row.reason.transport": undefined
+  "row.status.declined": undefined
+  "row.status.one_ok": undefined
+  "row.status.waiting": { count: string | number; k: string | number }
+  "row.status.waiting_plain": undefined
   "rules.budget": { memberBudget: string | number }
   "rules.budget.used": { used: string | number }
   "rules.change.applied": undefined

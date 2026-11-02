@@ -2,23 +2,28 @@
 // The public Pot record (/p/<slug>/record; hub 1.1.0 get_record): every spend in one read-only page anyone with
 // the link can open (the "social" prompt), with an accountant-readable CSV of the same rows (the "realworld" one).
 // Each row: when, who asked, for what, how much, how it was approved (the Pot's rules / one OK by X / the group)
-// and where the money is (paid, waiting, returned…), with its receipt when known. A table from md up; a list of
-// cards on phones (no sideways scroll at 320 px). No marigold here: nothing to decide, only to read and share.
-import { ChevronLeft, Copy, Download, Link2 } from "lucide-react"
+// and where the money is (paid, waiting, returned…), with its receipt when known. A table from md up; on phones
+// compact cards (CompactRow's anatomy: avatar + reason badge, "Maya · groceries" and the amount, then the status
+// chip, how it was approved, the receipt mark and the date; the explorer link and "See details" on a third line
+// only when there is one), with no sideways scroll at 320 px. No marigold on the page: nothing to decide, only to read
+// and share ([Share] opens the QR-first RecordShareSheet, whose [Share link] is that sheet's one marigold).
+import { ChevronLeft, Download, Share2 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useState } from "react"
-import { toast } from "sonner"
 import { Bone, EmptyState } from "@/components/feedback/States"
 import { MoneyText } from "@/components/money/MoneyText"
 import { Avatar } from "@/components/pot/Avatar"
+import { LeadAvatar, REASON_ICON, ReceiptMark } from "@/components/pot/CompactRow"
 import { CoverTile } from "@/components/pot/CoverTile"
+import { RecordShareSheet } from "@/components/record/RecordShareSheet"
 import { RecordStatusChip } from "@/components/record/RecordStatusChip"
 import { ReceiptLink } from "@/components/receipt/ReceiptLink"
 import { ReceiptIndicator } from "@/components/receipt/ReceiptIndicator"
+import { PrivacySheet } from "@/components/sheets/PrivacySheet"
 import { Button } from "@/components/ui/button"
 import { pageTitle, t } from "@/i18n/t"
-import { explorerTxUrl } from "@/lib/client/explorer"
+import { explorerTxUrl, isTxHash } from "@/lib/client/explorer"
 import { formatUsd } from "@/lib/client/money"
 import { approvedWords, csvFileName, paidOut, recordCsv, rowSentence, type RecordRow } from "@/lib/client/record"
 import { useRecord } from "@/lib/client/record-data"
@@ -26,22 +31,27 @@ import { formatDate } from "@/lib/client/time"
 
 const Status = RecordStatusChip
 
+/** A member's "See details" (the spend's sheet on the Pot, with its receipt). */
+function SeeDetails({ row, slug }: { row: RecordRow; slug: string }) {
+  return (
+    <Link
+      href={`/p/${encodeURIComponent(slug)}?r=${row.id}`}
+      aria-label={t("record.receipt.details.label", { what: rowSentence(row) })}
+      className="inline-flex min-h-6 items-center rounded-sm text-link underline-offset-4 hover:underline"
+      data-record-receipt-details
+    >
+      {t("record.receipt.details")}
+    </Link>
+  )
+}
+
 /** "Receipt attached" for everyone; a member also gets "See details" (the spend's sheet on the Pot). */
 function ReceiptAttached({ row, slug, member }: { row: RecordRow; slug: string; member: boolean }) {
   if (!row.receipt) return null
   return (
     <span className="inline-flex flex-wrap items-center gap-x-2 text-body-sm text-ink-muted" data-record-receipt>
       <ReceiptIndicator />
-      {member && (
-        <Link
-          href={`/p/${encodeURIComponent(slug)}?r=${row.id}`}
-          aria-label={t("record.receipt.details.label", { what: rowSentence(row) })}
-          className="inline-flex min-h-6 items-center rounded-sm text-link underline-offset-4 hover:underline"
-          data-record-receipt-details
-        >
-          {t("record.receipt.details")}
-        </Link>
-      )}
+      {member && <SeeDetails row={row} slug={slug} />}
     </span>
   )
 }
@@ -61,7 +71,9 @@ function download(rows: RecordRow[], potName: string, slug: string) {
 export function RecordScreen() {
   const { slug } = useParams<{ slug: string }>()
   const r = useRecord(slug)
-  const [copied, setCopied] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  // "What's public?" (privacy audit 2026-11-02): the record is outside the shell, so it opens the sheet itself
+  const [privacyOpen, setPrivacyOpen] = useState(false)
   if (r.state === "loading")
     return (
       <main id="main" className="mx-auto w-full max-w-app px-4 pt-6 md:px-6" aria-busy="true">
@@ -77,15 +89,6 @@ export function RecordScreen() {
       </main>
     )
   const { rows, potName } = r
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href.split("#")[0]!)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2_000)
-    } catch {
-      toast(window.location.href)
-    }
-  }
   const newestFirst = [...rows].reverse()
   return (
     <>
@@ -111,9 +114,9 @@ export function RecordScreen() {
             <Download aria-hidden strokeWidth={2.25} />
             {t("record.csv")}
           </Button>
-          <Button variant="ghost" onClick={copy} data-record-copy>
-            {copied ? <Link2 aria-hidden strokeWidth={2.25} /> : <Copy aria-hidden strokeWidth={2.25} />}
-            {copied ? t("record.copied") : t("record.copy")}
+          <Button variant="ghost" onClick={() => setShareOpen(true)} data-record-share>
+            <Share2 aria-hidden strokeWidth={2.25} />
+            {t("record.share")}
           </Button>
           <p className="w-full text-body-sm text-ink-muted">{t("record.csv.hint")}</p>
         </div>
@@ -129,27 +132,33 @@ export function RecordScreen() {
             {/* phones: one card per spend */}
             <ul className="mt-3 flex flex-col gap-2 md:hidden" data-record-list>
               {newestFirst.map((row) => (
-                <li key={row.id} aria-label={rowSentence(row)} className="relative rounded-md bg-surface p-3" data-record-row={row.id}>
-                  <div className="flex items-start gap-3">
-                    <Avatar person={row.person} size="sm" ring="surface" className="mt-0.5" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-body text-ink">
-                        <span className="font-semibold">{row.person.name}</span> · {row.reason}
-                      </p>
-                      <p className="mt-0.5 text-body-sm text-ink-muted">
-                        {formatDate(row.at)} · {approvedWords(row)}
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <Status s={row.status} />
-                        <ReceiptLink txHash={row.txHash} what={rowSentence(row)} />
-                      </div>
+                <li key={row.id} aria-label={rowSentence(row)} className="flex items-center gap-3 rounded-md bg-surface px-3 py-2.5" data-record-row={row.id}>
+                  <LeadAvatar person={row.person} badge={REASON_ICON[row.category] ?? REASON_ICON.other} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <p className="flex min-w-0 items-baseline gap-3">
+                      <span className="min-w-0 flex-1 truncate text-body text-ink">
+                        <span className="font-semibold">{row.person.name}</span>
+                        <span aria-hidden> · </span>
+                        {row.reason}
+                      </span>
+                      <MoneyText micro={row.amount} className="shrink-0 text-ink" />
+                    </p>
+                    <div className="flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-ink-muted">
+                      <Status s={row.status} size="sm" />
+                      {row.approvedBy && <span className="truncate">{approvedWords(row)}</span>}
                       {row.receipt && (
-                        <div className="mt-1.5">
-                          <ReceiptAttached row={row} slug={r.slug} member={r.member} />
-                        </div>
+                        <span className="inline-flex" data-record-receipt>
+                          <ReceiptMark />
+                        </span>
                       )}
+                      <span className="ml-auto whitespace-nowrap tabular-nums">{formatDate(row.at)}</span>
                     </div>
-                    <MoneyText micro={row.amount} className="shrink-0 pt-0.5 text-ink" />
+                    {(isTxHash(row.txHash) || (row.receipt && r.member)) && (
+                      <div className="flex flex-wrap items-center gap-x-3 text-body-sm">
+                        <ReceiptLink txHash={row.txHash} what={rowSentence(row)} />
+                        {row.receipt && r.member && <SeeDetails row={row} slug={r.slug} />}
+                      </div>
+                    )}
                   </div>
                 </li>
               ))}
@@ -198,7 +207,20 @@ export function RecordScreen() {
             </div>
           </>
         )}
+
+        <footer className="mt-8 border-t border-line pt-3 text-center">
+          <button
+            type="button"
+            onClick={() => setPrivacyOpen(true)}
+            className="min-h-11 rounded-sm px-2 text-body-sm text-ink-muted underline underline-offset-4 hover:text-ink"
+            data-record-privacy
+          >
+            {t("privacy.record_link")}
+          </button>
+        </footer>
       </main>
+      <PrivacySheet open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+      <RecordShareSheet open={shareOpen} onClose={() => setShareOpen(false)} potName={potName} />
     </>
   )
 }

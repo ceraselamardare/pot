@@ -22,6 +22,7 @@ import { applyHubEvents } from "../relay/effects"
 import { blockTimes, type RelayDeps } from "../relay/pipeline"
 import { TGAS } from "../relay/policy"
 import { newRelayId } from "../util/crypto"
+import { errText } from "../util/errtext"
 
 /** get_goal as the hub returns it (sdk RawGoalView, the fields this step reads). */
 export interface GoalRow {
@@ -153,7 +154,7 @@ export async function serverRefundUnfunded(deps: RelayDeps, dao: string, phase: 
     return failed ? "failed" : "done"
   } catch (e) {
     await db.update(relayLog).set({ status: "failed", reason: "internal", finishedAt: new Date() }).where(eq(relayLog.id, id))
-    await logError({ route: "cron:goals", relayId: id, reason: "refund_unfunded_failed", detail: { err: String(e).slice(0, 300) } })
+    await logError({ route: "cron:goals", relayId: id, reason: "refund_unfunded_failed", detail: { err: errText(e, 300) } })
     return "failed"
   }
 }

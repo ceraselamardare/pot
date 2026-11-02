@@ -37,6 +37,8 @@ export interface ActivityItemVM {
   status?: ActivityStatus
   /** asked: the note, else the category word */
   reason?: string
+  /** asked: the reason's category (the row's badge and "Groceries" title) */
+  category?: Category
   vote?: Vote
   about?: { type: "spend" | "close" | "rules" | "other"; name?: string; amount?: Micro }
   requestId?: number
@@ -49,8 +51,9 @@ export interface ActivityItemVM {
   hasReceipt?: boolean
 }
 
-const word = (category: string | undefined, note?: string) =>
-  note?.trim() || t(`spend.reason.word.${(["groceries", "food", "transport", "stay", "tickets", "other"].includes(category ?? "") ? category : "other") as Category}`)
+const CATEGORIES: readonly string[] = ["groceries", "food", "transport", "stay", "tickets", "other"]
+const categoryOf = (category: string | undefined): Category => (CATEGORIES.includes(category ?? "") ? category : "other") as Category
+const word = (category: string | undefined, note?: string) => note?.trim() || t(`spend.reason.word.${categoryOf(category)}`)
 
 /** A request's status as a chip. */
 export function requestChip(status: RequestVM["status"]): ActivityStatus {
@@ -115,6 +118,7 @@ export function activityOfPerson(pot: PotVM, personId: string): ActivityItemVM[]
             path: r.path,
             status: requestChip(r.status),
             reason: word(r.category, r.note),
+            category: r.category,
             requestId: r.id,
             ...(r.proposalId != null ? { proposalId: r.proposalId } : {}),
             txHash: r.txHash,
@@ -193,7 +197,7 @@ export function activityFromApi(items: readonly ActivityApiItem[], me: { id: str
       ...(i.amount ? { amount: BigInt(i.amount) } : {}),
       ...(i.path ? { path: i.path } : {}),
       ...(status ? { status } : {}),
-      ...(i.kind === "asked" ? { reason: word(i.category) } : {}),
+      ...(i.kind === "asked" ? { reason: word(i.category), category: categoryOf(i.category) } : {}),
       ...(i.vote ? { vote: i.vote } : {}),
       ...(i.about ? { about: { type: i.about.type, ...(aboutName ? { name: aboutName } : {}), ...(i.about.amount ? { amount: BigInt(i.about.amount) } : {}) } } : {}),
       ...(i.requestId !== undefined ? { requestId: i.requestId } : i.about?.requestId !== undefined ? { requestId: i.about.requestId } : {}),
@@ -272,6 +276,52 @@ export function activityText(i: ActivityItemVM, meId: string | null): string {
       return yes ? t("activity.voted.approve.other", { who }) : t("activity.voted.reject.other", { who })
     }
   }
+}
+
+/** A list row's line 1 when the list is one person's (who is the heading): "Approved Maya's $300", "Added money". */
+export function activityTitle(i: ActivityItemVM): string {
+  switch (i.kind) {
+    case "created":
+      return t("row.activity.created")
+    case "joined":
+      return t("row.activity.joined")
+    case "added":
+      return t("row.added")
+    case "asked":
+      // the reason's category ("Groceries"); "Other" gives way to the note
+      if (i.category && i.category !== "other") return t(`row.reason.${i.category}`)
+      return i.reason && i.reason !== t("spend.reason.word.other") ? i.reason : t("row.reason.other")
+    case "refund":
+      return t("row.activity.refund")
+    case "rules_asked":
+      return t("row.activity.rules_asked")
+    case "rules_changed":
+      return t("row.activity.rules_changed")
+    case "close_asked":
+      return t("row.activity.close_asked")
+    case "voted": {
+      const yes = i.vote !== "Reject"
+      const a = i.about
+      if (a?.type === "close") return t(yes ? "row.activity.voted.close.approve" : "row.activity.voted.close.reject")
+      if (a?.type === "rules") return t(yes ? "row.activity.voted.rules.approve" : "row.activity.voted.rules.reject")
+      if (a?.type === "spend" && a.name && a.amount !== undefined) {
+        const vars = { name: a.name, amount: formatUsd(a.amount, "whole") }
+        return yes ? t("row.activity.voted.approve", vars) : t("row.activity.voted.reject", vars)
+      }
+      return t(yes ? "row.activity.voted.approve.other" : "row.activity.voted.reject.other")
+    }
+  }
+}
+
+/** The chip a list row shows (the title already says what a vote, an add or a refund was). */
+export function rowChip(i: ActivityItemVM): { status: ActivityStatus | "instant"; word?: string } | null {
+  if (!i.status) return null
+  if (i.kind === "added" || i.kind === "refund" || i.kind === "voted" || i.kind === "joined" || i.kind === "created") return null
+  if (i.kind === "asked" && i.link) return { status: i.status, word: t(i.link === "waiting" ? "row.status.waiting_plain" : i.link === "ready" ? "paylink.chip.sent" : (`paylink.chip.${i.link}` as "paylink.chip.ready")) }
+  if (i.kind === "asked" && i.status === "approved" && i.path === "instant") return { status: "instant" }
+  if (i.status === "declined") return { status: "declined", word: t("row.status.declined") }
+  if (i.status === "needs") return { status: "needs", word: t("row.status.waiting_plain") }
+  return { status: i.status }
 }
 
 /** The chip's word, when it isn't the status's default. */

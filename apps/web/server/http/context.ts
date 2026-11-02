@@ -9,6 +9,7 @@ import { logError } from "../log"
 import { hmacSecret } from "../secrets"
 import { hmacHex, newRequestId } from "../util/crypto"
 import { ApiError, errBody } from "./errors"
+import { errText } from "../util/errtext"
 
 export const MAX_BODY = 16 * 1024
 
@@ -136,9 +137,9 @@ export function route<P extends object = object>(
       // headers (/api/health) as a static 500 (wave 2)
       unstable_rethrow(e)
       if (e instanceof ApiError) return ctx.error(e)
-      console.error(JSON.stringify({ level: "error", requestId: ctx.requestId, route: name, err: String(e).slice(0, 500) }))
+      console.error(JSON.stringify({ level: "error", requestId: ctx.requestId, route: name, err: errText(e, 500) }))
       if (onInternal) await onInternal(ctx, e).catch(() => undefined)
-      else await logError({ route: name, requestId: ctx.requestId, reason: "internal", detail: { err: String(e).slice(0, 300) } })
+      else await logError({ route: name, requestId: ctx.requestId, reason: "internal", detail: { err: errText(e, 300) } })
       return ctx.error(new ApiError("internal"))
     }
   }

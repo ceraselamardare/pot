@@ -531,3 +531,97 @@ The tail is the per-persona queue (10 sessions share 3 personas; a persona signs
 - **Needs a testnet run (human OK):** `e2e/testnet/spend-details.testnet.ts` (written, not run; header has the command:
   private DB with 0004, `NEAR_AI_RECEIPTS_MODE=mock`). Apply **0004** to the local `pot` DB (and preview/prod Neon) before
   deploying this web build.
+
+---
+
+# Privacy audit 2026-11-02
+
+**Rule:** anything that is not on the public ledger is visible to that Pot's **active members only**. On-ledger data
+(amounts, times, member accounts, rules, the Pot's name and emoji, the spend's category, votes, request refs) is public
+anyway. Membership is checked **on the server** on every call with `isMember` / `hub.get_members` (status `active`;
+`joining` isn't in yet). There is no "leave" method in hub 1.1.0, so "left" means "no longer in `get_members`". The
+hub reader caches `get_members` for 10 s per instance, so someone who leaves loses access within about 10 s. Every
+failure to read the members fails closed: the reader is treated as not a member, or gets no names.
+
+## What exists and who reads it
+
+| Off-chain datum (table) | Where it's exposed | Who could read it before | Who reads it now |
+|---|---|---|---|
+| Display names (`app_user.display_name`) | feed `profiles` | members | members |
+| | comments `profiles` | members | members |
+| | `/api/me/activity` `profiles` | **the person, for every Pot they were ever in** | **the person, only for Pots they're still in** (fixed) |
+| | `/j` invite landing | **link holders with an active `?i=`: every member's name and picture** | **link holders with an active `?i=`: the inviter's name only** (fixed) |
+| | `/j` OG image | **anyone with the slug: initials of every member's chosen name** | **anyone: plain seats in join colours, no initials** (fixed) |
+| | `/c` claim page, its OG image and metadata | anyone with the link's address: the requester's name while the link is open (`redact` hides it after) | unchanged (kept; see the open questions) |
+| | push bodies | active members (recipients come from fresh `get_members`); the requester, payees at close | unchanged |
+| | own session (`GET /api/session`, `pot_hint` cookie) | the person | the person |
+| Chosen avatars (`app_user.avatar`) | feed / comments `profiles` | members | members |
+| | `/j` landing | **active-invite holders** | nobody outside the Pot (fixed) |
+| | mock `/p/<slug>/record` | **visitors (mock only)** | members (fixed: `visitorRow`) |
+| Emails (`app_user.email`) | `emailHint` (masked) in your own session only | the person | the person (never in any Pot response; asserted by the tests) |
+| Spend notes (`note` memo) | feed `memos` → the Pot, record, details sheet | members | members |
+| | mock record | **visitors (mock only)** | members (fixed) |
+| Decline reasons (`note` decline_reason) | feed `declineReasons` | members | members |
+| Payment-link labels (`note` link_label) | feed `linkLabels` | members | members (never on `/c`) |
+| Who claimed a link (display name) | feed `linkClaimers`, `link_claimed` push to the requester | members | members (decision below) |
+| Comments (`request_comment`) | `GET/POST/DELETE …/comments` | members (403 before any read) | members; someone who left can't read, post or remove even their own old comment |
+| | feed `commentCounts` | members | members |
+| Saved receipts (`spend_receipt`: merchant, items, proof) | `GET/POST …/receipt` | members (403 before the row is looked up, so the same answer whether or not one exists) | members |
+| | feed `receipts` (ids with saved details) | anyone | anyone (decision below) |
+| Receipt photo | never stored (D-61) | – | – |
+| Activity history (`feed_event` + `relay_log` votes) | `/api/me/activity` | the person (their own rows) | the person; other people's names gated as above |
+| Push subscriptions | `POST/DELETE /api/push/subscription` | the owner | the owner |
+| Relay outcomes, 1Click deposits | `GET /api/relay/[id]`, `/api/oneclick/status*` | the owner (`user_id`) | the owner |
+| Invite secret (`#secret`) | never sent to the server; `invite_meta` holds only the public key | – | – |
+| Goal "$X each" | the creator's device; the landing shows the default $150 | – | – |
+| Error responses | `not_a_member` 403 / `not_signed_in` 401 / `pot_unknown` 404 | – | Pot existence and request ids are public, so a 403 only reveals public facts. **`POST /api/devices` returned the raw internal error text** (now `internal` with no message, logged instead; fixed) |
+| Server logs (`console.error`, `error_log`, 14 days) | `route()`, after(), feed extras, notify, ops, cron | **values of a failed query: drizzle's `DrizzleQueryError` message carries `params:` (comment text, notes, receipt JSON, names, emails)** | SQL + cause only, values dropped (`server/util/errtext.ts` `errText` at every log site; fixed) |
+
+## Decisions
+- **The public record keeps "Receipt attached" for visitors** (feed `receipts`). This is an existence bit only, and
+  the request's 32-character `request_ref` (its fingerprint) already says as much on the ledger. The details are
+  members-only (`GET …/receipt`). Visitors on the record get chain-derived rows only: names from the account
+  (`nameFromAccount`, else "A friend"), initials, the category word. The mock record now matches (`visitorRow` in
+  `lib/client/record.ts`, used by `useMockRecord` for non-members).
+- **Invite landing (`/j/<slug>?i=…`), "shared with people who have the invite link":** the Pot's name, emoji/cover,
+  balance and goal, member count, the rules peek, and the **inviter's** chosen name and initials (active invite
+  only). The other members appear as plain seats in their join colours, and the line reads "Maya and 2 others are
+  in" (`landing.members.with`). The OG image reads only the ledger (it can't see `?i=`, so anyone with the slug could
+  fetch it).
+- **Claim page (`/c/<slug>/<id>`), "shared with people who have the payment link":** the requester's chosen name
+  (only while the link is open, `redact`), the amount, and the Pot's name and cover. Never the label, note, receipt
+  or claimer.
+- **Claimers and payees:** someone who claims a Pot's payment link (or is paid directly) is shown to that Pot's
+  members by their chosen Pot name. They took part in the Pot's money, mirroring the claim page showing them the
+  requester's name. This is kept as is; see the open questions.
+
+## Code
+- `server/util/errtext.ts` (+ test). Applied in `http/context.ts route()`, `deps.ts defer`, `features/feed.ts`,
+  `notify/{notify,webpush}.ts`, `ops/{reconcile,retention,goals,links}.ts`, `relay/pipeline.ts`,
+  `features/oneclick/service.ts`, `features/devices/service.ts` (no raw message in the answer).
+- `server/features/activity.ts`: `deps.hub`. Names only for Pots where the reader is an active member; the route
+  passes `getHub()`.
+- `server/deps.ts`: `setHubForTests` (route-level tests).
+- `app/j/[slug]/invite-preview.ts`: `seats` + `inviterIsMember` replace `members`; no `displayProfiles` (removed
+  from `app/_lib/chain.ts`). `getOgPreview` has no names or initials. `page.tsx` and `opengraph-image.tsx` follow.
+
+## Tests
+- `server/features/privacy.test.ts` (10, route-level against `pot_privacy`). Four readers on each route: member,
+  never-member, left-member and signed-out. The routes: the feed, comments GET/POST/DELETE, receipt GET, notes POST,
+  `/api/me/activity`, and the `route()` log line + `error_log` row. Off-chain data carries marker strings, and a
+  non-member's body must contain none.
+- `server/features/activity.test.ts` +1 (left / joining / unreadable hub → no names); `server/util/errtext.test.ts`
+  (3); `app/j/[slug]/invite-preview.test.ts` (3).
+- Already covered elsewhere: `POST …/receipt` for outsiders (`receipts/saved.test.ts`), `POST /api/receipts/read`
+  for outsiders (`receipts/read.test.ts`).
+
+## Open questions
+1. **Names behind "public" addresses.** The claim page's requester name (while the link is open) and the invite
+   landing's inviter name (with an active `?i=`) are served to whoever has the address. The address isn't secret:
+   `/c/<slug>/<id>` uses public ids, and `?i=` is the invite's public key, which a determined person can read off
+   the ledger. Gating them would need proof of the `#secret`, for example a signature made with the link or invite
+   key, and link-preview cards would lose the name. Kept as is for now.
+2. **Claimers and direct payees** who aren't members are named to the paying Pot (decision above). Revisit this if
+   claimers should stay "someone".
+3. **CDN caching of the feed.** A signed-out feed response is `public, s-maxage=5`. It holds no member data, but a
+   member whose request reaches a cached copy would briefly see no names. This is a functional issue, not a leak.

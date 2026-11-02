@@ -5,6 +5,7 @@
 // subscribes with it), VAPID_PRIVATE_KEY (Secret), VAPID_SUBJECT (a real mailto:/https: URL). Never rotate.
 import "server-only"
 import webpush from "web-push"
+import { errText } from "../util/errtext"
 
 export interface PushTarget {
   endpoint: string
@@ -90,7 +91,7 @@ export function createWebPushSender(
         await res.arrayBuffer().catch(() => undefined)
         return { status: res.status, ...(retryAfterMs !== undefined ? { retryAfterMs } : {}) }
       } catch (e) {
-        return { status: 0, error: (e as Error).name === "TimeoutError" ? "timeout" : String(e).slice(0, 120) }
+        return { status: 0, error: (e as Error).name === "TimeoutError" ? "timeout" : errText(e, 120) }
       }
     },
   }
@@ -104,7 +105,7 @@ export function getPushSender(): PushSender | null {
       const v = vapidFromEnv()
       cached = v ? createWebPushSender(v) : null
     } catch (e) {
-      console.error(JSON.stringify({ level: "error", where: "vapid", err: String(e).slice(0, 200) }))
+      console.error(JSON.stringify({ level: "error", where: "vapid", err: errText(e, 200) }))
       cached = null
     }
   }

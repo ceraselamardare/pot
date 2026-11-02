@@ -4,19 +4,13 @@
 // Decided (last 30 days, struck-through amounts always paired with "Not sent"). No marigold on this tab.
 import { Check } from "lucide-react"
 import { EmptyState, CardsSkeleton } from "@/components/feedback/States"
-import { RequestRow, reasonWord } from "@/components/pot/Feed"
+import { RequestRow } from "@/components/pot/Feed"
 import { RequestCard } from "@/components/pot/RequestCard"
-import { StatusChip } from "@/components/pot/StatusChip"
-import { Avatar } from "@/components/pot/Avatar"
-import { CommentCount } from "@/components/comments/RequestComments"
-import { ReceiptIndicator } from "@/components/receipt/ReceiptIndicator"
-import { MoneyText } from "@/components/money/MoneyText"
 import { ApproveSheet } from "@/components/sheets/ApproveSheet"
 import { pageTitle, t } from "@/i18n/t"
 import { useMe, usePot, useRequests } from "@/lib/client/data"
-import { formatUsd } from "@/lib/client/money"
-import { closeSheet, openRequest, useSheetParams } from "@/lib/client/sheet"
-import { useNow, inTime } from "@/lib/client/time"
+import { closeSheet, useSheetParams } from "@/lib/client/sheet"
+import { useNow } from "@/lib/client/time"
 
 export function RequestsScreen() {
   const reqs = useRequests()
@@ -58,31 +52,7 @@ export function RequestsScreen() {
                 </h2>
                 <ul className="flex flex-col gap-2">
                   {reqs.mine.map((r) => (
-                    <li key={`${r.slug}:${r.id}`}>
-                      <button
-                        type="button"
-                        onClick={() => openRequest(r.id, r.slug)}
-                        className="flex w-full items-start gap-3 rounded-md bg-surface p-3 text-left hover:bg-surface-sunken"
-                      >
-                        <Avatar person={r.requester} size="sm" className="mt-0.5" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-body text-ink">
-                            {t("requests.mine.row", { amount: formatUsd(r.amount, "whole"), reason: reasonWord(r) })}
-                          </span>
-                          <span className="mt-0.5 flex gap-1.5 text-body-sm text-ink-muted">
-                            <span aria-hidden>{r.potEmoji}</span>
-                            <span>{r.potName}</span>
-                          </span>
-                          <span className="mt-2 flex flex-wrap items-center gap-2">
-                            <StatusChip status="needs">{t("approve.progress", { count: r.approvals.length, k: r.k })}</StatusChip>
-                            <span className="text-body-sm text-ink-muted">{t("approve.expires", { relativeTime: inTime(r.expiresAt, now) })}</span>
-                            <CommentCount n={r.comments} />
-                            {r.hasReceipt && <ReceiptIndicator className="text-body-sm text-ink-muted" />}
-                          </span>
-                        </span>
-                        <MoneyText micro={r.amount} className="pt-0.5 text-ink" />
-                      </button>
-                    </li>
+                    <RequestRow key={`${r.slug}:${r.id}`} r={r} now={now} showPot />
                   ))}
                 </ul>
                 <p className="text-body-sm text-ink-muted">{t("approve.own.hint")}</p>

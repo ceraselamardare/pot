@@ -9,7 +9,7 @@
 import { useSearchParams } from "next/navigation"
 import { useCallback } from "react"
 
-export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink"
+export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink" | "privacy"
 
 /** Our keys in history.state (Next.js copies its own internals in beside them). */
 interface SheetEntry {

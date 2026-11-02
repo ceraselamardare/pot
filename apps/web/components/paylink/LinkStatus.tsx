@@ -2,6 +2,7 @@
 // Chip look = StatusChip's (pill on surface-sunken, `data-status` for the brand checks); the icons say what happened:
 // a link waiting to be claimed, claimed, back in the Pot, expired, never sent.
 import { Check, Clock, Hourglass, Link2, Send, Undo2, X } from "lucide-react"
+import { chipClass, chipIconClass } from "@/components/pot/StatusChip"
 import { t } from "@/i18n/t"
 import type { LinkStatusVM, LinkVM } from "@/lib/client/mock/types"
 import { formatDate } from "@/lib/client/time"
@@ -17,20 +18,29 @@ const META: Record<LinkStatusVM, { icon: typeof Check; color: string; key: Param
   void: { icon: X, color: "text-declined", key: "paylink.chip.void" },
 }
 
-export function LinkStatusChip({ status, className }: { status: LinkStatusVM; className?: string }) {
+/** Shorter words for a list row's chip ("Link sent" for a link waiting to be claimed). */
+const SHORT: Partial<Record<LinkStatusVM, Parameters<typeof t>[0]>> = { ready: "paylink.chip.sent" }
+
+export function LinkStatusChip({
+  status,
+  className,
+  size = "md",
+  ground = "sunken",
+  short,
+}: {
+  status: LinkStatusVM
+  className?: string
+  size?: "md" | "sm"
+  ground?: "sunken" | "surface"
+  /** a list row's one-word chip */
+  short?: boolean
+}) {
   const m = META[status]
   const Icon = m.icon
   return (
-    <span
-      data-status={`link-${status}`}
-      className={cn(
-        "inline-flex h-7 shrink-0 items-center gap-1 rounded-pill bg-surface-sunken pr-2.5 pl-2 font-sans text-body-sm font-semibold whitespace-nowrap",
-        m.color,
-        className,
-      )}
-    >
-      <Icon aria-hidden className="size-4" strokeWidth={2.25} />
-      <span>{t(m.key as "paylink.chip.ready")}</span>
+    <span data-status={`link-${status}`} className={cn(chipClass(size, ground), m.color, className)}>
+      <Icon aria-hidden className={chipIconClass(size)} strokeWidth={2.25} />
+      <span>{t(((short && SHORT[status]) || m.key) as "paylink.chip.ready")}</span>
     </span>
   )
 }
