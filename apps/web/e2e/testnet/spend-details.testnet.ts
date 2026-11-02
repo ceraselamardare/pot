@@ -16,6 +16,7 @@
 //   E2E_TESTNET=1 E2E_PORT=3818 NEXT_DIST_DIR=.next-details-testnet NEAR_AI_RECEIPTS_MODE=mock \
 //   DATABASE_URL=postgres://pot:pot@localhost:54329/pot_details DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot_details \
 //   scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts spend-details
+import { skipOnboarding } from "../fixtures/onboarding"
 import { fileURLToPath } from "node:url"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 import { isValidRequestRef, receiptFingerprintOfRef } from "@pot/sdk"
@@ -48,7 +49,9 @@ test.beforeAll(async ({ browser }) => {
   accounts = await createTestAccounts(["Ana", "Ben"])
   const opts = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
   ctxA = await browser.newContext(opts)
+  await skipOnboarding(ctxA) // the first-run intro (e2e/fixtures/onboarding.ts)
   ctxB = await browser.newContext(opts)
+  await skipOnboarding(ctxB) // the first-run intro (e2e/fixtures/onboarding.ts)
   A = await ctxA.newPage()
   B = await ctxB.newPage()
   for (const [who, p] of [["A", A], ["B", B]] as const) {
@@ -156,6 +159,7 @@ test("only the requester saves, once; members read; visitors don't", async ({ br
   expect(read.receipt).toEqual(saved.receipt)
   // signed out: nothing
   const anon = await browser.newContext()
+  await skipOnboarding(anon) // the first-run intro (e2e/fixtures/onboarding.ts)
   expect((await anon.request.get(`${new URL(A.url()).origin}${receiptApi()}`)).status()).toBe(401)
   await anon.close()
 })
@@ -174,6 +178,7 @@ test("the UI: the row says Receipt attached and opens the details; Ben sees the 
   await expect(details.locator("[data-fingerprint]")).toContainText("Receipt fingerprint matches")
 
   const anon = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  await skipOnboarding(anon) // the first-run intro (e2e/fixtures/onboarding.ts)
   const v = await anon.newPage()
   await v.goto(`${new URL(A.url()).origin}/p/${slug}/record`)
   await expect(v.locator("[data-record-receipt] [data-receipt-indicator]").first()).toHaveText("Receipt attached", { timeout: 30_000 })

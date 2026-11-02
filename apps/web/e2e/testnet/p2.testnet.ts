@@ -5,6 +5,7 @@
 //         again), B approves closing → payouts verified on chain (each account's dollars, the Pot at 0, closed).
 // Both people sign in with a NEAR wallet (the e2e mock wallet) holding a throwaway 0-NEAR account (accounts.ts; Rev 9).
 //   E2E_TESTNET=1 scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts p2.testnet.ts
+import { skipOnboarding } from "../fixtures/onboarding"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 import { createPot, typeAmount } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
@@ -41,7 +42,9 @@ test.beforeAll(async ({ browser }) => {
   accounts = await createTestAccounts(["Ana", "Ben"])
   const opts = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
   ctxA = await browser.newContext(opts)
+  await skipOnboarding(ctxA) // the first-run intro (e2e/fixtures/onboarding.ts)
   ctxB = await browser.newContext(opts)
+  await skipOnboarding(ctxB) // the first-run intro (e2e/fixtures/onboarding.ts)
   A = await ctxA.newPage()
   B = await ctxB.newPage()
   for (const [who, p] of [["A", A], ["B", B]] as const) {

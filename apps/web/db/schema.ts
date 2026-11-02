@@ -691,3 +691,32 @@ export const telegramPost = pgTable(
   },
   (t) => [primaryKey({ columns: [t.potId, t.proposalId, t.chatId] })],
 )
+
+/**
+ * "Help us make Pot better" (first-run onboarding, 2026-11-02): one row per person, upserted by
+ * POST /api/me/survey. Answers are enum ids only (lib/survey.ts, versioned; zod in server/http/schemas.ts), never
+ * free text. **Read by the Pot team only** (scripts/survey-report.ts prints counts); never shown to a Pot or
+ * another person, and no route returns anyone else's row. Deleted with the person (cascade).
+ */
+export const userSurvey = pgTable(
+  "user_survey",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => appUser.id, { onDelete: "cascade" }),
+    version: smallint("version").notNull(),
+    answers: jsonb("answers").notNull(),
+    /** how they came in: created | joined | other (from the flow, not asked) */
+    context: text("context"),
+    /** the build that saved it (the deploy's short commit, when known) */
+    appVersion: text("app_version"),
+    createdAt: createdAt(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    check("user_survey_version_ck", sql`${t.version} between 1 and 100`),
+    check("user_survey_context_ck", sql`${t.context} is null or ${t.context} in ('created', 'joined', 'other')`),
+    check("user_survey_answers_ck", sql`jsonb_typeof(${t.answers}) = 'object' and octet_length(${t.answers}::text) <= 2000`),
+    check("user_survey_app_version_ck", sql`${t.appVersion} is null or char_length(${t.appVersion}) <= 40`),
+  ],
+)

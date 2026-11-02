@@ -1343,6 +1343,29 @@ export interface Messages {
   "og.alt": { potName: string | number }
   "og.closed": undefined
   "og.members": { n: number }
+  "onboarding.a11y.example": undefined
+  "onboarding.continue": undefined
+  "onboarding.free.body": undefined
+  "onboarding.free.point.free": undefined
+  "onboarding.free.point.setup": undefined
+  "onboarding.free.point.test": undefined
+  "onboarding.free.title": undefined
+  "onboarding.next": undefined
+  "onboarding.progress.label": undefined
+  "onboarding.progress.now": { n: string | number; total: string | number }
+  "onboarding.progress.step": { n: string | number; total: string | number }
+  "onboarding.rules.body": undefined
+  "onboarding.rules.body_joined": undefined
+  "onboarding.rules.example.group": undefined
+  "onboarding.rules.example.instant": undefined
+  "onboarding.rules.title": undefined
+  "onboarding.rules.title_joined": { potName: string | number }
+  "onboarding.see.body": undefined
+  "onboarding.see.closes": undefined
+  "onboarding.see.title": undefined
+  "onboarding.skip": undefined
+  "onboarding.skip.a11y": undefined
+  "onboarding.title": undefined
   "online.restored": undefined
   "paylink.cancel.confirm": { amount: string | number; potName: string | number }
   "paylink.cancel.cta": undefined
@@ -1497,6 +1520,7 @@ export interface Messages {
   "privacy.public.rules": undefined
   "privacy.public.why": undefined
   "privacy.record_link": undefined
+  "privacy.survey": undefined
   "privacy.title": undefined
   "push.denied": undefined
   "push.error": undefined
@@ -1838,6 +1862,39 @@ export interface Messages {
   "spend.type.reimburse": undefined
   "spend.vote_sent": { k: string | number; n: string | number }
   "stale.updated": { relative: string | number }
+  "survey.error": undefined
+  "survey.heard.friend": undefined
+  "survey.heard.hackathon": undefined
+  "survey.heard.other": undefined
+  "survey.heard.search": undefined
+  "survey.heard.social": undefined
+  "survey.optional": undefined
+  "survey.pick_one": undefined
+  "survey.prefilled": undefined
+  "survey.privacy": undefined
+  "survey.q.heard": undefined
+  "survey.q.today": undefined
+  "survey.q.use": undefined
+  "survey.q.use.hint": undefined
+  "survey.send": undefined
+  "survey.sending": undefined
+  "survey.sent": undefined
+  "survey.skip": undefined
+  "survey.title": undefined
+  "survey.today.bank": undefined
+  "survey.today.cash": undefined
+  "survey.today.fronts": undefined
+  "survey.today.none": undefined
+  "survey.today.other": undefined
+  "survey.today.split_app": undefined
+  "survey.use.cause": undefined
+  "survey.use.club": undefined
+  "survey.use.family": undefined
+  "survey.use.home": undefined
+  "survey.use.other": undefined
+  "survey.use.plans": undefined
+  "survey.use.trip": undefined
+  "survey.why": { n: number }
   "time.days_ago": { n: number }
   "time.hours_ago": { n: string | number }
   "time.in_days": { n: number }
@@ -2025,6 +2082,8 @@ export interface Messages {
   "you.email": undefined
   "you.help": undefined
   "you.install": undefined
+  "you.intro": undefined
+  "you.intro.sub": undefined
   "you.notifications": undefined
   "you.profile.demo": undefined
   "you.push": undefined

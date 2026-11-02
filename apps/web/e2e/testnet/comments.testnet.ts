@@ -10,6 +10,7 @@
 //   E2E_TESTNET=1 E2E_PORT=3817 NEXT_DIST_DIR=.next-comments \
 //   DATABASE_URL=postgres://pot:pot@localhost:54329/pot_comments DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot_comments \
 //   scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts comments
+import { skipOnboarding } from "../fixtures/onboarding"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 import { createPot, spendFlow } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
@@ -39,7 +40,9 @@ test.beforeAll(async ({ browser }) => {
   accounts = await createTestAccounts(["Ana", "Ben"])
   const opts = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
   ctxA = await browser.newContext(opts)
+  await skipOnboarding(ctxA) // the first-run intro (e2e/fixtures/onboarding.ts)
   ctxB = await browser.newContext(opts)
+  await skipOnboarding(ctxB) // the first-run intro (e2e/fixtures/onboarding.ts)
   A = await ctxA.newPage()
   B = await ctxB.newPage()
   for (const [who, p] of [["A", A], ["B", B]] as const) {

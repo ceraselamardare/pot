@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url"
 import { defineConfig, devices } from "@playwright/test"
+import { onboardedState } from "../fixtures/onboarding"
 
 // X-07: the testnet tier (test-plan §5.2). Real chain, real relayer, the deployed preview contracts
 // (notes/deploy.md). Gated: it only runs with E2E_TESTNET=1, because every run signs testnet transactions
@@ -32,6 +33,8 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",
+    // the first-run intro counts as done (e2e/fixtures/onboarding.ts); hand-made contexts call skipOnboarding
+    storageState: onboardedState(BASE_URL),
     ...devices["Desktop Chrome"],
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 3,

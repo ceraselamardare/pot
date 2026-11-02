@@ -6,6 +6,7 @@
 //     finishes the sign-in → back to where the person was.
 //  3. a second device of the same person → a pending device → the first signed action opens "Confirm it's you"
 //     → the approval window (signing token with fatxn) → POST /api/devices → MPC sign + relayed AddKey → ready.
+import { skipOnboarding } from "../fixtures/onboarding"
 import { expect, test, type Page } from "@playwright/test"
 import { createPot } from "../fixtures/pot"
 import { FAKE_RPC } from "./playwright.config"
@@ -66,6 +67,7 @@ test("a new device: pending until 'Confirm it's you' adds its key through NEAR A
   const sub = `google-oauth2|twodevices-${RUN}`
   // device 1 creates the account
   const ctx1 = await browser.newContext()
+  await skipOnboarding(ctx1) // the first-run intro (e2e/fixtures/onboarding.ts)
   const p1 = await ctx1.newPage()
   await hint(p1, sub)
   await p1.goto("/pots")
@@ -76,6 +78,7 @@ test("a new device: pending until 'Confirm it's you' adds its key through NEAR A
 
   // device 2: same person, new browser key → signed in, device pending (not on chain yet)
   const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+  await skipOnboarding(ctx2) // the first-run intro (e2e/fixtures/onboarding.ts)
   const p2 = await ctx2.newPage()
   await hint(p2, sub)
   await p2.goto("/pots")

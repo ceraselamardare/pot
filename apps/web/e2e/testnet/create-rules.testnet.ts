@@ -4,6 +4,7 @@
 // preview_spend sends a $30 spend to the group (over the instant limit). Then the Rules tab reads them back.
 //   E2E_TESTNET=1 E2E_PORT=3217 NEXT_DIST_DIR=.next-rules scripts/with-testnet-lock.sh \
 //     pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts create-rules
+import { skipOnboarding } from "../fixtures/onboarding"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 import { createPot } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
@@ -20,6 +21,7 @@ test.beforeAll(async ({ browser }) => {
   test.setTimeout(180_000)
   accounts = await createTestAccounts(["Cora"])
   ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true })
+  await skipOnboarding(ctx) // the first-run intro (e2e/fixtures/onboarding.ts)
   A = await ctx.newPage()
   A.on("console", (m) => {
     if (m.type() === "error") console.log(`[A error] ${m.text().slice(0, 300)}`)

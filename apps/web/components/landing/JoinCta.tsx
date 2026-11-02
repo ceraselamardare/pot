@@ -24,6 +24,7 @@ import { joinPot, mockJoinSession } from "@/lib/client/actions"
 import { IS_LIVE } from "@/lib/client/config"
 import { useMeInfo, usePot } from "@/lib/client/data"
 import { INVITE_SECRET_RE } from "@/lib/client/invite"
+import { rememberEntry } from "@/lib/client/onboarding"
 import { deviceKeys } from "@/lib/client/keys/device-key-store"
 import { initialJoin, joinReducer, joinStep } from "@/lib/client/machines/join"
 import { PEOPLE, type PersonaId } from "@/lib/client/mock/fixtures"
@@ -132,6 +133,8 @@ export function JoinCta({
     try {
       sessionStorage.removeItem(secretKey(slug))
     } catch {}
+    // the first-run intro (in the app shell, after this sheet) speaks about this Pot and returns here
+    rememberEntry({ how: "joined", slug, potName })
     announce(`${t("setup.success.title")} ${suggestedText ? t("setup.success.body", { potName, suggested: suggestedText }) : t("setup.success.body_plain", { potName })}`)
   }, [tag, slug, potName, suggestedText])
 

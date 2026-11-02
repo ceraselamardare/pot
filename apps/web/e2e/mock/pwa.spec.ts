@@ -1,6 +1,7 @@
 // F-23 / F-24 on the mock build: the install coach in each context (iOS 26, iOS 27, Android with and without
 // Chrome's prompt, an in-app browser), the push pre-prompt after install (granted, denied, not now) against a
 // mocked POST /api/push/subscription, the app badge, the service worker file, and the per-invite link preview.
+import { skipOnboarding } from "../fixtures/onboarding"
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, spendFlow, typeAmount } from "../fixtures/pot"
@@ -271,6 +272,7 @@ test.describe("push permission (after install, with a reason; D-42)", () => {
     await page.waitForTimeout(500)
     await expect(page.getByRole("dialog")).toHaveCount(0)
     const ios = await browser.newContext({ userAgent: UA.ios26, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+    await skipOnboarding(ios)
     const p2 = await ios.newPage()
     await asPerson(p2, "maya")
     await p2.goto("/you")

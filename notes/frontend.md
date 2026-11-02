@@ -1,3 +1,84 @@
+> **2026-11-02: Onboarding: a first-run intro + the optional "Help us make Pot better".** Server side (table, routes,
+> report, privacy row) in notes/backend.md "Help us make Pot better". **Apply migration `0006_user_survey.sql` before
+> deploying.**
+> - **What:** a full-height sheet at `?sheet=intro` (`components/onboarding/Onboarding.tsx`, the shared `Sheet`: role
+>   dialog, focus on open, Esc/✕, Back closes it), hosted once in the shell's `PwaHost` (`OnboardingHost`). Three
+>   screens, one idea each, each with a fragment built from the app's own parts (`CompactRow`, `StatusChip`,
+>   `MoneyText`, `Avatar`), the fragments `aria-hidden` + `inert` (the sentence says it):
+>   1. "Group money with its own rules" / "Everyone chips in to one Pot. Small spends go through on their own; bigger
+>      ones wait for the group's OK." + the rules as the app says them ("Anyone can spend up to $100 without asking.",
+>      "Bigger spends need 2 of 3 approvals.", read aloud) + Maya · Groceries −$84.00 Instant / Sam · Boat trip
+>      −$300.00 "1 of 2 approvals";
+>   2. "Everyone sees where it goes" / "Every spend shows who, what for and its receipt. When the Pot closes, everyone
+>      gets their share back." + an approved row with its receipt mark and 💬 2 + "When the Pot closes": Put in $150.00 →
+>      Gets back $22.00 for Maya, Sam, Leo;
+>   3. "Free, and nothing to set up" / "Pot runs on demo dollars (test money) for now…" + three ✓ lines (free: Pot covers
+>      every cost · demo dollars, no real money at risk · nothing to install).
+>   Then "Help us make Pot better" (header chip "Optional"): "{n} quick questions…", the chips, "Only the Pot team sees
+>   your answers. They're never shown to your groups." Footer everywhere: one marigold ([Next] / [Continue] / [Send
+>   answers], disabled until something is picked) + ghost [Skip]. Header: three dots as buttons ("Screen 2 of 3",
+>   `aria-current="step"`, they jump). Swipe left/right on touch. A step change focuses its heading and the sheet's
+>   live region reads it; each screen fades in with `pot-enter` (none under reduced motion).
+> - **Joiners** (never before or during joining): `JoinCta` records `sessionStorage['pot.onboarding.entry'] =
+>   {how:"joined", slug, potName}` on "You're in!". On their Pot the intro reads "Welcome to Porto Weekend" / "Its money
+>   follows the group's rules…" with **that Pot's** instant limit and k of n (`usePot`), asks 2 questions (not "how did
+>   you hear": the invite says it) and ends on the Pot (`router.replace('/p/<slug>')` if they wandered off). If they
+>   took "Add my $150 share" first, the intro waits until the Add money sheet closes. Creators: `createPot` records
+>   `{how:"created"}` (survey `context`).
+> - **When** (`lib/client/onboarding.ts` `autoShow`, pure): once per browser for a signed-in person, 450 ms after an
+>   app screen paints, never on top of another sheet (`?sheet=`, `?r=`, `?pid=` → wait), never outside the (app) shell
+>   (so never on /demo, the landing, /j before sign-in, /c, /g, /give). The landing's "Start a Pot" right after signing
+>   in (`/pots?sheet=create`) gets the intro first (`replaceSheetParams` → `?sheet=intro&then=create`) and **ends in the
+>   Create sheet** (`replaceSheet("create")`, also after ✕/Skip: that was their intent). Anyone else ends where they
+>   were. The push pre-prompt never stacks on it: while the intro is due or was shown in this page's life,
+>   `PwaHost` skips the automatic push sheet (it comes on the next launch).
+> - **The flag:** `localStorage['pot.onboarding.v1'] = {done:true, at, survey:"sent"|"skipped",
+>   via:"finished"|"skipped"|"closed"}` (versioned key: a future flow uses v2). Set when it ends by any route (finish,
+>   Skip, ✕/Esc, the browser's Back). All access in try/catch: storage that can't be read → never auto-show (no
+>   nagging on every visit); a write that fails → an in-memory flag keeps it away for this page's life.
+> - **Replay:** You → Help → "See the intro again · How Pot works, in three screens" (`openSheet("intro")`). A replay never
+>   touches the flag and prefills earlier answers (`GET /api/me/survey` / the mock store): "Your earlier answers are
+>   filled in. Change any of them and send again."
+> - **Survey** (`lib/survey.ts`, `SURVEY_VERSION = 1`; one compact screen, chips; enum ids only, no free text):
+>   "What will you use Pot for?" (multi: A trip · Housemates and bills · Friends' plans and gifts · A club or team ·
+>   Family · Collecting for a cause or a creator · Something else) · "How does your group mostly handle shared money
+>   today?" (one: One person pays, then chases everyone · An app like Splitwise or Tricount · A shared bank account or
+>   card · Cash · We don't share money yet · Something else) · creators only: "How did you first hear about Pot?" (one,
+>   shuffled per person with "Somewhere else" last: A friend · A hackathon or its community · Social media · Search).
+>   Client: `lib/client/survey.ts` (`sendSurvey`, `loadMySurvey`); mock: `localStorage['pot.mock.survey']` per person,
+>   fault hook `pot.mock.fail = "survey"`. A failed send: "Your answers didn't send. Try again, or skip: nothing else
+>   depends on them." (stays; Skip still leaves). Sent → toast "Thanks! That helps a lot."
+> - **Privacy:** "Who can see what" gains a line: "Your answers to “Help us make Pot better” are seen only by the Pot
+>   team, never by your groups." (`privacy.survey`, `data-privacy-survey`).
+> - **Copy:** `onboarding.*`, `survey.*`, `you.intro*`, `privacy.survey` (types regenerated; lint 2119 strings, 0
+>   banned). No crypto/wallet words: crypto comfort isn't asked (the sign-in kind tells us).
+> - **E2E fixture:** the intro would open in every fresh context, so `playwright.config.ts` (and the testnet and
+>   integrations configs) give every context `storageState: onboardedState(BASE_URL)` (`e2e/fixtures/onboarding.ts`);
+>   hand-made contexts call `skipOnboarding(ctx|page)` (pwa.spec's iOS context, every testnet/integration
+>   `browser.newContext`: edited, not run). `e2e/mock/onboarding.spec.ts` opts out with `test.use({ storageState:
+>   NO_STATE })`.
+> - **Tests:** unit `lib/client/onboarding.test.ts` (17: parse, storage that throws on read/write, `autoShow` matrix,
+>   in-memory fallback, push gate, entry context incl. unsafe slugs), `lib/survey.test.ts` (5), `lib/survey-report.test.ts`
+>   (3), `lib/client/mock/survey.test.ts` (3), `components/__tests__/onboarding.test.tsx` (15: screens, one marigold,
+>   plain words, decorative fragments, dots, focus, Skip/✕, joiner copy + real rules, survey chips/roles, send payload,
+>   failure, joiner's 2 questions, prefill, host: opens/never/waits/intercepts Create), `privacy-sheet.test.tsx` (+1
+>   line), server `server/features/survey.test.ts` (21). Mock e2e `onboarding.spec.ts` (8 tests × 3 projects; 320 px on
+>   mobile-day, keyboard on desktop): first sign-in → 3 screens → survey sent → not shown after reload; Skip; Back;
+>   joiner via invite → Pot → intro about it → back on the Pot; joiner who adds money first (the intro waits); landing
+>   Start a Pot → intro → Create; You → See the intro again (prefilled, flag untouched); 320 px; keyboard + Esc. Every
+>   screen: axe 0 serious + `brandChecks` (one marigold). Screens: `notes/screens/onboarding-{rules,see,free,survey,joined}-{day,night}.png`.
+> - **Gates:** `pnpm --filter web typecheck` and `lint` clean (lint-copy 2119 strings, 0 banned); `tsc -p scripts`
+>   clean; full web unit **1483 passed / 17 skipped** on a private `pot_onboard` (the one red on the first run,
+>   `db.test.ts` "drizzle's migrator", was that DB having been migrated by hand; recreated, it applies 0000-0006 and
+>   passes); `NEXT_DIST_DIR=.next-onboard NEXT_PUBLIC_DATA_SOURCE=mock next build` OK; full mock e2e (`next start -p
+>   2617`, private `--output`) **385 passed, 41 skipped, 0 failed** (3 projects). Testnet/integration specs edited
+>   (skipOnboarding), not run.
+> - **Open:** (1) the survey asks nothing of people who skip the intro (by design; ask later in context?);
+>   (2) a pending-device NEAR Auth session can't save answers (`device_not_registered`, like the avatar): the sheet
+>   shows the error and Skip still works; (3) "once per browser", not per account: a second person signing in on the
+>   same browser won't see it (they can open it from You); (4) `scripts/run survey-report` against the preview DB needs
+>   a read-only `--db` URL from the human.
+
 > **2026-11-02: Gifts wired end to end (pre-deploy; nothing signed).** The sdk intents, the relayer hooks, `get_gifts`,
 > the close split: notes/contracts-gifts.md §11; the post-deploy steps: §12. **Product defaults applied** (the owner
 > hadn't objected; change any of them here):

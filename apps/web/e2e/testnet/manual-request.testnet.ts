@@ -2,6 +2,7 @@
 // Pot's instant limit, so it waits for approvals.
 //   MANUAL_POT=<slug> MANUAL_NAME=Alex MANUAL_AMOUNT=45 MANUAL_REASON=Food E2E_TESTNET=1 E2E_PORT=3417 NEXT_DIST_DIR=.next-friend \
 //     scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts manual-request
+import { skipOnboarding } from "../fixtures/onboarding"
 import { readFileSync } from "node:fs"
 import { expect, test } from "@playwright/test"
 import { spendFlow, typeAmount } from "../fixtures/pot"
@@ -17,6 +18,7 @@ test("a saved friend asks the group for a spend that needs approval", async ({ b
   test.setTimeout(300_000)
   const friend = JSON.parse(readFileSync(`.keys/friend-${NAME.toLowerCase()}.json`, "utf8")) as { accountId: string; seedHex: string }
   const page = await (await browser.newContext()).newPage()
+  await skipOnboarding(page) // the first-run intro (e2e/fixtures/onboarding.ts)
   await useWallet(page, friend)
   await page.goto("/pots")
   await walletSignIn(page)

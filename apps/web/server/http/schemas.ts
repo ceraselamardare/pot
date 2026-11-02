@@ -3,6 +3,7 @@ import { z } from "zod"
 import { INTENTS } from "../relay/types"
 import { MICRO_RE, OPKEY_RE, PK_RE, SPEND_REF_RE } from "../util/ids"
 import { AVATAR_IDS } from "@/lib/avatars"
+import { HEARD_OPTIONS, SURVEY_CONTEXTS, SURVEY_VERSION, TODAY_OPTIONS, USE_OPTIONS } from "@/lib/survey"
 
 export const opKey = z.string().regex(OPKEY_RE)
 export const publicKey = z.string().regex(PK_RE)
@@ -26,6 +27,27 @@ export const deviceLoginReq = z.strictObject({ accountId, devicePublicKey: publi
 export const profilePatchReq = z
   .strictObject({ avatar: z.enum(AVATAR_IDS).nullable().optional() })
   .refine((v) => Object.keys(v).length > 0, { message: "empty", path: ["avatar"] })
+
+/**
+ * POST /api/me/survey ("Help us make Pot better", lib/survey.ts): enum ids only, the current version, at least one
+ * answer; `use` is a set (no repeats). No free text anywhere.
+ */
+export const surveyReq = z.strictObject({
+  version: z.literal(SURVEY_VERSION),
+  answers: z
+    .strictObject({
+      use: z
+        .array(z.enum(USE_OPTIONS))
+        .min(1)
+        .max(USE_OPTIONS.length)
+        .refine((a) => new Set(a).size === a.length, { message: "repeated" })
+        .optional(),
+      today: z.enum(TODAY_OPTIONS).optional(),
+      heard: z.enum(HEARD_OPTIONS).optional(),
+    })
+    .refine((a) => a.use !== undefined || a.today !== undefined || a.heard !== undefined, { message: "empty", path: ["use"] }),
+  context: z.enum(SURVEY_CONTEXTS).optional(),
+})
 
 export const logoutReq = z.strictObject({ pushEndpoint: z.string().max(1024).optional(), forgetDevice: z.boolean().optional() })
 

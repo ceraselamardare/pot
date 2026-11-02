@@ -45,6 +45,8 @@ describe("PrivacySheet", () => {
     expect(d.querySelector("[data-privacy-gifts]")!.textContent).toBe(
       "Gifts: amounts and who sent them are public. Notes are seen by members, and on the public gift page only if the giver chose.",
     )
+    // the optional first-run survey: the Pot team only (onboarding 2026-11-02)
+    expect(d.querySelector("[data-privacy-survey]")!.textContent).toBe("Your answers to \u201cHelp us make Pot better\u201d are seen only by the Pot team, never by your groups.")
     // plain words only
     expect(findBanned(d.textContent ?? "")).toBeNull()
     const done = within(d).getByRole("button", { name: "Got it" })

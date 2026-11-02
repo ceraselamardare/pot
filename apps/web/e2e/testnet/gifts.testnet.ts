@@ -14,6 +14,7 @@
 //   DATABASE_URL=postgres://pot:pot@localhost:54329/pot_gifts DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot_gifts \
 //   scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts gifts
 // (apply 0005 to pot_gifts first: DATABASE_URL_UNPOOLED=… pnpm --filter web exec drizzle-kit migrate)
+import { skipOnboarding } from "../fixtures/onboarding"
 import type { GiftsView } from "@pot/sdk"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 import { createPot, typeAmount } from "../fixtures/pot"
@@ -47,7 +48,9 @@ test.beforeAll(async ({ browser }) => {
   accounts = await createTestAccounts(["Ana", "Cleo"])
   const opts = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
   ctxA = await browser.newContext(opts)
+  await skipOnboarding(ctxA) // the first-run intro (e2e/fixtures/onboarding.ts)
   ctxC = await browser.newContext(opts)
+  await skipOnboarding(ctxC) // the first-run intro (e2e/fixtures/onboarding.ts)
   A = await ctxA.newPage()
   C = await ctxC.newPage()
   await useWallet(A, accounts.people[0]!)

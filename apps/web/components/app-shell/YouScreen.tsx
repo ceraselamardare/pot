@@ -1,7 +1,7 @@
 "use client"
 // You (ux-spec §4.15): profile, Settings → Appearance (Match my phone · Day · Night, stored on this device and
 // applied before first paint by the head script), notifications and install rows (F-23), help, Advanced, sign out.
-import { Bell, ChevronRight, CircleHelp, Download, Eye, LogOut, Settings2 } from "lucide-react"
+import { Bell, ChevronRight, CircleHelp, Download, Eye, LogOut, Settings2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useSyncExternalStore } from "react"
 import { Avatar } from "@/components/pot/Avatar"
@@ -165,6 +165,7 @@ export function YouScreen() {
             <Row icon={<Download strokeWidth={2} />} label={t("you.install")} sub={t("coach.card.body")} onClick={() => openSheet("coach")} />
           )}
           <Row icon={<CircleHelp strokeWidth={2} />} label={t("you.help")} href="/demo" />
+          <Row icon={<Sparkles strokeWidth={2} />} label={t("you.intro")} sub={t("you.intro.sub")} onClick={() => openSheet("intro")} />
           <Row icon={<Eye strokeWidth={2} />} label={t("privacy.menu")} onClick={() => openSheet("privacy")} />
           <Row icon={<Settings2 strokeWidth={2} />} label={t("you.advanced")} href="/you/advanced" />
         </section>

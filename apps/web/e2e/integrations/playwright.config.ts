@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url"
 import { defineConfig, devices } from "@playwright/test"
+import { onboardedState } from "../fixtures/onboarding"
 
 // Integrations tier (notes/integrations.md): the REAL app in testnet mode (live data source, real API routes, real
 // session cookies) against local fakes only — a fake NEAR RPC, the fake NEAR Auth issuer (JWKS), a build-flagged
@@ -49,6 +50,8 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",
+    // the first-run intro counts as done (e2e/fixtures/onboarding.ts); hand-made contexts call skipOnboarding
+    storageState: onboardedState(BASE_URL),
     ...devices["Desktop Chrome"],
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,

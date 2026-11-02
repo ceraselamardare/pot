@@ -6,6 +6,7 @@
 //  - shows an optimistic item at once ("Sending…"),
 //  - on failure reverts it and shows ONE toast with the flow's copy key (what happened, whether money moved,
 //    what to do), and on success one announcement or toast, never both (WCAG 4.1.3).
+import { rememberEntry } from "./onboarding"
 import { toast } from "sonner"
 import { t, type MessageKey } from "@/i18n/t"
 import { announce, isOnline } from "./browser"
@@ -198,6 +199,7 @@ export interface CreateInput {
 export async function createPot(input: CreateInput): Promise<string> {
   const slug = await (IS_LIVE ? live.createPot(input) : store.createPot({ ...input, extras: input.extras ? extrasRecOf(input.extras) : undefined }))
   coachTrigger(slug, "pot_created") // F-23: or after creating a Pot
+  rememberEntry({ how: "created", slug, potName: input.name }) // the first-run intro's context (lib/client/onboarding.ts)
   return slug
 }
 

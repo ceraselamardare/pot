@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test"
+import { onboardedState } from "./e2e/fixtures/onboarding"
 
 // test-plan §5.1 / frontend-architecture §11.2. Production build + `next start` (never `next dev`), so what
 // is tested is what ships. Port 3100 keeps :3000 free for `next dev` (NEAR Auth's shared testnet client only
@@ -19,6 +20,9 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",
+    // the first-run intro is done in every context, so specs written before it are unaffected
+    // (e2e/fixtures/onboarding.ts; e2e/mock/onboarding.spec.ts opts out)
+    storageState: onboardedState(BASE_URL),
   },
   projects: [
     { name: "mobile-day", use: { ...devices["Desktop Chrome"], ...phone, colorScheme: "light" } },

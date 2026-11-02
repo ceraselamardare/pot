@@ -3,9 +3,10 @@
 // opened from a Pot's ••• menu and You (both through the shell's PwaHost), and from the public record's footer link
 // ("What's public?", RecordScreen keeps its own open state: the record page is outside the shell). Two short lists,
 // each item an icon + words: what anyone can read on the public ledger, and what Pot keeps for the Pot's members
-// only; then one line on invite and payment links. Calm: no marigold ([Got it] is secondary).
+// only; then one line on invite and payment links, and one on the optional survey (the Pot team only). Calm: no marigold ([Got it] is secondary).
 import {
   CheckCheck,
+  ClipboardList,
   Coins,
   Gift,
   Globe,
@@ -99,6 +100,11 @@ export function PrivacySheet({ open, onClose }: { open: boolean; onClose: () => 
             <span>{t("privacy.gifts")}</span>
           </p>
         )}
+        {/* the optional first-run survey (components/onboarding): the Pot team only, never a group */}
+        <p className="flex items-start gap-3 text-body-sm text-ink-muted" data-privacy-survey>
+          <ClipboardList aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={2} />
+          <span>{t("privacy.survey")}</span>
+        </p>
       </div>
     </Sheet>
   )

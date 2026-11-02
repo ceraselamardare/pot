@@ -580,6 +580,7 @@ failure to read the members fails closed: the reader is treated as not a member,
 | Gift links (`gift_link`: amount, the members' note for givers, uses, expiry) | `GET/POST /api/pots/[pot]/gift-links`, `DELETE …/[id]` | – (new) | members (who made it is in `createdBy`, members only) |
 | | landing `/g/<slug>/<id>` (`GET /api/gift-links/[id]`) | – (new) | **whoever holds the link**: the Pot's name, emoji, status and member count (ledger), the link's amount and the link's own note (a member wrote it *for* the givers; shown only while the link works), whether the Pot takes gifts. Never a member's or a giver's name |
 | The public page's one-liner (`gift_page.line`) | `/give/<slug>` | – (new) | anyone **while the page is on** (members wrote it for the public); off → not served |
+| "Help us make Pot better" answers (`user_survey`: enum ids, version, context, build; onboarding 2026-11-02) | `GET/POST /api/me/survey` | – (new) | **the person, their own row only**; the Pot team through `scripts/run survey-report` (counts only). Never in a Pot response, feed, push or another person's answer; deleted with the person (cascade) |
 | Gift amounts and sender accounts | the hub's `gift_received{pot,from,amount,ref}` event, the token transfer | – | **public on the ledger** anyway; the public page shows totals and opted-in givers only, never account ids |
 | Goal "$X each" | the creator's device; the landing shows the default $150 | – | – |
 | Error responses | `not_a_member` 403 / `not_signed_in` 401 / `pot_unknown` 404 | – | Pot existence and request ids are public, so a 403 only reveals public facts. **`POST /api/devices` returned the raw internal error text** (now `internal` with no message, logged instead; fixed) |
@@ -711,3 +712,48 @@ answers **404 `not_found` `{cause: gifts_off_flag}`**, the resolvers return null
   GiftChain parsing, the DB CHECKs) and `routes.test.ts` (10, route-level: flag off, 401/403 gates incl. a member who
   left, CSRF/strict bodies, privacy markers on the landing, the page, members' list and `/api/me/gifts`, the public
   read limit).
+
+
+---
+
+# "Help us make Pot better": the optional first-run survey (2026-11-02)
+
+The frontend side (the intro, when it shows, the flag) is in notes/frontend.md "Onboarding".
+
+**Migration `0006_user_survey.sql`** (drizzle-kit generate; additive, no backfill). **Apply it before deploying this
+build** (`migrate` from CI against `DATABASE_URL_UNPOOLED`, as for 0005). Table `user_survey`:
+`user_id` uuid PK → `app_user.id` ON DELETE CASCADE · `version` smallint (1..100) · `answers` jsonb (an object,
+≤ 2,000 bytes) · `context` text null (`created` | `joined` | `other`) · `app_version` text null (≤ 40; the deploy's
+`VERCEL_GIT_COMMIT_SHA`, first 12) · `created_at`, `updated_at`. One row per person.
+
+**Routes** (`app/api/me/survey/route.ts`, `server/features/survey.ts`):
+- `POST /api/me/survey` `{version: 1, answers: {use?: UseOption[], today?: TodayOption, heard?: HeardOption}, context?}`
+  → `{survey}`. Same-origin JSON (`checkCsrf`), zod strict (`surveyReq` in `server/http/schemas.ts`): enum ids only,
+  `use` a non-empty set, at least one answer, `version` must be the current one, no unknown fields, never free text.
+  Needs a session with an active device (`device_not_registered` 403 otherwise, like `PATCH /api/me`). Upsert on
+  `user_id` (a second send replaces the first; `use` is stored in canonical order). Quotas: `user_survey_burst` 5/min
+  → 429 `rate_limited`; `user_survey` 20/day → `quota_exceeded`.
+- `GET /api/me/survey` → `{survey: SurveyWire | null}`: the caller's own row (the client prefills a replay with it).
+- Definitions shared by browser, route and report: `lib/survey.ts` (`SURVEY_VERSION = 1`; a meaning change = a new
+  version; the report groups by version).
+
+**The team's view:** `scripts/run survey-report [--db <url>] [--json]` prints counts and shares per answer, overall,
+by how people came in (`context`) and by sign-in kind (`app_user.kind`: `wallet` = has a NEAR wallet, our proxy for
+crypto comfort, which isn't asked). Reads `DATABASE_URL` (env, else only that line of `apps/web/.env.local`; never the
+keys file). Pure tallying in `lib/survey-report.ts`. Plain SQL alternative:
+```sql
+select a.o as use, count(*) from user_survey s, jsonb_array_elements_text(s.answers->'use') a(o) group by 1 order by 2 desc;
+select answers->>'today' as today, count(*) from user_survey where answers ? 'today' group by 1 order by 2 desc;
+select answers->>'heard' as heard, context, count(*) from user_survey where answers ? 'heard' group by 1, 2 order by 3 desc;
+select u.kind, s.context, count(*) from user_survey s join app_user u on u.id = s.user_id group by 1, 2;
+```
+
+**Privacy:** row added to the audit table above. Survey answers are off-chain and visible to the person (their own) and
+the Pot team only; "Who can see what" says so (`privacy.survey`). No answer identifies anyone by itself; the report
+never prints accounts or per-person rows.
+
+**Tests:** `server/features/survey.test.ts` (21, route level on a private schema): save + read back, canonical `use`,
+partial answers, upsert (one row), 10 refusals (free text, unknown option/question/field/context, repeats, empty,
+another version, a list for a single answer) + non-JSON, auth gates (signed out, pending device, wrong origin, wrong
+content type), the 5/min burst (another person unaffected), GET returns only your own row, `private, no-store`,
+cascade delete, the DB CHECKs, `appVersion`. `lib/survey-report.test.ts` (3).

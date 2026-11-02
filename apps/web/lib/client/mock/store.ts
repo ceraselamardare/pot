@@ -15,6 +15,7 @@ import { sweepExpiredLinks, withLinkShowcase } from "./links"
 import * as G from "./gifts"
 import { newGiftRef } from "@/lib/gifts"
 import { withGiftShowcase } from "./gifts"
+import { compactAnswers, type SurveyReq, type SurveyWire } from "@/lib/survey"
 
 const WORLD_KEY = "pot.mock.world.v1"
 const SESSION_KEY = "pot.mock.session"
@@ -192,6 +193,27 @@ export async function setAvatar(avatar: AvatarId | null): Promise<void> {
   await sleep(LATENCY.profile)
   maybeFail("avatar")
   commit(W.setAvatar(ensureWorld(), me(), avatar))
+}
+
+// "Help us make Pot better" (first-run onboarding): the mock's POST/GET /api/me/survey. One record per person in
+// localStorage['pot.mock.survey'] (upsert), like the server's one row per person. Fault hook: pot.mock.fail = "survey".
+export const SURVEY_KEY = "pot.mock.survey"
+
+export async function saveSurvey(req: SurveyReq): Promise<SurveyWire> {
+  await sleep(LATENCY.profile)
+  maybeFail("survey")
+  const who = me()
+  const all = read<Record<string, SurveyWire>>(SURVEY_KEY) ?? {}
+  const now = new Date().toISOString()
+  const rec: SurveyWire = { version: req.version, answers: compactAnswers(req.answers), context: req.context ?? null, createdAt: all[who]?.createdAt ?? now, updatedAt: now }
+  write(SURVEY_KEY, { ...all, [who]: rec })
+  return rec
+}
+
+export async function getSurvey(): Promise<SurveyWire | null> {
+  const s = readSession()
+  if (!s) return null
+  return read<Record<string, SurveyWire>>(SURVEY_KEY)?.[s.persona] ?? null
 }
 
 export async function addMoney(slug: string, amountCents: number, source: "demo" | "pot_dollars" = "demo"): Promise<void> {

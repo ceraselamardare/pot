@@ -10,7 +10,8 @@ import { useSearchParams } from "next/navigation"
 import { useCallback } from "react"
 
 // gifts (hub 1.2.0): "gifts" = ••• → Gifts (on/off, the public page); "gift" = one gift's details (&gift=<ref>)
-export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink" | "privacy" | "gifts" | "gift"
+// "intro": the first-run intro + "Help us make Pot better" (components/onboarding; &then=create ends in Create)
+export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink" | "privacy" | "gifts" | "gift" | "intro"
 
 /** Our keys in history.state (Next.js copies its own internals in beside them). */
 interface SheetEntry {
@@ -70,7 +71,8 @@ export function openRequest(id: number, pot?: string) {
 
 // "link": the payment link sheet's request id (?sheet=paylink&link=<id>; not ?r=, which opens the request sheet)
 // "gift": a gift's ref (?sheet=gift&gift=<ref>); "kind": the share sheet's tab (?sheet=share&kind=gift)
-const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link", "gift", "kind"]
+// "then": where the intro goes when it ends (?sheet=intro&then=create)
+const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link", "gift", "kind", "then"]
 const strip = (p: URLSearchParams) => SHEET_PARAMS.forEach((k) => p.delete(k))
 
 /**

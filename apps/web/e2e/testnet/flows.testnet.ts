@@ -7,6 +7,7 @@
 //   E-d  A: over the instant limit → needs 2 of 2 → B approves → executed on chain
 //   E-f  A asks to close → B approves → pro-rata refunds, Pot balance 0 on chain
 // Every UI claim is checked against the chain through @pot/sdk views (e2e/testnet/chain.ts).
+import { skipOnboarding } from "../fixtures/onboarding"
 import { fileURLToPath } from "node:url"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 import { createPot, spendFlow, typeAmount } from "../fixtures/pot"
@@ -49,7 +50,9 @@ test.beforeAll(async ({ browser }) => {
   accounts = await createTestAccounts(["Ana", "Ben"])
   const opts = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
   ctxA = await browser.newContext(opts)
+  await skipOnboarding(ctxA) // the first-run intro (e2e/fixtures/onboarding.ts)
   ctxB = await browser.newContext(opts)
+  await skipOnboarding(ctxB) // the first-run intro (e2e/fixtures/onboarding.ts)
   A = await ctxA.newPage()
   B = await ctxB.newPage()
   for (const [who, p] of [["A", A], ["B", B]] as const) {

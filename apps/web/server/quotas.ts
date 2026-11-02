@@ -30,6 +30,8 @@ const DEFAULTS: Record<string, [bigint, bigint]> = {
   user_receipt_burst: [5n, 5n], // per minute
   user_receipt_saves: [60n, 60n], // receipt details saved with a spend, per day
   user_receipt_save_burst: [10n, 10n], // per minute
+  user_survey: [20n, 20n], // "Help us make Pot better" saves per day (one row per person, upserted)
+  user_survey_burst: [5n, 5n], // per minute
   // per Pot per day
   pot_contribute: [200n, 200n],
   pot_spend: [100n, 100n],
