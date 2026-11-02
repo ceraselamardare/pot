@@ -10,6 +10,8 @@ const DESCRIPTION = t("app.description")
 
 function appUrl(): URL {
   if (process.env.NEXT_PUBLIC_APP_URL) return new URL(process.env.NEXT_PUBLIC_APP_URL)
+  // on Vercel without a custom domain: the project's production URL, else this deployment's URL
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return new URL(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
   if (process.env.VERCEL_URL) return new URL(`https://${process.env.VERCEL_URL}`)
   return new URL("http://localhost:3000")
 }

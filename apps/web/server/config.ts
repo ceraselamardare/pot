@@ -93,7 +93,12 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const vercelEnv = (env.VERCEL_ENV as Config["vercelEnv"]) || "development"
   const isProd = vercelEnv === "production"
   const network: Network = env.NEXT_PUBLIC_NETWORK === "mainnet" ? "mainnet" : "testnet"
-  const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  // NEXT_PUBLIC_APP_URL (a custom domain) wins; on Vercel without one, the project's production URL
+  const appUrl =
+    env.NEXT_PUBLIC_APP_URL ||
+    (env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
+    (env.VERCEL_URL ? `https://${env.VERCEL_URL}` : "") ||
+    "http://localhost:3000"
   const rpcUrls = (env.SERVER_RPC_URLS || env.NEXT_PUBLIC_RPC_URLS || "https://rpc.testnet.fastnear.com,https://near-testnet.drpc.org")
     .split(",")
     .map((s) => s.trim())
