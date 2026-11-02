@@ -10,12 +10,19 @@ import { Button } from "@/components/ui/button"
 import { CreatePotSheet } from "@/components/sheets/CreatePotSheet"
 import { pageTitle, t } from "@/i18n/t"
 import { usePots, useWaitingCount } from "@/lib/client/data"
+import { autoShow, useOnboardingState } from "@/lib/client/onboarding"
 import { closeSheet, openSheet, useSheetParams } from "@/lib/client/sheet"
 
 export function PotsScreen() {
   const pots = usePots()
   const waiting = useWaitingCount()
-  const { sheet } = useSheetParams()
+  const { sheet, params } = useSheetParams()
+  const intro = useOnboardingState()
+  // "Start a Pot" right after a first sign-in: the intro comes first and ends in Create (OnboardingHost), so Create
+  // stays closed until then instead of opening under it
+  const introFirst =
+    sheet === "create" &&
+    autoShow({ flag: intro.flag, doneThisLoad: intro.doneThisLoad, params, pathname: "/pots" }) === "intercept_create"
   const start = () => openSheet("create")
   return (
     <>
@@ -79,7 +86,7 @@ export function PotsScreen() {
           </ul>
         )}
       </main>
-      <CreatePotSheet open={sheet === "create"} onClose={closeSheet} />
+      <CreatePotSheet open={sheet === "create" && !introFirst} onClose={closeSheet} />
     </>
   )
 }

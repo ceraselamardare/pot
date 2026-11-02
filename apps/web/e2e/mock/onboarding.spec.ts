@@ -158,9 +158,23 @@ test("a joiner who adds their share first: the intro waits for the Add money she
 
 test("the landing's Start a Pot right after signing in: the intro first, then Create", async ({ page }) => {
   await asPerson(page, "alex")
+  // record every dialog that ever opens, so a Create sheet flashing under the intro is caught
+  await page.addInitScript(() => {
+    const w = window as unknown as { dialogs: string[] }
+    w.dialogs = []
+    new MutationObserver(() => {
+      for (const d of document.querySelectorAll('[role="dialog"]')) {
+        const name = d.getAttribute("aria-label") ?? document.getElementById(d.getAttribute("aria-labelledby") ?? "")?.textContent ?? ""
+        if (name && !w.dialogs.includes(name)) w.dialogs.push(name)
+      }
+    }).observe(document, { subtree: true, childList: true })
+  })
   await page.goto("/pots?sheet=create")
   const intro = await openedSheet(page, INTRO)
   await expect(page).toHaveURL(/sheet=intro&then=create/)
+  // one after another: Create never opened together with the intro
+  expect(await page.evaluate(() => (window as unknown as { dialogs: string[] }).dialogs)).not.toContain("Start a Pot")
+  await expect(page.getByRole("dialog", { name: "Start a Pot" })).toHaveCount(0)
   await intro.getByRole("button", { name: "Skip the intro" }).click()
   await openedSheet(page, "Start a Pot")
   await expect(page).toHaveURL(/\/pots\?sheet=create$/)

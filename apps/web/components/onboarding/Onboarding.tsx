@@ -85,6 +85,16 @@ export function OnboardingHost() {
     const now = () => autoShow({ flag: state.flag, doneThisLoad: state.doneThisLoad, params: new URLSearchParams(window.location.search), pathname: window.location.pathname })
     const first = now()
     if (first !== "show" && first !== "intercept_create") return
+    // "Start a Pot" right after a first sign-in: swap to the intro at once (Create is held closed meanwhile, see
+    // PotsScreen), so the two never show together
+    if (first === "intercept_create") {
+      noteOnboardingShown()
+      replaceSheetParams((p) => {
+        p.set("sheet", "intro")
+        p.set("then", "create")
+      })
+      return
+    }
     const id = setTimeout(() => {
       const d = now() // re-check: a sheet may have opened in the meantime
       if (d === "show") {
