@@ -34,6 +34,8 @@ export const GAS_TGAS = {
   claim_link: 100,
   reclaim_link: 50,
   refund_unfunded: 300,
+  // hub 1.2.0 gifts: a gift is ft_transfer_call (100, like add_money); set_gifts is one write
+  set_gifts: 30,
 } as const
 
 export const GAS = Object.fromEntries(Object.entries(GAS_TGAS).map(([k, v]) => [k, tgas(v)])) as { readonly [K in keyof typeof GAS_TGAS]: bigint }
@@ -77,6 +79,9 @@ export function directDeposit(method: string, opts: { daoFloat?: bigint } = {}):
       return 3n * MILLI_NEAR
     case "refund_unfunded":
       return 200n * MILLI_NEAR
+    case "set_gifts":
+      // the Pot's gift record, first write only (STATE_BYTES_GIFTS 120 B; excess refunded)
+      return 2n * MILLI_NEAR
     default:
       return 0n
   }
@@ -109,6 +114,8 @@ export const RELAY_POLICY: Readonly<Record<string, RelayRule>> = {
   ok_request: { rule: "R13", receiver: "hub", deposit: 0n, gasMinTgas: 100, gasMaxTgas: 250, defaultTgas: 200 },
   claim_link: { rule: "R14", receiver: "hub", deposit: 0n, gasMinTgas: 50, gasMaxTgas: 150, defaultTgas: 100 },
   reclaim_link: { rule: "R15", receiver: "hub", deposit: 0n, gasMinTgas: 30, gasMaxTgas: 100, defaultTgas: 50 },
+  // hub 1.2.0. A gift is ft_transfer_call (row above; the server's R16 checks its msg); set_gifts is R17.
+  set_gifts: { rule: "R17", receiver: "hub", deposit: 0n, gasMinTgas: 10, gasMaxTgas: 50, defaultTgas: 30 },
   // R11: exactly 100 (Transfer, AddMemberToRole) or exactly 300 (FunctionCall); see voteGas().
   act_proposal: { rule: "R11", receiver: "dao", deposit: 0n, gasMinTgas: 100, gasMaxTgas: 300, defaultTgas: 100 },
 }

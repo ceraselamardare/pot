@@ -5,7 +5,7 @@ import { pot } from "@/db/schema"
 import { getConfig } from "@/server/config"
 import { relayDeps } from "@/server/deps"
 import { ApiError } from "@/server/http/errors"
-import { checkCsrf, parseWith, readBody, route } from "@/server/http/context"
+import { checkCsrf, ipHash, parseWith, readBody, route } from "@/server/http/context"
 import { signedRelayReq } from "@/server/http/schemas"
 import { relay } from "@/server/relay/pipeline"
 import { requireSession } from "@/server/session/store"
@@ -42,6 +42,8 @@ export const POST = route("POST /api/relay", async (ctx) => {
       intent: body.intent,
       requestRef: body.requestRef,
       bodyHash,
+      // hub 1.2.0 gifts come from anyone: the per-IP gift quota (ip_gift) uses this (an HMAC, never the IP)
+      ipHash: ipHash(ctx.req),
     },
   )
   // create_pot: the cover gradient lives off chain (D-61 Rev 1; data-model §8 Q1)

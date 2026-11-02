@@ -24,4 +24,6 @@ export type Family =
   | "close"
   | "maintenance"
   | "vote"
+  /** hub 1.2.0: a gift from anyone (quotas user_gift / pot_gift / ip_gift) */
+  | "gift"
   | "test"

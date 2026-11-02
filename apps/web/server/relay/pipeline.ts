@@ -31,7 +31,34 @@ import { evaluatePolicy, TGAS, type PolicyMatch } from "./policy"
 import type { RelayOk, RelayPending, RelayResult } from "./types"
 import { errText } from "../util/errtext"
 
+/**
+ * hub 1.2.0 gifts: the web app's hooks into the relay (all optional). FLAG_GIFTS gates R16 (gift) and R17
+ * (set_gifts) server-side: off → `method_not_allowed`. With the flag on and no `validateGiftRef`, every
+ * well-formed gift ref is allowed (the hub re-checks Pot, gifts on, goal and amount; a refusal refunds the giver).
+ */
+export interface RelayGiftHooks {
+  /** FLAG_GIFTS; default: process.env.FLAG_GIFTS is "true" / "1", read per call */
+  enabled?: () => boolean
+  /**
+   * Pre-flight: is `ref` a gift our server started for this Pot, amount and sender, through a link that still
+   * works (or a public page that is on)? `{ok: false, why}` → 409 gifts_unavailable {why}. Throwing = 503.
+   * (server/features/gifts `giftRefValidator(db)` has exactly this shape.)
+   */
+  validateGiftRef?: (pot: string, ref: string, amount: bigint, sender?: string) => Promise<{ ok: true } | { ok: false; why: string }>
+  /** after the hub's `gift_received` (deferred, after the response; errors are logged, never thrown) */
+  onGiftReceived?: (ev: { pot: string; from: string; amount: string; ref: string; txHash?: string; at?: Date }) => Promise<unknown>
+  /** after a relayed gift bounced (refused by the hub or a failed forward: the token refunded the giver) */
+  onGiftFailed?: (ref: string) => Promise<unknown>
+}
+
+const flagGifts = (): boolean => {
+  const v = (process.env.FLAG_GIFTS ?? "").trim().toLowerCase()
+  return v === "true" || v === "1"
+}
+
 export interface RelayDeps {
+  /** hub 1.2.0 gifts (see RelayGiftHooks); absent = FLAG_GIFTS from env, every well-formed ref allowed */
+  gifts?: RelayGiftHooks
   db: Db
   rpc: RpcClient
   hub: HubReader
@@ -61,6 +88,8 @@ export interface RelayRequest {
   intent?: string
   requestRef?: string
   bodyHash: string
+  /** the route's ipHash(req) (HMAC of the IP, never the IP): per-IP gift quota (ip_gift) when given */
+  ipHash?: string
 }
 
 export interface RelayResponse {
@@ -193,7 +222,31 @@ async function chainChecks(deps: RelayDeps, actor: Actor, d: DecodedDelegate, m:
     if (pid >= Number(last)) throw new ApiError("args_invalid", { detail: { field: "proposal_id", why: "unknown" } })
   }
   if (m.rule === "R11") await r11Preflight(deps, actor, m, potView!, now)
+  if (m.rule === "R16") await giftPreflight(deps, actor, m)
   return { head: head.height, potView }
+}
+
+/**
+ * R16 pre-flight (hub 1.2.0): the hub would accept a gift now (`get_gifts.accepting`: open, not paused, gifts on,
+ * no all-or-nothing goal collecting), then the web app's gift-ref check. A hub without gifts (1.1.0) → hub_not_ready.
+ */
+async function giftPreflight(deps: RelayDeps, actor: Actor, m: PolicyMatch): Promise<void> {
+  const pot = m.potId!
+  let g: { accepting?: unknown; refusal?: unknown } | null
+  try {
+    g = await viewFunction<{ accepting?: unknown; refusal?: unknown } | null>(deps.rpc, deps.cfg.hubId, "get_gifts", { pot }, "optimistic")
+  } catch (e) {
+    if (e instanceof RpcUnavailableError) throw unavailable("rpc", 3_000)
+    // MethodNotFound: the hub predates 1.2.0 (it would refund the gift as a bad contribution msg)
+    throw new ApiError("gifts_unavailable", { detail: { pot, why: "hub_not_ready" } })
+  }
+  if (!g) throw new ApiError("pot_unknown", { detail: { pot } })
+  if (g.accepting !== true) throw new ApiError("gifts_unavailable", { detail: { pot, why: typeof g.refusal === "string" ? g.refusal : "not_accepting" } })
+  const check = deps.gifts?.validateGiftRef
+  if (check) {
+    const r = await check(pot, m.gift!.ref, m.amount!, actor.accountId)
+    if (!r.ok) throw new ApiError("gifts_unavailable", { detail: { pot, why: r.why } })
+  }
 }
 
 /** R11 pre-flight (rev4 S-2): exists, hub-tracked and live, sender a member, kind deep-equal, open, not voted. */
@@ -225,14 +278,17 @@ async function r11Preflight(deps: RelayDeps, actor: Actor, m: PolicyMatch, potVi
 // ---------------------------------------------------------------------------------------------
 // step 12: quotas
 
-function quotaCharges(actor: Actor, m: PolicyMatch): QuotaCharge[] {
+function quotaCharges(actor: Actor, m: PolicyMatch, ipHash?: string): QuotaCharge[] {
   const user = `user:${actor.userId}`
   const c: QuotaCharge[] = [
     { subject: user, action: "burst", amount: 1n, limit: limit("user_burst"), period: "minute", tag: "burst" },
     { subject: user, action: m.family, amount: 1n, limit: limit(`user_${m.family}`), tag: `family:${m.family}` },
   ]
-  if (m.potId && ["contribute", "spend", "vote", "close"].includes(m.family))
+  if (m.potId && ["contribute", "spend", "vote", "close", "gift"].includes(m.family))
     c.push({ subject: `pot:${m.potId}`, action: m.family, amount: 1n, limit: limit(`pot_${m.family}`), tag: `family:${m.family}` })
+  // hub 1.2.0: gifts come from anyone, so they are also capped per (hashed) IP when the route passes it
+  if (m.family === "gift" && ipHash)
+    c.push({ subject: `ip:${ipHash}`, action: "gift", amount: 1n, limit: limit("ip_gift"), tag: "family:gift" })
   const finalizePid = m.vote?.action === "Finalize" ? m.vote.proposalId : m.retry?.proposalId
   if (finalizePid !== undefined)
     c.push({ subject: `proposal:${m.potId}:${finalizePid}`, action: "finalize", amount: 1n, limit: limit("proposal_finalize"), tag: "family:finalize" })
@@ -251,13 +307,13 @@ function quotaCharges(actor: Actor, m: PolicyMatch): QuotaCharge[] {
   return c
 }
 
-async function chargeOrThrow(deps: RelayDeps, actor: Actor, m: PolicyMatch): Promise<QuotaCharge[]> {
+async function chargeOrThrow(deps: RelayDeps, actor: Actor, m: PolicyMatch, ipHash?: string): Promise<QuotaCharge[]> {
   const r = await deps.db.execute<{ n: number }>(sql`
     SELECT count(*)::int AS n FROM relay_log
     WHERE user_id = ${actor.userId} AND outcome = 'delegate_failed'
       AND created_at >= (date_trunc('day', now() AT TIME ZONE 'utc') AT TIME ZONE 'utc')`)
   if ((r.rows[0]?.n ?? 0) > 10) throw new ApiError("user_suspended", { detail: { resetsAt: nextUtcDay().toISOString() } })
-  const charges = quotaCharges(actor, m)
+  const charges = quotaCharges(actor, m, ipHash)
   const res = await chargeQuotas(deps.db, charges)
   if (res.ok) return charges
   const f = res.failed
@@ -301,6 +357,9 @@ export async function relay(deps: RelayDeps, actor: Actor, req: RelayRequest): P
       nowMs: deps.now?.() ?? Date.now(),
       testAllowlist: cfg.testAllowlist,
     })
+    // 6b. hub 1.2.0 gifts stay behind FLAG_GIFTS (server side) until verified on testnet
+    if ((m.rule === "R16" || m.rule === "R17") && !(deps.gifts?.enabled ?? flagGifts)())
+      throw new ApiError("method_not_allowed", { detail: { method: m.methods[0], why: "gifts_off" } })
     // 7. key binding
     if (actor.kind === "near-auth") {
       if (!actor.device || actor.device.status !== "active" || actor.device.publicKey !== d.publicKey)
@@ -322,7 +381,7 @@ export async function relay(deps: RelayDeps, actor: Actor, req: RelayRequest): P
     // B-11: the hub sponsors create_pot (float + storage); refuse before it would panic ERR_HUB_LOW_BALANCE
     if (m.rule === "R2" && !(await hubAllowsCreate(deps.rpc, cfg))) throw unavailable("sponsor_low", 60_000, { account: "hub" })
     // 12. quotas (one transaction, all or nothing)
-    await chargeOrThrow(deps, actor, m)
+    await chargeOrThrow(deps, actor, m, req.ipHash)
     if (chain.potView) await upsertPotRow(db, cfg.hubId, chain.potView).catch(() => undefined)
     if (m.rule === "R11" && m.vote!.action !== "VoteReject" && (m as PolicyMatch & { subjectKind?: string }).subjectKind === "close")
       await registerClosePayees(deps, m.vote!.kind)
@@ -678,6 +737,11 @@ export async function followUps(deps: RelayDeps, x: CompleteInput, c: Classified
     tasks.push(serverSync(deps, m.potId!, m.retry.proposalId, x.relayId))
   // B-05: new money may cover an approved payout that failed for lack of balance → retry_payout
   if (c.outcome === "success" && m.rule === "R1" && m.potId) tasks.push(retryFailedPayouts(deps, m.potId, x.relayId))
+  // hub 1.2.0: a gift is new money too, and the web app records it (gift row, link uses, push) or marks it failed
+  if (m.rule === "R16" && c.outcome !== "delegate_failed") {
+    if (c.outcome === "success" && m.potId) tasks.push(retryFailedPayouts(deps, m.potId, x.relayId))
+    tasks.push(giftFollowUp(deps, x, c))
+  }
   tasks.push(checkRelayerBalance(deps))
   // X-06: "money arrived", "needs your approval", "Pot closed" from this tx's trusted hub events
   if (c.outcome !== "delegate_failed" && deps.push) tasks.push(notifyFromEvents(notifyDeps(deps), c.rawEvents, x.txHash))
@@ -685,6 +749,24 @@ export async function followUps(deps: RelayDeps, x: CompleteInput, c: Classified
 }
 
 const notifyDeps = (deps: RelayDeps) => ({ db: deps.db, hub: deps.hub, cfg: deps.cfg, sender: deps.push ?? null })
+
+/** hub 1.2.0: hand the trusted `gift_received` event (or the bounce) to the web app's hooks. Never throws. */
+async function giftFollowUp(deps: RelayDeps, x: CompleteInput, c: Classified): Promise<void> {
+  const hooks = deps.gifts
+  const ref = x.m.gift?.ref
+  if (!hooks || !ref) return
+  try {
+    const ev = c.rawEvents.find((e) => e.standard === "pot" && e.event === "gift_received")
+    const d = (ev?.data ?? null) as { pot?: unknown; from?: unknown; amount?: unknown; ref?: unknown } | null
+    if (c.outcome === "success" && d && typeof d.pot === "string" && typeof d.from === "string" && typeof d.amount === "string" && typeof d.ref === "string") {
+      await hooks.onGiftReceived?.({ pot: d.pot, from: d.from, amount: d.amount, ref: d.ref, txHash: x.txHash })
+    } else if (c.outcome === "inner_failed") {
+      await hooks.onGiftFailed?.(ref)
+    }
+  } catch (e) {
+    await logError({ route: "/api/relay", relayId: x.relayId, reason: "gift_hook", detail: { err: errText(e, 300) } })
+  }
+}
 
 /** A relayer-signed hub.sync (permissionless, idempotent); relay_log op `sync`. */
 export function serverSync(deps: RelayDeps, pot: string, proposalId: number, cause: string): Promise<void> {

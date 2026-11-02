@@ -7,7 +7,7 @@
       "compiler": "rustc 1.93.0",
       "builder": "cargo-near cargo-near-build 0.11.5"
     },
-    "wasm_hash": "AwCzDVnhzigznUmwqqtM7Jy2Aa4yDkgf45FFhAuXiDXG"
+    "wasm_hash": "CH5qDevSFFHFYPuiEDCjLiBiRt8fNPHBx12fHARqReXv"
   },
   "body": {
     "functions": [
@@ -245,6 +245,36 @@
           "serialization_type": "json",
           "type_schema": {
             "$ref": "#/definitions/ConfigView"
+          }
+        }
+      },
+      {
+        "name": "get_gifts",
+        "doc": " The Pot's gifts (null: unknown Pot). The relayer's gift pre-flight reads `accepting`.",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "pot",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"ƒelicia.near\".parse::<AccountId>().is_err()); // (ƒ is not f) ```",
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/GiftsView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -1005,6 +1035,51 @@
           "serialization_type": "json",
           "type_schema": {
             "$ref": "#/definitions/CreatePotOutcome"
+          }
+        }
+      },
+      {
+        "name": "on_gift_forwarded",
+        "doc": " Records the gift once, only after the forward to the DAO succeeded. Returns the UNUSED amount:\n 0 when forwarded, `amount` (→ the token refunds the sender) when the forward failed.",
+        "kind": "call",
+        "modifiers": [
+          "private"
+        ],
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "pot",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"ƒelicia.near\".parse::<AccountId>().is_err()); // (ƒ is not f) ```",
+                "type": "string"
+              }
+            },
+            {
+              "name": "sender_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"ƒelicia.near\".parse::<AccountId>().is_err()); // (ƒ is not f) ```",
+                "type": "string"
+              }
+            },
+            {
+              "name": "amount",
+              "type_schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "gift_ref",
+              "type_schema": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "type": "string"
           }
         }
       },
@@ -1912,6 +1987,38 @@
         }
       },
       {
+        "name": "set_gifts",
+        "doc": " Any Active member turns the Pot's gifts on or off (relayable: authorized by the predecessor).\n Allowed while paused; not on a Closed Pot. The first write of the record costs a direct\n (unsponsored) caller `STATE_BYTES_GIFTS` of storage (excess refunded); relayer-signed: 0.",
+        "kind": "call",
+        "modifiers": [
+          "payable"
+        ],
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "pot",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"ƒelicia.near\".parse::<AccountId>().is_err()); // (ƒ is not f) ```",
+                "type": "string"
+              }
+            },
+            {
+              "name": "on",
+              "type_schema": {
+                "type": "boolean"
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "$ref": "#/definitions/GiftsView"
+          }
+        }
+      },
+      {
         "name": "set_rules",
         "kind": "call",
         "params": {
@@ -2095,9 +2202,11 @@
             "balance_source",
             "can_propose",
             "dust",
+            "gifts_total",
             "open_requests",
             "payouts",
             "pot",
+            "split",
             "total_contributed"
           ],
           "properties": {
@@ -2131,6 +2240,10 @@
                 "null"
               ]
             },
+            "gifts_total": {
+              "description": "hub 1.2.0: gifts received (part of the balance; shared pro-rata, or equally when nobody contributed)",
+              "type": "string"
+            },
             "open_requests": {
               "type": "integer",
               "format": "uint32",
@@ -2144,6 +2257,10 @@
             },
             "pot": {
               "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"ƒelicia.near\".parse::<AccountId>().is_err()); // (ƒ is not f) ```",
+              "type": "string"
+            },
+            "split": {
+              "description": "hub 1.2.0: \"prorata\" | \"equal\" (nobody contributed: a gifts-only Pot)",
               "type": "string"
             },
             "total_contributed": {
@@ -2301,6 +2418,64 @@
             }
           }
         },
+        "GiftsView": {
+          "type": "object",
+          "required": [
+            "accepting",
+            "count",
+            "in_flight",
+            "min_amount",
+            "on",
+            "pot",
+            "total"
+          ],
+          "properties": {
+            "accepting": {
+              "description": "A gift sent now would be accepted (Pot open, not paused, gifts on, no all-or-nothing goal collecting).",
+              "type": "boolean"
+            },
+            "count": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "in_flight": {
+              "description": "A gift forward is pending right now (the close waits for it, ≤ 60 s).",
+              "type": "boolean"
+            },
+            "last_gift_ms": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "min_amount": {
+              "description": "The smallest gift (1_000_000 = $1).",
+              "type": "string"
+            },
+            "on": {
+              "description": "Gifts are on (the default for every Pot; any member can turn them off).",
+              "type": "boolean"
+            },
+            "pot": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"ƒelicia.near\".parse::<AccountId>().is_err()); // (ƒ is not f) ```",
+              "type": "string"
+            },
+            "refusal": {
+              "description": "Why not, when `accepting` is false: \"pot_not_open\" | \"paused\" | \"gifts_off\" | \"goal_collecting\" | \"goal_missed\".",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "total": {
+              "description": "Σ gifts the Pot received (not part of `total_contributed`).",
+              "type": "string"
+            }
+          }
+        },
         "Goal": {
           "type": "object",
           "required": [
@@ -2331,7 +2506,9 @@
             "amount",
             "can_refund",
             "deadline_ms",
+            "gifts_total",
             "pot",
+            "progress",
             "spends_blocked",
             "state",
             "total_contributed"
@@ -2352,8 +2529,16 @@
               "format": "uint64",
               "minimum": 0.0
             },
+            "gifts_total": {
+              "description": "hub 1.2.0: gifts received (they count toward a normal goal, not an all-or-nothing one)",
+              "type": "string"
+            },
             "pot": {
               "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"ƒelicia.near\".parse::<AccountId>().is_err()); // (ƒ is not f) ```",
+              "type": "string"
+            },
+            "progress": {
+              "description": "hub 1.2.0: what counts toward the goal (contributions + gifts for a normal goal)",
               "type": "string"
             },
             "reached_at_ms": {
@@ -2898,6 +3083,9 @@
             "creator",
             "extras",
             "float",
+            "gifts_count",
+            "gifts_on",
+            "gifts_total",
             "goal_state",
             "joining_count",
             "member_count",
@@ -2979,6 +3167,19 @@
               ]
             },
             "float": {
+              "type": "string"
+            },
+            "gifts_count": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "gifts_on": {
+              "description": "hub 1.2.0: gifts are on (default for every Pot; any member can turn them off)",
+              "type": "boolean"
+            },
+            "gifts_total": {
+              "description": "hub 1.2.0: Σ gifts received (included in `balance_estimate`, never in `total_contributed`)",
               "type": "string"
             },
             "goal_state": {

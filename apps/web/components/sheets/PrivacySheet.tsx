@@ -7,6 +7,7 @@
 import {
   CheckCheck,
   Coins,
+  Gift,
   Globe,
   History,
   Link2,
@@ -26,6 +27,7 @@ import { useId } from "react"
 import { Sheet } from "@/components/sheets/Sheet"
 import { Button } from "@/components/ui/button"
 import { t, type MessageKey } from "@/i18n/t"
+import { GIFTS_ON } from "@/lib/client/gifts/flag"
 
 type PrivacyKey = Extract<MessageKey, `privacy.${string}`>
 
@@ -36,6 +38,8 @@ const PUBLIC: [LucideIcon, PrivacyKey][] = [
   [ScrollText, "privacy.public.rules"],
   [CheckCheck, "privacy.public.approvals"],
   [Receipt, "privacy.public.receipt"],
+  // gifts (hub 1.2.0): amounts and sender accounts are on the public ledger
+  ...(GIFTS_ON ? ([[Gift, "privacy.public.gifts"]] as [LucideIcon, PrivacyKey][]) : []),
 ]
 
 const MEMBERS: [LucideIcon, PrivacyKey][] = [
@@ -45,6 +49,8 @@ const MEMBERS: [LucideIcon, PrivacyKey][] = [
   [ReceiptText, "privacy.members.receipts"],
   [Link2, "privacy.members.links"],
   [History, "privacy.members.activity"],
+  // gift notes: members (and the giver); the public gift page only if the giver chose
+  ...(GIFTS_ON ? ([[Gift, "privacy.members.gift_notes"]] as [LucideIcon, PrivacyKey][]) : []),
 ]
 
 function List({ id, icon: Icon, heading, why, items, kind }: { id: string; icon: LucideIcon; heading: string; why: string; items: [LucideIcon, PrivacyKey][]; kind: string }) {
@@ -87,6 +93,12 @@ export function PrivacySheet({ open, onClose }: { open: boolean; onClose: () => 
           <Share2 aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={2} />
           <span>{t("privacy.links")}</span>
         </p>
+        {GIFTS_ON && (
+          <p className="flex items-start gap-3 text-body-sm text-ink-muted" data-privacy-gifts>
+            <Gift aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={2} />
+            <span>{t("privacy.gifts")}</span>
+          </p>
+        )}
       </div>
     </Sheet>
   )

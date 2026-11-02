@@ -7,6 +7,7 @@
 //  3. a second device of the same person → a pending device → the first signed action opens "Confirm it's you"
 //     → the approval window (signing token with fatxn) → POST /api/devices → MPC sign + relayed AddKey → ready.
 import { expect, test, type Page } from "@playwright/test"
+import { createPot } from "../fixtures/pot"
 import { FAKE_RPC } from "./playwright.config"
 
 const RUN = Math.random().toString(36).slice(2, 8)
@@ -86,10 +87,7 @@ test("a new device: pending until 'Confirm it's you' adds its key through NEAR A
 
   // the first action that needs this device's key: Start a Pot → Create
   await p2.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = p2.getByRole("dialog", { name: "Name your Pot" })
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill(`Confirm ${RUN}`)
-  await step1.getByRole("button", { name: "Next" }).click()
-  await p2.getByRole("dialog", { name: "Pot rules" }).getByRole("button", { name: "Create Pot" }).click()
+  await createPot(p2, { name: `Confirm ${RUN}` }) // the one Create screen, default rules
 
   const confirm = p2.getByRole("dialog", { name: "Confirm it's you" })
   await expect(confirm).toBeVisible({ timeout: 30_000 })

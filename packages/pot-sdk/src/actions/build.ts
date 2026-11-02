@@ -6,6 +6,7 @@ import type { SdkConfig } from "../config.ts"
 import { extrasFromWire, extrasToRaw, extrasToWire, rulesToRaw, rulesToWire, rulesFromWire } from "../rules.ts"
 import type { ActionIntent, ActionIntentWire, CallAction, CallSpec } from "../types/intents.ts"
 import { isValidRequestRef } from "../validate.ts"
+import { giftAmountError, giftMsg, isValidGiftRef } from "../gifts.ts"
 import { GAS, ONE_YOCTO, directDeposit, voteGas } from "./gas.ts"
 
 export interface BuildOptions {
@@ -136,6 +137,18 @@ export function buildCall(i: ActionIntent, cfg: Pick<SdkConfig, "hubId" | "usdcI
       return { receiverId: hub, actions: [fc("reclaim_link", { pot: i.pot, request_id: i.requestId }, GAS.reclaim_link)] }
     case "refund_unfunded":
       return { receiverId: hub, actions: [hubFc("refund_unfunded", { pot: i.pot }, GAS.refund_unfunded, o)] }
+    case "send_gift": {
+      // hub 1.2.0: like add_money (≥ 100 Tgas, exactly 1 yocto, no memo), with the gift msg
+      if (!isValidGiftRef(i.giftRef)) throw new BuildError("giftRef must match ^[A-Za-z0-9_-]{1,32}$")
+      const err = giftAmountError(i.amount)
+      if (err) throw new BuildError(err === "too_small" ? "a gift is at least $1" : "gift too large")
+      return {
+        receiverId: cfg.usdcId,
+        actions: [fc("ft_transfer_call", { receiver_id: hub, amount: i.amount.toString(), msg: giftMsg(i.pot, i.giftRef) }, GAS.ft_transfer_call, ONE_YOCTO)],
+      }
+    }
+    case "set_gifts":
+      return { receiverId: hub, actions: [hubFc("set_gifts", { pot: i.pot, on: i.on }, GAS.set_gifts, o)] }
     case "add_device_key":
       return { receiverId: i.account, actions: [{ type: "AddKey", publicKey: i.publicKey, access: "FullAccess" }] }
   }
@@ -159,6 +172,8 @@ export function intentToWire(i: ActionIntent): ActionIntentWire {
       return { ...i, amount: i.amount.toString() }
     case "request_spend":
       return { ...i, amount: i.amount.toString() }
+    case "send_gift":
+      return { ...i, amount: i.amount.toString() }
     case "create_pot": {
       const { extras, ...rest } = i
       return { ...rest, rules: i.rules ? rulesToWire(i.rules) : null, ...(extras ? { extras: extrasToWire(extras) } : {}) }
@@ -179,6 +194,8 @@ export function intentFromWire(w: ActionIntentWire): ActionIntent {
     case "add_money":
       return { ...w, amount: BigInt(w.amount) } as ActionIntent
     case "request_spend":
+      return { ...w, amount: BigInt(w.amount) } as ActionIntent
+    case "send_gift":
       return { ...w, amount: BigInt(w.amount) } as ActionIntent
     case "create_pot":
       return { ...w, rules: w.rules ? rulesFromWire(w.rules) : null, ...(w.extras ? { extras: extrasFromWire(w.extras) } : {}) } as ActionIntent

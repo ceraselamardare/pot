@@ -12,7 +12,9 @@ import type { ActivityItemVM } from "@/lib/client/activity"
 afterEach(cleanup)
 
 const state: { current: ActivityState } = { current: { state: "loading" } }
-vi.mock("@/lib/client/data", () => ({ useMyActivity: () => state.current }))
+vi.mock("@/lib/client/data", () => ({ useMyActivity: () => state.current, useMeInfo: () => null }))
+// gifts (hub 1.2.0): YourActivity merges the gifts I sent; none here
+vi.mock("@/lib/client/gifts/data", () => ({ useMyGifts: () => [] }))
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }))
 
 const HASH = "8tD1muMJ2AdDZsRc41MCJECrb77gv8ek9HXszTRsdw99"

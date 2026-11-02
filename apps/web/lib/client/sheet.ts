@@ -9,7 +9,8 @@
 import { useSearchParams } from "next/navigation"
 import { useCallback } from "react"
 
-export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink" | "privacy"
+// gifts (hub 1.2.0): "gifts" = ••• → Gifts (on/off, the public page); "gift" = one gift's details (&gift=<ref>)
+export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink" | "privacy" | "gifts" | "gift"
 
 /** Our keys in history.state (Next.js copies its own internals in beside them). */
 interface SheetEntry {
@@ -68,7 +69,8 @@ export function openRequest(id: number, pot?: string) {
 }
 
 // "link": the payment link sheet's request id (?sheet=paylink&link=<id>; not ?r=, which opens the request sheet)
-const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link"]
+// "gift": a gift's ref (?sheet=gift&gift=<ref>); "kind": the share sheet's tab (?sheet=share&kind=gift)
+const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link", "gift", "kind"]
 const strip = (p: URLSearchParams) => SHEET_PARAMS.forEach((k) => p.delete(k))
 
 /**

@@ -4,7 +4,7 @@
 // Every screen: axe 0 serious + the brand checks; mobile projects save notes/screens/goal-*-{day,night}.png.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, createPot, openedSheet } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -104,13 +104,14 @@ test("missed: 'Refunding everyone…' → 'Everyone got their money back'; the P
   if (info.project.name !== "desktop") await expect(page.locator('[data-member="maya"]').locator("visible=true")).toContainText("$150.00")
 })
 
-test("Create: trust and one OK on by default; a goal with a date, all or nothing → the Pot collects", async ({ page }, info) => {
+test("Create → [Change]: trust and one OK on by default; a goal with a date, all or nothing → the Pot collects", async ({ page }, info) => {
   await asPerson(page, "maya")
   await page.goto("/pots")
   await page.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = await openedSheet(page, "Name your Pot")
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill("Cabin Fund")
-  await step1.getByRole("button", { name: "Next" }).click()
+  await openedSheet(page, "Start a Pot")
+  // the goal is set up in the full rules ([Change]), never on the one Create screen
+  await expect(page.getByRole("dialog").getByRole("switch", { name: "Set a goal (optional)" })).toHaveCount(0)
+  await createPot(page, { name: "Cabin Fund", submit: false, rules: async () => {} })
   const step2 = await openedSheet(page, "Pot rules")
   await expect(step2.getByRole("switch", { name: "Trust grows" })).toHaveAttribute("aria-checked", "true")
   await expect(step2.getByText("People who spend well get a bigger instant limit.")).toBeVisible()

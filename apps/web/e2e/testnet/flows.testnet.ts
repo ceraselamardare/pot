@@ -9,7 +9,7 @@
 // Every UI claim is checked against the chain through @pot/sdk views (e2e/testnet/chain.ts).
 import { fileURLToPath } from "node:url"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { spendFlow, typeAmount } from "../fixtures/pot"
+import { createPot, spendFlow, typeAmount } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, nearBalance, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -77,12 +77,7 @@ test("E-a: a new person (NEAR wallet) creates a Pot and gets the share link", as
   await eventually(() => chain.usdc.storageBalanceOf(accA as never), (v) => !!v.value, 45_000)
   // 0 NEAR for the person: the account has no balance of its own (NEP-448)
   await A.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = A.getByRole("dialog", { name: "Name your Pot" })
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
-  await step1.getByRole("radio", { name: "🎿" }).click()
-  await step1.getByRole("button", { name: "Next" }).click()
-  const step2 = A.getByRole("dialog", { name: "Pot rules" })
-  await step2.getByRole("button", { name: "Create Pot" }).click()
+  await createPot(A, { name: POT_NAME, emoji: "🎿" }) // the one Create screen (emoji from the cover's picker), default rules
   await expect(A.getByText("Free: we cover the setup.")).toBeVisible()
 
   await expect(A).toHaveURL(/\/p\/testnet-trip-[a-z0-9]+-[a-z0-9]{4}\?sheet=share$/, { timeout: 45_000 })

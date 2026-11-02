@@ -75,6 +75,22 @@ const nextConfig: NextConfig = {
           { key: "X-Robots-Tag", value: "noindex" },
         ],
       },
+      // gifts (hub 1.2.0): a gift link (/g) is shared like an invite; the public gift page (/give) is opt-in per Pot.
+      // Neither is indexed, and no path leaves in a referrer.
+      {
+        source: "/g/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "same-origin" },
+          { key: "X-Robots-Tag", value: "noindex" },
+        ],
+      },
+      {
+        source: "/give/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "same-origin" },
+          { key: "X-Robots-Tag", value: "noindex" },
+        ],
+      },
     ]
   },
 }

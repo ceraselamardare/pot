@@ -16,7 +16,8 @@ const linkChip = (s: LinkStatusVM): ActivityStatus =>
 import { coverOf, nameFromAccount } from "./live/vm"
 import { dayLabel } from "./time"
 
-export type ActivityKind = ActivityApiKind
+/** + "gift" (hub 1.2.0): a gift I sent a Pot (I'm usually not in it; You → Your activity only) */
+export type ActivityKind = ActivityApiKind | "gift"
 /** The chip on a row (StatusChip statuses); absent = no chip. */
 export type ActivityStatus = "sent" | "approved" | "needs" | "declined" | "expired" | "failed"
 
@@ -258,6 +259,8 @@ export function activityText(i: ActivityItemVM, meId: string | null): string {
       return i.path === "instant" ? t("activity.asked.instant", { who, amount, reason: i.reason ?? "" }) : t("activity.asked.vote", { who, amount, reason: i.reason ?? "" })
     case "refund":
       return t("activity.refund", { who, amount })
+    case "gift":
+      return t("activity.gift", { who, amount, potName: i.potName })
     case "rules_asked":
       return t("activity.rules_asked", { who })
     case "rules_changed":
@@ -293,6 +296,8 @@ export function activityTitle(i: ActivityItemVM): string {
       return i.reason && i.reason !== t("spend.reason.word.other") ? i.reason : t("row.reason.other")
     case "refund":
       return t("row.activity.refund")
+    case "gift":
+      return t("row.activity.gift")
     case "rules_asked":
       return t("row.activity.rules_asked")
     case "rules_changed":
@@ -316,7 +321,7 @@ export function activityTitle(i: ActivityItemVM): string {
 /** The chip a list row shows (the title already says what a vote, an add or a refund was). */
 export function rowChip(i: ActivityItemVM): { status: ActivityStatus | "instant"; word?: string } | null {
   if (!i.status) return null
-  if (i.kind === "added" || i.kind === "refund" || i.kind === "voted" || i.kind === "joined" || i.kind === "created") return null
+  if (i.kind === "added" || i.kind === "refund" || i.kind === "voted" || i.kind === "joined" || i.kind === "created" || i.kind === "gift") return null
   if (i.kind === "asked" && i.link) return { status: i.status, word: t(i.link === "waiting" ? "row.status.waiting_plain" : i.link === "ready" ? "paylink.chip.sent" : (`paylink.chip.${i.link}` as "paylink.chip.ready")) }
   if (i.kind === "asked" && i.status === "approved" && i.path === "instant") return { status: "instant" }
   if (i.status === "declined") return { status: "declined", word: t("row.status.declined") }
@@ -340,6 +345,8 @@ export const isSpendItem = (i: ActivityItemVM): i is ActivityItemVM & { requestI
 
 export function activityHref(i: ActivityItemVM): string {
   const pot = `/p/${encodeURIComponent(i.slug)}`
+  // a gift: the giver isn't in the Pot, so the row isn't a link (ActivityRow); this is only a fallback
+  if (i.kind === "gift") return `/give/${encodeURIComponent(i.slug)}`
   // every spend opens its details (instant ones too: how it was approved, its receipt, the comments)
   if (i.kind === "asked" || (i.kind === "voted" && i.about?.type === "spend")) return i.requestId !== undefined ? `${pot}?r=${i.requestId}` : pot
   if (i.kind === "rules_asked" || i.kind === "rules_changed" || (i.kind === "voted" && i.about?.type === "rules")) return `${pot}?tab=rules`
@@ -347,4 +354,9 @@ export function activityHref(i: ActivityItemVM): string {
   if (i.kind === "refund") return `${pot}?sheet=close`
   if (i.kind === "joined" || i.kind === "created") return `${pot}?tab=members`
   return pot
+}
+
+/** A gift I sent (hub 1.2.0) as a row of my activity. */
+export function giftActivity(g: { ref: string; slug: string; potName: string; potEmoji: string; potCover: number; amount: Micro; at: number; txHash?: string }, me: { id: string; name: string }): ActivityItemVM {
+  return { key: `gift:${g.ref}`, kind: "gift", at: g.at, slug: g.slug, potName: g.potName, potEmoji: g.potEmoji, potCover: g.potCover, actorId: me.id, actorName: me.name, amount: g.amount, status: "sent", ...(g.txHash ? { txHash: g.txHash } : {}) }
 }

@@ -36,6 +36,13 @@
       "when": 1793572844674,
       "tag": "0004_spend_receipt",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793620755827,
+      "tag": "0005_gifts",
+      "breakpoints": true
     }
   ]
 }

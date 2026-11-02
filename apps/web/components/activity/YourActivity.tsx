@@ -5,8 +5,13 @@ import { Bone, Delayed, EmptyState } from "@/components/feedback/States"
 import { ActivityList } from "@/components/activity/ActivityList"
 import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
-import { useMyActivity } from "@/lib/client/data"
+import { useMyActivity, useMeInfo } from "@/lib/client/data"
 import { useNow } from "@/lib/client/time"
+import { giftActivity, type ActivityItemVM } from "@/lib/client/activity"
+import { useMyGifts } from "@/lib/client/gifts/data"
+import { mockTxHash } from "@/lib/client/mock/world"
+import { IS_LIVE } from "@/lib/client/config"
+import { useMemo } from "react"
 
 function ActivitySkeleton() {
   return (
@@ -29,8 +34,19 @@ function ActivitySkeleton() {
 }
 
 export function YourActivity({ meId }: { meId: string }) {
-  const a = useMyActivity()
+  const base = useMyActivity()
   const now = useNow()
+  // hub 1.2.0: the gifts I sent, merged in by time (on the pages already loaded while older ones are still to come)
+  const gifts = useMyGifts()
+  const me = useMeInfo()
+  const a = useMemo(() => {
+    if (base.state !== "ready" || !gifts?.length || !me) return base
+    const until = base.hasMore ? (base.items[base.items.length - 1]?.at ?? 0) : 0
+    const extra: ActivityItemVM[] = gifts
+      .filter((g) => g.at >= until)
+      .map((g) => giftActivity({ ...g, txHash: g.txHash ?? (IS_LIVE ? undefined : mockTxHash(`${g.slug}:gift:${g.ref}`)) }, { id: me.id, name: me.name }))
+    return { ...base, items: [...base.items, ...extra].sort((x, y) => y.at - x.at) }
+  }, [base, gifts, me])
   return (
     <section aria-labelledby="you-activity-h" className="mt-6" data-you-activity={a.state}>
       <h2 id="you-activity-h" className="mb-2 px-1 font-display text-heading text-ink">

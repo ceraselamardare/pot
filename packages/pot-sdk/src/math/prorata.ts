@@ -3,6 +3,9 @@
 //   contributor); payouts = [(account, share_i) in join order if share_i > 0]; Σ payouts == B.
 // B = 0 (or C = 0) → nothing to refund (null). Shared vectors V1-V7: src/math/vectors/prorata.json
 // (= contracts/tests/vectors/prorata.json).
+// hub 1.2.0 `closeSplit` (= prorata.rs close_split): what the close pays. Pro-rata when anyone added money
+// (gifts are part of B); EQUAL when nobody did (a gifts-only Pot): weight 1 each, dust to the last member
+// in join order. Shared vectors: src/math/vectors/close-split.json (= contracts/tests/vectors/close-split.json).
 
 export interface Contribution<A extends string = string> {
   account: A
@@ -57,3 +60,21 @@ export function prorata<A extends string>(balance: bigint, contributions: readon
 export function shareOf(balance: bigint, mine: bigint, total: bigint): bigint {
   return total === 0n ? 0n : (balance * mine) / total
 }
+
+/**
+ * hub 1.2.0 close split. `members` = every Active member in join order with their contribution.
+ * Pro-rata when any contribution > 0; otherwise an equal split (the dust < n to the last member).
+ * null when the balance is 0 or there is no member.
+ */
+export function closeSplit<A extends string>(balance: bigint, members: readonly Contribution<A>[], lastContributor?: A | null): ProrataResult<A> | null {
+  if (members.some((m) => m.contributed > 0n)) return prorata(balance, members, lastContributor)
+  return prorata(
+    balance,
+    members.map((m) => ({ account: m.account, contributed: 1n })),
+    null,
+  )
+}
+
+/** "prorata" | "equal": which rule closeSplit applies to these members. */
+export const closeSplitKind = (members: readonly Contribution[]): "prorata" | "equal" =>
+  members.some((m) => m.contributed > 0n) ? "prorata" : "equal"

@@ -6,7 +6,9 @@
 //   scripts/run deploy token           deploy test-usdc (supply → reserve), register treasury + hub, $1M → treasury
 //   scripts/run deploy lock-token      delete every key of usdc.<root> (S-4), then verify the empty key list
 //   scripts/run deploy hub             deploy + init pot-hub (float 0.05, relayers = [users.<root>], reserve 0.5)
-//   scripts/run deploy redeploy-hub    layout-compatible code update (without-init-call), then status
+//   scripts/run deploy redeploy-hub    layout-compatible code update (without-init-call), then status. Hub 1.1.0 →
+//                                      1.2.0 (gifts) is this one: its state is a new side prefix, no migrate
+//                                      (notes/contracts-gifts.md). Refuses on a 1.0.0 hub (that needs upgrade-hub).
 //   scripts/run deploy upgrade-hub     hub 1.0.0 → 1.1.0 (wave 4): DeployContract + `migrate` in ONE tx
 //                                      (notes/contracts-wave4.md); refuses unless the chain runs 1.0.0
 //   scripts/run deploy fund <account> <NEAR>   top up from the root (e.g. the hub or the relayer)
@@ -109,7 +111,12 @@ async function hub(redeploy: boolean) {
   const a = await account(IDS.hub)
   if (!a) fail(`${IDS.hub} missing: run accounts`)
   if (redeploy) {
+    // a plain deploy is only layout-compatible from 1.1.x on: 1.0.0 state needs `migrate` (upgrade-hub)
+    const before = await view<{ version: string }>(IDS.hub, "get_config")
+    if (before.version === "1.0.0") fail(`${IDS.hub} runs 1.0.0: use upgrade-hub (deploy + migrate), not redeploy-hub`)
     if (!cliDeploy(IDS.hub, WASM.hub, null).ok) fail("hub redeploy")
+    const after = await view<{ version: string }>(IDS.hub, "get_config")
+    console.log(`${IDS.hub} version ${before.version} → ${after.version}`)
   } else if (a!.code_hash === "11111111111111111111111111111111") {
     if (!cliDeploy(IDS.hub, WASM.hub, { method: "new", args: hubInit() }).ok) fail("hub deploy")
   } else console.log(`✓ ${IDS.hub} has code (use redeploy-hub for a code update)`)

@@ -77,6 +77,13 @@ pub const ERR_LINK_NOT_FINAL: &str = "ERR_LINK_NOT_FINAL";
 pub const ERR_LINK_BUSY: &str = "ERR_LINK_BUSY";
 pub const ERR_LINK_DONE: &str = "ERR_LINK_DONE";
 pub const ERR_MIGRATE: &str = "ERR_MIGRATE";
+// hub 1.2.0 (gifts)
+pub const ERR_GIFTS_OFF: &str = "ERR_GIFTS_OFF";
+pub const ERR_GIFT_TOO_SMALL: &str = "ERR_GIFT_TOO_SMALL";
+pub const ERR_GIFT_REF_INVALID: &str = "ERR_GIFT_REF_INVALID";
+pub const ERR_GIFT_SELF: &str = "ERR_GIFT_SELF";
+pub const ERR_GIFT_IN_FLIGHT: &str = "ERR_GIFT_IN_FLIGHT";
+pub const ERR_GOAL_COLLECTING: &str = "ERR_GOAL_COLLECTING";
 
 /// Panics with `code`.
 pub fn fail(code: &str) -> ! {

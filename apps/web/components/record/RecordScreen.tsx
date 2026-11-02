@@ -7,7 +7,7 @@
 // chip, how it was approved, the receipt mark and the date; the explorer link and "See details" on a third line
 // only when there is one), with no sideways scroll at 320 px. No marigold on the page: nothing to decide, only to read
 // and share ([Share] opens the QR-first RecordShareSheet, whose [Share link] is that sheet's one marigold).
-import { ChevronLeft, Download, Share2 } from "lucide-react"
+import { ChevronLeft, Download, Gift, Share2 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useState } from "react"
@@ -26,7 +26,8 @@ import { pageTitle, t } from "@/i18n/t"
 import { explorerTxUrl, isTxHash } from "@/lib/client/explorer"
 import { formatUsd } from "@/lib/client/money"
 import { approvedWords, csvFileName, paidOut, recordCsv, rowSentence, type RecordRow } from "@/lib/client/record"
-import { useRecord } from "@/lib/client/record-data"
+import { useRecord, type RecordGiftRow } from "@/lib/client/record-data"
+import { LeadTile } from "@/components/pot/CompactRow"
 import { formatDate } from "@/lib/client/time"
 
 const Status = RecordStatusChip
@@ -56,8 +57,10 @@ function ReceiptAttached({ row, slug, member }: { row: RecordRow; slug: string; 
   )
 }
 
-function download(rows: RecordRow[], potName: string, slug: string) {
-  const blob = new Blob([recordCsv(rows, potName, explorerTxUrl)], { type: "text/csv;charset=utf-8" })
+function download(rows: RecordRow[], potName: string, slug: string, gifts: readonly RecordGiftRow[]) {
+  // gift rows carry only a name the giver chose to show publicly, whoever downloads the file
+  const csvGifts = gifts.map((g) => ({ at: g.at, amount: g.amount, publicName: g.publicName, ...(g.txHash ? { txHash: g.txHash } : {}) }))
+  const blob = new Blob([recordCsv(rows, potName, explorerTxUrl, csvGifts)], { type: "text/csv;charset=utf-8" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
@@ -110,7 +113,7 @@ export function RecordScreen() {
         {!r.member && <p className="mt-1 max-w-prose text-body-sm text-ink-muted">{t("record.names_note")}</p>}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Button onClick={() => download(rows, potName, r.slug)} disabled={rows.length === 0} data-record-csv>
+          <Button onClick={() => download(rows, potName, r.slug, r.gifts ?? [])} disabled={rows.length === 0 && !r.gifts?.length} data-record-csv>
             <Download aria-hidden strokeWidth={2.25} />
             {t("record.csv")}
           </Button>
@@ -208,6 +211,8 @@ export function RecordScreen() {
           </>
         )}
 
+        {r.gifts && r.gifts.length > 0 && <RecordGifts gifts={r.gifts} potName={potName} />}
+
         <footer className="mt-8 border-t border-line pt-3 text-center">
           <button
             type="button"
@@ -222,5 +227,38 @@ export function RecordScreen() {
       <PrivacySheet open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
       <RecordShareSheet open={shareOpen} onClose={() => setShareOpen(false)} potName={potName} />
     </>
+  )
+}
+
+/** Gifts on the record (hub 1.2.0): the amount and "Gift"; members see every giver's name and note, visitors only where the giver chose. */
+function RecordGifts({ gifts, potName }: { gifts: RecordGiftRow[]; potName: string }) {
+  return (
+    <section aria-labelledby="record-gifts-h" className="mt-8" data-record-gifts>
+      <h2 id="record-gifts-h" className="font-display text-heading text-ink">
+        {t("record.gifts.title")}
+      </h2>
+      <ul className="mt-3 flex flex-col gap-2">
+        {gifts.map((g) => {
+          const what = g.name ? t("record.gifts.from", { name: g.name }) : t("record.gifts.anon")
+          const amount = formatUsd(g.amount, "whole")
+          return (
+            <li key={g.key} aria-label={t("record.gifts.a11y", { what, amount, date: formatDate(g.at) })} className="flex items-center gap-3 rounded-md bg-surface px-3 py-2.5" data-record-gift={g.key}>
+              <LeadTile icon={Gift} />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <p className="flex min-w-0 items-baseline gap-3">
+                  <span className="min-w-0 flex-1 truncate text-body text-ink">{what}</span>
+                  <MoneyText micro={g.amount} sign="in" className="shrink-0 text-approved" />
+                </p>
+                {g.note && <p className="text-body-sm text-ink-muted [overflow-wrap:anywhere]">{g.note}</p>}
+                <div className="flex flex-wrap items-center gap-x-3 text-body-sm text-ink-muted">
+                  <ReceiptLink txHash={g.txHash} what={t("gift.receipt", { amount, potName })} />
+                  <span className="ml-auto whitespace-nowrap tabular-nums">{formatDate(g.at)}</span>
+                </div>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }

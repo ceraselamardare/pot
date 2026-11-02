@@ -9,6 +9,7 @@
 import { DoorClosed, Flag, Hand, PartyPopper, Scale, Undo2, UserPlus } from "lucide-react"
 import { Fragment } from "react"
 import { LinkRow } from "@/components/paylink/LinkRow"
+import { GiftRow } from "@/components/gifts/GiftRow"
 import { MoneyText } from "@/components/money/MoneyText"
 import {
   chipGround,
@@ -204,6 +205,9 @@ function FeedItem({ item, now, sentKeys, potName }: { item: FeedItemVM; now: num
       return <SystemLine icon={<Scale strokeWidth={2} />} text={`${t("feed.rules_requested", { name: item.actor.name })} · ${t("feed.rules_requested.sub", { k: item.k })}`} txHash={item.txHash} />
     case "rules_changed":
       return <SystemLine icon={<Scale strokeWidth={2} />} text={item.actor ? t("feed.rule_change", { name: item.actor.name }) : t("feed.rules_changed.group")} txHash={item.txHash} />
+    case "gift":
+      // hub 1.2.0: someone outside (or inside) the Pot sent it a gift
+      return <GiftRow gift={item.gift} now={now} />
     case "goal":
       // hub 1.1.0: the goal with a date (reached; the all-or-nothing refund started / done)
       return item.state === "reached" ? (

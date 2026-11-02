@@ -3,7 +3,7 @@
 // The mobile projects also save review screenshots for Cerasela to notes/screens/.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, spendFlow } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, createPot, openedSheet, PORTO_INVITE_URL, spendFlow } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 test.use({ reducedMotion: "reduce" })
@@ -97,13 +97,21 @@ test("Approve sheet, Requests and You", async ({ page }) => {
   await check(page, "none")
 })
 
-test("Pots home and Create", async ({ page }) => {
+test("Pots home and Create", async ({ page }, info) => {
   await asPerson(page, "maya")
   await page.goto("/pots")
   await expect(page.locator("[data-pot-card]")).toHaveCount(2)
   await check(page, "none")
   await page.getByRole("button", { name: "Start a Pot" }).first().click()
-  await openedSheet(page, "Name your Pot")
+  const main = await openedSheet(page, "Start a Pot")
+  await check(page, "one")
+  // the lean Create screen with a name typed: review images
+  await main.getByRole("textbox", { name: /Pot name/ }).fill("Lisbon Trip")
+  await page.locator(":focus").blur()
+  if (info.project.name !== "desktop") await page.screenshot({ path: `${SCREENS}create-lean-${info.project.name === "mobile-night" ? "night" : "day"}.png` })
+  // the emoji + colour picker behind the cover
+  await main.getByRole("button", { name: "Change the emoji and colour" }).click()
+  await expect(main.getByRole("radiogroup", { name: "Pick a colour" })).toBeVisible()
   await check(page, "one")
 })
 
@@ -113,12 +121,11 @@ test("signed out: the app shell offers the demo", async ({ page }) => {
   await check(page, "one")
 })
 
-test("Create step 2: Pot rules (defaults, $0, people I name, errors)", async ({ page }, info) => {
+test("Create → [Change]: Pot rules (defaults, $0, people I name, errors)", async ({ page }, info) => {
   await asPerson(page, "maya")
   await page.goto("/pots?sheet=create")
-  const step1 = await openedSheet(page, "Name your Pot")
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill("Ski Weekend")
-  await step1.getByRole("button", { name: "Next" }).click()
+  await openedSheet(page, "Start a Pot")
+  await createPot(page, { name: "Ski Weekend", submit: false, rules: async () => {} })
   const step2 = await openedSheet(page, "Pot rules")
   await check(page, "one")
   if (info.project.name !== "desktop") {

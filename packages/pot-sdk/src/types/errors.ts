@@ -76,6 +76,13 @@ export const HUB_ERROR_CODES = [
   "ERR_LINK_BUSY",
   "ERR_LINK_DONE",
   "ERR_MIGRATE",
+  // hub 1.2.0 (gifts)
+  "ERR_GIFTS_OFF",
+  "ERR_GIFT_TOO_SMALL",
+  "ERR_GIFT_REF_INVALID",
+  "ERR_GIFT_SELF",
+  "ERR_GIFT_IN_FLIGHT",
+  "ERR_GOAL_COLLECTING",
 ] as const
 export type HubErrorCode = (typeof HUB_ERROR_CODES)[number]
 
@@ -98,6 +105,8 @@ export const SYNTHETIC_ERROR_CODES = [
   "INSUFFICIENT_FUNDS",
   "OUT_OF_GAS",
   "CONTRIBUTION_REFUNDED",
+  /** hub 1.2.0: a gift the hub refused or whose forward failed (the token refunded the giver) */
+  "GIFT_REFUNDED",
   "JOIN_FAILED",
   /** sdk addition: propose_close final value {ok:false, reason} (nothing_to_refund, add_failed…) */
   "CLOSE_FAILED",

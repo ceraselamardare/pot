@@ -64,6 +64,11 @@ export function feedKey(e: RawEvent, txHash: string): string {
     case "link_returned":
     case "link_voided":
       return `${e.event}:${str(d.request_id)}`
+    // gifts (hub 1.2.0): one row per gift (a tx carries at most one)
+    case "gift_received":
+      return `gift:${str(d.ref)}:${txHash}`
+    case "gifts_set":
+      return `gifts_set:${txHash}`
     default:
       return `${e.event}:${str(d.proposal_id) ?? txHash}`
   }

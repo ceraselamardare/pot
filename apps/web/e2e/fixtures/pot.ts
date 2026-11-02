@@ -1,7 +1,7 @@
 // Shared helpers for the mocked-UI tier (test-plan §5.1): the mock world's people, brand checks (M-20, M-22) and axe
 // (M-13).
 import { AxeBuilder } from "@axe-core/playwright"
-import { expect, type Page } from "@playwright/test"
+import { expect, type Locator, type Page } from "@playwright/test"
 
 export const BRAND = "rgb(255, 179, 32)"
 export const BRAND_DEEP = ["rgb(184, 120, 0)", "rgb(227, 154, 0)"]
@@ -123,4 +123,34 @@ export async function spendFlow(
   if (o.member) await sheet.getByRole("radiogroup", { name: "Who gets the money?" }).getByRole("radio", { name: o.member }).click()
   if (o.submit) await sheet.getByRole("button", { name: o.submit }).click()
   return sheet
+}
+
+/**
+ * Create a Pot on the one Create screen (lean create; open it first, e.g. "Start a Pot"): type `name`, pick `emoji`
+ * and/or `colour` (1-6) on the cover's picker, and press [Create Pot]. With `rules`, press the summary's [Change]
+ * first and edit the full "Pot rules" step in the callback (it gets that dialog), then create from there.
+ * `submit: false` stops before [Create Pot]. Returns the dialog [Create Pot] is (or would be) pressed on.
+ */
+export async function createPot(
+  page: Page,
+  o: { name: string; emoji?: string; colour?: number; rules?: (rules: Locator) => Promise<void>; submit?: boolean },
+): Promise<Locator> {
+  const main = page.getByRole("dialog", { name: "Start a Pot" })
+  await expect(main).toBeVisible()
+  await main.getByRole("textbox", { name: /Pot name/ }).fill(o.name)
+  if (o.emoji || o.colour) {
+    await main.getByRole("button", { name: "Change the emoji and colour" }).click()
+    if (o.emoji) await main.getByRole("radio", { name: o.emoji }).click()
+    if (o.colour) await main.getByRole("radio", { name: `Colour ${o.colour}` }).click()
+    await main.getByRole("button", { name: "Done" }).click()
+  }
+  let at = main
+  if (o.rules) {
+    await main.getByRole("button", { name: "Change the rules" }).click()
+    at = page.getByRole("dialog", { name: "Pot rules" })
+    await expect(at).toBeVisible()
+    await o.rules(at)
+  }
+  if (o.submit !== false) await at.getByRole("button", { name: "Create Pot" }).click()
+  return at
 }

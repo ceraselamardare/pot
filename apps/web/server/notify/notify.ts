@@ -7,7 +7,7 @@ import "server-only"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { formatUsdShort } from "@pot/sdk"
 import type { Db } from "@/db/client"
-import { appUser, notificationLog, pot, pushSubscription } from "@/db/schema"
+import { appUser, gift, notificationLog, pot, pushSubscription } from "@/db/schema"
 import { t } from "@/i18n/t"
 import type { HubReader } from "../chain/hub"
 import type { RawEvent } from "../chain/outcome"
@@ -42,6 +42,8 @@ export type NotifyEvent =
   | { type: "link_claimed"; pot: string; requestId: number; requester: string; claimer: string; amount?: string }
   /** pay by link: an unclaimed link's money came back (cancelled by its requester, or after its date): every member */
   | { type: "link_returned"; pot: string; requestId: number; by: string; requester?: string; amount?: string }
+  /** gifts (hub 1.2.0): someone sent the Pot a gift → every active member but the giver (never the giver's note) */
+  | { type: "gift_received"; pot: string; ref: string; from: string; amount: string }
   /** a comment on a request: `requester` audience = the requester; `thread` = earlier commenters (never the author) */
   | {
       type: "comment"
@@ -88,6 +90,8 @@ export function eventKey(ev: NotifyEvent): string {
       return `link_claimed:${ev.pot}:${ev.requestId}`
     case "link_returned":
       return `link_returned:${ev.pot}:${ev.requestId}`
+    case "gift_received":
+      return `gift:${ev.pot}:${ev.ref}`
   }
 }
 
@@ -109,6 +113,7 @@ async function recipientAccounts(deps: NotifyDeps, ev: NotifyEvent): Promise<str
   if (ev.type === "link_claimed") return ev.requester ? [ev.requester] : []
   const members = (await deps.hub.getMembers(ev.pot, { fresh: true }).catch(() => [])).filter((m) => m.status === "active").map((m) => m.account_id)
   if (ev.type === "money_arrived") return members.filter((a) => a !== ev.actor)
+  if (ev.type === "gift_received") return members.filter((a) => a !== ev.from)
   if (ev.type === "goal") return members
   // a returned link: everyone in the Pot (the money is theirs again), except a requester who cancelled it themselves
   if (ev.type === "link_returned") return members.filter((a) => a !== ev.by)
@@ -142,7 +147,7 @@ function render(
   names: Map<string, string>,
   potName: string,
   slug: string,
-  extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string },
+  extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string; giftName?: string },
 ): Rendered {
   const name = (a: string) => names.get(a) ?? t("person.fallback")
   switch (ev.type) {
@@ -239,6 +244,17 @@ function render(
         data: { pot: ev.pot, requestId: ev.requestId, subject: "link" },
       }
     }
+    case "gift_received": {
+      // lock-screen safe: the giver's chosen name (else their Pot name, else "Someone") and the amount; never the note
+      const who = extra.giftName ?? names.get(ev.from) ?? t("notif.gift.someone")
+      return {
+        title: t("notif.gift.title", { name: who, potName }),
+        body: t("notif.gift.body", { amount: money(ev.amount) }),
+        path: `/p/${slug}?sheet=gift&gift=${encodeURIComponent(ev.ref)}`,
+        push: { ttl: DAY, urgency: "normal", topic: topic(ev.pot, `gift:${ev.ref}`) },
+        data: { pot: ev.pot, subject: "gift", ref: ev.ref },
+      }
+    }
     case "trust_up":
       return {
         title: t("notif.trust.title", { level: t(`trust.level.${Math.max(0, Math.min(2, ev.level))}` as "trust.level.0"), potName }),
@@ -292,7 +308,7 @@ export async function notify(deps: NotifyDeps, ev: NotifyEvent): Promise<NotifyR
   const pv = potRow ? null : await hub.getPot(ev.pot).catch(() => null)
   const slug = potRow?.slug ?? pv?.slug ?? ev.pot.split(".")[0]!
   const potName = potRow?.name ?? pv?.name ?? slug
-  const extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string } = {}
+  const extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string; giftName?: string } = {}
   // hub 1.1.0: the new instant limit = the Pot's instant limit × (1 + level)
   if (ev.type === "trust_up") {
     const cap = (pv ?? (await hub.getPot(ev.pot).catch(() => null)))?.rules?.instant_cap
@@ -308,6 +324,14 @@ export async function notify(deps: NotifyDeps, ev: NotifyEvent): Promise<NotifyR
   }
   if (ev.type === "link_claimed") nameAccounts.add(ev.claimer)
   if (ev.type === "link_returned") nameAccounts.add(ev.by)
+  // gifts: only a gift our server started (its ref, Pot and sender match) is named; a raw ref is "Someone"
+  if (ev.type === "gift_received") {
+    const g = (await db.select({ n: gift.displayName, a: gift.giverAccount }).from(gift).where(and(eq(gift.ref, ev.ref), eq(gift.potId, ev.pot))).limit(1))[0]
+    if (g && g.a === ev.from) {
+      if (g.n) extra.giftName = g.n
+      else nameAccounts.add(ev.from)
+    }
+  }
   if ((ev.type === "approval_needed" && ev.subject === "spend") || (ev.type === "request_resolved" && ev.status === "approved")) {
     const p = await hub.getProposal(ev.pot, ev.proposalId).catch(() => null)
     if (p && ev.type === "request_resolved") {
@@ -492,6 +516,10 @@ export function eventsToNotifications(events: RawEvent[], txHash: string): Notif
         break
       case "link_returned":
         if (d.request_id !== undefined) out.push({ type: "link_returned", pot, requestId: Number(d.request_id), by: s(d.by) ?? "", amount: s(d.amount) })
+        break
+      case "gift_received":
+        // hub 1.2.0: gift_received{pot, from, amount, ref}
+        if (s(d.from) && s(d.amount) && s(d.ref)) out.push({ type: "gift_received", pot, ref: s(d.ref)!, from: s(d.from)!, amount: s(d.amount)! })
         break
       case "proposal_synced": {
         const status = s(d.hub_status)

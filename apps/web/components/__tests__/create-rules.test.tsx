@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-// Create Pot step 2 "Pot rules": no templates; each editable rule is a sentence with an inline amount, the fixed
-// rules are plain lines, and [Create Pot] sends exactly the rules on the form (createPot → preset "custom").
+// Create Pot, lean (notes/gifts-plan.md "Lean create flow"): one screen (cover preview + picker, name, "$150 each"
+// inline, one rules summary line + [Change], [Create Pot]) whose defaults are exactly the full form's. [Change] opens
+// the "Pot rules" step: no templates; each editable rule is a sentence with an inline amount, the fixed rules are
+// plain lines, and [Create Pot] sends exactly the rules on the form (createPot → preset "custom").
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -15,10 +17,16 @@ import { CreatePotSheet } from "@/components/sheets/CreatePotSheet"
 afterEach(cleanup)
 beforeEach(() => createPot.mockClear())
 
-function toStep2() {
+function main() {
   render(<CreatePotSheet open onClose={() => {}} />)
-  fireEvent.change(screen.getByRole("textbox", { name: /Pot name/ }), { target: { value: "Ski Weekend" } })
-  fireEvent.click(screen.getByRole("button", { name: "Next" }))
+  return screen.getByRole("dialog", { name: "Start a Pot" })
+}
+/** The drawer focuses its title on open on a timer; let that land before testing where focus goes next. */
+const opened = () => waitFor(() => expect(document.activeElement?.tagName).toBe("H2"))
+function toStep2() {
+  const d = main()
+  fireEvent.change(within(d).getByRole("textbox", { name: /Pot name/ }), { target: { value: "Ski Weekend" } })
+  fireEvent.click(within(d).getByRole("button", { name: "Change the rules" }))
   return screen.getByRole("dialog", { name: "Pot rules" })
 }
 const instant = () => screen.getByRole("textbox", { name: "Anyone can spend up to this much at a time without asking" })
@@ -31,14 +39,17 @@ const type = (el: HTMLElement, value: string) => {
 describe("Create step 2: Pot rules", () => {
   it("shows the rules as sentences with their defaults, the fixed rules and no templates", () => {
     const d = toStep2()
-    expect(within(d).getByText("Step 2 of 2")).toBeTruthy()
+    expect(within(d).queryByText(/Step \d of \d/)).toBeNull()
     expect(instant()).toHaveProperty("value", "100")
     expect(perPerson()).toHaveProperty("value", "200")
     expect(within(d).getByText("Anyone can spend up to")).toBeTruthy()
     expect(within(d).getByText("at a time without asking")).toBeTruthy()
     expect(within(d).getByRole("radio", { name: "Members only" })).toHaveProperty("checked", true)
     expect(within(d).getByRole("radio", { name: "Members and people I name" })).toHaveProperty("checked", false)
-    expect(within(d).getByRole("switch", { name: "Everyone chips in (optional)" }).getAttribute("aria-checked")).toBe("true")
+    // "$X each" moved to the main screen; trust, one OK and the goal stay here
+    expect(within(d).queryByRole("switch", { name: "Everyone chips in (optional)" })).toBeNull()
+    expect(within(d).getByRole("switch", { name: "Trust grows" }).getAttribute("aria-checked")).toBe("true")
+    expect(within(d).getByRole("switch", { name: "Set a goal (optional)" }).getAttribute("aria-checked")).toBe("false")
     const fixed = within(d).getByRole("region", { name: "Every Pot works like this" })
     expect(within(fixed).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       "Bigger spends need more than half the group",
@@ -115,17 +126,141 @@ describe("Create step 2: Pot rules", () => {
 })
 
 describe("Create: Back", () => {
-  it("step 2 [Back] (chevron + 'Back', not marigold) returns to step 1 with the name and the edited rules kept", () => {
+  it("rules [Back] (chevron + 'Back', not marigold) returns to the main screen with the name and the edited rules kept", () => {
     const d = toStep2()
     type(instant(), "40")
     const back = within(d).getByRole("button", { name: "Back" })
     expect(back.getAttribute("data-variant")).toBe("ghost")
     expect(back.querySelector("svg")).not.toBeNull()
     fireEvent.click(back)
-    const step1 = screen.getByRole("dialog", { name: "Name your Pot" })
+    const step1 = screen.getByRole("dialog", { name: "Start a Pot" })
     expect(within(step1).getByRole("textbox", { name: /Pot name/ })).toHaveProperty("value", "Ski Weekend")
     expect(within(step1).queryByRole("button", { name: "Back" })).toBeNull()
-    fireEvent.click(within(step1).getByRole("button", { name: "Next" }))
+    // the summary follows the edited rules
+    expect(within(step1).getByText("Small spends up to $40 go through on their own; bigger ones go to the group")).toBeTruthy()
+    fireEvent.click(within(step1).getByRole("button", { name: "Change the rules" }))
     expect(instant()).toHaveProperty("value", "40")
+  })
+})
+
+describe("Create: one screen", () => {
+  it("shows the cover preview, the name, '$150 each' inline, one rules line with [Change] and one [Create Pot]", () => {
+    const d = main()
+    expect(within(d).getByText("Lisbon Trip")).toBeTruthy() // the preview's placeholder name
+    expect(within(d).getByRole("textbox", { name: /Pot name/ })).toBeTruthy()
+    const each = within(d).getByRole("switch", { name: "Everyone chips in (optional)" })
+    expect(each.getAttribute("aria-checked")).toBe("true")
+    expect(within(d).getByRole("textbox", { name: "Amount each person chips in" })).toHaveProperty("value", "150")
+    expect(within(d).getByText("Everyone chips in")).toBeTruthy()
+    expect(within(d).getByText("each")).toBeTruthy()
+    const summary = within(d).getByText("Small spends up to $100 go through on their own; bigger ones go to the group")
+    expect(summary.className).toContain("tabular-nums")
+    const change = within(d).getByRole("button", { name: "Change the rules" })
+    expect(change.textContent).toBe("Change")
+    expect(change.getAttribute("data-variant")).toBe("secondary")
+    expect(within(d).getAllByRole("button", { name: "Create Pot" })).toHaveLength(1)
+    expect(within(d).getByRole("button", { name: "Create Pot" }).getAttribute("data-variant")).toBe("primary")
+    // no steps, no Next, no rule fields, and the emoji/colour picker stays closed until the cover is tapped
+    for (const gone of [/Step \d of \d/]) expect(within(d).queryByText(gone)).toBeNull()
+    expect(within(d).queryByRole("button", { name: "Next" })).toBeNull()
+    expect(within(d).queryByRole("radiogroup")).toBeNull()
+    expect(within(d).queryByRole("textbox", { name: /without asking/ })).toBeNull()
+  })
+
+  it("the default path (name → Create Pot) sends exactly the full form's defaults", async () => {
+    const d = main()
+    fireEvent.change(within(d).getByRole("textbox", { name: /Pot name/ }), { target: { value: "Ski Weekend" } })
+    fireEvent.click(within(d).getByRole("button", { name: "Create Pot" }))
+    await waitFor(() => expect(createPot).toHaveBeenCalledTimes(1))
+    expect(createPot.mock.calls[0]![0]).toMatchObject({
+      name: "Ski Weekend",
+      emoji: "✈️",
+      cover: 0,
+      goalEachCents: 15_000,
+      rules: { instantCap: 100_000_000n, memberBudget: 200_000_000n, instantPayees: "members", payeeAllowlist: [] },
+      extras: { trust: true, oneOkCap: 300_000_000n, links: true, goal: null },
+    })
+  })
+
+  it("Enter in the name field creates the Pot", async () => {
+    const d = main()
+    const name = within(d).getByRole("textbox", { name: /Pot name/ })
+    fireEvent.change(name, { target: { value: "Ski Weekend" } })
+    fireEvent.keyDown(name, { key: "Enter" })
+    await waitFor(() => expect(createPot).toHaveBeenCalledTimes(1))
+  })
+
+  it("tapping the cover opens the emoji and colour picker; [Done] closes it and returns focus", async () => {
+    const d = main()
+    const cover = within(d).getByRole("button", { name: "Change the emoji and colour" })
+    expect(cover.getAttribute("aria-expanded")).toBe("false")
+    fireEvent.click(cover)
+    expect(cover.getAttribute("aria-expanded")).toBe("true")
+    expect(cover.getAttribute("aria-controls")).toBe("create-picker")
+    fireEvent.click(within(d).getByRole("radio", { name: "🎿" }))
+    fireEvent.click(within(d).getByRole("radio", { name: "Colour 3" }))
+    expect(within(d).getByRole("radio", { name: "🎿" }).getAttribute("aria-checked")).toBe("true")
+    fireEvent.click(within(d).getByRole("button", { name: "Done" }))
+    expect(within(d).queryByRole("radiogroup")).toBeNull()
+    expect(document.activeElement).toBe(cover)
+    expect(cover.textContent).toContain("🎿")
+    fireEvent.change(within(d).getByRole("textbox", { name: /Pot name/ }), { target: { value: "Ski Weekend" } })
+    fireEvent.click(within(d).getByRole("button", { name: "Create Pot" }))
+    await waitFor(() => expect(createPot).toHaveBeenCalledTimes(1))
+    expect(createPot.mock.calls[0]![0]).toMatchObject({ emoji: "🎿", cover: 2 })
+  })
+
+  it("a bad name: the error under the field, focus on it, nothing sent", async () => {
+    const d = main()
+    fireEvent.click(within(d).getByRole("button", { name: "Create Pot" }))
+    expect(within(d).getByText("Use 2–40 letters, numbers or spaces.")).toBeTruthy()
+    const name = within(d).getByRole("textbox", { name: /Pot name/ })
+    expect(name.getAttribute("aria-invalid")).toBe("true")
+    await waitFor(() => expect(document.activeElement).toBe(name))
+    expect(createPot).not.toHaveBeenCalled()
+  })
+
+  it("'$X each': off sends none; $0 is refused inline", async () => {
+    const d = main()
+    fireEvent.change(within(d).getByRole("textbox", { name: /Pot name/ }), { target: { value: "Ski Weekend" } })
+    fireEvent.change(within(d).getByRole("textbox", { name: "Amount each person chips in" }), { target: { value: "0" } })
+    fireEvent.click(within(d).getByRole("button", { name: "Create Pot" }))
+    expect(within(d).getByText("Enter an amount more than $0, or turn this off.")).toBeTruthy()
+    expect(createPot).not.toHaveBeenCalled()
+    fireEvent.click(within(d).getByRole("switch", { name: "Everyone chips in (optional)" }))
+    expect(within(d).queryByRole("textbox", { name: "Amount each person chips in" })).toBeNull()
+    fireEvent.click(within(d).getByRole("button", { name: "Create Pot" }))
+    await waitFor(() => expect(createPot).toHaveBeenCalledTimes(1))
+    expect(createPot.mock.calls[0]![0]).toMatchObject({ goalEachCents: null })
+  })
+
+  it("the summary follows the rules ($0, something to fix); [Create Pot] with a rule to fix opens the rules", async () => {
+    let d = toStep2()
+    await opened()
+    type(instant(), "0")
+    fireEvent.click(within(d).getByRole("button", { name: "Back" }))
+    d = screen.getByRole("dialog", { name: "Start a Pot" })
+    expect(within(d).getByText("Every spend goes to the group")).toBeTruthy()
+    fireEvent.click(within(d).getByRole("button", { name: "Change the rules" }))
+    type(instant(), "")
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Pot rules" })).getByRole("button", { name: "Back" }))
+    d = screen.getByRole("dialog", { name: "Start a Pot" })
+    expect(within(d).getByText("Some rules need a fix")).toBeTruthy()
+    fireEvent.click(within(d).getByRole("button", { name: "Create Pot" }))
+    const rules = screen.getByRole("dialog", { name: "Pot rules" })
+    expect(within(rules).getByRole("alert").textContent).toContain("Check the rules above, then try again.")
+    await waitFor(() => expect(document.activeElement).toBe(instant()))
+    expect(createPot).not.toHaveBeenCalled()
+  })
+
+  it("a bad name found from the rules step returns to the main screen with the name error", async () => {
+    main()
+    await opened()
+    fireEvent.click(screen.getByRole("button", { name: "Change the rules" }))
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Pot rules" })).getByRole("button", { name: "Create Pot" }))
+    const d = screen.getByRole("dialog", { name: "Start a Pot" })
+    expect(within(d).getByText("Use 2–40 letters, numbers or spaces.")).toBeTruthy()
+    await waitFor(() => expect(document.activeElement).toBe(within(d).getByRole("textbox", { name: /Pot name/ })))
+    expect(createPot).not.toHaveBeenCalled()
   })
 })

@@ -573,6 +573,14 @@ failure to read the members fails closed: the reader is treated as not a member,
 | Push subscriptions | `POST/DELETE /api/push/subscription` | the owner | the owner |
 | Relay outcomes, 1Click deposits | `GET /api/relay/[id]`, `/api/oneclick/status*` | the owner (`user_id`) | the owner |
 | Invite secret (`#secret`) | never sent to the server; `invite_meta` holds only the public key | – | – |
+| Gift names and notes (`gift.display_name`, `gift.note`; gifts 2026-11-02) | `GET /api/pots/[pot]/gifts` | – (new) | the Pot's active members (403 before any read) |
+| | `GET /api/me/gifts`, `PATCH /api/gifts/[ref]` | – (new) | the giver, for their own gifts only (someone else's ref → 404) |
+| | public page `/give/<slug>` (`GET /api/give/[slug]`) | – (new) | anyone, **only** for page gifts the giver marked "show my name" (`show_public`) and received; a gift without a name isn't listed; never a link gift's |
+| | push (`gift_received`) | – (new) | members (minus the giver): the chosen name or "Someone", the amount; **never the note** |
+| Gift links (`gift_link`: amount, the members' note for givers, uses, expiry) | `GET/POST /api/pots/[pot]/gift-links`, `DELETE …/[id]` | – (new) | members (who made it is in `createdBy`, members only) |
+| | landing `/g/<slug>/<id>` (`GET /api/gift-links/[id]`) | – (new) | **whoever holds the link**: the Pot's name, emoji, status and member count (ledger), the link's amount and the link's own note (a member wrote it *for* the givers; shown only while the link works), whether the Pot takes gifts. Never a member's or a giver's name |
+| The public page's one-liner (`gift_page.line`) | `/give/<slug>` | – (new) | anyone **while the page is on** (members wrote it for the public); off → not served |
+| Gift amounts and sender accounts | the hub's `gift_received{pot,from,amount,ref}` event, the token transfer | – | **public on the ledger** anyway; the public page shows totals and opted-in givers only, never account ids |
 | Goal "$X each" | the creator's device; the landing shows the default $150 | – | – |
 | Error responses | `not_a_member` 403 / `not_signed_in` 401 / `pot_unknown` 404 | – | Pot existence and request ids are public, so a 403 only reveals public facts. **`POST /api/devices` returned the raw internal error text** (now `internal` with no message, logged instead; fixed) |
 | Server logs (`console.error`, `error_log`, 14 days) | `route()`, after(), feed extras, notify, ops, cron | **values of a failed query: drizzle's `DrizzleQueryError` message carries `params:` (comment text, notes, receipt JSON, names, emails)** | SQL + cause only, values dropped (`server/util/errtext.ts` `errText` at every log site; fixed) |
@@ -625,3 +633,81 @@ failure to read the members fails closed: the reader is treated as not a member,
    claimers should stay "someone".
 3. **CDN caching of the feed.** A signed-out feed response is `public, s-maxage=5`. It holds no member data, but a
    member whose request reaches a cached copy would briefly see no names. This is a functional issue, not a leak.
+
+
+---
+
+# Gifts (2026-11-02)
+
+Spec: `notes/gifts-plan.md` (approved). Server half only; the hub (1.2.0), the sdk and the relayer rule are other
+agents' work. Everything is behind **`FLAG_GIFTS`** (`"true"`/`"1"` → on; unset → off): while off, every gifts route
+answers **404 `not_found` `{cause: gifts_off_flag}`**, the resolvers return null and `validateGiftRef` says `unknown_ref`.
+
+- **Tables** (migration **`db/migrations/0005_gifts.sql`**, drizzle-kit generated, journal + snapshot; additive):
+  - `gift_link`: `id` (22-char base64url, CHECK), `pot_id` → pot, `created_by`, `amount` numeric(40,0) null (= giver
+    chooses; CHECK > 0), `note` (1-140, CHECK), `reusable` (default true), `uses` (≥ 0), `expires_at` (now + 14 d, set by
+    the code), `revoked_at`, `revoked_by`, `client_key`, `created_at`; index (pot, created_at); unique (created_by,
+    client_key) where set.
+  - `gift`: `ref` PK (CHECK `^g[0-9a-hjkmnp-tv-z]{23}$`), `pot_id` → pot, `link_id` → gift_link null (= the public page),
+    `giver_account`, `giver_user_id` → app_user (set null), `display_name` (1-40), `note` (1-140), `show_public`,
+    `amount` (> 0), `status` pending|received|failed (CHECK), `tx_hash`, `client_key`, `created_at`, `received_at`;
+    indexes (pot, status, created_at), (giver, created_at), (link_id); unique (giver, client_key) where set.
+  - `gift_page`: `pot_id` PK → pot, `on` (default false), `line` (1-100), `updated_by`, `updated_at`.
+  - `feed_event.kind` gains `gift_received` (text column, no DDL; the relayer's feed rows).
+  - **Apply 0005 before deploying a build with this code** (local `pot` DB, preview/prod Neon):
+    `DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot pnpm --filter web exec drizzle-kit migrate`.
+- **Code:** `server/features/gifts/` — `core.ts` (flag, `GiftDeps`, quotas, Pot info, `takingOf`, shapes), `chain.ts`
+  (`GiftChain`), `deps.ts` (`giftDeps()` singleton, `setGiftChainForTests`), `public.ts` (`resolveGiftLanding`,
+  `resolveGiftPage`: also called by the server components `app/g/[slug]/[id]` and `app/give/[slug]`), `members.ts`,
+  `giver.ts`, `validate.ts`, `received.ts`, `schemas.ts` (strict zod), `index.ts`. Wire types: `lib/gifts-api.ts`;
+  rules and ids: `lib/gifts.ts`.
+- **Routes** (Node, `maxDuration = 15`, `route()`; every write: CSRF/Origin + strict body + an active device):
+  - members (hub `get_members`, active, every call, **403 `not_a_member` before any gift row is read**):
+    `GET/POST /api/pots/[pot]/gift-links` (POST 201, a retry with the same `idempotencyKey` 200 `replayed`, another
+    body 409 `idempotency_conflict`; `amount_too_low`/`amount_too_high`; `bad_request {field: note, why}`; `pot_closed`
+    when the Pot isn't open), `DELETE /api/pots/[pot]/gift-links/[id]` (any member, idempotent; another Pot's link or
+    none → 404 `{cause: link_unknown}`), `GET /api/pots/[pot]/gifts` (received gifts with names and notes, totals, the
+    page), `PUT /api/pots/[pot]/gift-page` (`line` absent = keep, null/"" = remove; turning it on needs an open Pot).
+  - public (`Cache-Control: private, no-store`; 120/min per IP): `GET /api/gift-links/[id]` (404 `{cause:
+    link_unknown}`), `GET /api/give/[slug]` (404 `{cause: pot_unknown}`; page off → `{pot, page: {on: false, line:
+    null}}` only).
+  - the giver (signed in, any account): `POST /api/gifts` (201 `{gift: {ref, pot, amount, msg}}`, replay 200),
+    `PATCH /api/gifts/[ref]` (own gifts; someone else's → 404), `GET /api/me/gifts` (own, newest first, ≤ 100; pending
+    ones over a day old left out).
+- **Starting a gift, in order:** exactly one of `linkId` / `page: true` (400 `{cause: link_or_page}`); name/note
+  cleaned (400 `{field, why}`); replay by (giver, key); the link must be this Pot's (404 `{cause: link_unknown}`) and work
+  (**409 `action_not_allowed`** `{cause: link_revoked | link_expired | link_used}`; a one-time link is used once a gift on
+  it is received); a fixed amount must match (422 `args_invalid {cause: fixed_amount, amount}`); or the page must be on
+  (404 `{cause: page_off}`); $1..$10,000 (422 `amount_too_low {min}` / `amount_too_high {max}`); the Pot takes gifts
+  (409 `pot_closed`; 409 `action_not_allowed {cause: gifts_off | goal_collecting}`); a one-time link held by someone
+  else's pending gift < 10 min old → 409 `{cause: link_used}` (the check + insert run under the link's row lock).
+  `showPublic` is kept only for page gifts (forced false through a link; PATCH → 422 `args_invalid {cause: page_only}`).
+- **Quotas** (the gifts' own table in `core.ts`, `QUOTA_<NAME>` overrides): `gifts_user_link` 20/day +
+  `gifts_user_link_burst` 10/min; `gifts_user_start` 20/day + `gifts_user_start_burst` 10/min + `gifts_ip_start` 60/day
+  + `gifts_pot_start` 200/day; `gifts_user_patch` 30/day; `gifts_user_page` 30/day; `gifts_ip_read` 120/min. Per-minute
+  → 429 `rate_limited` (+ `retryAfterMs`), daily → 429 `quota_exceeded {family: "gifts"}`. (The relayer's own
+  `user_gift` / `pot_gift` families are separate.)
+- **For the relayer** (import from `server/features/gifts/validate` and `…/received` directly):
+  - `validateGiftRef(db, {pot, ref, amount, sender?}, now?) → GiftRefCheck` (curried `giftRefValidator(db)(pot, ref,
+    amount, sender?)`): pure DB. `unknown_ref` (bad format, no row, flag off) · `wrong_pot` · `wrong_amount` ·
+    `wrong_sender` · `not_pending` (received, failed, or pending > 1 day) · `link_revoked` · `link_expired` ·
+    `link_used` · `page_off` · else `{ok: true, linkId}`.
+  - `onGiftReceived({db, hub, cfg, sender}, {pot, from, amount, ref, txHash?, at?})`: marks our row `received` once
+    (only when pot **and** sender match; the event's amount is stored), bumps its link's `uses` once (same tx), then
+    pushes (`NotifyEvent` `gift_received`, eventKey `gift:<pot>:<ref>`, deduped in `notification_log`): every active
+    member but `from`; title `notif.gift.title` with the row's name, else the giver's Pot name, else
+    `notif.gift.someone` (unknown or someone else's ref); body `notif.gift.body` (amount only, **never the note**);
+    `/p/<slug>?sheet=gift&gift=<ref>`; topic per gift. `eventsToNotifications` also maps the hub event
+    `gift_received{pot,from,amount,ref}`, so `notifyFromEvents` covers it (same eventKey, so never twice).
+  - `markGiftFailed(db, ref)`: pending → failed.
+- **Hub views (wired 2026-11-02, notes/contracts-gifts.md §11):** `giftsOf` reads hub 1.2.0 `get_gifts({pot})` through
+  the sdk's parser (`parseGetGifts`: on/total/count + `refusal`), then `gifts_on`/`gifts_total`/`gifts_count` on `get_pot`;
+  missing (a 1.1.0 hub) → null = unknown → treated as on, totals from our received rows. `goalCollecting` uses hub 1.1.0
+  `get_goal` (fallback: `extras.goal` + `goal_state`). Cached 10 s per instance. **The relayer's hooks are wired** in
+  `server/deps.ts` (`giftRelayHooks`), and `/api/relay` passes `ipHash`.
+- **Tests** (private DB `pot_gifts`): `server/features/gifts/gifts.test.ts` (33: links + quotas, the page switch, every
+  start rule incl. the reservation and idempotency, PATCH / my gifts, every `validateGiftRef` reason, `markGiftFailed`,
+  `onGiftReceived` marks/uses once + push recipients/copy/no note + "Someone", the event mapping, resolvers, the
+  GiftChain parsing, the DB CHECKs) and `routes.test.ts` (10, route-level: flag off, 401/403 gates incl. a member who
+  left, CSRF/strict bodies, privacy markers on the landing, the page, members' list and `/api/me/gifts`, the public
+  read limit).

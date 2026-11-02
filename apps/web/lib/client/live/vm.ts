@@ -203,7 +203,10 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
           ? 0n
           : m.balanceSource !== "ledger"
             ? m.wouldGetBack
-            : getsBack(b.balance, m.contributed, totalIn)
+            : totalIn === 0n
+              ? // hub 1.2.0 close_split: a Pot that only got gifts is split equally among the active members
+                getsBack(b.balance, 1n, BigInt(active.length))
+              : getsBack(b.balance, m.contributed, totalIn)
       return {
         person: person(m.account),
         contributed: m.contributed,

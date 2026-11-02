@@ -138,4 +138,12 @@ pub enum PotEvent {
     GoalRefundProposed { pot: AccountId, proposal_id: u64, goal: Goal, total: U128 },
     #[event_version("1.1.0")]
     GoalRefunded { pot: AccountId, proposal_id: u64 },
+    // ---- hub 1.2.0 (gifts) ----
+    /// Anyone's gift reached the Pot (after the forward succeeded). `ref` = the gift-link id or
+    /// another server-chosen tag; `gifts_total` / `gifts_count` = the Pot's totals after this gift.
+    #[event_version("1.2.0")]
+    GiftReceived { pot: AccountId, from: AccountId, amount: U128, r#ref: String, gifts_total: U128, gifts_count: u32 },
+    /// A member turned gifts on or off.
+    #[event_version("1.2.0")]
+    GiftsSet { pot: AccountId, on: bool, by: AccountId },
 }

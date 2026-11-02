@@ -1,7 +1,7 @@
 "use client"
 // PotHeader (cover tile + H1 + seats + ••• menu) and PotCard (Pots home), design-direction 02 §1-2.
 import { Menu } from "@base-ui/react/menu"
-import { ChevronLeft, EllipsisVertical, Eye, ListChecks, LogOut, Share2 } from "lucide-react"
+import { ChevronLeft, EllipsisVertical, Eye, Gift, ListChecks, LogOut, Share2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AvatarStack } from "@/components/pot/Avatar"
@@ -14,6 +14,7 @@ import { formatUsd } from "@/lib/client/money"
 import type { PotCardVM, PotVM } from "@/lib/client/mock/types"
 import { openSheet } from "@/lib/client/sheet"
 import { cn } from "@/lib/client/cn"
+import { GIFTS_ON } from "@/lib/client/gifts/flag"
 
 const itemCls =
   "flex min-h-12 w-full cursor-default items-center gap-3 rounded-sm px-3 text-left text-body text-ink outline-none select-none data-highlighted:bg-surface-sunken data-disabled:text-ink-muted"
@@ -55,6 +56,16 @@ export function PotHeader({ pot }: { pot: PotVM }) {
                   <span className="text-body-sm text-ink-muted">{t("pot.menu.record.sub")}</span>
                 </span>
               </Menu.Item>
+              {/* hub 1.2.0: gifts on/off, the public gift page */}
+              {GIFTS_ON && (
+                <Menu.Item className={itemCls} onClick={() => openSheet("gifts")} data-menu-gifts>
+                  <Gift aria-hidden className="size-5" strokeWidth={2} />
+                  <span className="flex flex-col py-1">
+                    <span>{t("gift.menu")}</span>
+                    <span className="text-body-sm text-ink-muted">{t("gift.menu.sub")}</span>
+                  </span>
+                </Menu.Item>
+              )}
               {/* privacy audit 2026-11-02: what's public and what only the Pot sees (the shell's PwaHost opens it) */}
               <Menu.Item className={itemCls} onClick={() => openSheet("privacy")} data-menu-privacy>
                 <Eye aria-hidden className="size-5" strokeWidth={2} />

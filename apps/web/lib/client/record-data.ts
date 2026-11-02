@@ -5,17 +5,22 @@
 //  - testnet: hub get_record (hub 1.1.0, every page; get_requests on a 1.0.0 hub) read by anyone over public RPC, plus
 //    the feed route when the visitor is a member (names from the group, notes, receipts). A visitor sees only what's
 //    public on chain: amounts, reasons, account-derived first names.
+//  - gifts (hub 1.2.0): members see every gift's name and note; visitors only givers who chose to be shown.
 import type { Api, RecordEntry, RequestView } from "@pot/sdk"
 import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 import { t } from "@/i18n/t"
 import { avatarOrNull } from "@/lib/avatars"
+import type { GiftPageRes, GiftsRes, GiftWire, PublicGiftWire } from "@/lib/gifts-api"
 import { IS_LIVE, daoOf } from "./config"
 import { chain } from "./live/chain"
 import { coverOf, nameFromAccount } from "./live/vm"
 import { readRecord } from "./live/wave4"
 import { useWorld } from "./mock/store"
 import type { PersonVM } from "./mock/types"
+import type { Micro } from "./money"
+import { cents } from "./money"
+import { GIFTS_ON } from "./gifts/flag"
 import * as W from "./mock/world"
 import { rowsFromEntries, rowsFromRequests, visitorRow, type RecordRow } from "./record"
 import { useMe } from "./session"
@@ -33,7 +38,25 @@ export type RecordState =
       rows: RecordRow[]
       /** the visitor is a member (back to the Pot; names and notes shown) */
       member: boolean
+      /** hub 1.2.0 gifts, newest first: amount + "Gift" for everyone; a name and note only where the giver chose */
+      gifts?: RecordGiftRow[]
     }
+
+/**
+ * A gift on the record. Visitors: the amount and that it's a gift, the name/note only with the giver's "show me".
+ * Members (signed in, in the Pot): every gift's name and note (members-only data, like the feed's).
+ */
+export interface RecordGiftRow {
+  key: string
+  at: number
+  amount: Micro
+  /** shown on the page: members get every giver's name; visitors only a name the giver chose to show */
+  name: string | null
+  note: string | null
+  /** the name the giver chose to show publicly (the CSV uses only this one, whoever downloads it) */
+  publicName: string | null
+  txHash?: string
+}
 
 function useMockRecord(slug: string): RecordState {
   const world = useWorld()
@@ -46,7 +69,27 @@ function useMockRecord(slug: string): RecordState {
     const reqs = pot.feed.flatMap((f) => (f.kind === "request" ? [f.request] : []))
     const member = !!pot.me
     const rows = rowsFromRequests(reqs)
-    return { state: "ready", slug, potName: pot.name, emoji: pot.emoji, cover: pot.cover, rows: member ? rows : rows.map((r) => visitorRow(r, nameFromAccount)), member }
+    // members see every gift's name and note (pot.gifts: the members' view); visitors only what the giver chose to show
+    const byRef = new Map((pot.gifts?.items ?? []).map((g) => [g.ref, g]))
+    const gifts: RecordGiftRow[] = GIFTS_ON
+      ? (world.gifts ?? [])
+          .filter((g) => g.pot === slug)
+          .sort((a, b) => b.at - a.at)
+          .map((g) => {
+            const publicName = g.showPublic ? g.name : null
+            const vm = member ? byRef.get(g.ref) : undefined
+            return {
+              key: g.ref,
+              at: g.at,
+              amount: cents(g.amount),
+              name: member ? (vm?.from.name ?? g.name) : publicName,
+              note: member ? (g.note ?? null) : g.showPublic ? (g.note ?? null) : null,
+              publicName,
+              txHash: W.mockTxHash(`${slug}:gift:${g.ref}`),
+            }
+          })
+      : []
+    return { state: "ready", slug, potName: pot.name, emoji: pot.emoji, cover: pot.cover, rows: member ? rows : rows.map((r) => visitorRow(r, nameFromAccount)), member, gifts }
   }, [world, me, now, slug])
 }
 
@@ -97,6 +140,44 @@ interface LiveRecord {
   slug: string
   entries: RecordEntry[]
   feed: Api.FeedRes | null
+  /** hub 1.2.0: the members' gift list (403 for anyone else), else the public page's opted-in givers */
+  gifts: { members: GiftWire[] } | { page: PublicGiftWire[] } | null
+}
+
+async function getJson<T>(path: string): Promise<T | null> {
+  try {
+    const res = await fetch(path, { credentials: "same-origin", cache: "no-store" })
+    return res.ok ? ((await res.json()) as T) : null
+  } catch {
+    return null
+  }
+}
+
+/** Members get every received gift with names and notes; anyone else, the public page's givers (only those who opted in). */
+export async function fetchRecordGifts(slug: string): Promise<LiveRecord["gifts"]> {
+  if (!GIFTS_ON) return null
+  const mine = await getJson<GiftsRes>(`/api/pots/${encodeURIComponent(slug)}/gifts`)
+  if (mine) return { members: mine.gifts.filter((g) => g.status === "received") }
+  const page = await getJson<GiftPageRes>(`/api/give/${encodeURIComponent(slug)}`)
+  return page?.page.on && page.givers ? { page: page.givers } : null
+}
+
+/** The live record's gift rows, newest first (members: every name and note; visitors: opted-in givers only). */
+export function liveGiftRows(g: LiveRecord["gifts"], nameOf: (account: string) => string): RecordGiftRow[] {
+  if (!g) return []
+  const rows: RecordGiftRow[] =
+    "members" in g
+      ? g.members.map((x) => ({
+          key: x.ref,
+          at: Date.parse(x.at),
+          amount: BigInt(x.amount),
+          name: x.name ?? nameOf(x.from),
+          note: x.note,
+          publicName: x.showPublic ? x.name : null,
+          ...(x.txHash ? { txHash: x.txHash } : {}),
+        }))
+      : g.page.map((x, i) => ({ key: `page:${i}:${x.at}`, at: Date.parse(x.at), amount: BigInt(x.amount), name: x.name, note: x.note, publicName: x.name }))
+  return rows.sort((a, b) => b.at - a.at)
 }
 
 async function loadLiveRecord(slug: string): Promise<LiveRecord | null> {
@@ -109,7 +190,8 @@ async function loadLiveRecord(slug: string): Promise<LiveRecord | null> {
     entries = []
     for (let from = 0; from < pot.requestCount; from += 50) entries.push(...(await c.hub.getRequests(dao as never, from, 50)).value.map(entryOfRequest))
   }
-  return { potName: pot.name, emoji: pot.emoji ?? "", slug: pot.slug, entries, feed: await fetchFeed(dao) }
+  const [feed, gifts] = await Promise.all([fetchFeed(dao), fetchRecordGifts(pot.slug)])
+  return { potName: pot.name, emoji: pot.emoji ?? "", slug: pot.slug, entries, feed, gifts }
 }
 
 function useLiveRecord(slug: string): RecordState {
@@ -133,7 +215,10 @@ function useLiveRecord(slug: string): RecordState {
     for (const it of feed?.items ?? []) if (it.type === "request" && it.requestRef && it.txHash) txByRef[it.requestRef] = it.txHash
     const rows = rowsFromEntries(entries, person, { notes: feed?.memos ?? {}, txByRef, receipts: feed?.receipts ?? [] })
     // the feed answers everyone; only members get its memos (M-7), so that's what says the visitor is one
-    return { state: "ready", slug, potName: q.data.potName, emoji: q.data.emoji, cover: coverOf(slug, feed?.pot.gradient), rows, member: !!feed && feed.memos !== undefined }
+    // hub 1.2.0 gifts: members' rows come from GET /api/pots/[pot]/gifts (received ones, rows the relayer marked via
+    // onGiftReceived); visitors get the public page's opted-in givers only (an anonymous gift's amount isn't listed)
+    const gifts = liveGiftRows(q.data.gifts, (a) => person(a).name)
+    return { state: "ready", slug, potName: q.data.potName, emoji: q.data.emoji, cover: coverOf(slug, feed?.pot.gradient), rows, member: !!feed && feed.memos !== undefined, gifts }
   }, [q.isError, q.data, slug])
 }
 

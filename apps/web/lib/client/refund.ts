@@ -1,17 +1,18 @@
 // Refund preview (risk-register R-33 M-6): "what would I get back if this Pot closed now?", and how one action
 // would change it. Pure, so the Pot screen, the Add and Spend sheets and the tests share one answer.
 //
-// The math is the hub's own close-out (contracts/pot-hub/src/prorata.rs, through its parity-tested TS twin
-// `prorata` in @pot/sdk; get_members.would_get_back and preview_close use exactly this):
+// The math is the hub's own close-out (contracts/pot-hub/src/prorata.rs close_split, through its parity-tested TS
+// twin `closeSplit` in @pot/sdk; get_members.would_get_back and preview_close use exactly this, hub 1.2.0):
 //   share_i = floor(B × c_i / C) over the active members in join order, C = Σ c_i;
 //   dust = B − Σ share_i goes to the last contributor (else the last member in join order with c > 0);
-//   B = 0 or C = 0 → nobody gets anything back.
+//   C = 0 (a Pot that only got gifts): split equally, the dust to the last member in join order;
+//   B = 0 → nobody gets anything back.
 // B is the Pot's live balance (usdc.ft_balance_of(dao), the same number the UI passes to preview_close).
 //  - Add a: B + a, c_me + a, and the last contributor becomes me (contribute() sets it).
 //  - Spend s (once paid): B − s; contributions and the last contributor don't change.
 // `unit` is the smallest amount the close math works in: 1 micro on testnet; the mock world keeps cents, so its
 // close runs in cents (10 000 micro) and the preview must too, or a $0.01 remainder could land elsewhere.
-import { prorata } from "@pot/sdk"
+import { closeSplit } from "@pot/sdk"
 import type { Micro } from "./money"
 import type { PotVM } from "./mock/types"
 
@@ -29,7 +30,7 @@ export interface RefundBasis {
 /** What each person would get back if the Pot closed with this basis (people with nothing back are absent). */
 export function refunds(b: RefundBasis): Map<string, Micro> {
   const u = b.unit > 0n ? b.unit : 1n
-  const r = prorata(
+  const r = closeSplit(
     b.balance > 0n ? b.balance / u : 0n,
     b.members.map((m) => ({ account: m.id, contributed: m.contributed > 0n ? m.contributed / u : 0n })),
     b.lastContributor,

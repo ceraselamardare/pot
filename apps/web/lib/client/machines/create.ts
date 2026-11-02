@@ -1,7 +1,9 @@
 // Create Pot as a typed reducer (frontend-architecture §5.10, ux-spec §4.12, design-direction 01 §3).
-// Step 1 name + emoji + colour → step 2 the Pot rules (instant limit, per-person limit, who instant payments go
-// to; lib/client/create-rules.ts) + optional "$150 each" → step 3 creating → share. No templates: every Pot is
-// created with preset "custom" and the rules as typed.
+// Lean create (notes/gifts-plan.md "Lean create flow"): ONE screen (step 1) with the name, the emoji + colour (a
+// picker behind the cover preview), the optional "$150 each" and one rules summary line → [Create Pot] → step 3
+// creating → share. The summary's [Change] opens step 2, the full "Pot rules" form (instant limit, per-person
+// limit, who instant payments go to, trust, one OK, the goal; lib/client/create-rules.ts, wave4-form.ts), which
+// can create the Pot too. No templates: every Pot is created with preset "custom" and the rules as typed.
 import { DEFAULT_RULES_FORM, MAX_NAMED, parseAmount, sanitizeAmount, type PayeeChoice, type RulesForm } from "../create-rules"
 import { extrasFormReducer, initialExtrasForm, type ExtrasEvent, type ExtrasForm } from "../wave4-form"
 
@@ -16,7 +18,10 @@ export function validateName(name: string): boolean {
 }
 
 export interface CreateState {
+  /** 1 the one Create screen, 2 the full rules ([Change], `?step=rules`), 3 creating */
   step: 1 | 2 | 3
+  /** the screen [Create Pot] was pressed on: a failure returns there */
+  from: 1 | 2
   name: string
   emoji: string
   cover: number
@@ -39,7 +44,8 @@ export type CreateEvent =
   | { type: "NAME"; value: string }
   | { type: "EMOJI"; value: string }
   | { type: "COVER"; value: number }
-  | { type: "NEXT" }
+  /** the rules summary's [Change]: open the full rules (no name needed yet) */
+  | { type: "RULES" }
   | { type: "BACK" }
   | { type: "GOAL"; on: boolean }
   | { type: "GOAL_AMOUNT"; value: string }
@@ -59,6 +65,7 @@ export type CreateEvent =
 
 export const initialCreate: CreateState = {
   step: 1,
+  from: 1,
   name: "",
   emoji: "✈️",
   cover: 0,
@@ -106,21 +113,22 @@ export function createReducer(s: CreateState, e: CreateEvent): CreateState {
       return { ...s, rules: { ...s.rules, named: named.length ? named : [""] } }
     }
     case "ATTEMPT":
-      return s.step === 2 ? { ...s, attempted: true } : s
-    case "NEXT":
-      if (s.step !== 1) return s
-      return validateName(s.name) ? { ...s, step: 2, nameError: false } : { ...s, nameError: true }
+      // [Create Pot] with something to fix: every inline error shows, the name's too
+      return s.step === 3 ? s : { ...s, attempted: true, nameError: !validateName(s.name) }
+    case "RULES":
+      return s.step === 1 ? { ...s, step: 2 } : s
     case "BACK":
       return s.step === 2 && s.status !== "creating" ? { ...s, step: 1 } : s
     case "SUBMIT":
-      if (s.step !== 2 || s.status === "creating") return s
-      return { ...s, step: 3, status: "creating", slow: false, error: null, attempted: false }
+      if (s.step === 3 || s.status === "creating") return s
+      if (!validateName(s.name)) return { ...s, nameError: true, attempted: true }
+      return { ...s, step: 3, from: s.step, status: "creating", slow: false, error: null, attempted: false, nameError: false }
     case "SLOW":
       return s.status === "creating" ? { ...s, slow: true } : s
     case "CREATED":
       return s.status === "creating" ? { ...s, slug: e.slug } : s
     case "FAILED":
-      // keep what Maya entered; back on step 2 with the error (ux-spec 4.12 X)
-      return { ...s, step: 2, status: "error", slow: false, error: e.key }
+      // keep what Maya entered; back on the screen she pressed [Create Pot] on, with the error (ux-spec 4.12 X)
+      return { ...s, step: s.from, status: "error", slow: false, error: e.key }
   }
 }

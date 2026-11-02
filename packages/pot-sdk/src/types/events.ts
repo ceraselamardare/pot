@@ -83,6 +83,10 @@ export interface HubEventDataMap {
   goal_reached: { pot: string; goal: RawGoal; total: string }
   goal_refund_proposed: { pot: string; proposal_id: number; goal: RawGoal; total: string }
   goal_refunded: { pot: string; proposal_id: number }
+  // ---- hub 1.2.0 (event version "1.2.0") ----
+  /** anyone's gift reached the Pot; `ref` = the gift-link id; totals after this gift */
+  gift_received: { pot: string; from: string; amount: string; ref: string; gifts_total: string; gifts_count: number }
+  gifts_set: { pot: string; on: boolean; by: string }
 }
 
 export type HubEventName = keyof HubEventDataMap
@@ -111,6 +115,8 @@ export const HUB_EVENT_NAMES: readonly HubEventName[] = [
   "goal_reached",
   "goal_refund_proposed",
   "goal_refunded",
+  "gift_received",
+  "gifts_set",
 ]
 
 /** A typed hub event (discriminated by `event`). */

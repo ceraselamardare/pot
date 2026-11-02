@@ -12,6 +12,9 @@ import type { ExtrasRec, RulesRec, Vote, World } from "./types"
 import * as W from "./world"
 import { refundDue, withShowcase } from "./wave4"
 import { sweepExpiredLinks, withLinkShowcase } from "./links"
+import * as G from "./gifts"
+import { newGiftRef } from "@/lib/gifts"
+import { withGiftShowcase } from "./gifts"
 
 const WORLD_KEY = "pot.mock.world.v1"
 const SESSION_KEY = "pot.mock.session"
@@ -65,7 +68,7 @@ function wantsShowcase(): boolean {
 
 function freshWorld(now: number): World {
   const w = W.seedWorld(now)
-  return wantsShowcase() ? withLinkShowcase(withShowcase(w, now), now) : w
+  return wantsShowcase() ? withGiftShowcase(withLinkShowcase(withShowcase(w, now), now), now) : w
 }
 
 function ensureWorld(): World {
@@ -400,4 +403,88 @@ export async function reclaimLink(slug: string, id: number): Promise<L.ReclaimRe
 /** A seeded link's secret (fixtures only): the requester's "device" for the showcase links. */
 export function demoLinkSecret(slug: string, id: number): string | null {
   return ensureWorld().pots[slug]?.requests.find((r) => r.id === id)?.link?.demoSecret ?? null
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// gifts (hub 1.2.0 + our server's gift tables). Fault hooks: 'gift' (the gift's send fails), 'gift_link', 'gifts'.
+
+export const LATENCY_GIFT = { link: 450, give: 900, toggle: 600 } as const
+
+function giftCall<T>(fn: () => T): T {
+  try {
+    return fn()
+  } catch (e) {
+    if (e instanceof G.GiftWorldError) {
+      const c = e.code
+      throw new MockRelayError(
+        c === "not_member"
+          ? "not_a_member"
+          : c === "not_found" || c === "not_giver" || c === "page_off"
+            ? "not_found"
+            : c === "too_low"
+              ? "amount_too_low"
+              : c === "too_high"
+                ? "amount_too_high"
+                : c === "closed"
+                  ? "pot_closed"
+                  : c === "invalid" || c === "fixed_amount"
+                    ? "args_invalid"
+                    : "action_not_allowed",
+      )
+    }
+    throw e
+  }
+}
+
+const randomId = (n: number) => {
+  const a = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+  let s = ""
+  for (let i = 0; i < n; i++) s += a[Math.floor(Math.random() * a.length)]
+  return s
+}
+
+/** A member makes a gift link (the mock's POST /api/pots/[pot]/gift-links). */
+export async function createGiftLink(slug: string, input: G.GiftLinkInput): Promise<string> {
+  await sleep(LATENCY_GIFT.link)
+  maybeFail("gift_link")
+  const r = giftCall(() => G.createGiftLink(ensureWorld(), slug, me(), input, Date.now(), randomId(22)))
+  commit(r.world)
+  return r.link.id
+}
+
+export async function revokeGiftLink(slug: string, id: string): Promise<void> {
+  await sleep(LATENCY_GIFT.link)
+  maybeFail("gift_link")
+  commit(giftCall(() => G.revokeGiftLink(ensureWorld(), slug, me(), id, Date.now())))
+}
+
+/** ••• → Gifts → on/off (the hub's set_gifts). */
+export async function setGiftsOn(slug: string, on: boolean): Promise<void> {
+  await sleep(LATENCY_GIFT.toggle)
+  maybeFail("gifts")
+  commit(giftCall(() => G.setGiftsOn(ensureWorld(), slug, me(), on)))
+}
+
+/** ••• → Gifts → the public gift page and its one-liner. */
+export async function setGiftPage(slug: string, input: { on: boolean; line?: string | null }): Promise<void> {
+  await sleep(LATENCY_GIFT.toggle)
+  maybeFail("gifts")
+  commit(giftCall(() => G.setGiftPage(ensureWorld(), slug, me(), input)))
+}
+
+/** Send a gift as the signed-in person (demo dollars: claimed and sent in one go, like Add money). */
+export async function giveGift(input: Omit<G.GiveInput, "who">): Promise<{ ref: string }> {
+  await sleep(LATENCY_GIFT.give)
+  maybeFail("gift")
+  const ref = newGiftRef()
+  // from the giver's own Pot dollars: only what they have (the real token refuses more; nothing moves)
+  if (input.source === "pot_dollars" && input.amount > W.ownDollarsOf(ensureWorld(), me())) throw new MockRelayError("insufficient_balance")
+  const r = giftCall(() => G.giveGift(ensureWorld(), { ...input, who: me() }, Date.now(), ref))
+  commit(r.world)
+  return { ref }
+}
+
+export async function editGift(ref: string, patch: { name?: string | null; note?: string | null; showPublic?: boolean }): Promise<void> {
+  await sleep(LATENCY.comment)
+  commit(giftCall(() => G.editGift(ensureWorld(), ref, me(), patch)))
 }

@@ -113,6 +113,10 @@ export interface RawPotView {
   policy_version?: number
   open_links?: number
   goal_state?: RawGoalState
+  /** hub 1.2.0 (gifts); absent on older hubs (= gifts unknown / not supported) */
+  gifts_on?: boolean
+  gifts_total?: string
+  gifts_count?: number
 }
 
 export interface RawPotSummary {
@@ -203,12 +207,18 @@ export type RawCloseBlockedReason =
   | "no_contributions"
   | "nothing_to_refund"
   | "links_pending"
+  /** hub 1.2.0: a gift forward is pending (≤ 60 s) */
+  | "gift_in_flight"
 
 export interface RawClosePreview {
   pot: string
   balance: string
   balance_source: "argument" | "ledger" | "close_record"
   total_contributed: string
+  /** hub 1.2.0 */
+  gifts_total?: string
+  /** hub 1.2.0: "equal" when nobody contributed (a gifts-only Pot) */
+  split?: "prorata" | "equal"
   approvals_needed: number
   open_requests: number
   payouts: RawClosePayout[]
@@ -369,6 +379,10 @@ export interface RawGoalView {
   deadline_ms: number
   all_or_nothing: boolean
   total_contributed: string
+  /** hub 1.2.0: gifts count toward a normal goal (not an all-or-nothing one) */
+  gifts_total?: string
+  /** hub 1.2.0: what counts toward the goal */
+  progress?: string
   state: Exclude<RawGoalState, "none">
   reached_at_ms: number | null
   refund_proposal_id: number | null
@@ -437,4 +451,23 @@ export interface RawLinkOutcome {
   status: RawLinkStatus
   receiver_id: string | null
   reason?: "transfer_failed" | "stale" | string
+}
+
+// ---- hub 1.2.0 (gifts) ----
+
+export type RawGiftRefusal = "pot_not_open" | "paused" | "gifts_off" | "goal_collecting" | "goal_missed"
+
+/** hub 1.2.0 `get_gifts(pot)` / `set_gifts(pot, on)` return value. */
+export interface RawGiftsView {
+  pot: string
+  on: boolean
+  total: string
+  count: number
+  last_gift_ms: number | null
+  /** a gift forward is pending right now (the close waits ≤ 60 s) */
+  in_flight: boolean
+  /** a gift sent now would be accepted */
+  accepting: boolean
+  refusal: RawGiftRefusal | null
+  min_amount: string
 }

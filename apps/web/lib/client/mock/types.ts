@@ -160,6 +160,48 @@ export interface PotRec {
   trust?: Record<string, TrustRec>
   /** the all-or-nothing / soft goal's progress (the goal itself is in `extras.goal`) */
   goalState?: GoalStateRec
+  /** gifts (hub 1.2.0 `set_gifts`): a member turned them off; absent/false = taking gifts (on for every Pot) */
+  giftsOff?: boolean
+  /** the public gift page (/give/<slug>; our server's gift_page): off until a member turns it on */
+  giftPage?: { on: boolean; line: string | null }
+}
+
+/** A gift someone sent the Pot (the hub's gift_received + our `gift` row: the giver's name and note). */
+export interface GiftRec {
+  ref: string
+  /** Pot slug */
+  pot: string
+  /** the giver (a person id in the mock; any account on testnet) */
+  from: string
+  /** the name the giver chose for this gift (null = none) */
+  name: string | null
+  /** the giver's note (members see it; the public page only with showPublic) */
+  note?: string | null
+  /** public page gifts only: show my name (and note) on the page */
+  showPublic: boolean
+  /** cents */
+  amount: number
+  at: number
+  /** the gift link it came through (null = the public page) */
+  linkId: string | null
+  /** where the giver's money came from ("pot_dollars" = their own Pot dollars; absent = demo dollars) */
+  source?: "pot_dollars"
+}
+
+/** A gift link (our server's gift_link): a QR / link a member shares so people outside the Pot can send a gift. */
+export interface GiftLinkRec {
+  id: string
+  /** Pot slug */
+  pot: string
+  createdBy: string
+  /** cents; null = the giver chooses */
+  amount: number | null
+  note?: string | null
+  reusable: boolean
+  uses: number
+  expiresAt: number
+  revokedAt: number | null
+  createdAt: number
 }
 
 /** A comment on a request (the mock's stand-in for the request_comment table). */
@@ -185,6 +227,10 @@ export interface World {
   comments?: CommentRec[]
   /** receipt details saved with a spend, by "slug:requestId" (the mock's spend_receipt table) */
   receipts?: Record<string, SavedReceipt>
+  /** gifts to Pots, oldest first (the mock's gift table + the hub's gifts_total) */
+  gifts?: GiftRec[]
+  /** gift links (the mock's gift_link table) */
+  giftLinks?: GiftLinkRec[]
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -294,6 +340,32 @@ export type FeedItemVM =
   | { key: string; kind: "request"; at: number; request: RequestVM; txHash?: string }
   /** hub 1.1.0: the goal was reached / the all-or-nothing refund started / everyone got their money back */
   | { key: string; kind: "goal"; at: number; state: "reached" | "refunding" | "refunded"; amount: Micro; txHash?: string }
+  /** hub 1.2.0: someone sent the Pot a gift */
+  | { key: string; kind: "gift"; at: number; gift: GiftVM; txHash?: string }
+
+/** A gift as the Pot's members see it (the giver's note included). */
+export interface GiftVM {
+  ref: string
+  /** the giver: their chosen name for the gift, else their Pot name, else one from their account */
+  from: PersonVM
+  note: string | null
+  showPublic: boolean
+  amount: Micro
+  at: number
+  /** the gift link it came through (null = the public page) */
+  linkId: string | null
+  txHash?: string
+}
+
+/** A Pot's gifts: on/off, the public page, what came in. */
+export interface GiftsVM {
+  on: boolean
+  page: { on: boolean; line: string | null }
+  total: Micro
+  count: number
+  /** members only: every gift, newest first */
+  items: GiftVM[]
+}
 
 export interface MemberVM {
   person: PersonVM
@@ -404,6 +476,8 @@ export interface PotVM {
   goalDetail?: GoalVM | null
   /** 1 or 2 (2 = all-or-nothing goals possible) */
   policyVersion?: number
+  /** hub 1.2.0 gifts (absent = the gifts feature is off in this build, or not read yet) */
+  gifts?: GiftsVM
 }
 
 export interface PotCardVM {

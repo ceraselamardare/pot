@@ -46,6 +46,8 @@ const SCREENS_320 = [
   "/p/lisbon-trip?sheet=spend",
   "/p/lisbon-trip?sheet=add",
   "/pots",
+  "/pots?sheet=create",
+  "/pots?sheet=create&step=rules",
   "/requests",
   "/you",
   "/you/advanced",
@@ -200,6 +202,40 @@ test.describe("keyboard only (desktop)", () => {
     await page.keyboard.press("Escape")
     await expect(page.getByRole("dialog")).toBeHidden()
     await expect(review).toHaveCount(0) // decided: the card left "Waiting on you"
+  })
+
+  test("Create from the keyboard: Tab to the name, type, Enter creates; [Change] opens the rules and Back returns", async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "desktop keyboard path")
+    await asPerson(page, "maya")
+    await page.goto("/pots?sheet=create")
+    const main = page.getByRole("dialog", { name: "Start a Pot" })
+    await expect(page.getByRole("heading", { name: "Start a Pot" })).toBeFocused()
+    // heading → ✕ → the cover (opens the picker) → the name
+    const cover = main.getByRole("button", { name: "Change the emoji and colour" })
+    for (let i = 0; i < 3 && !(await cover.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab")
+    await expect(cover).toBeFocused()
+    await page.keyboard.press("Enter")
+    await expect(main.getByRole("radiogroup", { name: "Pick an emoji" })).toBeVisible()
+    await page.keyboard.press("Enter") // the cover keeps focus: Enter again closes the picker
+    await expect(main.getByRole("radiogroup")).toHaveCount(0)
+    const name = main.getByRole("textbox", { name: /Pot name/ })
+    for (let i = 0; i < 4 && !(await name.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab")
+    await expect(name).toBeFocused()
+    await page.keyboard.type("Desk Trip")
+    // on to [Change] (past "$150 each" and its switch)
+    const change = main.getByRole("button", { name: "Change the rules" })
+    for (let i = 0; i < 6 && !(await change.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab")
+    await expect(change).toBeFocused()
+    await page.keyboard.press("Enter")
+    await expect(page.getByRole("heading", { name: "Pot rules" })).toBeFocused()
+    // let the pushed ?step=rules entry settle (Next syncs it after the push), as a person would
+    const rules = await openedSheet(page, "Pot rules")
+    await rules.getByRole("button", { name: "Back" }).focus()
+    await page.keyboard.press("Enter")
+    await expect(page.getByRole("heading", { name: "Start a Pot" })).toBeFocused()
+    await name.focus()
+    await page.keyboard.press("Enter")
+    await expect(page).toHaveURL(/\/p\/desk-trip-[a-z0-9]{4}\?sheet=share$/, { timeout: 10_000 })
   })
 
   test("the rules change sheet works from the keyboard (radio cards + physical digits)", async ({ page }, info) => {

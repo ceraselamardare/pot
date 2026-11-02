@@ -7,6 +7,7 @@ import type { Micro } from "../money.ts"
 import type { AccountId, DaoId, ProposalId, PublicKeyStr, RequestId, Slug } from "./ids.ts"
 import type {
   RawCloseBlockedReason,
+  RawGiftRefusal,
   RawGoalState,
   RawLinkStatus,
   RawPreviewReason,
@@ -142,6 +143,10 @@ export interface GoalView {
   deadlineMs: number
   allOrNothing: boolean
   totalIn: Micro
+  /** hub 1.2.0: gifts received (count toward a normal goal only) */
+  giftsTotal?: Micro
+  /** hub 1.2.0: what counts toward the goal (totalIn + gifts for a normal goal; totalIn for all-or-nothing) */
+  progress?: Micro
   state: Exclude<GoalState, "none">
   reachedAtMs: number | null
   refundProposalId: ProposalId | null
@@ -285,6 +290,11 @@ export interface PotView {
   /** link requests not claimed / returned / void yet (they block closing) */
   openLinks?: number
   goalState?: GoalState
+  /** hub 1.2.0: gifts on (parse fills true on older hubs' data only if the field is present; else undefined) */
+  giftsOn?: boolean
+  /** hub 1.2.0: Σ gifts received (in balanceEstimate, never in totalIn) */
+  giftsTotal?: Micro
+  giftsCount?: number
 }
 
 export interface PotSummary {
@@ -371,6 +381,10 @@ export interface ClosePreview {
   balance: Micro
   balanceSource: "argument" | "ledger" | "close_record"
   totalIn: Micro
+  /** hub 1.2.0 */
+  giftsTotal?: Micro
+  /** hub 1.2.0: "equal" = nobody added money, the balance (gifts) is split equally */
+  split?: "prorata" | "equal"
   approvalsNeeded: number
   openRequests: number
   payouts: ClosePayout[]
@@ -492,4 +506,44 @@ export interface SyncOutcome {
   daoStatus: string
   hubStatus: string
   changed: boolean
+}
+
+// ---- hub 1.2.0 (gifts): anyone can send a Pot a gift (notes/contracts-gifts.md) ----
+
+export type GiftRefusal = RawGiftRefusal
+
+/** hub 1.2.0 constants (contracts/pot-hub/src/types.rs). */
+export const GIFT_LIMITS = {
+  /** $1 */
+  minAmount: 1_000_000n,
+  /** the hub's MAX_AMOUNT ($1B): per gift and for a Pot's gift total */
+  maxAmount: 1_000_000_000_000_000n,
+  maxRefLen: 32,
+  /** a pending gift forward blocks the close at most this long */
+  inFlightMs: 60_000,
+} as const
+
+export interface GiftsView {
+  pot: DaoId
+  /** gifts on (default for every Pot; any member can turn them off) */
+  on: boolean
+  total: Micro
+  count: number
+  lastGiftMs: number | null
+  inFlight: boolean
+  /** a gift sent now would be accepted */
+  accepting: boolean
+  refusal: GiftRefusal | null
+  minAmount: Micro
+}
+
+/** A parsed `gift_received` event. */
+export interface GiftReceived {
+  pot: DaoId
+  from: AccountId
+  amount: Micro
+  /** the gift-link id (or another server-chosen tag) the gift was sent with */
+  ref: string
+  giftsTotal: Micro
+  giftsCount: number
 }

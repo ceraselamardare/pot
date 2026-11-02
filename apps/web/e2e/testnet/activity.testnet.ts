@@ -6,6 +6,7 @@
 //   E2E_TESTNET=1 E2E_PORT=3717 NEXT_DIST_DIR=.next-history-testnet scripts/with-testnet-lock.sh \
 //     pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts activity
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
+import { createPot } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, dao, eventually, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -44,10 +45,7 @@ test("add money → You shows the activity row with a real receipt, and the bala
 
   // one Pot, the default rules
   await A.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = A.getByRole("dialog", { name: "Name your Pot" })
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
-  await step1.getByRole("button", { name: "Next" }).click()
-  await A.getByRole("dialog", { name: "Pot rules" }).getByRole("button", { name: "Create Pot" }).click()
+  await createPot(A, { name: POT_NAME }) // the one Create screen, default rules
   await expect(A).toHaveURL(/\/p\/history-[a-z0-9]+-[a-z0-9]{4}\?sheet=share$/, { timeout: 60_000 })
   const slug = new URL(A.url()).pathname.split("/")[2]!
   console.log(`[activity] Pot ${dao(slug)}`)

@@ -18,6 +18,7 @@ use near_sdk::{
 pub mod errors;
 pub mod events;
 pub mod ext;
+pub mod gifts;
 pub mod kinds;
 pub mod ledger;
 pub mod policy;
@@ -27,10 +28,13 @@ pub mod views;
 pub mod wave4;
 #[cfg(test)]
 mod unit_time;
+#[cfg(test)]
+mod unit_gifts;
 
 use errors::*;
 use events::*;
 use ext::*;
+use gifts::*;
 use kinds::*;
 use types::*;
 use views::*;
@@ -678,10 +682,13 @@ impl PotHub {
         }
     }
 
-    /// Upper bound of the close prepay at the current contributors (amount strings at max width).
+    /// Upper bound of the close prepay at the current contributors (amount strings at max width);
+    /// every Active member when nobody contributed (the equal split of a gifts-only Pot, hub 1.2.0).
     pub(crate) fn close_prepay_upper_bound(&self, pot: &Pot) -> (u128, usize) {
+        let contribs = self.contributions(pot);
+        let anyone = contribs.iter().any(|(_, c)| *c > 0);
         let payees: Vec<(AccountId, u128)> =
-            self.contributions(pot).into_iter().filter(|(_, c)| *c > 0).map(|(a, _)| (a, MAX_AMOUNT)).collect();
+            contribs.into_iter().filter(|(_, c)| *c > 0 || !anyone).map(|(a, _)| (a, MAX_AMOUNT)).collect();
         let n = payees.len();
         let kind = close_kind(&self.config.usdc, &payees);
         let desc = close_description(MAX_AMOUNT, n);
@@ -1030,6 +1037,10 @@ impl PotHub {
         if let Ok(l) = near_sdk::serde_json::from_str::<LinkFundMsg>(&msg) {
             // wave 4: a Pot's DAO paying a link into escrow (never panics; refunds on any mismatch)
             return PromiseOrValue::Value(self.fund_link(&sender_id, l.link, amount));
+        }
+        if let Ok(g) = near_sdk::serde_json::from_str::<GiftMsg>(&msg) {
+            // hub 1.2.0: a gift from ANY account (member or not); never a contribution
+            return self.receive_gift(sender_id, g, amount);
         }
         let m: ContributeMsg = near_sdk::serde_json::from_str(&msg).unwrap_or_else(|_| fail(ERR_BAD_MSG));
         let dao = m.pot;
@@ -1847,7 +1858,11 @@ impl PotHub {
         check(p.busy_until_ms <= now, ERR_POT_BUSY);
         check(p.unpaid_approved == 0 && p.reserved == 0, ERR_PAYOUTS_PENDING);
         check(self.pext(p.idx).open_links == 0, ERR_LINKS_PENDING);
-        check(p.total_contributed > 0, ERR_NO_CONTRIBUTIONS);
+        // hub 1.2.0: a gift forward still pending would land after the balance read
+        let gifts = self.gifts_of(p.idx);
+        check(!gifts.in_flight_at(now), ERR_GIFT_IN_FLIGHT);
+        // a gifts-only Pot can close too (split equally, prorata::close_split)
+        check(p.total_contributed > 0 || gifts.total > 0, ERR_NO_CONTRIBUTIONS);
         self.require_free(prepay, excess);
         Self::refund_excess(excess);
         p.closing_until_ms = now + CLOSING_WINDOW_MS;
@@ -1875,7 +1890,8 @@ impl PotHub {
         };
         let Ok(balance) = balance else { return fail_out(self, p, "balance_unavailable") };
         let contribs = self.contributions(&p);
-        let Some(pr) = prorata::prorata(balance.0, &contribs, p.last_contributor.as_ref()) else {
+        // pro-rata to contributions; equal shares when nobody contributed (gifts only, hub 1.2.0)
+        let Some(pr) = prorata::close_split(balance.0, &contribs, p.last_contributor.as_ref()) else {
             return fail_out(self, p, "nothing_to_refund");
         };
         let kind = close_kind(&self.config.usdc, &pr.payouts);
@@ -2050,8 +2066,14 @@ mod tests {
         let trait_body = ext.split("pub trait Dao {").nth(1).unwrap().split('}').next().unwrap();
         let fns: Vec<&str> = trait_body.lines().filter(|l| l.trim_start().starts_with("fn ")).collect();
         assert_eq!(fns.len(), 3, "ext_dao must have exactly act_proposal, get_proposal, get_policy");
-        let all = [code_only(include_str!("lib.rs")), code_only(ext), code_only(include_str!("kinds.rs")), code_only(include_str!("wave4.rs"))]
-            .concat();
+        let all = [
+            code_only(include_str!("lib.rs")),
+            code_only(ext),
+            code_only(include_str!("kinds.rs")),
+            code_only(include_str!("wave4.rs")),
+            code_only(include_str!("gifts.rs")),
+        ]
+        .concat();
         for forbidden in ["RemoveProposal", "VoteReject", "VoteRemove", "store_blob", "remove_blob", "\"update\"", "deploy_contract", "add_full_access_key", "delete_account"] {
             assert!(!all.contains(forbidden), "{forbidden} appears in hub code");
         }
@@ -2067,5 +2089,7 @@ mod tests {
         assert_eq!(code.matches(".transfer(").count(), 3, "float, prepay batch, excess refund");
         // wave 4 moves USDC (claim / return) only as ft_transfer function calls, never NEAR transfers
         assert_eq!(code_only(include_str!("wave4.rs")).matches(".transfer(").count(), 0);
+        // hub 1.2.0: gifts move USDC only (the forward to the DAO), never NEAR
+        assert_eq!(code_only(include_str!("gifts.rs")).matches(".transfer(").count(), 0);
     }
 }

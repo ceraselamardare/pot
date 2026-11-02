@@ -18,6 +18,11 @@ const near = (s: string) => {
 }
 
 export const MAX_CONTRIBUTION = 10_000_000_000n // $10,000 at 6 dp
+/** hub 1.2.0 gifts: ≥ $1 (the hub's MIN_GIFT); the relayer sponsors at most $10,000 per gift (like a contribution) */
+export const MIN_GIFT = 1_000_000n
+export const MAX_GIFT = 10_000_000_000n
+/** the hub's gift ref: 1-32 of [A-Za-z0-9_-] (our gift ids are g + 23 base32 chars) */
+export const GIFT_REF_RE = /^[A-Za-z0-9_-]{1,32}$/
 export const MAX_SPEND = 10_000_000_000n
 export const MAX_INSTANT_CAP = 1_000_000_000n
 export const MAX_MEMBER_BUDGET = 100_000_000_000n
@@ -36,7 +41,7 @@ const CLAIM_HUB_YOCTO = 2_500_000_000_000_000_000_000n
 /** contracts-spec §3.2 (D-02): exact-match reserved slugs (@pot/sdk mirrors the hub's list). */
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set(SDK_RESERVED_SLUGS as readonly string[])
 
-export type RuleId = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9" | "R11" | "R13" | "R14" | "R15" | "TEST"
+export type RuleId = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9" | "R11" | "R13" | "R14" | "R15" | "R16" | "R17" | "TEST"
 export type VoteAction = "VoteApprove" | "VoteReject" | "Finalize"
 export type KindName = "Transfer" | "AddMemberToRole" | "FunctionCall"
 
@@ -67,6 +72,10 @@ export interface PolicyMatch {
   amount?: bigint
   /** R13-R15 (hub 1.1.0): the request the call acts on */
   requestId?: number
+  /** R16 (hub 1.2.0): a gift from anyone (member or not); `ref` = the gift id our server started */
+  gift?: { ref: string }
+  /** R17 (hub 1.2.0): set_gifts(pot, on) */
+  giftsOn?: boolean
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -207,6 +216,8 @@ const HUB_METHODS = new Set([
   "ok_request",
   "claim_link",
   "reclaim_link",
+  // hub 1.2.0
+  "set_gifts",
 ])
 
 function intentMust(ctx: PolicyContext, want: IntentType, alsoOk: IntentType[] = []): void {
@@ -260,6 +271,8 @@ export function evaluatePolicy(d: DecodedDelegate, ctx: PolicyContext): PolicyMa
         return r14(call, ctx)
       case "reclaim_link":
         return r15(call, ctx)
+      case "set_gifts":
+        return r17(call, ctx)
       default:
         return r9(call, ctx)
     }
@@ -288,6 +301,8 @@ function r1(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyC
   }
   if (typeof msg !== "object" || msg === null || Array.isArray(msg)) return deny("args_invalid", "msg")
   const m = msg as Obj
+  // hub 1.2.0: {"pot","gift"} is a gift (R16), from anyone; {"pot"} alone is a member's contribution
+  if ("gift" in m) return r16(m, o, ctx)
   if (Object.keys(m).length !== 1 || typeof m.pot !== "string" || !daoSlug(m.pot, ctx.hubId)) deny("args_invalid", "msg")
   intentMust(ctx, "add_money")
   return {
@@ -602,6 +617,52 @@ function r15(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: Policy
     estYocto: near("0.002"),
     hubYocto: 0n,
     requestId,
+  }
+}
+
+// R16 (hub 1.2.0) a gift: usdc.ft_transfer_call → hub with msg exactly {"pot","gift"}, from ANY signed-in account
+// (the giver needn't be a member). R1's checks already ran (method, exactly 1 yocto, 100-150 Tgas, receiver = hub,
+// keys); here: the msg shape, the ref, and the amount ($1 ≤ amount ≤ $10,000). FLAG_GIFTS, the hub's `get_gifts`
+// and the gift-ref hook are the pipeline's pre-flight (chain checks), not this pure function.
+function r16(m: Obj, o: Obj, ctx: PolicyContext): PolicyMatch {
+  if (Object.keys(m).length !== 2 || typeof m.pot !== "string" || !daoSlug(m.pot, ctx.hubId)) return deny("args_invalid", "msg")
+  if (typeof m.gift !== "string" || !GIFT_REF_RE.test(m.gift)) return deny("args_invalid", "msg.gift")
+  const amt = amount(o, "amount", MIN_GIFT, MAX_GIFT)
+  intentMust(ctx, "send_gift")
+  return {
+    rule: "R16",
+    methods: ["ft_transfer_call"],
+    intent: "send_gift",
+    family: "gift",
+    potId: m.pot,
+    needsOpenPot: true,
+    estYocto: near("0.0014"),
+    // the hub writes the Pot's gift record (≈ 90 B, once per Pot): budgeted per gift, conservatively
+    hubYocto: near("0.001"),
+    amount: amt,
+    gift: { ref: m.gift },
+  }
+}
+
+// R17 (hub 1.2.0) set_gifts(pot, on): any member turns gifts on / off; 10-50 Tgas, 0 deposit
+function r17(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: PolicyContext): PolicyMatch {
+  gasFor(call)
+  const o = argsObject(call)
+  keys(o, ["pot", "on"])
+  const pot = potArg(o, ctx.hubId)
+  if (typeof o.on !== "boolean") deny("args_invalid", "on")
+  intentMust(ctx, "set_gifts")
+  return {
+    rule: "R17",
+    methods: ["set_gifts"],
+    intent: "set_gifts",
+    family: "rules",
+    potId: pot,
+    needsOpenPot: false,
+    estYocto: near("0.001"),
+    // the Pot's gift record on its first write (STATE_BYTES_GIFTS 120 B)
+    hubYocto: near("0.0012"),
+    giftsOn: o.on as boolean,
   }
 }
 

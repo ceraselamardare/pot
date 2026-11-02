@@ -20,6 +20,7 @@ const DEFAULTS: Record<string, [bigint, bigint]> = {
   user_close: [3n, 3n],
   user_maintenance: [20n, 20n],
   user_vote: [100n, 100n],
+  user_gift: [10n, 10n], // hub 1.2.0: gifts sent per giver per day (any account, member or not)
   user_test: [20n, 50n],
   user_notes: [60n, 60n],
   user_comments: [200n, 200n], // comments on requests, per day
@@ -34,6 +35,7 @@ const DEFAULTS: Record<string, [bigint, bigint]> = {
   pot_spend: [100n, 100n],
   pot_vote: [500n, 500n],
   pot_close: [3n, 3n],
+  pot_gift: [100n, 100n], // hub 1.2.0: gifts received per Pot per day
   proposal_finalize: [3n, 3n],
   // per-user NEAR budgets (rev4)
   user_relay_yocto: [mNEAR(0.2), mNEAR(0.1)],
@@ -52,6 +54,7 @@ const DEFAULTS: Record<string, [bigint, bigint]> = {
   ip_accounts_created: [3n, 3n],
   ip_session_create: [10n, 10n], // per hour in the spec; daily bucket here (WAF covers bursts)
   ip_faucet_usd: [1_000_000_000n, 1_000_000_000n],
+  ip_gift: [30n, 30n], // hub 1.2.0: gifts relayed per IP (hashed) per day, when the route passes the IP hash
   // faucet per account
   account_faucet_claims: [5n, 5n],
   account_faucet_usd: [500_000_000n, 500_000_000n],

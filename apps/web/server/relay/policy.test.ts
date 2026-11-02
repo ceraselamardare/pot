@@ -34,6 +34,8 @@ async function run(receiver: string, actions: Act[], c: Partial<PolicyContext> =
 
 const contribute = (over: Record<string, unknown> = {}, gas = 100, dep = 1n) =>
   fc("ft_transfer_call", { receiver_id: HUB, amount: "150000000", msg: JSON.stringify({ pot: DAO }), ...over }, gas, dep)
+const gift = (over: Record<string, unknown> = {}, ref = "g0123456789abcdefghjkmnp", gas = 100, dep = 1n) =>
+  fc("ft_transfer_call", { receiver_id: HUB, amount: "10000000", msg: JSON.stringify({ pot: DAO, gift: ref }), ...over }, gas, dep)
 const RULES = { instant_cap: "100000000", member_budget: "200000000", instant_payees: "members", payee_allowlist: [] }
 const createArgs = (over: Record<string, unknown> = {}) => ({ slug: "lisbon-trip-7k2f", name: "Lisbon Trip", preset: "trip", ...over })
 const spendArgs = (over: Record<string, unknown> = {}) => ({
@@ -157,6 +159,29 @@ const cases: Case[] = [
   ["R15 reclaim_link gas 150", HUB, () => [fc("reclaim_link", { pot: DAO, request_id: 7 }, 150)], "gas_cap"],
   ["refund_unfunded is cron-only (never relayed)", HUB, () => [fc("refund_unfunded", { pot: DAO }, 300)], "method_not_allowed"],
   ["migrate is never relayed", HUB, () => [fc("migrate", {}, 50)], "method_not_allowed"],
+  // ---- hub 1.2.0 gifts: R16 (a gift from anyone) and R17 set_gifts ----
+  ["R16 a gift at 100 Tgas, 1 yocto", USDC, () => [gift()], "R16"],
+  ["R16 the smallest gift ($1)", USDC, () => [gift({ amount: "1000000" })], "R16"],
+  ["R16 under $1", USDC, () => [gift({ amount: "999999" })], "args_invalid"],
+  ["R16 over $10,000", USDC, () => [gift({ amount: "10000000001" })], "args_invalid"],
+  ["R16 a 32-char ref", USDC, () => [gift({}, "a".repeat(32))], "R16"],
+  ["R16 a 33-char ref", USDC, () => [gift({}, "a".repeat(33))], "args_invalid"],
+  ["R16 an empty ref", USDC, () => [gift({}, "")], "args_invalid"],
+  ["R16 a ref with a space", USDC, () => [gift({}, "a b")], "args_invalid"],
+  ["R16 a numeric ref", USDC, () => [gift({ msg: JSON.stringify({ pot: DAO, gift: 7 }) })], "args_invalid"],
+  ["R16 an extra msg key", USDC, () => [gift({ msg: JSON.stringify({ pot: DAO, gift: "g1", note: "hi" }) })], "args_invalid"],
+  ["R16 a Pot of another hub", USDC, () => [gift({ msg: JSON.stringify({ pot: "x.pots.other.testnet", gift: "g1" }) })], "args_invalid"],
+  ["R16 gas 30 (the money would bounce)", USDC, () => [gift({}, "g1", 30)], "gas_cap"],
+  ["R16 2 yocto", USDC, () => [gift({}, "g1", 100, 2n)], "deposit_cap"],
+  ["R16 a memo", USDC, () => [gift({ memo: "x" })], "args_invalid"],
+  ["R16 to another receiver", USDC, () => [gift({ receiver_id: DAO })], "args_invalid"],
+  ["R16 intent add_money on a gift", USDC, () => [gift()], "args_invalid", { intent: "add_money" }],
+  ["R1 intent send_gift on a contribution", USDC, () => [contribute()], "args_invalid", { intent: "send_gift" }],
+  ["R17 set_gifts off at 30 Tgas", HUB, () => [fc("set_gifts", { pot: DAO, on: false }, 30)], "R17"],
+  ["R17 on as a string", HUB, () => [fc("set_gifts", { pot: DAO, on: "true" }, 30)], "args_invalid"],
+  ["R17 missing on", HUB, () => [fc("set_gifts", { pot: DAO }, 30)], "args_invalid"],
+  ["R17 gas 100", HUB, () => [fc("set_gifts", { pot: DAO, on: true }, 100)], "gas_cap"],
+  ["R17 a deposit", HUB, () => [fc("set_gifts", { pot: DAO, on: true }, 30, 2_000_000_000_000_000_000_000n)], "deposit_cap"],
   // ---- R4 ----
   ["R4 accepts join", HUB, () => [fc("join", { pot: DAO, invite_pk: realPk, signature: SIG }, 100)], "R4"],
   ["R4 signature without padding", HUB, () => [fc("join", { pot: DAO, invite_pk: realPk, signature: SIG.replace(/=+$/, "") }, 100)], "args_invalid"],
@@ -232,6 +257,12 @@ describe("relayer policy table", () => {
     expect(cl).toMatchObject({ rule: "R14", family: "spend", intent: "claim_link", needsOpenPot: false, requestId: 7, hubYocto: 2_500_000_000_000_000_000_000n })
     const sp = (await run(HUB, [fc("request_spend", spendArgs({ receiver_id: HUB, link: { claim_pk: realPk } }), 250)])).match!
     expect(sp.spend).toMatchObject({ receiverId: HUB, link: true })
+    // hub 1.2.0
+    const g = (await run(USDC, [gift()])).match!
+    expect(g).toMatchObject({ rule: "R16", family: "gift", intent: "send_gift", potId: DAO, needsOpenPot: true, amount: 10_000_000n, gift: { ref: "g0123456789abcdefghjkmnp" } })
+    expect(g.hubYocto).toBeGreaterThan(0n)
+    const sg = (await run(HUB, [fc("set_gifts", { pot: DAO, on: false }, 30)])).match!
+    expect(sg).toMatchObject({ rule: "R17", family: "rules", intent: "set_gifts", potId: DAO, needsOpenPot: false, giftsOn: false })
   })
 })
 
@@ -338,6 +369,9 @@ describe("@pot/sdk buildCall ↔ relayer policy (reconciliation)", async () => {
     ["ok_request", { type: "ok_request", pot: DAO, requestId: 7 }, "R13"],
     ["claim_link", { type: "claim_link", pot: DAO, requestId: 7, receiverId: USER, signature: SIG }, "R14"],
     ["reclaim_link", { type: "reclaim_link", pot: DAO, requestId: 7 }, "R15"],
+    // hub 1.2.0 (gifts)
+    ["send_gift", { type: "send_gift", pot: DAO, amount: 5_000_000n, giftRef: "g0123456789abcdefghjkmnp" }, "R16"],
+    ["set_gifts", { type: "set_gifts", pot: DAO, on: false }, "R17"],
   ]
   it.each(intents)("%s is accepted as %s", async (_n, intent, rule) => {
     const call = buildCall(intent as never, cfg)

@@ -83,6 +83,8 @@ export type Reason =
   | "pot_unknown"
   | "pot_closed"
   | "not_a_member"
+  /** hub 1.2.0: this gift can't be sent now (detail.why: gifts_off · paused · pot_not_open · goal_collecting · goal_missed · hub_not_ready · a gift-link reason) */
+  | "gifts_unavailable"
   | "slug_taken"
   | "already_voted"
   | "proposal_not_open"
@@ -108,7 +110,7 @@ export const REASONS: readonly Reason[] = [
   "mpc_sign_failed", "pairing_invalid", "pairing_expired", "bot_detected", "demo_forbidden", "proposal_not_tracked",
   "sender_mismatch", "receiver_not_allowed", "method_not_allowed", "action_not_allowed", "args_invalid", "deposit_cap",
   "gas_cap", "fc_key_deposit", "bad_signature", "key_not_found", "key_not_allowed", "expired", "ttl_too_long", "nonce_used",
-  "nonce_pending", "pot_unknown", "pot_closed", "not_a_member", "slug_taken", "already_voted", "proposal_not_open",
+  "nonce_pending", "pot_unknown", "pot_closed", "not_a_member", "gifts_unavailable", "slug_taken", "already_voted", "proposal_not_open",
   "idempotency_conflict", "note_exists", "registration_used", "nudge_too_soon", "rate_limited", "quota_exceeded",
   "user_suspended", "chain_paused", "amount_too_low", "amount_too_high", "quote_failed", "not_found",
   "service_unavailable", "internal",
@@ -124,6 +126,7 @@ export const REASON_HTTP_STATUS: Readonly<Record<Reason, number>> = {
   receiver_not_allowed: 403, method_not_allowed: 403, action_not_allowed: 403, args_invalid: 422, deposit_cap: 403,
   gas_cap: 422, fc_key_deposit: 403, bad_signature: 401, key_not_found: 403, key_not_allowed: 403, expired: 409,
   ttl_too_long: 422, nonce_used: 409, nonce_pending: 409, pot_unknown: 404, pot_closed: 409, not_a_member: 403,
+  gifts_unavailable: 409,
   slug_taken: 409, already_voted: 409, proposal_not_open: 409, idempotency_conflict: 409, note_exists: 409,
   registration_used: 409, nudge_too_soon: 429, rate_limited: 429, quota_exceeded: 429, user_suspended: 403,
   chain_paused: 409, amount_too_low: 422, amount_too_high: 422, quote_failed: 502, not_found: 404,
@@ -366,6 +369,8 @@ export const RELAY_INTENT_TYPES: readonly IntentType[] = [
   "claim_link",
   "reclaim_link",
   "refund_unfunded",
+  "send_gift",
+  "set_gifts",
 ]
 
 export interface RelayContext {
@@ -428,6 +433,10 @@ export type RelayResult =
   | { type: "ok"; requestId: number; proposalId: number | null; approved: boolean; status: string; reason?: string }
   /** hub 1.1.0 claim_link / reclaim_link */
   | { type: "link"; requestId: number; ok: boolean; status: string; receiverId?: AccountId; reason?: string }
+  /** hub 1.2.0 send_gift: recorded = the gift reached the Pot (else the token refunded the giver) */
+  | { type: "gift"; recorded: boolean; amount: MicroStr; usedAmount: MicroStr; giftRef: string; giftsTotal?: MicroStr }
+  /** hub 1.2.0 set_gifts */
+  | { type: "gifts"; on: boolean; changed: boolean }
 
 /** HTTP 200 */
 export interface RelayOk extends Ok {

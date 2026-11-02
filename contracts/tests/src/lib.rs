@@ -151,6 +151,11 @@ pub fn hub_wasm() -> Vec<u8> {
 pub fn hub_v1_wasm() -> Vec<u8> {
     std::fs::read(contracts_dir().join("tests/fixtures/pot_hub_v1.0.0.wasm")).expect("tests/fixtures/pot_hub_v1.0.0.wasm")
 }
+/// The hub 1.1.0 build deployed on testnet (`pots.potprev.testnet`, sha256 939c1963…, code hash
+/// AwCzDVnh…), the starting point of the 1.1.0 → 1.2.0 upgrade test (gifts).
+pub fn hub_v11_wasm() -> Vec<u8> {
+    std::fs::read(contracts_dir().join("tests/fixtures/pot_hub_v1.1.0.wasm")).expect("tests/fixtures/pot_hub_v1.1.0.wasm")
+}
 pub fn usdc_wasm() -> Vec<u8> {
     ensure_built();
     std::fs::read(contracts_dir().join("target/near/test_usdc/test_usdc.wasm")).expect("test_usdc.wasm")
@@ -585,6 +590,31 @@ impl Rpc {
             txs.push(Self::sign_tx(&s, *n, pid(&r), bh, vec![action]));
         }
         let futs = txs.into_iter().map(|tx| self.send(tx, false));
+        futures_join_all(futs).await.into_iter().collect()
+    }
+
+    /// Like `call_many`, but every call is signed first and then sent `delay_ms` after the start
+    /// (the gift-in-flight race: the close must reach the hub between the gift's forward and its
+    /// callback). Item: (signer, receiver, method, args, gas, deposit, delay_ms).
+    pub async fn call_staggered(&self, calls: Vec<(Actor, AccountId, String, Vec<u8>, u64, u128, u64)>) -> Result<Vec<Outcome>> {
+        let mut nonces: std::collections::HashMap<String, u64> = Default::default();
+        let mut txs = vec![];
+        for (s, r, m, a, g, d, delay) in calls {
+            let (n0, bh, _) = self.access_key(&s).await?;
+            let n = nonces.entry(s.id.to_string()).or_insert(n0);
+            *n += 1;
+            let action = Action::FunctionCall(Box::new(FunctionCallAction {
+                method_name: m,
+                args: a,
+                gas: Gas::from_teragas(g),
+                deposit: Near::from_yoctonear(d),
+            }));
+            txs.push((Self::sign_tx(&s, *n, pid(&r), bh, vec![action]), delay));
+        }
+        let futs = txs.into_iter().map(|(tx, delay)| async move {
+            tokio::time::sleep(Duration::from_millis(delay)).await;
+            self.send(tx, false).await
+        });
         futures_join_all(futs).await.into_iter().collect()
     }
 }
@@ -1075,6 +1105,23 @@ impl Env {
     /// A relayer-signed hub call (not a delegate): what the cron / the relayer's own calls look like.
     pub async fn relayer_call(&self, method: &str, args: Value, gas_tgas: u64) -> Outcome {
         self.call(&self.relayer.clone(), &self.hub.clone(), method, args, gas_tgas, 0).await
+    }
+
+    // ---------------------------------------------------------------- hub 1.2.0 (gifts)
+
+    /// A relayed gift (`ft_transfer_call` 1 yocto, 100 Tgas, msg `{"pot","gift"}`): what the app sends
+    /// for anyone, member or not. The final value is the `ft_resolve_transfer` used amount.
+    pub async fn gift(&self, who: &Actor, pot: &AccountId, amount: u128, gift_ref: &str) -> Outcome {
+        self.gift_msg(who, amount, json!({"pot": pot, "gift": gift_ref}).to_string()).await
+    }
+
+    pub async fn gift_msg(&self, who: &Actor, amount: u128, msg: String) -> Outcome {
+        self.relay(who, &self.usdc.clone(), "ft_transfer_call", json!({"receiver_id": self.hub, "amount": amount.to_string(), "msg": msg}), 100, 1)
+            .await
+    }
+
+    pub async fn gifts(&self, pot: &AccountId) -> Value {
+        self.hub_view("get_gifts", json!({"pot": pot})).await
     }
 
     /// Advances block time past the hub's 60 s busy / closing windows.

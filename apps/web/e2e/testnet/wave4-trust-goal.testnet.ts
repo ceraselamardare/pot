@@ -14,8 +14,8 @@
 //   E2E_TESTNET=1 E2E_PORT=3727 NEXT_DIST_DIR=.next-trust \
 //   DATABASE_URL=postgres://pot:pot@localhost:54329/pot_trust DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot_trust \
 //   scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts wave4-trust-goal
-import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { spendFlow } from "../fixtures/pot"
+import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test"
+import { createPot, spendFlow } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, usd, useWallet, walletSignIn } from "./chain"
 
@@ -63,15 +63,11 @@ test.afterAll(async () => {
   await accounts?.release()
 })
 
-async function createPot(p: Page, name: string, fill?: (step2: ReturnType<Page["getByRole"]>) => Promise<void>): Promise<string> {
+async function newPot(p: Page, name: string, fill?: (step2: Locator) => Promise<void>): Promise<string> {
   await p.goto("/pots")
   await p.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = p.getByRole("dialog", { name: "Name your Pot" })
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill(name)
-  await step1.getByRole("button", { name: "Next" }).click()
-  const step2 = p.getByRole("dialog", { name: "Pot rules" })
-  await fill?.(step2)
-  await step2.getByRole("button", { name: "Create Pot" }).click()
+  // the one Create screen; with `fill`, [Change] → the full rules first
+  await createPot(p, { name, rules: fill })
   await expect(p).toHaveURL(/\?sheet=share$/, { timeout: 60_000 })
   return new URL(p.url()).pathname.split("/")[2]!
 }
@@ -90,7 +86,7 @@ test("trust + one OK: Ben's $180 needs one OK; Ana's OK pays it; 3 paid spends m
   await A.goto("/pots")
   await walletSignIn(A)
   accA = await accountOf(A.request)
-  slug = await createPot(A, TRUST_POT, async (s) => {
+  slug = await newPot(A, TRUST_POT, async (s) => {
     await expect(s.getByRole("switch", { name: "Trust grows" })).toHaveAttribute("aria-checked", "true")
     await expect(s.getByRole("textbox", { name: "Spends up to this much need just one OK from anyone else" })).toHaveValue("300")
   })
@@ -169,7 +165,7 @@ test("trust + one OK: Ben's $180 needs one OK; Ana's OK pays it; 3 paid spends m
 test("goal: an all-or-nothing $1,000 goal by tomorrow → policy v2, collecting, Spend waits", async () => {
   test.skip(!hub11, "needs hub 1.1.0 on the preview deploy")
   test.setTimeout(300_000)
-  const goalSlug = await createPot(A, GOAL_POT, async (s) => {
+  const goalSlug = await newPot(A, GOAL_POT, async (s) => {
     await s.getByRole("switch", { name: "Set a goal (optional)" }).click()
     await s.getByRole("textbox", { name: "Goal amount" }).fill("1000")
     const tomorrow = new Date(Date.now() + 86_400_000)

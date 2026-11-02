@@ -8,6 +8,7 @@ import type { AccountId, DaoId, ProposalId, PublicKeyStr, Viewed } from "../type
 import type {
   ClosePreview,
   ConfigView,
+  GiftsView,
   GoalView,
   InviteView,
   LinkView,
@@ -26,6 +27,7 @@ import type { FtMetadata, RawStorageBalance, StorageBalance } from "../types/usd
 import type {
   RawClosePreview,
   RawConfigView,
+  RawGiftsView,
   RawGoalView,
   RawInviteView,
   RawLinkView,
@@ -44,6 +46,7 @@ import {
   parseActionsLogEntry,
   parseClosePreview,
   parseConfigView,
+  parseGiftsView,
   parseGoalView,
   parseInviteView,
   parseLinkView,
@@ -91,6 +94,9 @@ export interface HubViews {
   getLink?(pot: DaoId, requestId: number): Promise<Viewed<LinkView | null>>
   /** The public record; ids ascending, refused ids absent; limit ≤ 50. */
   getRecord?(pot: DaoId, fromIndex: number, limit: number): Promise<Viewed<RecordEntry[]>>
+  // ---- hub 1.2.0 (gifts). Optional like the 1.1.0 views; MethodNotFound on an older hub.
+  /** The Pot's gifts: on/off, totals, and whether a gift sent now would be accepted (null: unknown Pot). */
+  getGifts?(pot: DaoId): Promise<Viewed<GiftsView | null>>
 }
 
 export interface DaoViews {
@@ -167,6 +173,7 @@ export function createChainViews(cfg: SdkConfig, rpc: RpcClient = createRpcClien
       getLink: (pot, requestId) => map(view<RawLinkView | null>(hub, "get_link", { pot, request_id: requestId }), (r) => (r ? parseLinkView(r) : null)),
       getRecord: (pot, fromIndex, limit) =>
         map(view<RawRecordEntry[]>(hub, "get_record", { pot, from_index: fromIndex, limit: Math.min(limit, 50) }), (r) => r.map(parseRecordEntry)),
+      getGifts: (pot) => map(view<RawGiftsView | null>(hub, "get_gifts", { pot }), (r) => (r ? parseGiftsView(r) : null)),
     },
     dao: {
       getPolicy: (dao) => map(view<Policy>(dao, "get_policy"), parsePolicy),

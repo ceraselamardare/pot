@@ -8,6 +8,7 @@
 //   scripts/with-testnet-lock.sh env E2E_TESTNET=1 E2E_PORT=3427 NEXT_DIST_DIR=.next-testnet-int \
 //     pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts deposit.testnet.ts
 import { expect, test } from "@playwright/test"
+import { createPot } from "../fixtures/pot"
 import { createTestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, potBalance, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -31,10 +32,7 @@ test("simulate a deposit → it arrives on chain → one tap adds it to the Pot 
     // the relayer registers a wallet account on the token once, after the sign-in (D-23); the delivery needs it
     await eventually(() => chain.usdc.storageBalanceOf(account as never), (v) => !!v.value, 45_000)
     await page.getByRole("button", { name: "Start a Pot" }).first().click()
-    const step1 = page.getByRole("dialog", { name: "Name your Pot" })
-    await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
-    await step1.getByRole("button", { name: "Next" }).click()
-    await page.getByRole("dialog", { name: "Pot rules" }).getByRole("button", { name: "Create Pot" }).click()
+    await createPot(page, { name: POT_NAME }) // the one Create screen, default rules
     await expect(page).toHaveURL(/\/p\/deposit-trip-[a-z0-9-]+\?sheet=share$/, { timeout: 60_000 })
     const slug = new URL(page.url()).pathname.split("/")[2]!
     const share = page.getByRole("dialog", { name: `Invite friends to ${POT_NAME}` })

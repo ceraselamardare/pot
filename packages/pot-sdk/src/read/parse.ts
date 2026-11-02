@@ -7,6 +7,7 @@ import type {
   RawClosePreview,
   RawCloseOutcome,
   RawConfigView,
+  RawGiftsView,
   RawGoalView,
   RawLinkOutcome,
   RawLinkView,
@@ -32,6 +33,7 @@ import type {
   ClosePreview,
   CloseOutcome,
   ConfigView,
+  GiftsView,
   GoalView,
   LinkOutcome,
   LinkView,
@@ -125,6 +127,9 @@ export function parsePotView(r: RawPotView): PotView {
     policyVersion: r.policy_version ?? 1,
     openLinks: r.open_links ?? 0,
     goalState: r.goal_state ?? "none",
+    ...(r.gifts_on !== undefined ? { giftsOn: r.gifts_on } : {}),
+    ...(r.gifts_total !== undefined ? { giftsTotal: big(r.gifts_total) } : {}),
+    ...(r.gifts_count !== undefined ? { giftsCount: r.gifts_count } : {}),
   }
 }
 
@@ -200,6 +205,8 @@ export function parseClosePreview(r: RawClosePreview): ClosePreview {
     balance: big(r.balance),
     balanceSource: r.balance_source,
     totalIn: big(r.total_contributed),
+    ...(r.gifts_total !== undefined ? { giftsTotal: big(r.gifts_total) } : {}),
+    ...(r.split !== undefined ? { split: r.split } : {}),
     approvalsNeeded: r.approvals_needed,
     openRequests: r.open_requests,
     payouts: r.payouts.map((p) => ({ account: p.account_id as AccountId, contributed: big(p.contributed), amount: big(p.amount) })),
@@ -420,6 +427,8 @@ export function parseGoalView(r: RawGoalView): GoalView {
     deadlineMs: r.deadline_ms,
     allOrNothing: r.all_or_nothing,
     totalIn: big(r.total_contributed),
+    ...(r.gifts_total !== undefined ? { giftsTotal: big(r.gifts_total) } : {}),
+    ...(r.progress !== undefined ? { progress: big(r.progress) } : {}),
     state: r.state,
     reachedAtMs: optNum(r.reached_at_ms),
     refundProposalId: optNum(r.refund_proposal_id),
@@ -476,3 +485,18 @@ export const parseLinkOutcome = (r: RawLinkOutcome): LinkOutcome => ({
   receiver: (r.receiver_id ?? null) as AccountId | null,
   reason: r.reason,
 })
+
+/** hub 1.2.0 `get_gifts` / `set_gifts`. */
+export function parseGiftsView(r: RawGiftsView): GiftsView {
+  return {
+    pot: r.pot as DaoId,
+    on: r.on,
+    total: big(r.total),
+    count: r.count,
+    lastGiftMs: r.last_gift_ms ?? null,
+    inFlight: r.in_flight,
+    accepting: r.accepting,
+    refusal: r.refusal ?? null,
+    minAmount: big(r.min_amount),
+  }
+}

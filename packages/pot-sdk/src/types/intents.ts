@@ -39,6 +39,13 @@ export type ActionIntent =
   | { type: "reclaim_link"; pot: DaoId; requestId: number }
   /** hub 1.1.0: refund a missed all-or-nothing goal (cron; call twice: propose, then approve) */
   | { type: "refund_unfunded"; pot: DaoId }
+  /**
+   * hub 1.2.0: anyone (member or not) sends the Pot a gift: usdc.ft_transfer_call → hub with
+   * msg {"pot","gift":giftRef}. ≥ $1. giftRef = the gift-link id (1-32 of [A-Za-z0-9_-]).
+   */
+  | { type: "send_gift"; pot: DaoId; amount: Micro; giftRef: string }
+  /** hub 1.2.0: any member turns the Pot's gifts on / off */
+  | { type: "set_gifts"; pot: DaoId; on: boolean }
   /** AddKey on own account (D-21) */
   | { type: "add_device_key"; account: AccountId; publicKey: PublicKeyStr }
 
@@ -60,6 +67,8 @@ export const ACTION_INTENT_TYPES: readonly ActionIntentType[] = [
   "claim_link",
   "reclaim_link",
   "refund_unfunded",
+  "send_gift",
+  "set_gifts",
   "add_device_key",
 ]
 

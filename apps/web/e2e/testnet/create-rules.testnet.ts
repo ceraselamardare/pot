@@ -5,6 +5,7 @@
 //   E2E_TESTNET=1 E2E_PORT=3217 NEXT_DIST_DIR=.next-rules scripts/with-testnet-lock.sh \
 //     pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts create-rules
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
+import { createPot } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, nearBalance, usd, useWallet, walletSignIn } from "./chain"
 
@@ -39,14 +40,15 @@ test("custom rules: $25 at a time, $60 per person, members only → on chain; $3
   expect(me).toBe(accounts.people[0]!.accountId)
 
   await A.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = A.getByRole("dialog", { name: "Name your Pot" })
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
-  await step1.getByRole("button", { name: "Next" }).click()
-  const step2 = A.getByRole("dialog", { name: "Pot rules" })
-  await step2.getByRole("textbox", { name: "Anyone can spend up to this much at a time without asking" }).fill("25")
-  await step2.getByRole("textbox", { name: "Each person can spend up to this much in total without asking" }).fill("60")
-  await expect(step2.getByRole("radio", { name: "Members only" })).toBeChecked()
-  await step2.getByRole("button", { name: "Create Pot" }).click()
+  // the one Create screen → [Change] → the full rules
+  await createPot(A, {
+    name: POT_NAME,
+    rules: async (step2) => {
+      await step2.getByRole("textbox", { name: "Anyone can spend up to this much at a time without asking" }).fill("25")
+      await step2.getByRole("textbox", { name: "Each person can spend up to this much in total without asking" }).fill("60")
+      await expect(step2.getByRole("radio", { name: "Members only" })).toBeChecked()
+    },
+  })
   await expect(A.getByText("Free: we cover the setup.")).toBeVisible()
   await expect(A).toHaveURL(/\/p\/custom-rules-[a-z0-9]+-[a-z0-9]{4}\?sheet=share$/, { timeout: 60_000 })
   const slug = new URL(A.url()).pathname.split("/")[2]!

@@ -117,7 +117,7 @@ async fn t20(build: Build) -> anyhow::Result<()> {
     for k in ["version","owner","usdc","dao_code_hash","dao_float","min_dao_float","relayers","limits","paused","pot_count","sponsored_today","free_balance"] {
         assert!(cfg.get(k).is_some(), "get_config.{k}");
     }
-    assert_eq!(cfg["version"], "1.1.0"); // hub 1.1.0 (wave 4)
+    assert_eq!(cfg["version"], "1.2.0"); // hub 1.2.0 (gifts)
     assert_eq!(cfg["dao_code_hash"], build.expected_hash());
     Ok(())
 }

@@ -38,6 +38,10 @@ import { pendingIn, useOps } from "@/lib/client/ops/store"
 import { closeSheet, openSheet, resolveProposalParam, useSheetParams, useTabParam } from "@/lib/client/sheet"
 import { formatUsd } from "@/lib/client/money"
 import { useNow } from "@/lib/client/time"
+import { GiftsSheet } from "@/components/gifts/GiftsSheet"
+import { GiftDetailsSheet } from "@/components/gifts/GiftDetailsSheet"
+import { GIFTS_ON } from "@/lib/client/gifts/flag"
+import { collectedOf, useWithGifts } from "@/lib/client/gifts/data"
 
 const TABS = ["activity", "members", "rules"] as const
 /** ?sheet=paylink&link=<request id> */
@@ -73,7 +77,9 @@ export function PotScreen() {
   return <PotLoaded pot={res.data} />
 }
 
-function PotLoaded({ pot }: { pot: PotVM }) {
+function PotLoaded({ pot: base }: { pot: PotVM }) {
+  // hub 1.2.0 gifts: the feed rows and the goal's count (the mock's potView has them; testnet adds them here)
+  const pot = useWithGifts(base)
   const now = useNow()
   const ops = useOps()
   const potOps = ops.filter((o) => o.pot === pot.slug)
@@ -152,7 +158,7 @@ function PotLoaded({ pot }: { pot: PotVM }) {
             contributed={me.contributed}
             pendingIn={pendingIn(potOps, pot.slug)}
             goal={pot.goal}
-            collected={pot.totalIn}
+            collected={collectedOf(pot)}
             closing={pot.status !== "open" || !!pot.closingInFlight}
             closedAt={pot.status === "closed" ? (pot.closedAt ?? null) : null}
             onAdd={() => openSheet("add")}
@@ -251,6 +257,12 @@ function PotLoaded({ pot }: { pot: PotVM }) {
       <RefundSheet pot={pot} open={sheet === "refund"} onClose={closeSheet} />
       <PersonActivitySheet pot={pot} who={params.get("who")} open={sheet === "person" && !!params.get("who")} onClose={closeSheet} />
       <PayLinkSheet pot={pot} id={linkParam(params.get("link"))} open={sheet === "paylink" && linkParam(params.get("link")) !== null} onClose={closeSheet} />
+      {GIFTS_ON && (
+        <>
+          <GiftsSheet pot={pot} open={sheet === "gifts"} onClose={closeSheet} />
+          <GiftDetailsSheet pot={pot} giftRef={params.get("gift")} open={sheet === "gift" && !!params.get("gift")} onClose={closeSheet} />
+        </>
+      )}
     </>
   )
 }

@@ -1,7 +1,7 @@
 // The mock world: pure functions over a JSON-safe `World` (seed, actions, selectors). The client store
 // (store.ts) persists it in localStorage and adds latency; server components call seedWorld() for /j and
 // /demo. The money rules mirror the hub (D-05, D-07, D-08, D-09) so the beats and copy match testnet.
-import { prorata, receiptFingerprintOfRef, spendRef, type Rules as SdkRules } from "@pot/sdk"
+import { receiptFingerprintOfRef, spendRef, type Rules as SdkRules } from "@pot/sdk"
 import { receiptFingerprint, shortFingerprint, validateSavedReceipt, type SavedReceipt } from "@/lib/receipt-saved"
 import { sha256 } from "@noble/hashes/sha2.js"
 import { base58 } from "@scure/base"
@@ -10,6 +10,7 @@ import { cents, MICRO_PER_CENT, type Micro } from "../money"
 import { approvalsNeeded, expiresAt, previewSpend, type Rules } from "../rules"
 import { DAY, HOUR, LISBON_INVITE, MIN, PEOPLE, PORTO_INVITE } from "./fixtures"
 import { effectiveLink, LINK_RECEIVER, linkReceiverVM, linkVM, openLinks } from "./links"
+import { closeMathWithGifts, giftFeedItems, giftsTotalOf, giftsVM, giverOf } from "./gifts"
 import {
   canOk,
   checkGoalReached,
@@ -255,6 +256,8 @@ export function ownDollarsOf(w: World, who: string): number {
     if (pot.status === "closed" && pot.close?.status === "approved") total += pot.close.payouts.find((p) => p.account === who)?.amount ?? 0
     for (const e of pot.events) if (e.kind === "contribution" && e.actor === who && e.source === "pot_dollars") total -= e.amount ?? 0
   }
+  // gifts (hub 1.2.0) sent from this person's Pot dollars
+  for (const g of w.gifts ?? []) if (g.from === who && g.source === "pot_dollars") total -= g.amount
   return Math.max(0, total)
 }
 
@@ -454,11 +457,8 @@ export function lastContributorOf(pot: PotRec): string | null {
 
 /** The hub's close math over this Pot (cents): pro-rata by what each person put in, the remainder to the last contributor. */
 export function closeMath(pot: PotRec): { payouts: { account: string; amount: number }[]; dust: number; dustTo: string | null } {
-  const contributions = [...pot.members].sort((a, b) => a.joinIndex - b.joinIndex).map((m) => ({ account: m.id, contributed: BigInt(m.contributed) }))
-  const last = lastContributorOf(pot)
-  const r = prorata(BigInt(Math.max(0, pot.balance)), contributions, last)
-  if (!r) return { payouts: [], dust: 0, dustTo: null }
-  return { payouts: r.payouts.map((p) => ({ account: p.account, amount: Number(p.amount) })), dust: Number(r.dust), dustTo: r.dustTo }
+  // hub 1.2.0: gifts are in the balance, so pro-rata shares them; a Pot that only got gifts is split equally
+  return closeMathWithGifts(pot, lastContributorOf(pot)) ?? { payouts: [], dust: 0, dustTo: null }
 }
 
 function applyClose(pot: PotRec, c: CloseRec, now: number) {
@@ -489,7 +489,8 @@ export function proposeClose(w: World, slug: string, who: string, now: number): 
   if (!isMember(pot, who)) throw new HubError("ERR_NOT_MEMBER")
   if (pot.status === "closed") throw new HubError("ERR_POT_NOT_OPEN")
   if (pot.status === "closing" && pot.close?.status === "proposed") throw new HubError("ERR_CLOSE_IN_PROGRESS")
-  if (pot.members.every((m) => m.contributed === 0)) throw new HubError("ERR_NO_CONTRIBUTIONS")
+  // hub 1.2.0: contributions + gifts > 0
+  if (pot.members.every((m) => m.contributed === 0) && giftsTotalOf(w, slug) === 0) throw new HubError("ERR_NO_CONTRIBUTIONS")
   // pay by link: open links block a close (ERR_LINKS_PENDING): escrow can't outlive the Pot
   if (openLinks(pot) > 0) throw new HubError("ERR_LINKS_PENDING")
   const math = closeMath(pot)
@@ -799,13 +800,13 @@ function rulesChangeVM(pot: PotRec, p: RulesProposalRec, me: string | null, now:
   }
 }
 
-function closePreviewVM(pot: PotRec, math: ReturnType<typeof closeMath>): ClosePreviewVM {
+function closePreviewVM(pot: PotRec, math: ReturnType<typeof closeMath>, gifted = 0): ClosePreviewVM {
   const blocked =
     pot.status === "closed"
       ? "pot_not_open"
       : pot.status === "closing"
         ? "close_in_progress"
-        : pot.members.every((m) => m.contributed === 0)
+        : pot.members.every((m) => m.contributed === 0) && gifted === 0
           ? "no_contributions"
           : pot.balance <= 0
             ? "nothing_to_refund"
@@ -853,6 +854,8 @@ export function potView(w: World, slug: string, me: string | null, now: number):
     .sort((a, b) => (a.isMe === b.isMe ? (a.person.joinIndex ?? 0) - (b.person.joinIndex ?? 0) : a.isMe ? -1 : 1))
   const meVM = members.find((m) => m.isMe) ?? null
   const reqs = pot.requests.map((r) => requestVM(pot, r, me, now))
+  // hub 1.2.0 gifts: members see each one (with its note) in the feed
+  const gifts = giftsVM(w, pot, (g) => giverOf(g, nameOf, initialsOf, (id) => avatarOrNull(viewAvatars[id])), (g) => mockTxHash(`${pot.slug}:gift:${g.ref}`))
   const feed: FeedItemVM[] = [
     ...pot.events.map((e: EventRec): FeedItemVM => {
       const actor = person(pot, e.actor)
@@ -866,6 +869,7 @@ export function potView(w: World, slug: string, me: string | null, now: number):
       ? [{ key: `close:${pot.close.id}`, kind: "close_requested" as const, at: pot.close.createdAt, actor: person(pot, pot.close.proposer), k: approvalsNeeded(pot.members.length), txHash: mockTxHash(`${pot.slug}:close:${pot.close.id}`) }]
       : []),
     ...(pot.status === "closed" && pot.closedAt ? [{ key: `closed:${pot.slug}`, kind: "closed" as const, at: pot.closedAt, txHash: mockTxHash(`${pot.slug}:closed`) }] : []),
+    ...giftFeedItems(gifts),
     ...(pot.rulesProposal && pot.rulesProposal.status === "proposed"
       ? [{ key: `rules:${pot.rulesProposal.id}`, kind: "rules_requested" as const, at: pot.rulesProposal.createdAt, actor: person(pot, pot.rulesProposal.proposer), k: approvalsNeeded(pot.members.length), txHash: mockTxHash(`${pot.slug}:rules:${pot.rulesProposal.id}`) }]
       : []),
@@ -899,7 +903,7 @@ export function potView(w: World, slug: string, me: string | null, now: number):
     closedAt: pot.closedAt ?? null,
     rulesChange: pot.rulesProposal ? rulesChangeVM(pot, pot.rulesProposal, me, now) : null,
     rulesPending: !!pot.rulesProposal && pot.rulesProposal.status === "proposed" && !proposalExpired(pot, pot.rulesProposal, now),
-    closePreview: math ? closePreviewVM(pot, math) : null,
+    closePreview: math ? closePreviewVM(pot, math, giftsTotalOf(w, slug)) : null,
     closingInFlight: false,
     lastContributor: lastContributorOf(pot) ? person(pot, lastContributorOf(pot)!) : null,
     // the mock's money is whole cents, so its close math runs in cents (the refund preview mirrors that)
@@ -913,6 +917,7 @@ export function potView(w: World, slug: string, me: string | null, now: number):
     },
     ...(pot.extras ? { extras: extrasVM(pot.extras), policyVersion: pot.policyVersion ?? 1 } : {}),
     goalDetail,
+    gifts,
   }
 }
 

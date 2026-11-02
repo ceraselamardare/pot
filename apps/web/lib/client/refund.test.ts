@@ -70,10 +70,38 @@ describe("refunds: the hub's close-out formula", () => {
     expect(refundOf(b, "a")).toBe(usd(150))
   })
 
-  it("an empty Pot (or nobody put money in) gives nothing back", () => {
+  it("an empty Pot (or no members) gives nothing back", () => {
     expect(refunds(basis(0n, [["a", usd(150)]], "a")).size).toBe(0)
-    expect(refunds(basis(usd(10), [["a", 0n], ["b", 0n]])).size).toBe(0)
+    expect(refunds(basis(0n, [["a", 0n], ["b", 0n]])).size).toBe(0)
     expect(refunds(basis(usd(10), [])).size).toBe(0)
+  })
+
+  it("hub 1.2.0: nobody put money in (a Pot that only got gifts) → split equally, the remainder to the last member", () => {
+    expect(asObj(refunds(basis(usd(10), [["a", 0n], ["b", 0n]])))).toEqual({ a: "5000000", b: "5000000" })
+    expect(asObj(refunds(basis(usd(1), [["a", 0n], ["b", 0n], ["c", 0n]])))).toEqual({ a: "333333", b: "333333", c: "333334" })
+    // the mock's cents
+    expect(asObj(refunds(basis(usd(10.01), [["a", 0n], ["b", 0n]], null, 10_000n)))).toEqual({ a: "5000000", b: "5010000" })
+    // as soon as anyone adds money it's pro-rata again (gifts are part of the balance)
+    expect(asObj(refunds(withAdd(basis(usd(40), [["a", 0n], ["b", 0n]]), "b", usd(10))))).toEqual({ b: usd(50).toString() })
+  })
+
+  it("matches every shared close-split vector (contracts/tests/vectors/close-split.json, E1-E10)", () => {
+    const file = new URL("../../../../contracts/tests/vectors/close-split.json", import.meta.url)
+    const { vectors } = JSON.parse(readFileSync(file, "utf8")) as {
+      vectors: {
+        id: string
+        balance: string
+        contributions: { account_id: string; contributed: string }[]
+        last_contributor: string | null
+        expected: { nothing_to_refund?: boolean; payouts?: { account_id: string; amount: string }[] }
+      }[]
+    }
+    expect(vectors.length).toBe(10)
+    for (const v of vectors) {
+      const got = refunds(basis(BigInt(v.balance), v.contributions.map((c) => [c.account_id, BigInt(c.contributed)]), v.last_contributor))
+      const want = v.expected.nothing_to_refund ? {} : Object.fromEntries(v.expected.payouts!.map((p) => [p.account_id, p.amount]))
+      expect(asObj(got), v.id).toEqual(want)
+    }
   })
 
   it("unit = cents (the mock world): the same formula over whole cents", () => {
@@ -137,6 +165,25 @@ describe("parity with the data sources", () => {
       expect(spent.request.status).toBe("paid")
       expect(refundAfterSpend(pot, usd(7.77)), `spend as ${me}`).toBe(W.potView(spent.world, "lisbon-trip", me, NOW + 5)!.myShare)
     }
+  })
+
+  it("mock: a Pot that only got gifts — the preview equals each member's Gets back (equal split, sdk closeSplit)", () => {
+    let w = W.seedWorld(NOW)
+    const rec = w.pots["porto-weekend"]!
+    rec.members.forEach((m) => (m.contributed = 0))
+    rec.balance = 1_001 // $10.01 of gifts
+    rec.requests = []
+    for (const me of rec.members.map((m) => m.id)) {
+      const pot = W.potView(w, "porto-weekend", me, NOW + 1)!
+      const b = refundBasis(pot)!
+      const total = pot.members.reduce((s, m) => s + m.getsBack, 0n)
+      expect(total).toBe(usd(10.01))
+      for (const m of pot.members) expect(refundOf(b, m.person.id), `${me} sees ${m.person.id}`).toBe(m.getsBack)
+      expect(refundOf(b, me)).toBe(pot.myShare)
+    }
+    w = W.addMoney(w, "porto-weekend", rec.members[0]!.id, 500, NOW + 2)
+    const after = W.potView(w, "porto-weekend", rec.members[0]!.id, NOW + 3)!
+    expect(after.myShare).toBe(usd(15.01))
   })
 
   it("mock: the breakdown is put in = part of the spending + gets back", () => {

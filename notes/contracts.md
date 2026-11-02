@@ -1,5 +1,9 @@
 # Contracts: progress, deviations, open issues
 
+> **Gifts (2026-11-02): hub 1.2.0** lets anyone send a Pot a gift (group money, shared at close, equal split when
+> nobody contributed), with no migration from 1.1.0 (a plain code deploy). Design, interface and the human's deploy
+> steps: [contracts-gifts.md](contracts-gifts.md). Not deployed.
+
 > **Wave 4 (2026-11-01): hub 1.1.0** adds earned trust, the one-OK tier, pay by link and the all-or-nothing goal,
 > with a `migrate` from the deployed 1.0.0 state. Design, interface, invariant amendments and the human's deploy steps:
 > [contracts-wave4.md](contracts-wave4.md). Not deployed.

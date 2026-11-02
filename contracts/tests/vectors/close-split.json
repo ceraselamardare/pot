@@ -1,0 +1,631 @@
+{
+ "source": "hub 1.2.0 close split: contracts/pot-hub/src/prorata.rs close_split, @pot/sdk math/prorata.ts closeSplit (notes/contracts-gifts.md). Pro-rata when anyone contributed; equal when nobody did (gifts-only Pot).",
+ "units": "USDC base units (6 dp), strings",
+ "vectors": [
+  {
+   "id": "E1",
+   "note": "gifts only: $100 over 3 members, 1 base unit of dust to the last member",
+   "balance": "100000000",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "leo.near",
+     "contributed": "0"
+    }
+   ],
+   "last_contributor": null,
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "maya.near",
+      "amount": "33333333"
+     },
+     {
+      "account_id": "sam.near",
+      "amount": "33333333"
+     },
+     {
+      "account_id": "leo.near",
+      "amount": "33333334"
+     }
+    ],
+    "dust": "1",
+    "dust_to": "leo.near"
+   }
+  },
+  {
+   "id": "E2",
+   "note": "gifts only, a sole member gets everything",
+   "balance": "25000000",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "0"
+    }
+   ],
+   "last_contributor": null,
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "maya.near",
+      "amount": "25000000"
+     }
+    ],
+    "dust": "0",
+    "dust_to": "maya.near"
+   }
+  },
+  {
+   "id": "E3",
+   "note": "gifts only, $10 over 2: no dust, dust_to = the last member",
+   "balance": "10000000",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "0"
+    }
+   ],
+   "last_contributor": null,
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "maya.near",
+      "amount": "5000000"
+     },
+     {
+      "account_id": "sam.near",
+      "amount": "5000000"
+     }
+    ],
+    "dust": "0",
+    "dust_to": "sam.near"
+   }
+  },
+  {
+   "id": "E4",
+   "note": "gifts only, balance smaller than n: zero shares omitted, dust to the last",
+   "balance": "2",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "leo.near",
+     "contributed": "0"
+    }
+   ],
+   "last_contributor": null,
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "leo.near",
+      "amount": "2"
+     }
+    ],
+    "dust": "2",
+    "dust_to": "leo.near"
+   }
+  },
+  {
+   "id": "E5",
+   "note": "nothing to refund: balance 0",
+   "balance": "0",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "0"
+    }
+   ],
+   "last_contributor": null,
+   "expected": {
+    "nothing_to_refund": true
+   }
+  },
+  {
+   "id": "E6",
+   "note": "nothing to refund: no member",
+   "balance": "5000000",
+   "contributions": [],
+   "last_contributor": null,
+   "expected": {
+    "nothing_to_refund": true
+   }
+  },
+  {
+   "id": "E7",
+   "note": "mixed: someone contributed, so gifts are shared pro-rata to contributions; non-contributors get 0",
+   "balance": "160000000",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "100000000"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "leo.near",
+     "contributed": "50000000"
+    }
+   ],
+   "last_contributor": "leo.near",
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "maya.near",
+      "amount": "106666666"
+     },
+     {
+      "account_id": "leo.near",
+      "amount": "53333334"
+     }
+    ],
+    "dust": "1",
+    "dust_to": "leo.near"
+   }
+  },
+  {
+   "id": "E8",
+   "note": "gifts only, 40 members at MAX_AMOUNT",
+   "balance": "1000000000000000",
+   "contributions": [
+    {
+     "account_id": "m0.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m1.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m2.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m3.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m4.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m5.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m6.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m7.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m8.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m9.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m10.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m11.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m12.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m13.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m14.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m15.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m16.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m17.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m18.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m19.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m20.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m21.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m22.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m23.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m24.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m25.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m26.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m27.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m28.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m29.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m30.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m31.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m32.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m33.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m34.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m35.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m36.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m37.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m38.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "m39.near",
+     "contributed": "0"
+    }
+   ],
+   "last_contributor": null,
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "m0.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m1.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m2.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m3.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m4.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m5.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m6.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m7.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m8.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m9.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m10.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m11.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m12.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m13.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m14.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m15.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m16.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m17.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m18.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m19.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m20.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m21.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m22.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m23.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m24.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m25.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m26.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m27.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m28.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m29.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m30.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m31.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m32.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m33.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m34.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m35.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m36.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m37.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m38.near",
+      "amount": "25000000000000"
+     },
+     {
+      "account_id": "m39.near",
+      "amount": "25000000000000"
+     }
+    ],
+    "dust": "0",
+    "dust_to": "m39.near"
+   }
+  },
+  {
+   "id": "E9",
+   "note": "gifts only, 7 members, odd amount",
+   "balance": "1000003",
+   "contributions": [
+    {
+     "account_id": "p0.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "p1.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "p2.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "p3.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "p4.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "p5.near",
+     "contributed": "0"
+    },
+    {
+     "account_id": "p6.near",
+     "contributed": "0"
+    }
+   ],
+   "last_contributor": null,
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "p0.near",
+      "amount": "142857"
+     },
+     {
+      "account_id": "p1.near",
+      "amount": "142857"
+     },
+     {
+      "account_id": "p2.near",
+      "amount": "142857"
+     },
+     {
+      "account_id": "p3.near",
+      "amount": "142857"
+     },
+     {
+      "account_id": "p4.near",
+      "amount": "142857"
+     },
+     {
+      "account_id": "p5.near",
+      "amount": "142857"
+     },
+     {
+      "account_id": "p6.near",
+      "amount": "142861"
+     }
+    ],
+    "dust": "4",
+    "dust_to": "p6.near"
+   }
+  },
+  {
+   "id": "E10",
+   "note": "mixed, last contributor named: dust to them",
+   "balance": "100000001",
+   "contributions": [
+    {
+     "account_id": "maya.near",
+     "contributed": "30000000"
+    },
+    {
+     "account_id": "sam.near",
+     "contributed": "30000000"
+    },
+    {
+     "account_id": "leo.near",
+     "contributed": "30000000"
+    }
+   ],
+   "last_contributor": "sam.near",
+   "expected": {
+    "payouts": [
+     {
+      "account_id": "maya.near",
+      "amount": "33333333"
+     },
+     {
+      "account_id": "sam.near",
+      "amount": "33333335"
+     },
+     {
+      "account_id": "leo.near",
+      "amount": "33333333"
+     }
+    ],
+    "dust": "2",
+    "dust_to": "sam.near"
+   }
+  }
+ ]
+}

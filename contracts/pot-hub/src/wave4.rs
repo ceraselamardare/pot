@@ -106,6 +106,10 @@ pub struct GoalView {
     pub deadline_ms: u64,
     pub all_or_nothing: bool,
     pub total_contributed: U128,
+    /// hub 1.2.0: gifts received (they count toward a normal goal, not an all-or-nothing one)
+    pub gifts_total: U128,
+    /// hub 1.2.0: what counts toward the goal (contributions + gifts for a normal goal)
+    pub progress: U128,
     /// "collecting" | "reached" | "missed" | "refundable" | "refunding" | "refunded"
     pub state: String,
     pub reached_at_ms: Option<u64>,
@@ -196,16 +200,28 @@ impl PotHub {
         Ok(())
     }
 
-    /// Marks the goal reached once `total_contributed ≥ amount` (an all-or-nothing goal only
-    /// before its deadline). Never un-reaches.
+    /// What counts toward the goal: contributions, plus gifts for a normal goal (hub 1.2.0). An
+    /// all-or-nothing goal counts contributions only (its promise is "your contribution back"; gifts
+    /// are refused while it collects).
+    pub(crate) fn goal_progress(&self, p: &Pot, g: &Goal) -> u128 {
+        if g.all_or_nothing {
+            p.total_contributed
+        } else {
+            p.total_contributed.saturating_add(self.gifts_of(p.idx).total)
+        }
+    }
+
+    /// Marks the goal reached once its progress ≥ amount (an all-or-nothing goal only before its
+    /// deadline). Never un-reaches.
     pub(crate) fn check_goal_reached(&mut self, dao: &AccountId, p: &Pot) {
         let mut e = self.pext(p.idx);
         let Some(g) = e.extras.goal.clone() else { return };
         let now = now_ms();
-        if e.goal_reached_at_ms == 0 && p.total_contributed >= g.amount.0 && (!g.all_or_nothing || now < g.deadline_ms) {
+        let progress = self.goal_progress(p, &g);
+        if e.goal_reached_at_ms == 0 && progress >= g.amount.0 && (!g.all_or_nothing || now < g.deadline_ms) {
             e.goal_reached_at_ms = now;
             self.pot_ext.insert(p.idx, e);
-            PotEvent::GoalReached { pot: dao.clone(), goal: g, total: U128(p.total_contributed) }.emit();
+            PotEvent::GoalReached { pot: dao.clone(), goal: g, total: U128(progress) }.emit();
         }
     }
 
@@ -646,6 +662,7 @@ impl PotHub {
                 check(p.busy_until_ms <= now, ERR_POT_BUSY);
                 check(p.unpaid_approved == 0 && p.reserved == 0, ERR_PAYOUTS_PENDING);
                 check(e.open_links == 0, ERR_LINKS_PENDING);
+                check(!self.gifts_of(p.idx).in_flight_at(now), ERR_GIFT_IN_FLIGHT);
                 check(p.total_contributed > 0, ERR_NO_CONTRIBUTIONS);
                 self.require_free(prepay, excess);
                 Self::refund_excess(excess);
@@ -717,7 +734,12 @@ impl PotHub {
         let state = self.goal_state(p);
         let can_refund = match state {
             "refundable" => {
-                p.status == PotStatus::Open && p.unpaid_approved == 0 && p.reserved == 0 && e.open_links == 0 && p.total_contributed > 0
+                p.status == PotStatus::Open
+                    && p.unpaid_approved == 0
+                    && p.reserved == 0
+                    && e.open_links == 0
+                    && p.total_contributed > 0
+                    && !self.gifts_of(p.idx).in_flight_at(now_ms())
             }
             "refunding" => self.closes.get(&p.idx).is_some_and(|r| matches!(r.status, CloseStatus::Pending | CloseStatus::Failed)),
             _ => false,
@@ -728,6 +750,8 @@ impl PotHub {
             deadline_ms: g.deadline_ms,
             all_or_nothing: g.all_or_nothing,
             total_contributed: U128(p.total_contributed),
+            gifts_total: U128(self.gifts_of(p.idx).total),
+            progress: U128(self.goal_progress(p, &g)),
             state: state.into(),
             reached_at_ms: if e.goal_reached_at_ms > 0 { Some(e.goal_reached_at_ms) } else { None },
             refund_proposal_id: e.refund_proposal,

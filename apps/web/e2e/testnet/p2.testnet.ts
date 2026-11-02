@@ -6,7 +6,7 @@
 // Both people sign in with a NEAR wallet (the e2e mock wallet) holding a throwaway 0-NEAR account (accounts.ts; Rev 9).
 //   E2E_TESTNET=1 scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts p2.testnet.ts
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { typeAmount } from "../fixtures/pot"
+import { createPot, typeAmount } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -65,10 +65,7 @@ test("setup: A creates one Pot, B joins, both add money", async () => {
   await expect(A.getByRole("heading", { level: 1, name: "Pots" })).toBeVisible({ timeout: 30_000 })
   accA = await accountOf(A.request)
   await A.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = A.getByRole("dialog", { name: "Name your Pot" })
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
-  await step1.getByRole("button", { name: "Next" }).click()
-  await A.getByRole("dialog", { name: "Pot rules" }).getByRole("button", { name: "Create Pot" }).click()
+  await createPot(A, { name: POT_NAME }) // the one Create screen, default rules
   await expect(A).toHaveURL(/\/p\/rules-trip-[a-z0-9]+-[a-z0-9]{4}\?sheet=share$/, { timeout: 60_000 })
   slug = new URL(A.url()).pathname.split("/")[2]!
   const share = A.getByRole("dialog", { name: `Invite friends to ${POT_NAME}` })

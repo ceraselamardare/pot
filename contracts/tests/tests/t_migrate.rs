@@ -34,7 +34,8 @@ async fn m1(build: Build) -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(r.is_success(), "deploy + migrate: {r:?}");
-    assert_eq!(env.hub_view("get_config", json!({})).await["version"], "1.1.0");
+    // the current build (hub 1.2.0 since gifts) still migrates 1.0.0 state; 1.1.0 → 1.2.0 is t_gifts g7
+    assert_eq!(env.hub_view("get_config", json!({})).await["version"], "1.2.0");
     // migrate runs once, and only as the hub itself
     let again = env
         .hub_account

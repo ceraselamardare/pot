@@ -1,16 +1,19 @@
 "use client"
 // Create Pot (ux-spec §4.12, design-direction 01 §3, frontend-architecture §5.10): a Pot in under a minute.
-// Step 1 name + emoji + colour with a live preview of what friends see; step 2 "Pot rules": every editable rule
-// is a sentence with an inline amount (instant limit, per-person limit), who instant payments can go to (members,
-// or members + up to 10 named people), the optional "$X each", and the fixed rules as plain lines. No templates:
-// the Pot is created with preset "custom" and exactly these rules. Step 3 progress ("Free: we cover the setup")
-// → the Share sheet.
-// Step 2 is its own history entry (?step=rules), so the browser's Back and the in-sheet [Back] both return to
-// step 1 with everything typed kept (notes/frontend.md "Back in multi-step sheets").
+// Lean create (notes/gifts-plan.md "Lean create flow", 2026-11-02): ONE screen. The cover preview (tap it for a
+// small emoji + colour picker), the name, "Everyone chips in $150 each" inline (amount editable, switch off), one
+// rules summary line ("Small spends up to $100 go through on their own; bigger ones go to the group · [Change]")
+// and [Create Pot], the one marigold. Default path: Start a Pot → name → Create Pot, no scrolling at 390×844.
+// [Change] opens the full "Pot rules" step unchanged: every editable rule is a sentence with an inline amount
+// (instant limit, per-person limit), who instant payments can go to (members, or members + up to 10 named
+// people), trust, one OK, the goal with a date, and the fixed rules as plain lines. It is its own history entry
+// (?step=rules), so the browser's Back and the in-sheet [Back] both return to the main screen with everything
+// kept (notes/frontend.md "Back in multi-step sheets"); it can create the Pot too. No templates: the Pot is created
+// with preset "custom" and exactly these rules. Step 3 progress ("Free: we cover the setup") → the Share sheet.
 // The invite keypair is generated here, so the first link exists the moment the Pot does (7 days, 10 uses).
-import { Check, CircleAlert, Flag, Hand, Hourglass, Info, Lock, Plus, Sprout, Undo2, UserPlus, Users, UserRound, UserCheck, X, Zap } from "lucide-react"
+import { Check, CircleAlert, Flag, Hand, Hourglass, Info, Lock, Pencil, Plus, Sprout, Undo2, UserPlus, Users, UserRound, UserCheck, X, Zap } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useEffect, useReducer, useState, type Dispatch } from "react"
+import { useEffect, useReducer, useRef, useState, type Dispatch } from "react"
 import { toast } from "sonner"
 import { ProgressSteps } from "@/components/feedback/States"
 import { COVER_GRADIENTS, CoverTile } from "@/components/pot/CoverTile"
@@ -18,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetBack } from "@/components/sheets/Sheet"
 import { t } from "@/i18n/t"
 import { useOnline } from "@/lib/client/browser"
-import { createReducer, initialCreate, NAME_MAX, type CreateEvent, type CreateState } from "@/lib/client/machines/create"
+import { createReducer, initialCreate, NAME_MAX, validateName, type CreateEvent, type CreateState } from "@/lib/client/machines/create"
 import { checkRulesForm, FIXED, INSTANT_MAX, MAX_NAMED, parseAmount, PERSON_MAX, type RulesCheck } from "@/lib/client/create-rules"
 import { sdkConfig } from "@/lib/client/config"
 import { generateInvite } from "@/lib/client/invite"
@@ -32,39 +35,55 @@ import { useNow } from "@/lib/client/time"
 
 const EMOJI = ["✈️", "🇵🇹", "🏖️", "🏔️", "🍷", "🎉", "🏕️", "🚐", "🎿", "🍕", "⚽", "🎸"]
 
+/** What to focus once a field to fix is on screen (after [Create Pot] with something wrong). */
+const FOCUS = { name: "[data-create-name]", each: "#goal-amount", rules: "[data-create-rules] [aria-invalid='true']" } as const
+const focusSoon = (selector: string) => requestAnimationFrame(() => document.querySelector<HTMLElement>(selector)?.focus())
+
 export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter()
   const online = useOnline()
-  const [s, dispatch] = useReducer(createReducer, initialCreate)
-  const status = s.status
-  // the step in the URL: Back (the browser's or ours) pops ?step=rules and the reducer follows
+  // the rules step in the URL: Back (the browser's or ours) pops ?step=rules and the reducer follows; a cold deep
+  // link to ?sheet=create&step=rules starts there
   const { params } = useSheetParams()
   const urlStep = params.get("step") === "rules" ? 2 : 1
+  const [s, dispatch] = useReducer(createReducer, urlStep, (u): CreateState => (u === 2 ? { ...initialCreate, step: 2 } : initialCreate))
+  const status = s.status
   const [seenStep, setSeenStep] = useState(urlStep)
   if (seenStep !== urlStep) {
     setSeenStep(urlStep)
     if (open && urlStep === 1 && s.step === 2) dispatch({ type: "BACK" })
-    if (open && urlStep === 2 && s.step === 1) dispatch({ type: "NEXT" }) // the browser's Forward
+    if (open && urlStep === 2 && s.step === 1) dispatch({ type: "RULES" }) // the browser's Forward
   }
-  const next = () => {
-    const to = createReducer(s, { type: "NEXT" })
-    dispatch({ type: "NEXT" })
-    if (to.step === 2 && urlStep !== 2) pushSheetStep((p) => p.set("step", "rules"))
+  const openRules = () => {
+    dispatch({ type: "RULES" })
+    if (urlStep !== 2) pushSheetStep((p) => p.set("step", "rules"))
   }
   const back = () => {
     if (urlStep === 2) sheetStepBack((p) => p.delete("step"))
     else dispatch({ type: "BACK" })
   }
+  // a field to fix on the other screen: focus it once that screen is in (after the Sheet focused its heading)
+  const focusAfter = useRef<string | null>(null)
+  useEffect(() => {
+    const target = focusAfter.current
+    if (!target) return
+    focusAfter.current = null
+    focusSoon(target)
+  }, [s.step])
   useEffect(() => {
     if (status !== "creating") return
     const id = setTimeout(() => dispatch({ type: "SLOW" }), 8000)
     return () => clearTimeout(id)
   }, [status])
+  // the emoji + colour picker behind the cover preview
+  const [picker, setPicker] = useState(false)
+  const coverRef = useRef<HTMLButtonElement>(null)
 
   const close = () => {
     if (s.status === "creating") return
     dispatch({ type: "RESET" })
     setTouched(new Set())
+    setPicker(false)
     onClose()
   }
   const cfg = sdkConfig()
@@ -73,7 +92,9 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
   // hub 1.1.0 extras (trust, one OK, the goal with a date): checked against the instant limit and today
   const now = useNow()
   const extrasCheck = checkExtrasForm(s.extras, check.instant, now)
-  const goalError = (s.goalOn && (goal === null || goal <= 0n)) || !extrasCheck.ok
+  // "$X each" lives on the main screen; everything else on the rules step
+  const eachError = s.goalOn && (goal === null || goal <= 0n)
+  const rulesOk = !!check.rules && !!extrasCheck.extras
   // fields people have left (errors show once a field was left, or after [Create Pot])
   const [touched, setTouched] = useState<ReadonlySet<string>>(new Set())
   const touch = (id: string) => setTouched((x) => (x.has(id) ? x : new Set(x).add(id)))
@@ -81,13 +102,22 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
 
   const create = async () => {
     if (!online) return toast(t("add.offline"))
-    if (!check.rules || goalError || !extrasCheck.extras) {
+    const nameOk = validateName(s.name)
+    if (!nameOk || eachError || !rulesOk) {
       dispatch({ type: "ATTEMPT" })
-      // move to the first thing to fix
-      requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-create-rules] [aria-invalid='true']")?.focus())
+      // fix what's on this screen first, then move to the other one
+      const main = !nameOk || eachError
+      const to = s.step === 2 ? (rulesOk ? 1 : 2) : main ? 1 : 2
+      const target = to === 2 ? FOCUS.rules : !nameOk ? FOCUS.name : FOCUS.each
+      if (to === s.step) focusSoon(target)
+      else {
+        focusAfter.current = target
+        if (to === 2) openRules()
+        else back()
+      }
       return
     }
-    const rules = check.rules
+    const rules = check.rules!
     dispatch({ type: "SUBMIT" })
     try {
       const invite = await generateInvite()
@@ -104,15 +134,15 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
       toast.success(t("create.success", { potName: s.name.trim() }))
       dispatch({ type: "RESET" })
       setTouched(new Set())
+      setPicker(false)
       router.replace(`/p/${slug}?sheet=share`)
     } catch (e) {
       dispatch({ type: "FAILED", key: e instanceof ActionError && e.reason === "ERR_CREATOR_DAILY_LIMIT" ? "create.error.limit" : "create.error.relayer" })
     }
   }
 
-  const title = s.step === 1 ? t("create.step1.title") : s.step === 2 ? t("create.step2.title") : t("create.progress", { potName: s.name.trim() }).split(" · ")[0]!
+  const title = s.step === 1 ? t("create.title") : s.step === 2 ? t("create.step2.title") : t("create.progress", { potName: s.name.trim() }).split(" · ")[0]!
   const nameShown = s.name.trim() || t("create.name.placeholder")
-
   return (
     <Sheet
       open={open}
@@ -122,46 +152,69 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
       keyboard
       stepKey={s.step}
       footer={
-        s.step === 1 ? (
-          <Button variant="primary" className="w-full" onClick={next}>
-            {t("create.cta.next")}
-          </Button>
-        ) : s.step === 2 ? (
+        // one keyed list for both screens: [Create Pot] stays the same element across them, so focus is never lost
+        s.step < 3 ? (
           <div className="flex flex-col gap-2">
             {s.error && (
-              <p role="alert" className="text-body-sm text-ink">
+              <p key="error" role="alert" className="text-body-sm text-ink">
                 {t(s.error)}
               </p>
             )}
-            {s.attempted && (!check.ok || goalError) && (
-              <p role="alert" className="flex items-start gap-2 text-body-sm text-ink" data-create-fix>
+            {s.step === 2 && s.attempted && !rulesOk && (
+              <p key="fix" role="alert" className="flex items-start gap-2 text-body-sm text-ink" data-create-fix>
                 <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-declined" strokeWidth={2} />
                 {t("create.rules.fix")}
               </p>
             )}
-            <Button variant="primary" className="w-full" onClick={create} aria-disabled={!online || undefined}>
+            <Button key="create" variant="primary" className="w-full" onClick={create} aria-disabled={!online || undefined}>
               {t("create.cta")}
             </Button>
-            <SheetBack onClick={back} />
+            {s.step === 2 && <SheetBack key="back" onClick={back} />}
           </div>
         ) : null
       }
     >
       <div className="flex flex-col gap-5 pt-1">
-        {s.step < 3 && <p className="text-body-sm text-ink-muted">{t("create.step_of", { step: s.step, total: 2 })}</p>}
-
         {s.step === 1 && (
           <>
             <figure className="flex flex-col gap-2">
               <div className="flex items-center gap-3 rounded-lg bg-surface p-3 shadow-card ring-1 ring-line">
-                <CoverTile emoji={s.emoji} cover={s.cover} size="lg" />
+                <button
+                  ref={coverRef}
+                  type="button"
+                  aria-label={t("create.cover.edit")}
+                  aria-expanded={picker}
+                  aria-controls={picker ? "create-picker" : undefined}
+                  onClick={() => setPicker((v) => !v)}
+                  className="relative shrink-0 rounded-md"
+                  data-cover-edit
+                >
+                  <CoverTile emoji={s.emoji} cover={s.cover} size="lg" />
+                  <span aria-hidden className="absolute -right-1.5 -bottom-1.5 grid size-6 place-items-center rounded-pill bg-surface text-ink shadow-card ring-1 ring-line-strong">
+                    <Pencil className="size-3.5" strokeWidth={2} />
+                  </span>
+                </button>
                 <div className="min-w-0">
                   <p className={cn("truncate font-display text-heading", s.name.trim() ? "text-ink" : "text-ink-muted")}>{nameShown}</p>
                   <p className="text-body-sm text-ink-muted">{t("create.preview.members")}</p>
                 </div>
               </div>
-              <figcaption className="text-body-sm text-ink-muted">{t("create.preview_hint")}</figcaption>
+              <figcaption className="text-body-sm text-ink-muted">
+                {t("create.preview_hint")} {t("create.cover.hint")}
+              </figcaption>
             </figure>
+
+            {picker && (
+              <CoverPicker
+                emoji={s.emoji}
+                cover={s.cover}
+                dispatch={dispatch}
+                onDone={() => {
+                  setPicker(false)
+                  coverRef.current?.focus()
+                }}
+              />
+            )}
 
             <label className="flex flex-col gap-1.5">
               <span className="flex items-center justify-between text-label text-ink">
@@ -178,65 +231,27 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
                 placeholder={t("create.name.placeholder")}
                 onChange={(e) => dispatch({ type: "NAME", value: e.target.value })}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") next()
+                  if (e.key === "Enter") void create()
                 }}
+                data-create-name
                 className="h-13 rounded-sm border border-line-strong bg-surface-sunken px-3 text-body text-ink placeholder:text-ink-muted"
               />
               {s.nameError && (
-                <span id="name-error" className="text-body-sm text-ink">
+                <span id="name-error" className="flex items-start gap-1.5 text-body-sm text-ink">
+                  <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-declined" strokeWidth={2} />
                   {t("create.error.name")}
                 </span>
               )}
             </label>
 
-            <fieldset>
-              <legend className="mb-2 text-label text-ink">{t("create.cover")}</legend>
-              <div role="radiogroup" aria-label={t("create.cover")} className="grid grid-cols-6 gap-2">
-                {EMOJI.map((e) => (
-                  <button
-                    key={e}
-                    type="button"
-                    role="radio"
-                    aria-checked={s.emoji === e}
-                    aria-label={e}
-                    onClick={() => dispatch({ type: "EMOJI", value: e })}
-                    className={cn(
-                      "grid aspect-square min-h-11 place-items-center rounded-md text-2xl",
-                      s.emoji === e ? "bg-brand-soft ring-2 ring-ink" : "bg-surface-sunken hover:bg-line",
-                    )}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset>
-              <legend className="mb-2 text-label text-ink">{t("create.cover.color")}</legend>
-              <div role="radiogroup" aria-label={t("create.cover.color")} className="flex flex-wrap gap-2">
-                {COVER_GRADIENTS.map((g, i) => (
-                  <button
-                    key={g}
-                    type="button"
-                    role="radio"
-                    aria-checked={s.cover === i}
-                    aria-label={t("create.cover.swatch", { n: i + 1 })}
-                    onClick={() => dispatch({ type: "COVER", value: i })}
-                    className="grid size-11 place-items-center rounded-pill"
-                  >
-                    <span className={cn("grid size-9 place-items-center rounded-pill bg-linear-to-br", g, s.cover === i && "ring-2 ring-ink ring-offset-2 ring-offset-surface")}>
-                      {s.cover === i && <Check aria-hidden className="size-4 text-on-brand" strokeWidth={3} />}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+            <div className="flex flex-col divide-y divide-line rounded-md border border-line-strong">
+              <EachRow s={s} error={eachError && show("goal")} dispatch={dispatch} touch={() => touch("goal")} />
+              <RulesSummary check={check} ok={rulesOk} onChange={openRules} />
+            </div>
           </>
         )}
 
-        {s.step === 2 && (
-          <RulesStep s={s} check={check} goalError={s.goalOn && (goal === null || goal <= 0n)} extrasCheck={extrasCheck} show={show} touch={touch} dispatch={dispatch} />
-        )}
+        {s.step === 2 && <RulesStep s={s} check={check} extrasCheck={extrasCheck} show={show} touch={touch} dispatch={dispatch} />}
 
         {s.step === 3 && (
           <div className="flex flex-col gap-6 pt-4" aria-busy="true">
@@ -261,6 +276,108 @@ export function CreatePotSheet({ open, onClose }: { open: boolean; onClose: () =
   )
 }
 
+// ------------------------------------------------------------------------------------------------- main screen
+
+/** The small picker behind the cover preview: 12 emoji and 6 colours, closed with [Done]. */
+function CoverPicker({ emoji, cover, dispatch, onDone }: { emoji: string; cover: number; dispatch: Dispatch<CreateEvent>; onDone: () => void }) {
+  return (
+    <div id="create-picker" className="flex flex-col gap-4 rounded-md bg-surface-sunken p-3" data-cover-picker>
+      <fieldset>
+        <legend className="mb-2 text-label text-ink">{t("create.cover")}</legend>
+        <div role="radiogroup" aria-label={t("create.cover")} className="grid grid-cols-6 gap-2">
+          {EMOJI.map((e) => (
+            <button
+              key={e}
+              type="button"
+              role="radio"
+              aria-checked={emoji === e}
+              aria-label={e}
+              onClick={() => dispatch({ type: "EMOJI", value: e })}
+              className={cn("grid aspect-square min-h-11 place-items-center rounded-md text-2xl", emoji === e ? "bg-brand-soft ring-2 ring-ink" : "bg-surface hover:bg-line")}
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend className="mb-2 text-label text-ink">{t("create.cover.color")}</legend>
+        <div role="radiogroup" aria-label={t("create.cover.color")} className="flex flex-wrap gap-2">
+          {COVER_GRADIENTS.map((g, i) => (
+            <button
+              key={g}
+              type="button"
+              role="radio"
+              aria-checked={cover === i}
+              aria-label={t("create.cover.swatch", { n: i + 1 })}
+              onClick={() => dispatch({ type: "COVER", value: i })}
+              className="grid size-11 place-items-center rounded-pill"
+            >
+              <span className={cn("grid size-9 place-items-center rounded-pill bg-linear-to-br", g, cover === i && "ring-2 ring-ink ring-offset-2 ring-offset-surface-sunken")}>
+                {cover === i && <Check aria-hidden className="size-4 text-on-brand" strokeWidth={3} />}
+              </span>
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <Button variant="ghost" size="sm" className="self-end" onClick={onDone} data-cover-done>
+        {t("create.cover.done")}
+      </Button>
+    </div>
+  )
+}
+
+/** "Everyone chips in $[150] each" with its switch (on by default; off = no per-person amount). */
+function EachRow({ s, error, dispatch, touch }: { s: CreateState; error: boolean; dispatch: Dispatch<CreateEvent>; touch: () => void }) {
+  return (
+    <div className="flex flex-col px-3 py-1.5" data-create-each>
+      <div className="flex items-center gap-2">
+        <p className={cn("flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1 text-body", s.goalOn ? "text-ink" : "text-ink-muted")}>
+          <span>{t("create.goal.inline")}</span>
+          {s.goalOn && (
+            <>
+              <AmountField
+                id="goal-amount"
+                value={s.goalText}
+                label={t("create.goal.amount.label")}
+                invalid={error}
+                describedBy={error ? "goal-note" : undefined}
+                onChange={(v) => dispatch({ type: "GOAL_AMOUNT", value: v })}
+                onBlur={touch}
+                narrow
+              />
+              <span>{t("create.goal.each.after")}</span>
+            </>
+          )}
+        </p>
+        <Toggle label={t("create.goal.label")} on={s.goalOn} onChange={(on) => dispatch({ type: "GOAL", on })} />
+      </div>
+      {error && (
+        <FieldNote id="goal-note" kind="error">
+          {t("create.goal.amount.invalid")}
+        </FieldNote>
+      )}
+    </div>
+  )
+}
+
+/** The one rules line: what happens to a spend, and [Change] → the full rules (?step=rules). */
+function RulesSummary({ check, ok, onChange }: { check: RulesCheck; ok: boolean; onChange: () => void }) {
+  const instant = check.instant
+  const text = !ok ? t("create.summary.fix") : instant === 0n ? t("create.summary.zero") : t("create.summary.instant", { instantLimit: whole(instant ?? 0n) })
+  return (
+    <div className="flex items-center gap-2 px-3 py-3" data-create-summary={ok ? "ok" : "fix"}>
+      {!ok && <CircleAlert aria-hidden className="size-5 shrink-0 text-declined" strokeWidth={2} />}
+      <p id="rules-summary" className="min-w-0 flex-1 text-body text-ink tabular-nums">
+        {text}
+      </p>
+      <Button variant="secondary" size="sm" className="px-3" aria-label={t("create.summary.change.label")} aria-describedby="rules-summary" onClick={onChange} data-rules-change>
+        {t("create.summary.change")}
+      </Button>
+    </div>
+  )
+}
+
 // ------------------------------------------------------------------------------------------------- step 2
 
 const whole = (m: bigint) => formatUsd(m, "whole")
@@ -274,6 +391,7 @@ function AmountField({
   describedBy,
   onChange,
   onBlur,
+  narrow,
 }: {
   id: string
   value: string
@@ -282,6 +400,8 @@ function AmountField({
   describedBy?: string
   onChange: (v: string) => void
   onBlur: () => void
+  /** inline in a one-line row (the main screen's "$150 each") */
+  narrow?: boolean
 }) {
   return (
     <span className="relative inline-flex shrink-0">
@@ -302,7 +422,8 @@ function AmountField({
         onBlur={onBlur}
         data-money-input
         className={cn(
-          "h-11 w-28 rounded-sm border bg-surface-sunken pr-3 pl-7 text-body font-semibold text-ink tabular-nums",
+          "h-11 rounded-sm border bg-surface-sunken pr-3 pl-7 text-body font-semibold text-ink tabular-nums",
+          narrow ? "w-22" : "w-28",
           invalid ? "border-declined" : "border-line-strong",
         )}
       />
@@ -336,7 +457,6 @@ function amountMessage(err: RulesCheck["instantError"], instant: bigint | null):
 function RulesStep({
   s,
   check,
-  goalError,
   extrasCheck,
   show,
   touch,
@@ -344,7 +464,6 @@ function RulesStep({
 }: {
   s: CreateState
   check: RulesCheck
-  goalError: boolean
   extrasCheck: ExtrasCheck
   show: (id: string) => boolean
   touch: (id: string) => void
@@ -535,52 +654,6 @@ function RulesStep({
         </div>
       </fieldset>
 
-      <div className="flex flex-col gap-2 rounded-md border border-line-strong p-4" data-rule="goal">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-label text-ink" id="goal-label">
-            {t("create.goal.label")}
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={s.goalOn}
-            aria-labelledby="goal-label"
-            onClick={() => dispatch({ type: "GOAL", on: !s.goalOn })}
-            className="grid h-11 w-14 shrink-0 place-items-center"
-          >
-            <span className={cn("relative h-7 w-12 rounded-pill transition-colors duration-200", s.goalOn ? "bg-ink" : "bg-line-strong")}>
-              <span
-                className={cn(
-                  "absolute top-0.5 left-0.5 size-6 rounded-pill bg-surface shadow transition-transform duration-200 motion-reduce:transition-none",
-                  s.goalOn && "translate-x-5",
-                )}
-              />
-            </span>
-          </button>
-        </div>
-        {s.goalOn && (
-          <>
-            <p className="flex flex-wrap items-center gap-2 text-body text-ink">
-              <AmountField
-                id="goal-amount"
-                value={s.goalText}
-                label={t("create.goal.amount.label")}
-                invalid={goalError && show("goal")}
-                describedBy={goalError && show("goal") ? "goal-note" : undefined}
-                onChange={(v) => dispatch({ type: "GOAL_AMOUNT", value: v })}
-                onBlur={() => touch("goal")}
-              />
-              <span>{t("create.goal.each.after")}</span>
-            </p>
-            {goalError && show("goal") && (
-              <FieldNote id="goal-note" kind="error">
-                {t("create.goal.amount.invalid")}
-              </FieldNote>
-            )}
-          </>
-        )}
-      </div>
-
       <GoalRule s={s} x={extrasCheck} show={show} touch={touch} dispatch={dispatch} />
 
       <section aria-labelledby="fixed-h" className="rounded-md bg-surface-sunken p-4" data-rules-fixed>
@@ -608,13 +681,27 @@ function RulesStep({
 // ------------------------------------------------------------------------------------------------- hub 1.1.0
 
 /** A labelled switch (the same look as "Everyone chips in"): ink when on, never marigold. */
-function Toggle({ id, on, onChange, describedBy }: { id: string; on: boolean; onChange: (on: boolean) => void; describedBy?: string }) {
+function Toggle({
+  id,
+  label,
+  on,
+  onChange,
+  describedBy,
+}: {
+  /** the id of the visible label, or `label` for a switch whose sentence is its label */
+  id?: string
+  label?: string
+  on: boolean
+  onChange: (on: boolean) => void
+  describedBy?: string
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
       aria-labelledby={id}
+      aria-label={id ? undefined : label}
       aria-describedby={describedBy}
       onClick={() => onChange(!on)}
       className="grid h-11 w-14 shrink-0 place-items-center"

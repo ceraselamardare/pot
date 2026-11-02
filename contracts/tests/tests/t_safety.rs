@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 const CALLBACKS: &[&str] = &[
     "on_pot_created", "on_dao_registered", "on_contribution_forwarded", "on_spend_checked", "on_spend_added",
     "on_spend_status", "on_sync", "on_retry_status", "on_join_added", "on_join_status", "on_rules_added",
-    "on_close_balance", "on_close_added",
+    "on_close_balance", "on_close_added", "on_gift_forwarded",
 ];
 
 /// T-80 private callbacks · T-81 no deposits · T-82 owner + pause · T-95 config ranges.

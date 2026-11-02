@@ -221,6 +221,11 @@ pub struct PotView {
     pub open_links: u32,
     /// wave 4: "none" | "collecting" | "reached" | "missed" | "refundable" | "refunding" | "refunded"
     pub goal_state: String,
+    /// hub 1.2.0: gifts are on (default for every Pot; any member can turn them off)
+    pub gifts_on: bool,
+    /// hub 1.2.0: Σ gifts received (included in `balance_estimate`, never in `total_contributed`)
+    pub gifts_total: U128,
+    pub gifts_count: u32,
 }
 
 #[near(serializers = [json])]
@@ -308,6 +313,10 @@ pub struct ClosePreview {
     pub balance: U128,
     pub balance_source: String,
     pub total_contributed: U128,
+    /// hub 1.2.0: gifts received (part of the balance; shared pro-rata, or equally when nobody contributed)
+    pub gifts_total: U128,
+    /// hub 1.2.0: "prorata" | "equal" (nobody contributed: a gifts-only Pot)
+    pub split: String,
     pub approvals_needed: u32,
     pub open_requests: u32,
     pub payouts: Vec<ClosePayoutView>,
@@ -425,12 +434,13 @@ pub(crate) fn request_view(pot: &AccountId, r: &Request, rx: &RequestExt) -> Req
 }
 
 impl PotHub {
-    /// The ledger estimate plus USDC that unclaimed links returned to the Pot (wave 4).
+    /// The ledger estimate plus USDC that unclaimed links returned to the Pot (wave 4) plus the
+    /// gifts it received (hub 1.2.0).
     pub(crate) fn balance_est(&self, p: &Pot) -> u128 {
         if p.status == PotStatus::Closed {
             return 0;
         }
-        balance_estimate(p).saturating_add(self.pext(p.idx).links_returned)
+        balance_estimate(p).saturating_add(self.pext(p.idx).links_returned).saturating_add(self.gifts_of(p.idx).total)
     }
 
     /// The close record whose payouts are authoritative (Closing / Closed).
@@ -464,7 +474,11 @@ impl PotHub {
         if self.pext(p.idx).open_links > 0 {
             return Some("links_pending");
         }
-        if p.total_contributed == 0 {
+        let gifts = self.gifts_of(p.idx);
+        if gifts.in_flight_at(now) {
+            return Some("gift_in_flight");
+        }
+        if p.total_contributed == 0 && gifts.total == 0 {
             return Some("no_contributions");
         }
         None
@@ -532,6 +546,9 @@ impl PotHub {
             policy_version: self.pext(p.idx).policy_v,
             open_links: self.pext(p.idx).open_links,
             goal_state: self.goal_state(p).into(),
+            gifts_on: !self.gifts_of(p.idx).off,
+            gifts_total: U128(self.gifts_of(p.idx).total),
+            gifts_count: self.gifts_of(p.idx).count,
         })
     }
 
@@ -569,7 +586,7 @@ impl PotHub {
             None => {
                 let b = balance.map(|b| b.0).unwrap_or_else(|| self.balance_est(p));
                 let src = if balance.is_some() { "argument" } else { "ledger" };
-                let pr = prorata::prorata(b, &self.contributions(p), p.last_contributor.as_ref());
+                let pr = prorata::close_split(b, &self.contributions(p), p.last_contributor.as_ref());
                 (pr.map(|x| x.payouts).unwrap_or_default(), src)
             }
         };
@@ -674,7 +691,7 @@ impl PotHub {
             None => {
                 let b = balance.map(|b| b.0).unwrap_or_else(|| self.balance_est(&p));
                 let src = if balance.is_some() { "argument" } else { "ledger" };
-                match prorata::prorata(b, &contribs, p.last_contributor.as_ref()) {
+                match prorata::close_split(b, &contribs, p.last_contributor.as_ref()) {
                     Some(pr) => (b, src, pr.payouts, pr.dust, Some(pr.dust_to)),
                     None => {
                         if blocked.is_none() {
@@ -690,6 +707,8 @@ impl PotHub {
             balance: U128(b),
             balance_source: source.into(),
             total_contributed: U128(p.total_contributed),
+            gifts_total: U128(self.gifts_of(p.idx).total),
+            split: if contribs.iter().any(|(_, c)| *c > 0) { "prorata".into() } else { "equal".into() },
             approvals_needed: approvals_needed(p.member_count),
             open_requests: p.open_requests,
             payouts: payouts

@@ -9,7 +9,7 @@ use near_sdk::{near, AccountId, BorshStorageKey, NearToken};
 // Constants (contracts-spec §2.3)
 // ---------------------------------------------------------------------------------------------
 
-pub const VERSION: &str = "1.1.0";
+pub const VERSION: &str = "1.2.0";
 pub const ROLE_MEMBER: &str = "member";
 pub const ROLE_RULEBOT: &str = "rulebot";
 pub const PROPOSAL_PERIOD_NS: u64 = 604_800_000_000_000; // 7 days (D-04)
@@ -85,6 +85,17 @@ pub const LINK_RETURN_MEMO: &str = "pot link returned";
 pub const POLICY_V1: u8 = 1;
 pub const POLICY_V2: u8 = 2;
 
+// Hub 1.2.0: gifts (notes/contracts-gifts.md). Anyone can send a Pot a gift; it is group money.
+/// The smallest gift: $1 at 6 dp.
+pub const MIN_GIFT: u128 = 1_000_000;
+/// A gift's `ref` (the gift-link id or another server-chosen tag): 1-32 chars of [A-Za-z0-9_-].
+pub const MAX_GIFT_REF_LEN: usize = 32;
+/// A gift forward that never called back stops blocking the close after this long (self-heal).
+pub const GIFT_FLIGHT_MS: u64 = 60_000;
+/// The Pot's gift record (≈ 90 B with the key): what a direct `set_gifts` caller pays the first time.
+pub const STATE_BYTES_GIFTS: u64 = 120;
+pub const GIFT_MEMO: &str = "Pot gift";
+
 pub const RESERVED_SLUGS: &[&str] = &[
     "api", "app", "www", "demo", "admin", "root", "pot", "pots", "hub", "usdc", "treasury",
     "faucet", "users", "user", "relay", "relayer", "preview", "test", "testnet", "mainnet", "near",
@@ -114,6 +125,9 @@ pub enum StorageKey {
     PotExt,       // 0x0A pot idx → PotExt (rule extras, goal, links)
     Trust,        // 0x0B (pot idx, account) → TrustRecord
     RequestExt,   // 0x0C (pot idx, request id) → RequestExt (tier, one-OK, link)
+    // ---- hub 1.2.0 (gifts). NOT a field of the root struct: read/written directly under this
+    // prefix (`gifts.rs`), so 1.1.0 → 1.2.0 is a plain DeployContract (no `migrate`). ----
+    Gifts,        // 0x0D pot idx → GiftState
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -622,5 +636,31 @@ pub enum LinkStatus {
 impl LinkStatus {
     pub fn is_open(&self) -> bool {
         matches!(self, LinkStatus::AwaitingFunds | LinkStatus::Funded | LinkStatus::Claiming | LinkStatus::Returning)
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Hub 1.2.0 (gifts). One record per Pot under the `Gifts` prefix (0x0D); a missing record means
+// "gifts on, nothing received yet" (every Pot, old ones included, accepts gifts by default).
+// ---------------------------------------------------------------------------------------------
+
+#[near(serializers = [borsh])]
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct GiftState {
+    /// A member turned gifts off (`set_gifts(pot, false)`). Default false = gifts on.
+    pub off: bool,
+    /// Σ gifts forwarded to the Pot (never decreases; not part of `total_contributed`).
+    pub total: u128,
+    pub count: u32,
+    /// Gift forwards started and not yet called back (blocks the close while `now < in_flight_until_ms`).
+    pub in_flight: u32,
+    pub in_flight_until_ms: u64,
+    pub last_gift_ms: u64,
+}
+
+impl GiftState {
+    /// A gift forward is still pending (self-heals `GIFT_FLIGHT_MS` after the latest one started).
+    pub fn in_flight_at(&self, now_ms: u64) -> bool {
+        self.in_flight > 0 && now_ms < self.in_flight_until_ms
     }
 }

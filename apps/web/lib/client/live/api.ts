@@ -11,7 +11,7 @@ export interface ApiErrBody {
   txHash?: string
 }
 
-export async function api<T>(method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body?: unknown, init: RequestInit = {}): Promise<{ status: number; data: T }> {
+export async function api<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", path: string, body?: unknown, init: RequestInit = {}): Promise<{ status: number; data: T }> {
   let res: Response
   try {
     res = await fetch(path, {

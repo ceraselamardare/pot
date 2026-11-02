@@ -80,7 +80,7 @@ export function voteStatus(viewed: string | undefined, payout: "sent" | "failed"
 export function classify(o: FinalOutcome, m: PolicyMatch, c: ClassifyContext): Classified {
   const { yocto, gas } = burnt(o)
   // actual cost = Σ tokens_burnt + deposits not refunded (the 1 yocto of ft_transfer_call)
-  const base = { costYocto: yocto + (m.rule === "R1" ? 1n : 0n), gasBurnt: gas, blockHashes: blockHashes(o) }
+  const base = { costYocto: yocto + (m.rule === "R1" || m.rule === "R16" ? 1n : 0n), gasBurnt: gas, blockHashes: blockHashes(o) }
 
   // 1. Delegate-level failure: the top-level status shows it; nothing inside ran.
   const top = o.status as Obj
@@ -281,6 +281,30 @@ export function classify(o: FinalOutcome, m: PolicyMatch, c: ClassifyContext): C
       }
       if (v.ok !== true) return { ...innerFail(`link: ${String(v.reason ?? "failed")}`, `LINK_${String(v.reason ?? "failed").toUpperCase()}`), result }
       return ok(result)
+    }
+    case "R16": {
+      // hub 1.2.0 gift: like R1, the ft_resolve_transfer value is the used amount; the trusted `gift_received`
+      // (from the hub) must name this Pot, this sender, this amount and this ref
+      const amount = (m.amount ?? 0n).toString()
+      const giftRef = m.gift?.ref ?? ""
+      if (fin.kind === "failure") return innerFail(fin.error)
+      const used = fin.kind === "value" && typeof fin.json === "string" ? fin.json : "0"
+      const ev = potEvent("gift_received")
+      const d = ev ? evData(ev) : null
+      const evOk = !!d && d.pot === m.potId && d.from === c.senderId && String(d.amount) === amount && d.ref === giftRef
+      if (used === amount && evOk)
+        return ok({ type: "gift", recorded: true, amount, usedAmount: used, giftRef, giftsTotal: String(d!.gifts_total ?? amount) })
+      const hubFail = firstFailure(o, (r) => r.outcome.executor_id === c.hubId)
+      const text = hubFail ? failureText(statusFailure(hubFail.outcome.status)) : "gift refunded"
+      const r = innerFail(text, hubFail ? errorCodeOf(text) : "GIFT_REFUNDED")
+      return { ...r, result: { type: "gift", recorded: false, amount, usedAmount: used, giftRef } }
+    }
+    case "R17": {
+      // hub 1.2.0 set_gifts: GiftsView; `gifts_set` only when it changed
+      if (fin.kind === "failure") return innerFail(fin.error)
+      const v = obj(fin.kind === "value" ? fin.json : null)
+      if (!v || typeof v.on !== "boolean") return innerFail("set_gifts: no outcome", "UNKNOWN")
+      return ok({ type: "gifts", on: v.on, changed: !!potEvent("gifts_set") })
     }
     case "TEST": {
       if (fin.kind === "failure") return innerFail(fin.error)

@@ -164,14 +164,36 @@ export function csvAmount(m: Micro): string {
   return `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`
 }
 
-export function recordCsv(rows: readonly RecordRow[], potName: string, receiptUrl: (hash: string) => string | null): string {
+/** A gift in the CSV (hub 1.2.0): money in, so it's its own kind of row. */
+export interface CsvGift {
+  at: number
+  amount: Micro
+  /** the giver's name only when they chose to be shown on the public gift page (never a members-only name) */
+  publicName: string | null
+  txHash?: string
+}
+
+/**
+ * The CSV: one row per spend and, since gifts (hub 1.2.0), one per gift, oldest first. A gift row reads
+ * Date, Pot, "Gift" (or the giver's name when they chose to be shown), amount, "Gift", "—", "Received", receipt URL.
+ */
+export function recordCsv(rows: readonly RecordRow[], potName: string, receiptUrl: (hash: string) => string | null, gifts: readonly CsvGift[] = []): string {
   const header = ["date", "pot", "person", "amount", "reason", "approved", "status", "receipt"].map((k) => t(`record.csv.h.${k}` as "record.csv.h.date"))
-  const lines = [header.map(csvCell).join(",")]
-  for (const r of rows) {
-    const url = r.txHash && isTxHash(r.txHash) ? (receiptUrl(r.txHash) ?? "") : ""
-    lines.push([isoDate(r.at), potName, r.person.name, csvAmount(r.amount), r.reason, approvedWords(r), statusWord(r.status), url].map(csvCell).join(","))
-  }
-  return `﻿${lines.join("\r\n")}\r\n`
+  const urlOf = (h?: string) => (h && isTxHash(h) ? (receiptUrl(h) ?? "") : "")
+  const lines: { at: number; order: number; cells: string[] }[] = []
+  rows.forEach((r, i) =>
+    lines.push({ at: r.at, order: i, cells: [isoDate(r.at), potName, r.person.name, csvAmount(r.amount), r.reason, approvedWords(r), statusWord(r.status), urlOf(r.txHash)] }),
+  )
+  const gift = t("record.gifts.word")
+  gifts.forEach((g, i) =>
+    lines.push({
+      at: g.at,
+      order: rows.length + i,
+      cells: [isoDate(g.at), potName, g.publicName ?? gift, csvAmount(g.amount), gift, t("record.csv.none"), t("record.csv.gift_status"), urlOf(g.txHash)],
+    }),
+  )
+  lines.sort((a, b) => a.at - b.at || a.order - b.order)
+  return `\ufeff${[header, ...lines.map((l) => l.cells)].map((c) => c.map(csvCell).join(",")).join("\r\n")}\r\n`
 }
 
 export const csvFileName = (slug: string, now: number) => `${slug}-record-${isoDate(now)}.csv`

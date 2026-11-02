@@ -11,7 +11,7 @@
 //   DATABASE_URL=postgres://pot:pot@localhost:54329/pot_comments DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot_comments \
 //   scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts comments
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { spendFlow } from "../fixtures/pot"
+import { createPot, spendFlow } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, potBalance, usd, useWallet, walletSignIn } from "./chain"
 
@@ -63,10 +63,7 @@ test("setup: Ana creates one Pot, Ben joins and adds $150, Ana asks the group fo
   await expect(A.getByRole("heading", { level: 1, name: "Pots" })).toBeVisible({ timeout: 30_000 })
   accA = await accountOf(A.request)
   await A.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = A.getByRole("dialog", { name: "Name your Pot" })
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill(POT_NAME)
-  await step1.getByRole("button", { name: "Next" }).click()
-  await A.getByRole("dialog", { name: "Pot rules" }).getByRole("button", { name: "Create Pot" }).click()
+  await createPot(A, { name: POT_NAME }) // the one Create screen, default rules
   await expect(A).toHaveURL(/\/p\/talk-trip-[a-z0-9]+-[a-z0-9]{4}\?sheet=share$/, { timeout: 60_000 })
   slug = new URL(A.url()).pathname.split("/")[2]!
   console.log(`[comments] Pot ${dao(slug)}`)

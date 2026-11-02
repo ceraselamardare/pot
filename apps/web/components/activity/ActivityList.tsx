@@ -7,7 +7,7 @@
 // opens its details); on a member's sheet a row about a spend is a button that opens the spend's details. Rows
 // with no details sheet (money in, a refund, a join) keep their quiet "Receipt ↗" when a real transaction is
 // behind them: inline when the row isn't a control, else beside the row's link over space the row keeps for it.
-import { DoorClosed, Hand, PartyPopper, Scale, Undo2, UserPlus, X, Check, type LucideIcon } from "lucide-react"
+import { DoorClosed, Gift, Hand, PartyPopper, Scale, Undo2, UserPlus, X, Check, type LucideIcon } from "lucide-react"
 import { Fragment } from "react"
 import { MoneyText } from "@/components/money/MoneyText"
 import { CompactRow, LeadTile, PlusIcon, REASON_ICON, ReceiptMark, rowLabel, rowWhen, RowTitle, chipGround, type RowGround } from "@/components/pot/CompactRow"
@@ -39,6 +39,8 @@ function kindIcon(i: ActivityItemVM): LucideIcon {
       return i.status === "approved" ? DoorClosed : Hand
     case "voted":
       return i.vote === "Reject" ? X : Check
+    case "gift":
+      return Gift
   }
 }
 
@@ -68,14 +70,14 @@ export function ActivityRow({
   const opens = !linked && !!onOpen && spend
   // a transaction's receipt stays on rows that open no details sheet (a spend's is in its sheet)
   const receipt = isTxHash(item.txHash) && !spend
-  const receiptBeside = receipt && linked
+  const receiptBeside = receipt && linked && item.kind !== "gift"
   const struck = item.kind === "asked" && (item.status === "declined" || item.status === "expired") && !item.link
   const money =
     item.amount === undefined ? undefined : item.kind === "added" || item.kind === "refund" ? (
       <MoneyText micro={item.amount} sign="in" className="text-approved" />
     ) : struck ? (
       <MoneyText micro={item.amount} strike className="text-ink-muted" />
-    ) : item.kind === "asked" && (item.status === "approved" || item.status === "sent") ? (
+    ) : (item.kind === "asked" && (item.status === "approved" || item.status === "sent")) || item.kind === "gift" ? (
       <MoneyText micro={item.amount} sign="out" className="text-ink" />
     ) : (
       <MoneyText micro={item.amount} className="text-ink" />
@@ -84,7 +86,7 @@ export function ActivityRow({
   return (
     <CompactRow
       ground={ground}
-      href={linked ? activityHref(item) : undefined}
+      href={linked && item.kind !== "gift" ? activityHref(item) : undefined}
       onOpen={opens ? () => onOpen(item) : undefined}
       label={rowLabel([
         text,

@@ -6,7 +6,8 @@ import { seedWorld, potView } from "./mock/world"
 import { withShowcase } from "./mock/wave4"
 import type { PersonVM } from "./mock/types"
 import { approvedWords, csvAmount, csvCell, csvFileName, paidOut, recordCsv, rowsFromEntries, rowsFromRequests, rowSentence, statusWord } from "./record"
-import { entryOfRequest } from "./record-data"
+import type { GiftWire } from "@/lib/gifts-api"
+import { entryOfRequest, liveGiftRows } from "./record-data"
 
 const NOW = Date.UTC(2026, 10, 1, 12)
 const person = (a: string): PersonVM => ({ id: a, name: a.split(".")[0]!.replace(/^./, (c) => c.toUpperCase()), initials: a[0]!.toUpperCase(), joinIndex: null })
@@ -115,6 +116,49 @@ describe("the CSV", () => {
     expect(lines).toHaveLength(4)
     expect(csvFileName("lisbon-trip", NOW)).toBe("lisbon-trip-record-2026-11-01.csv")
   })
+
+  it("gifts (hub 1.2.0): one row each, by date among the spends; a name only when the giver chose to be shown", () => {
+    const rows = rowsFromEntries([entry({ requestId: 1, requestRef: "ref00001" }), entry({ requestId: 2, requestRef: "ref00002", createdAtMs: NOW + 2 * DAYMS })], person, {})
+    const csv = recordCsv(rows, "Lisbon Trip", URL, [
+      { at: NOW + DAYMS, amount: 10_000_000n, publicName: null, txHash: HASH },
+      { at: NOW + 3 * DAYMS, amount: 25_500_000n, publicName: "Ana" },
+    ])
+    const lines = csv.slice(1).split("\r\n")
+    expect(lines).toHaveLength(6)
+    expect(lines[1]).toMatch(/^2026-11-01,Lisbon Trip,Maya,84\.00,/)
+    expect(lines[2]).toBe(`2026-11-02,Lisbon Trip,Gift,10.00,Gift,—,Received,${URL(HASH)}`)
+    expect(lines[3]).toMatch(/^2026-11-03,Lisbon Trip,Maya,84\.00,/)
+    expect(lines[4]).toBe("2026-11-04,Lisbon Trip,Ana,25.50,Gift,—,Received,")
+    // no spends, only gifts: still a file
+    expect(recordCsv([], "Leo's Birthday", URL, [{ at: NOW, amount: 5_000_000n, publicName: null }]).slice(1).split("\r\n")[1]).toBe("2026-11-01,Leo's Birthday,Gift,5.00,Gift,—,Received,")
+  })
 })
 
 const DAYMS = 86_400_000
+
+describe("the live record's gifts (hub 1.2.0)", () => {
+  const wire = (o: Partial<GiftWire>): GiftWire => ({ ref: "g1", from: "eve.testnet", name: null, note: null, showPublic: false, amount: "10000000", at: "2026-11-02T10:00:00.000Z", status: "received", txHash: null, linkId: "l1", ...o })
+  it("members: every gift's name (else the account's) and note; the CSV name only when shown publicly", () => {
+    const rows = liveGiftRows(
+      {
+        members: [
+          wire({ ref: "g1", name: "Tomás", note: "For the cake", at: "2026-11-01T10:00:00.000Z", txHash: HASH }),
+          wire({ ref: "g2", name: "Ana", note: "Happy birthday", showPublic: true, linkId: null }),
+          wire({ ref: "g3", from: "alex.testnet" }),
+        ],
+      },
+      (a) => (a === "alex.testnet" ? "Alex" : "?"),
+    )
+    expect(rows.map((r) => [r.key, r.name, r.note, r.publicName])).toEqual([
+      ["g2", "Ana", "Happy birthday", "Ana"],
+      ["g3", "Alex", null, null],
+      ["g1", "Tomás", "For the cake", null],
+    ])
+    expect(rows[2]!.txHash).toBe(HASH)
+  })
+  it("visitors: only the public page's opted-in givers; nothing when there's no answer", () => {
+    const rows = liveGiftRows({ page: [{ name: "Ana", note: "Hi", amount: "5000000", at: "2026-11-02T10:00:00.000Z" }] }, () => "?")
+    expect(rows).toEqual([{ key: "page:0:2026-11-02T10:00:00.000Z", at: Date.parse("2026-11-02T10:00:00.000Z"), amount: 5_000_000n, name: "Ana", note: "Hi", publicName: "Ana" }])
+    expect(liveGiftRows(null, () => "?")).toEqual([])
+  })
+})

@@ -2,7 +2,7 @@
 // Playwright project: mobile Day, mobile Night (390×844) and desktop (1280×800, the bp-lg two-column Pot).
 import { fileURLToPath } from "node:url"
 import { expect, test } from "@playwright/test"
-import { asPerson, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, spendFlow, spendWhy, typeAmount } from "../fixtures/pot"
+import { asPerson, becomePerson, brandChecks, createPot, openedSheet, PORTO_INVITE_URL, spendFlow, spendWhy, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -147,24 +147,29 @@ test("(d) Create Pot → the share link", async ({ page, context, browserName })
   await page.goto("/pots")
   await expect(page.getByRole("heading", { level: 1, name: "Pots" })).toBeVisible()
   await page.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = await openedSheet(page, "Name your Pot")
+  // one screen (lean create): the cover preview, the name, "$150 each" inline, one rules line + [Change], [Create Pot]
+  const main = await openedSheet(page, "Start a Pot")
   await brandChecks(page, { marigold: "one" })
-  await step1.getByRole("button", { name: "Next" }).click()
-  await expect(step1.getByText("Use 2–40 letters, numbers or spaces.")).toBeVisible()
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill("Ski Weekend")
-  await step1.getByRole("radio", { name: "🎿" }).click()
-  await expect(step1.getByText("Ski Weekend").first()).toBeVisible() // the live preview
-  await step1.getByRole("button", { name: "Next" }).click()
-  // step 2 "Pot rules": sentences with inline amounts (defaults $100 / $200, members only), no templates
+  await main.getByRole("button", { name: "Create Pot" }).click()
+  await expect(main.getByText("Use 2–40 letters, numbers or spaces.")).toBeVisible()
+  await expect(main.getByRole("textbox", { name: /Pot name/ })).toBeFocused()
+  await expect(main.getByRole("switch", { name: "Everyone chips in (optional)" })).toHaveAttribute("aria-checked", "true")
+  await expect(main.getByRole("textbox", { name: "Amount each person chips in" })).toHaveValue("150")
+  await expect(main.locator("[data-create-summary]")).toContainText("Small spends up to $100 go through on their own; bigger ones go to the group")
+  await createPot(page, { name: "Ski Weekend", emoji: "🎿", submit: false })
+  await expect(main.getByText("Ski Weekend").first()).toBeVisible() // the live preview
+  await expect(main.getByRole("button", { name: "Change the emoji and colour" })).toContainText("🎿")
+  // [Change] → the full "Pot rules": sentences with inline amounts (defaults $100 / $200, members only), no templates
+  await main.getByRole("button", { name: "Change the rules" }).click()
   const step2 = await openedSheet(page, "Pot rules")
-  await expect(step2.getByText("Step 2 of 2")).toBeVisible()
+  await expect(page).toHaveURL(/sheet=create&step=rules/)
+  await expect(step2.getByText(/Step \d of \d/)).toHaveCount(0)
   await expect(step2.getByText(/Trip|Club|Team|Coming soon/)).toHaveCount(0)
   const instant = step2.getByRole("textbox", { name: "Anyone can spend up to this much at a time without asking" })
   const perPerson = step2.getByRole("textbox", { name: "Each person can spend up to this much in total without asking" })
   await expect(instant).toHaveValue("100")
   await expect(perPerson).toHaveValue("200")
   await expect(step2.getByRole("radio", { name: "Members only" })).toBeChecked()
-  await expect(step2.getByRole("switch", { name: "Everyone chips in (optional)" })).toHaveAttribute("aria-checked", "true")
   await expect(step2.getByRole("region", { name: "Every Pot works like this" })).toContainText("Up to 40 people")
   await brandChecks(page, { marigold: "one" })
   // the per-person limit can't be below the instant limit
@@ -209,28 +214,69 @@ test("(d) Create Pot → the share link", async ({ page, context, browserName })
   await expect(page.getByText("Trip rules")).toHaveCount(0)
 })
 
-test("Create: step 2 [Back] and the browser's Back both return to step 1 with the name kept", async ({ page }) => {
+test("Create: [Change] opens the rules; [Back] and the browser's Back both return to the one screen with the name kept", async ({ page }) => {
   await asPerson(page, "maya")
   await page.goto("/pots")
   await page.getByRole("button", { name: "Start a Pot" }).first().click()
-  const step1 = await openedSheet(page, "Name your Pot")
-  await step1.getByRole("textbox", { name: /Pot name/ }).fill("Ski Weekend")
-  await step1.getByRole("button", { name: "Next" }).click()
-  const step2 = await openedSheet(page, "Pot rules")
+  await openedSheet(page, "Start a Pot")
+  const step2 = await createPot(page, { name: "Ski Weekend", submit: false, rules: async () => {} })
   await expect(page).toHaveURL(/sheet=create&step=rules/)
+  await expect(page.getByRole("heading", { name: "Pot rules" })).toBeFocused()
   await brandChecks(page, { marigold: "one" })
+  await step2.getByRole("textbox", { name: "Anyone can spend up to this much at a time without asking" }).fill("40")
   await step2.getByRole("button", { name: "Back" }).click()
-  await expect(page.getByRole("dialog", { name: "Name your Pot" })).toBeVisible()
-  await expect(page.getByRole("heading", { name: "Name your Pot" })).toBeFocused()
+  await expect(page.getByRole("dialog", { name: "Start a Pot" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Start a Pot" })).toBeFocused()
   await expect(page.getByRole("textbox", { name: /Pot name/ })).toHaveValue("Ski Weekend")
+  await expect(page.locator("[data-create-summary]")).toContainText("Small spends up to $40 go through on their own")
   await expect(page).not.toHaveURL(/step=rules/)
 
-  await page.getByRole("button", { name: "Next" }).click()
+  await page.getByRole("button", { name: "Change the rules" }).click()
   await openedSheet(page, "Pot rules")
   await page.goBack()
-  await expect(page.getByRole("dialog", { name: "Name your Pot" })).toBeVisible()
+  await expect(page.getByRole("dialog", { name: "Start a Pot" })).toBeVisible()
   await expect(page.getByRole("textbox", { name: /Pot name/ })).toHaveValue("Ski Weekend")
+  await page.goForward()
+  await expect(page.getByRole("dialog", { name: "Pot rules" })).toBeVisible()
+  await expect(page.getByRole("textbox", { name: "Anyone can spend up to this much at a time without asking" })).toHaveValue("40")
+  await page.goBack()
   await page.goBack()
   await expect(page.getByRole("dialog")).toBeHidden()
   await expect(page).not.toHaveURL(/sheet=/)
+})
+
+test("Create, the default path: Start a Pot → name → Create Pot (3 taps, no scrolling) with the full form's defaults", async ({ page }, info) => {
+  await asPerson(page, "maya")
+  await page.goto("/pots")
+  await expect(page.getByRole("heading", { level: 1, name: "Pots" })).toBeVisible()
+  let taps = 0
+  const t0 = Date.now()
+  await page.getByRole("button", { name: "Start a Pot" }).first().click()
+  taps++
+  const main = await openedSheet(page, "Start a Pot")
+  // everything on the default path is on screen: no scrolling in the sheet, the summary and the CTA fully visible
+  const body = main.locator("[data-base-ui-swipe-ignore]")
+  expect(await body.evaluate((e) => e.scrollHeight - e.clientHeight), "the Create screen scrolls").toBeLessThanOrEqual(1)
+  await expect(main.locator("[data-create-summary]")).toBeInViewport({ ratio: 1 })
+  await expect(main.getByRole("button", { name: "Create Pot" })).toBeInViewport({ ratio: 1 })
+  await brandChecks(page, { marigold: "one" })
+  await main.getByRole("textbox", { name: /Pot name/ }).click()
+  taps++
+  await page.keyboard.type("Lean Trip")
+  await main.getByRole("button", { name: "Create Pot" }).click()
+  taps++
+  await expect(page).toHaveURL(/\/p\/lean-trip-[a-z0-9]{4}\?sheet=share$/, { timeout: 10_000 })
+  await openedSheet(page, "Invite friends to Lean Trip")
+  expect(taps).toBe(3)
+  info.annotations.push({ type: "create-default-path", description: `${taps} taps, ${Date.now() - t0} ms (scripted, incl. 2 × 450 ms sheet settle)` })
+  await page.getByRole("dialog").getByRole("button", { name: "Close" }).click()
+  // the same rules the full form starts with
+  await page.goto(`${new URL(page.url()).pathname}?tab=rules`)
+  const rules = page.locator("[data-rules-list]")
+  await expect(rules).toContainText("Anyone can spend up to $100 without asking.")
+  await expect(rules).toContainText("Each person can spend up to $200 in total without asking.")
+  await expect(rules).toContainText("Instant payments only go to members.")
+  await expect(rules).toContainText("Trust grows: every 3 paid spends raise someone's instant limit by $100, up to $300.")
+  await expect(rules).toContainText("Spends up to $300 need just one OK from anyone else.")
+  await expect(rules).not.toContainText("All or nothing")
 })

@@ -74,6 +74,8 @@ export const FEED_KINDS = [
   "link_claimed",
   "link_returned",
   "link_voided",
+  // gifts (hub 1.2.0, notes/gifts-plan.md): the hub's gift_received event; text column, no migration
+  "gift_received",
 ] as const
 
 // ---------------------------------------------------------------------------------------------
@@ -315,6 +317,98 @@ export const spendReceipt = pgTable(
     check("spend_receipt_fingerprint_ck", sql`${t.fingerprint} ~ '^[0-9a-f]{64}$'`),
     check("spend_receipt_size_ck", sql`octet_length(${t.data}::text) <= 20000`),
   ],
+)
+
+/**
+ * Gifts (notes/gifts-plan.md, hub 1.2.0): a private gift link a member shares (`/g/<slug>/<id>`). Enforced by our
+ * server, never on chain: the relayer's pre-flight (server/features/gifts validateGiftRef) refuses a gift through a
+ * revoked, expired or used-up link. `amount` null = the giver chooses; `note` is the members' words for the givers
+ * (public to whoever holds the link). `client_key` makes a retried create idempotent per member.
+ */
+export const giftLink = pgTable(
+  "gift_link",
+  {
+    /** 128 random bits, base64url (22 chars; lib/gifts.ts newGiftLinkId) */
+    id: text("id").primaryKey(),
+    potId: text("pot_id")
+      .notNull()
+      .references(() => pot.daoId),
+    createdBy: text("created_by").notNull(),
+    amount: u128("amount"),
+    note: text("note"),
+    reusable: boolean("reusable").notNull().default(true),
+    uses: integer("uses").notNull().default(0),
+    expiresAt: ts("expires_at").notNull(),
+    revokedAt: ts("revoked_at"),
+    revokedBy: text("revoked_by"),
+    clientKey: text("client_key"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("gift_link_pot_idx").on(t.potId, t.createdAt),
+    uniqueIndex("gift_link_client_key_uq").on(t.createdBy, t.clientKey).where(sql`${t.clientKey} is not null`),
+    check("gift_link_id_ck", sql`${t.id} ~ '^[A-Za-z0-9_-]{22}$'`),
+    check("gift_link_note_ck", sql`${t.note} is null or char_length(${t.note}) between 1 and 140`),
+    check("gift_link_amount_ck", sql`${t.amount} is null or ${t.amount} > 0`),
+    check("gift_link_uses_ck", sql`${t.uses} >= 0`),
+  ],
+)
+
+/**
+ * A gift our server started (POST /api/gifts), keyed by the ref the giver's ft_transfer_call carries
+ * (`{"pot":…,"gift":"<ref>"}`). `pending` until the hub's `gift_received` event names the ref (onGiftReceived), or
+ * `failed` when the transfer failed; a pending row older than a day is ignored by everything. `link_id` null = the
+ * public gift page. The name and note are the giver's: members (and the giver) read them; the public page shows them
+ * only with `show_public` (page gifts only).
+ */
+export const gift = pgTable(
+  "gift",
+  {
+    ref: text("ref").primaryKey(),
+    potId: text("pot_id")
+      .notNull()
+      .references(() => pot.daoId),
+    linkId: text("link_id").references(() => giftLink.id),
+    giverAccount: text("giver_account").notNull(),
+    giverUserId: uuid("giver_user_id").references(() => appUser.id, { onDelete: "set null" }),
+    displayName: text("display_name"),
+    note: text("note"),
+    showPublic: boolean("show_public").notNull().default(false),
+    amount: u128("amount").notNull(),
+    status: text("status", { enum: ["pending", "received", "failed"] })
+      .notNull()
+      .default("pending"),
+    txHash: text("tx_hash"),
+    clientKey: text("client_key"),
+    createdAt: createdAt(),
+    receivedAt: ts("received_at"),
+  },
+  (t) => [
+    index("gift_pot_status_idx").on(t.potId, t.status, t.createdAt),
+    index("gift_giver_idx").on(t.giverAccount, t.createdAt),
+    index("gift_link_idx").on(t.linkId),
+    uniqueIndex("gift_client_key_uq").on(t.giverAccount, t.clientKey).where(sql`${t.clientKey} is not null`),
+    check("gift_ref_ck", sql`${t.ref} ~ '^g[0-9a-hjkmnp-tv-z]{23}$'`),
+    check("gift_status_ck", sql`${t.status} in ('pending', 'received', 'failed')`),
+    check("gift_name_ck", sql`${t.displayName} is null or char_length(${t.displayName}) between 1 and 40`),
+    check("gift_note_ck", sql`${t.note} is null or char_length(${t.note}) between 1 and 140`),
+    check("gift_amount_ck", sql`${t.amount} > 0`),
+  ],
+)
+
+/** The Pot's public gift page (`/give/<slug>`): off until a member turns it on; `line` = the members' one-liner. */
+export const giftPage = pgTable(
+  "gift_page",
+  {
+    potId: text("pot_id")
+      .primaryKey()
+      .references(() => pot.daoId),
+    on: boolean("on").notNull().default(false),
+    line: text("line"),
+    updatedBy: text("updated_by"),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [check("gift_page_line_ck", sql`${t.line} is null or char_length(${t.line}) between 1 and 100`)],
 )
 
 // ---------------------------------------------------------------------------------------------

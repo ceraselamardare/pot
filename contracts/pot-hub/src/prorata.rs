@@ -3,6 +3,12 @@
 //!
 //! share_i = floor(B × c_i / C); dust = B − Σ share_i (< n); dust goes to the last contributor;
 //! zero payouts are omitted (NEP-141 rejects 0); Σ payouts == B.
+//!
+//! Hub 1.2.0 (gifts): `close_split` is what the close uses. It is `prorata` when anyone contributed
+//! (gifts are simply part of B and get shared pro-rata); when NOBODY contributed (a gifts-only Pot) it
+//! splits B equally among the listed members: `prorata` with weight 1 each and no last contributor,
+//! so the dust (< n) goes to the last member in join order. Shared vectors:
+//! `contracts/tests/vectors/close-split.json` (= the sdk's `src/math/vectors/close-split.json`).
 
 use near_sdk::AccountId;
 
@@ -48,6 +54,16 @@ pub fn prorata(balance: u128, contributions: &[(AccountId, u128)], last_contribu
     Some(Prorata { payouts, dust, dust_to })
 }
 
+/// The close split (hub 1.2.0). `members` = every Active member in join order with their
+/// contribution. `None` when B == 0 or there is no member.
+pub fn close_split(balance: u128, members: &[(AccountId, u128)], last_contributor: Option<&AccountId>) -> Option<Prorata> {
+    if members.iter().any(|(_, c)| *c > 0) {
+        return prorata(balance, members, last_contributor);
+    }
+    let equal: Vec<(AccountId, u128)> = members.iter().map(|(a, _)| (a.clone(), 1)).collect();
+    prorata(balance, &equal, None)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -58,8 +74,14 @@ mod tests {
         s.parse().unwrap()
     }
 
+    type SplitFn = fn(u128, &[(AccountId, u128)], Option<&AccountId>) -> Option<Prorata>;
+
     /// Runs every vector of a shared fixture file; returns how many were checked.
     fn check_vectors(raw: &str, file: &str) -> usize {
+        check_vectors_with(raw, file, prorata)
+    }
+
+    fn check_vectors_with(raw: &str, file: &str, split: SplitFn) -> usize {
         let v: Value = near_sdk::serde_json::from_str(raw).unwrap_or_else(|e| panic!("{file}: {e}"));
         let vectors = v["vectors"].as_array().unwrap();
         for vec in vectors {
@@ -72,7 +94,7 @@ mod tests {
                 .map(|c| (acc(c["account_id"].as_str().unwrap()), c["contributed"].as_str().unwrap().parse().unwrap()))
                 .collect();
             let last = vec["last_contributor"].as_str().map(acc);
-            let got = prorata(b, &contribs, last.as_ref());
+            let got = split(b, &contribs, last.as_ref());
             if vec["expected"]["nothing_to_refund"].as_bool() == Some(true) {
                 assert!(got.is_none(), "{file} {id}");
                 continue;
@@ -115,6 +137,46 @@ mod tests {
             total += n;
         }
         assert!(total >= 507);
+    }
+
+    /// Hub 1.2.0: the close split (pro-rata, or equal when nobody contributed), shared with the sdk twin.
+    #[test]
+    fn close_split_vectors() {
+        let n = check_vectors_with(include_str!("../../tests/vectors/close-split.json"), "close-split.json", close_split);
+        assert!(n >= 8, "{n}");
+        // the sdk's copy must be identical (parity), when the package is in the checkout
+        let sdk = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/pot-sdk/src/math/vectors/close-split.json");
+        if sdk.exists() {
+            let raw = std::fs::read_to_string(&sdk).unwrap();
+            let a: Value = near_sdk::serde_json::from_str(&raw).unwrap();
+            let b: Value = near_sdk::serde_json::from_str(include_str!("../../tests/vectors/close-split.json")).unwrap();
+            assert_eq!(a["vectors"], b["vectors"], "sdk close-split.json differs from contracts/tests/vectors/close-split.json");
+            check_vectors_with(&raw, "sdk close-split.json", close_split);
+        }
+        // with any contribution, close_split == prorata
+        let cs = vec![(acc("a.near"), 0), (acc("b.near"), 5)];
+        assert_eq!(close_split(10, &cs, Some(&acc("b.near"))), prorata(10, &cs, Some(&acc("b.near"))));
+        assert_eq!(close_split(10, &[], None), None);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(2_000))]
+        /// Equal split: Σ = B, every share floor(B/n) except the last member (+ dust < n), join order.
+        #[test]
+        fn equal_split_properties(n in 1usize..=40, b in 0u128..=1_000_000_000_000_000u128) {
+            let ms: Vec<(AccountId, u128)> = (0..n).map(|i| (acc(&format!("m{i}.near")), 0)).collect();
+            let r = close_split(b, &ms, None);
+            if b == 0 { prop_assert!(r.is_none()); return Ok(()); }
+            let r = r.unwrap();
+            prop_assert_eq!(r.payouts.iter().map(|p| p.1).sum::<u128>(), b);
+            let each = b / n as u128;
+            prop_assert_eq!(r.dust, b - each * n as u128);
+            prop_assert_eq!(&r.dust_to, &ms[n - 1].0);
+            for (i, (a, _)) in ms.iter().enumerate() {
+                let got = r.payouts.iter().find(|p| &p.0 == a).map(|p| p.1).unwrap_or(0);
+                prop_assert_eq!(got, if i == n - 1 { each + r.dust } else { each });
+            }
+        }
     }
 
     #[test]

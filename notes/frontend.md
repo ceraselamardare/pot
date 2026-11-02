@@ -1,3 +1,151 @@
+> **2026-11-02: Gifts wired end to end (pre-deploy; nothing signed).** The sdk intents, the relayer hooks, `get_gifts`,
+> the close split: notes/contracts-gifts.md §11; the post-deploy steps: §12. **Product defaults applied** (the owner
+> hadn't objected; change any of them here):
+> - **(a) Record CSV includes gifts:** one row per gift among the spends by date: Date, Pot, "Gift" (or the giver's name
+>   only if they opted in to the public page), amount, "Gift", "—", "Received", receipt URL (`recordCsv(…, gifts)`,
+>   `record.csv.none`, `record.csv.gift_status`). The CSV never carries a members-only name, whoever downloads it.
+> - **(b) Record page:** signed-in **members** see every gift's name and note (members-only data, like the feed);
+>   visitors only givers who opted in. Live: members read `GET /api/pots/[pot]/gifts`, visitors the public page's
+>   givers (`GET /api/give/[slug]`, only while it's on), so anonymous gifts aren't listed for visitors on testnet
+>   (the mock lists them as "Gift" + amount).
+> - **(c)** gifts-unavailable refusals stay **409**. **(d)** new gift links / turning the public page on stay refused
+>   while a Pot is closing or closed.
+> - **(e) "Pot dollars" in "Pay with"** on the giver page when the signed-in giver has a balance (`useOwnDollars`); picked by
+>   default when it covers the amount (until they choose), else Demo dollars; chosen but short → "You have $X in Pot
+>   dollars, not enough for $Y…" and Send waits. Sends with no faucet top-up (`sendGift({source: "pot_dollars"})`; the
+>   mock records `GiftRec.source` and `ownDollarsOf` subtracts it). No "Use all".
+> - Also: `giftErrorKey` covers the hub's refusals + `GIFT_REFUNDED` (`gift.error.refunded`) and `gift.error.own_short`.
+> - **Tests:** unit `lib/client/gifts/chain.test.ts` (7: intents + the R16/R17 call shape, refunds, `getGifts`),
+>   `server/deps.test.ts` (5: hooks call the gifts module with db/hub/cfg/push; flag), `app/api/relay/route.test.ts` (2:
+>   `ipHash` passed, never the IP), `refund.test.ts` (+3: equal split, E1-E10 vectors, mock parity), `record.test.ts` (+3:
+>   CSV gift rows, live gift rows), `mock/gifts.test.ts` (+1), `gifts.test.ts` GiftChain updated. Mock e2e `gifts.spec.ts`
+>   +2 × 3 projects ("Pay with: Pot dollars" incl. 320 px; "the record: members see every note; the CSV has the gifts").
+> - **Gates:** typecheck + lint clean (2,051 strings, 0 banned); web unit 1,395 passed / 17 skipped (receipt-snap's known
+>   load flake once, green alone and on re-run); sdk 198 / 23 skipped; mock build (`.next-giftwire`) OK; full mock e2e on
+>   `next start -p 2841`: **350 passed, 37 skipped, 0 failed**; testnet-config build (`NEXT_PUBLIC_DATA_SOURCE=testnet
+>   NEXT_PUBLIC_FLAG_GIFTS=1`, `.next-giftwire-testnet`) OK.
+
+> **2026-11-02: Gifts, the app side (notes/gifts-plan.md; server in notes/backend.md "Gifts (2026-11-02)").** Behind
+> `NEXT_PUBLIC_FLAG_GIFTS` (unset: on in mock builds, off in testnet builds; `lib/client/gifts/flag.ts`) and `FLAG_GIFTS`
+> (server, default off). **Built on mocks + unit tests; nothing signed. Needs hub 1.2.0 + the sdk's `gift`/`set_gifts`
+> intents and gifts view before it works on testnet** (see "Wiring" below).
+> - **Share sheet** (`ShareSheet.tsx`): tabs **Invite | Gift link** (`?sheet=share&kind=gift` opens on the gift tab). The
+>   gift tab (`components/gifts/GiftLinkPanel.tsx`, `useGiftLinkTab` → body + footer) is defaults first: "Giver chooses"
+>   (Segmented, default) or "Fixed amount", "More options" (a note for givers ≤ 140, "One gift only"), "Works for 14 days,
+>   until …", [Make gift link] (the one marigold). Then QR first (`QrPlate`, `data-gift-url`) + [Share gift link]
+>   (marigold) + [Copy link] + [Make another link]; "Active gift links" with [Show] / [Turn off]. Gifts off → a calm
+>   notice instead of the form.
+> - **••• → Gifts** (`?sheet=gifts`, `components/gifts/GiftsSheet.tsx`): "$40 from 3 gifts", "Taking gifts" switch (the
+>   hub's `set_gifts`), "Public gift page" switch (off by default) with the members' one-liner (≤ 100, [Save line]) and the
+>   page's QR + [Share gift page] (marigold) + Copy, "Make a gift link", the privacy line. Switches are ink
+>   (`components/gifts/Switch.tsx SwitchRow`).
+> - **Giver pages** `/g/[slug]/[id]` (a link) and `/give/[slug]` (the public page), outside the shell like `/c`: params in
+>   `<Suspense>` + `connection()`, first paint from `app/_lib/gift-preview.ts` (mock seed / `resolveGiftLanding` /
+>   `resolveGiftPage`), OG image "Send a gift to Lisbon Trip ☕" (`app/_lib/gift-og.tsx`), `noindex` + same-origin referrer
+>   (next.config.ts). Island `components/gifts/GiveFlow.tsx`: cover, "Send Lisbon Trip a gift", "3 people are in this
+>   Pot", the link's note / page line ("From the group"), presets ☕ $5 / ☕×2 $10 / ☕×4 $20 + "Other amount" (prefilled
+>   $5, ≥ $1) or a fixed link's one button "Send $25 ☕", name (prefilled with the signed-in name), note ≤ 140, "Show my
+>   name and note on this page" (public page only, off), "Pay with: Demo dollars | Another app or exchange" (simulated:
+>   "Waiting for your money…" → "It arrived."), [Send $10 ☕] → inline sign-in when signed out (live `SignInOptions`; mock
+>   signs the guest in as Alex) → sends straight on → "Thank you! · $10 is on its way…" + Receipt + [Start your own Pot]
+>   (marigold) + [Send another gift]. Signed in: open → (preset) → Send = ≤ 2 taps. Calm screens: link turned off /
+>   ended / already used, not taking gifts (off), not yet (all-or-nothing goal collecting), closed, page not open, unknown.
+> - **Members:** feed row (`components/gifts/GiftRow.tsx` on `CompactRow`): giver avatar + Gift badge, "**Alex** · Sent a
+>   gift ☕", a "Gift" chip (icon + word, ink), a note mark, "+ $10.00"; name "Alex sent a gift of $10. Has a note. …"; opens
+>   `?sheet=gift&gift=<ref>` (`GiftDetailsSheet`: from, when, how, the note, "Shown on the gift page", the group rule,
+>   Receipt; no marigold). The push (server) navigates there. Gifts count toward a normal goal (`collectedOf`,
+>   `countGiftsInGoal`); the balance already includes them. You → Your activity lists the gifts I sent (`kind: "gift"`,
+>   `giftActivity`, not a link: the giver isn't in the Pot). The record (`/p/<slug>/record`) has a "Gifts" section: amount +
+>   "Gift" for everyone, "Gift from Ana" + note only where the giver chose (live: TODO, needs the feed's gift rows).
+>   PrivacySheet: "Gifts: how much, and which account sent each one" (public), "Notes on gifts (on the gift page only if
+>   the giver chose)" (members), and the line "Gifts: amounts and who sent them are public. Notes are seen by members, and
+>   on the public gift page only if the giver chose."
+> - **Mock world** (`lib/client/mock/gifts.ts`, store actions at the end of `store.ts`, fault hooks `gift`, `gift_link`,
+>   `gifts`): `World.gifts` / `giftLinks`, `PotRec.giftsOff` / `giftPage`, `PotVM.gifts` (`GiftsVM`) + feed kind `gift`;
+>   a gift adds to `balance`, never to `contributed`; `closeMath` = pro-rata over the balance, **equal split when nobody
+>   added money** (`closeMathWithGifts`; the sdk twin will replace it), `proposeClose` allowed with gifts only. Showcase
+>   Pot **Leo's Birthday** 🎂 (Maya + Sam, $100 + $40 in gifts: Ana shown on the page with a note, Tomás via the $25 link,
+>   Alex via the open link; page on with a line; `BIRTHDAY_LINKS`).
+> - **Data/actions** (`lib/client/gifts/`): `data.ts` hooks (`useWithGifts`, `useGiftLinks`, `useGiftLanding`,
+>   `useGiftPage`, `useMyGifts`; live = TanStack over `lib/gifts-api.ts`), `wire.ts` (wire → VM, server-safe), `actions.ts`
+>   (`sendGift` = POST /api/gifts → faucet top-up like Add money → `sendGiftTransfer`), `chain.ts` = **the adapter with the
+>   TODO(sdk hub 1.2.0) markers**: `sendGiftTransfer` sends `{type:"gift", pot, amount, ref}`, `setGiftsOnChain` sends
+>   `{type:"set_gifts", pot, on}`, `readGiftsView` reads `chain().hub.getGifts`; until the sdk has them they throw / read
+>   null. `api()` gained PUT.
+> - **Copy:** `gift.*`, `share.tabs.*`, `chip.gift`, `row.gift*`, `feed.gift`, `activity.gift`, `row.activity.gift`,
+>   `record.gifts.*`, `privacy.*gift*`, `notif.gift.*` (lint 2,044 strings, 0 banned; "chain" is banned, so the 1Click
+>   option is "Another app or exchange").
+> - **Tests:** unit `lib/gifts.test.ts` (7), `lib/client/mock/gifts.test.ts` (13), `components/__tests__/gifts.test.tsx`
+>   (11); updated `privacy-sheet.test.tsx`, `activity.test.tsx` (mocks). Mock e2e `e2e/mock/gifts.spec.ts` (4 tests × 3
+>   projects; 320 px on mobile-day): links (open + fixed one-time with a note), a guest gives through both (presets, one
+>   button, used), You → activity, the feed row + details with the note, the public page off → on → only opted-in givers
+>   (signed-out visitor too) → inline sign-in, turning a link off, gifts off. axe 0 serious + brandChecks on every screen.
+>   Testnet `e2e/testnet/gifts.testnet.ts` **written, not run** (skips unless hub 1.2.x). Screens:
+>   `notes/screens/gifts-{link-form,link-ready,landing,thanks,feed,details,sheet,page,signin,revoked,off}-{day,night}.png`.
+> - **Gates (2026-11-02):** typecheck clean; `pnpm --filter web lint` clean; unit 97 files: 1,373 passed / 17 skipped (1
+>   load flake in `receipt-snap.test.tsx`, green alone); `NEXT_DIST_DIR=.next-gifts` mock build OK; full mock e2e on
+>   `next start -p 2931`: **343 passed, 37 skipped, 1 failed** = `goal.spec.ts:75` on mobile-night (a timing race in its
+>   world edit right after `goto`), green on re-run (12/12).
+> - **Open:** (1) the push "push stub" is server-side only (unit-tested in the backend); the mock has no push. (2) The
+>   record's gift rows and the members' gift list on testnet depend on the relayer calling `onGiftReceived` (marks the
+>   row received). (3) The client refund preview (`lib/client/refund.ts`) still uses the sdk prorata (no equal split) for a
+>   gifts-only Pot until the sdk twin lands. (4) Gift CSV rows on the record aren't in the CSV yet.
+
+> **2026-11-02: Lean create: one screen (notes/gifts-plan.md "Lean create flow").** `CreatePotSheet` step 1 is now
+> the whole Create screen, titled "Start a Pot" (`create.title`):
+> - **The cover preview** works as a button ("Change the emoji and colour", `aria-expanded`, pencil badge) that opens a small
+>   inline picker (`CoverPicker`: 12 emoji + 6 colours, ghost [Done] returns focus). It's closed by default. The caption is
+>   `create.preview_hint` + `create.cover.hint`.
+> - **The name** field. Enter creates.
+> - **"Everyone chips in $[150] each"** is one line (`EachRow`: the narrow `AmountField` + the ink switch named
+>   `create.goal.label`). The amount is hidden when the switch is off, and $0 shows an inline error.
+> - **One rules line** (`RulesSummary`): "Small spends up to $100 go through on their own; bigger ones go to the group"
+>   (`create.summary.instant`, follows the instant limit). It reads `create.summary.zero` at $0, and with a rule to fix
+>   it reads `create.summary.fix` with a CircleAlert. It has a secondary [Change] ("Change the rules").
+> - **[Create Pot]**, the one marigold button.
+>
+> **[Change]** opens the old step 2 "Pot rules" at `?step=rules` (its own history entry, as before; a cold deep link now
+> starts on it). It has instant/per-person limits, payees, trust, one OK, the goal + date + all-or-nothing, and the
+> fixed rules, and [Create Pot] + [Back] as before. "$X each" moved from that step to the main screen. The "Step n of 2"
+> line is gone from both screens.
+>
+> **Defaults are unchanged:** $100 / $200, members only, $150 each, trust on, one OK $300 (3 ×), no goal, links on.
+>
+> **Machine (`machines/create.ts`):** `NEXT` → `RULES` (no name check). `SUBMIT` works from step 1 or 2 and flags a bad
+> name. `ATTEMPT` sets `nameError`. A new `from` field makes a relay failure return to the screen it came from. On
+> [Create Pot] with something to fix, the sheet fixes this screen first, then moves to the other screen and focuses the
+> field (`focusAfter`). The footer is one keyed list, so [Create Pot] stays the same element across screens (a remount
+> let Base UI's focus manager pull focus back to the title).
+>
+> **Measured** at 390×844, mock, Playwright, Start a Pot → name → Create Pot → Share sheet:
+> - **Before:** 4 taps (+ [Next]), ~2.9 s scripted. The rules screen had 1,444 px of content in a 578 px body (≈ 2.5
+>   screens to scroll past ~9 decisions).
+> - **After:** 3 taps, ~2.4 s scripted, no scrolling. The summary and the CTA are fully in view, with ~200 px to spare.
+> - **Typing:** zero extra decisions on the default path.
+>
+> **Tests:**
+> - `machines/create.test.ts` (rewritten: defaults, SUBMIT from 1/2, `from`, RULES/BACK).
+> - `components/__tests__/create-rules.test.tsx` (14: the old rules cases through [Change], plus one-screen anatomy,
+>   default payload, Enter, picker, bad name + focus, $X each off/0, summary $0/fix → rules, and a bad name from the rules step).
+> - **e2e helper** `createPot(page, {name, emoji?, colour?, rules?, submit?})` in `e2e/fixtures/pot.ts`, used by the mock
+>   specs (flows (d), the Back test, the new "default path: 3 taps, no scrolling" test, screens, goal), the testnet specs
+>   that create Pots (activity, comments, create-rules, deposit, flows, p2, paylink, spend-details, wave4-trust-goal's
+>   `newPot`) and `integrations/nearauth.int.ts`. The testnet specs were edited, not run.
+> - `a11y.spec`:
+>   - the 320 px list now includes `/pots?sheet=create` and `&step=rules`;
+>   - there is a new desktop keyboard path (Tab to the cover/picker, name, [Change] → rules → Back, Enter creates). It waits
+>     for the pushed `?step=rules` to settle before Back. A Back pressed within ms of the push once raced Next's URL sync.
+>
+> **Screens:** `notes/screens/create-lean-{day,night}.png`.
+>
+> **Gates:**
+> - typecheck green;
+> - unit 1338 passed / 17 skipped, 5 failed (all in the parallel gifts work: `activity.test.tsx` lacks `useMeInfo` in its
+>   data mock, and `privacy-sheet.test.tsx` expects 6 items, now 7);
+> - lint: 6 errors, all in the gifts files (`components/gifts/*`, `ShareSheet.tsx`);
+> - `NEXT_DIST_DIR=.next-create NEXT_PUBLIC_DATA_SOURCE=mock next build` OK;
+> - full mock e2e (`next start -p 3073`) **346 passed, 35 skipped, 0 failed**.
+
 > **2026-11-02: "Who can see what" + the visitor's view (privacy audit; server side and the audit table are in
 > notes/backend.md "Privacy audit 2026-11-02").**
 > - **The sheet** is `components/sheets/PrivacySheet.tsx`, at `?sheet=privacy` (`SheetName` "privacy"). It is
@@ -934,3 +1082,10 @@ First run of `e2e/testnet/paylink.testnet.ts` + `wave4-trust-goal.testnet.ts` ag
   clean; mock e2e 310 passed, 3 failed = `receipt.spec.ts:95` in every project, unrelated and time-of-day dependent:
   the sample FX date is `isoDayUtc(now)` (lib/receipt.ts) but `fxLine()` compares it with the **local** day, so between
   local midnight and UTC midnight (00:00-02:00 in Romania) it says "from Nov 1" instead of "from today".
+
+### 2026-11-02: hub 1.2.0 deployed; gifts live on testnet
+- `pots.potprev.testnet` upgraded 1.1.0 → 1.2.0 (sha a78f4fdc…, plain DeployContract); `get_gifts` answers on old Pots.
+- Migration 0005 applied to the local `pot` DB; `FLAG_GIFTS` / `NEXT_PUBLIC_FLAG_GIFTS` on in `.env.local`.
+- Testnet `gifts.testnet.ts` 6/6 after one fix: revoking a gift link sent a body-less DELETE, which `checkCsrf` refuses
+  (it needs `content-type: application/json`); `revokeGiftLink` now sends `{}` (test: `lib/client/gifts/actions.test.ts`).
+- Product default kept (owner didn't pick): Option A, members who added $0 still can't spend instantly, even from gifts.

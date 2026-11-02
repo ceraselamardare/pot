@@ -25,6 +25,8 @@ describe("PrivacySheet", () => {
       "The Pot's name and rules",
       "Who approved or declined each spend",
       "That a spend has a receipt",
+      // gifts (hub 1.2.0, on in the mock build)
+      "Gifts: how much, and which account sent each one",
     ])
     expect(within(pub).getByText("It's on a public ledger that anyone can read.")).toBeTruthy()
     expect(items(mem)).toEqual([
@@ -34,11 +36,15 @@ describe("PrivacySheet", () => {
       "Receipts and their items",
       "Who a payment link is for",
       "Your activity",
+      "Notes on gifts (on the gift page only if the giver chose)",
     ])
     // every item has its icon (decorative), every heading too
     for (const li of d.querySelectorAll("li")) expect(li.querySelector("svg[aria-hidden='true']")).toBeTruthy()
     for (const h of d.querySelectorAll("h3")) expect(h.querySelector("svg[aria-hidden='true']")).toBeTruthy()
     expect(d.querySelector("[data-privacy-links]")!.textContent).toBe("Anyone with an invite or payment link sees the Pot's name, who sent it and the amount.")
+    expect(d.querySelector("[data-privacy-gifts]")!.textContent).toBe(
+      "Gifts: amounts and who sent them are public. Notes are seen by members, and on the public gift page only if the giver chose.",
+    )
     // plain words only
     expect(findBanned(d.textContent ?? "")).toBeNull()
     const done = within(d).getByRole("button", { name: "Got it" })
