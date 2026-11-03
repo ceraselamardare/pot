@@ -1,14 +1,14 @@
 # Design direction 07: the site update (CTAs, the sign-in dialog, "What else a Pot can do")
 
-Written 2026-11-03 for Cerasela (P2, design lead) and the website-update builders. It changes three things in [03](03-landing.md) (the header, hero and final CTAs) and one line in [06](06-demo-simple.md) (the tour's end note). It adds the sign-in dialog and one landing block. Everything else in 03, 04 and 06 stands.
+Written 2026-11-03 for the design lead and the website-update builders. It changes three things in [03](03-landing.md) (the header, hero and final CTAs) and one line in [06](06-demo-simple.md) (the tour's end note). It adds the sign-in dialog and one landing block. Everything else in 03, 04 and 06 stands.
 
 1. **There is one main action everywhere: [Start a Pot].** It opens the sign-in dialog in place, with no page change. After sign-in comes the app's intro, then Create. The hero's [Start a Pot] stays the page's only marigold. The header and the final card carry the same action as a secondary button, and the header gains a text "Sign in" for people who come back.
 2. **The demo is the quiet second choice, called "See a demo".** It sits next to the marigold in the hero, in the final card, and as one text line at the bottom of the dialog ("Not ready yet? See a demo"). It is never in the header and never marigold, except in a build that has no way to sign in at all.
-3. **The dialog shows only what the build really has.** Google comes first (the marigold), then email, then "I have a NEAR wallet" as a quieter row. On today's hosted build that leaves the wallet alone, so it becomes the marigold ("Continue with a NEAR wallet") with one honest line under it: "Google sign-in isn't on in this test version yet." The site's copy keeps telling the Google story (Cerasela's decision 1).
+3. **The dialog shows only what the build really has.** Google comes first (the marigold), then email, then "I have a NEAR wallet" as a quieter row. On today's hosted build that leaves the wallet alone, so it becomes the marigold ("Continue with a NEAR wallet") with one honest line under it: "Google sign-in isn't on in this test version yet." The site's copy keeps telling the Google story (the design lead's decision 1).
 4. **Every wait is the app's stepper.** After a tap, the options give way to three steps: "Finish with Google in the new window", then "Setting up your Pot account · Usually under 10 seconds", then "Name your Pot and pick its rules". The stepper comes with [Cancel] and "Can't see it? Open it again". Errors say what happened and that nothing changed.
 5. **"What else a Pot can do" is four quiet cells:** an icon, the app's own name for the feature, and one line. They sit on `ground` between "Try the rules" and "Is it safe?", with no cards, no buttons and no motion. The block widens the story without competing with it.
 
-> **For:** Cerasela and the website-update builders (the team brief is `site-brief.md` in the director's scratchpad). **Written:** 2026-11-03 by site-ux. Direction only: no product code was changed.
+> **For:** the design lead and the website-update builders (the team brief is `site-brief.md` in the director's scratchpad). **Written:** 2026-11-03 by site-ux. Direction only: no product code was changed.
 > **Inputs:**
 > - `CLAUDE.md`, `brand/README.md`, [03](03-landing.md), [04](04-landing-motion.md), [06](06-demo-simple.md), [01](01-join-and-money-in.md) §2, `plan/ux-spec.md` §1, §2, §4.1-4.2 and §9, `notes/landing.md`, `LAUNCH.md` and `plan/decisions.md` (Rev 9, D-20, D-22).
 > - Code: `components/app-shell/Shell.tsx` (`SignedOutScreen`), `components/features/auth/SignInOptions.tsx`, `components/features/wallet/WalletSignIn.tsx`, `components/landing/JoinCta.tsx`, `components/landing/InAppBanner.tsx`, `components/sheets/Sheet.tsx`, `lib/signing/near-auth/client.ts`, `lib/signing/near-connect/wallet.ts`, the `Popup.js` of `@hot-labs/near-connect`, `Hero.tsx`, `SiteHeader.tsx`, `FinalCta.tsx`, `components/demo/Stage.tsx`, `i18n/banned.mjs`, `i18n/en.json`, and the flags in `.env.production` (flags only).
@@ -199,7 +199,7 @@ The dialog reuses the app's `Sheet` as it is. It is not `full`: it takes its con
 
 **Rules**
 1. **Never a dead option.** No disabled "Google (soon)" button and no greyed rows: a missing method simply isn't there. The one sentence about Google on wallet-only builds is an explanation, not an option. It exists because the landing promises Google sign-in four times (hero, How it works, Trust, Under the hood).
-2. **Show every available option directly** (at most four) with no "More ways" disclosure. Cerasela asked for the options directly, and Privy moves options to a second page only after the fourth. Retire `signin.more`.
+2. **Show every available option directly** (at most four) with no "More ways" disclosure. The design lead asked for the options directly, and Privy moves options to a second page only after the fourth. Retire `signin.more`.
 3. **The order follows who each option is for:**
    - Google first: most people, and one tap;
    - email second: no Google account, and the one method that survives in-app browsers;
@@ -208,7 +208,7 @@ The dialog reuses the app's `Sheet` as it is. It is not `full`: it takes its con
    That is Phantom's and Coinbase's order, turned for a non-crypto reader.
 4. **Passkey stays out for now.** Today it is a second door to the same NEAR Auth page as email: `SignInOptions.tsx` calls `login()` for both. It comes back only when it can open its own step.
 5. **The Google button** is `GoogleMark` (the G in Google's colours on a white disc) inside the marigold, per 01's default. Google says the G must "appear on a white background", and the disc is that background. But it also says "Don't put the standard color Google 'G' icon on a colored background other than light, dark, or neutral" (§5 Q4). The fallback is Google's own "light" theme (`#FFFFFF` fill, a 1 px grey stroke, dark text), which is exactly Pot's secondary button. The dialog then has no marigold, which is allowed: at most one.
-6. **The wallet-only marigold** says "Continue with a NEAR wallet" (`signin.wallet.only` ⓟ). It follows the "Continue with…" grammar of the other options and Cerasela's word "connecting". It needs one exact-key jargon-lint exemption, like D-20's `landing.more.wallet` (§4). The fallback is the existing allowlisted "I have a NEAR wallet" as the marigold label.
+6. **The wallet-only marigold** says "Continue with a NEAR wallet" (`signin.wallet.only` ⓟ). It follows the "Continue with…" grammar of the other options and the design lead's word "connecting". It needs one exact-key jargon-lint exemption, like D-20's `landing.more.wallet` (§4). The fallback is the existing allowlisted "I have a NEAR wallet" as the marigold label.
 
 ### 2.5 Mode copy
 
@@ -444,7 +444,7 @@ Every new string goes through the jargon lint. **One exemption is needed:** add 
 | 1 | The demo's label: "See a demo", or keep "Try the demo"? | [See a demo]: it says "look, it isn't the real thing", and 80 px fits the hero from 360 |
 | 2 | Header: replace [Try the demo] with "Sign in" + [Start a Pot] (secondary)? | [Yes]: the main action stays reachable while scrolling. *Could:* fade the header's [Start a Pot] in only once the hero's button has scrolled away, with a CSS scroll timeline like 04's hairline, always visible where that's unsupported or under reduced motion |
 | 3 | Wallet-only builds: allowlist `signin.wallet.only` ("Continue with a NEAR wallet") as the marigold, or reuse "I have a NEAR wallet"? | [Allowlist the one exact key] |
-| 4 | Google button: the marigold with the G on a white disc (01's default, today's `GoogleMark`), or Google's "light" theme (our secondary) given "Don't put the… 'G' icon on a colored background other than light, dark, or neutral"? | [The marigold with the disc]; switch to light if Cerasela reads the rule strictly |
+| 4 | Google button: the marigold with the G on a white disc (01's default, today's `GoogleMark`), or Google's "light" theme (our secondary) given "Don't put the… 'G' icon on a colored background other than light, dark, or neutral"? | [The marigold with the disc]; switch to light if the design lead reads the rule strictly |
 | 5 | Wallet-only builds: show "Google sign-in isn't on in this test version yet."? | [Yes]: the landing promises Google sign-in four times, and judges will look for it |
 | 6 | Legal line: none until a `/terms` page exists? This also applies to `landing.legal`'s "By joining you agree to the Terms". | [None; fine print only] |
 | 7 | Mock builds: simulated sign-in options (they sign in as Maya, with no network), so design review and mock e2e can walk Start → intro → Create? | [Yes, like `JoinCta`'s mock Leo], plus a mock-only `?signin_preview=` |
@@ -471,7 +471,7 @@ Every new string goes through the jargon lint. **One exemption is needed:** add 
 | Linear | [Header](https://mobbin.com/sites/sections/192414ab-334b-4a7f-a278-1d4cf5bdc095) | "Log in" as text plus one small button: restraint | The dark UI |
 | Figma | [Header](https://mobbin.com/sites/sections/5f84e90e-f4ae-48e5-bdb0-9b0b9b303f03) | "Log in" outlined next to the main action | "Contact sales" |
 | Customer.io | [Hero](https://mobbin.com/sites/sections/011c0409-bd9a-478c-9e35-0267c8914aef) | "Sign in" as text in the header, and a row of short reassurances under the hero's buttons (ours: `home.hero.reassure`) | The demo as the filled button |
-| Calendly | [Hero](https://mobbin.com/sites/sections/5092c090-266f-4bce-b5f5-1475a6ba3d29) | Nothing | Sign-in buttons in the hero itself: Cerasela wants one popup |
+| Calendly | [Hero](https://mobbin.com/sites/sections/5092c090-266f-4bce-b5f5-1475a6ba3d29) | Nothing | Sign-in buttons in the hero itself: the design lead wants one popup |
 | Tines | [CTA card](https://mobbin.com/sites/sections/8ecbe226-92d2-42ab-bf23-a8bf9e1d930a) | "Already have an account? Log in." as one quiet line: the idea behind the sign-in mode | The scattered-shapes background |
 
 **Web:**

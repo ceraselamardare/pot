@@ -212,7 +212,7 @@ Written 2026-11-03 by builder-tour (the website-update team; plan/design-directi
 - s11: "…Leo gave the OK, so the $300 goes to Maya. $66 is left."
 - s13: "…Closing always needs most of the group."
 - end.l3: "…Bigger ones wait for the group's OK."
-- `tour.end.note` is kept ("You'll sign in with Google…", Cerasela's decision 1).
+- `tour.end.note` is kept ("You'll sign in with Google…", the design lead's decision 1).
 - The five `tour.create.*` keys are deleted. The captions total 268 words.
 
 **The phone** (`Scenes.tsx`):

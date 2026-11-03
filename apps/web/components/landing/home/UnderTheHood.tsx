@@ -7,8 +7,10 @@
 //   1. the flow diagram as a plain <ol> (vertical on phones, left to right from lg): Maya's tap → our relayer →
 //      the Pot Hub (the emphasised node: a marigold top edge, a card top, never text) → two lanes (inside the
 //      rules: approved instantly · bigger spends: one member's OK, or a majority) → the Pot pays out;
-//   2. six fact cards (3 × 2 from lg); 3. the step-by-step explainer at chapter 4, the $84 spend (a secondary
-//      button), and the hackathon credit.
+//   2. "Each part, up close" (design-direction 08): a bento of six cells in the flow's order, each the close-up of
+//      the node above it (a playful title, one plain hook, the technical line with every key term, and a tiny visual
+//      built from the app's own components in a `ground` well); 3. the step-by-step explainer at chapter 4, the $84
+//      spend (a secondary button), and the hackathon credit.
 // Precise and calm: thin `line-strong` connectors, aligned boxes, tabular numbers. No code font, no cubes, no glow,
 // no chain-link icons, and no inline text links (Night `link` reads as marigold text).
 // Motion (design-direction 04 §6): the flow <ol> is ONE sequence (motion/sequence.ts) that plays once at 35 % in
@@ -19,24 +21,33 @@
 // at 2.4 s every trace fades back (`out`), so the last frame is the server HTML's. 3.0 s in all. Reduced motion, no
 // JS and a jump past it: the static diagram.
 import "./play.css"
-import { ArrowRight, Banknote, Check, Clock, ListChecks, Send } from "lucide-react"
+import { ArrowRight, Banknote, Check, Clock, KeyRound, ListChecks, Send, X } from "lucide-react"
 import Link from "next/link"
-import type { ReactNode } from "react"
-import { Avatar } from "@/components/pot/Avatar"
+import { Fragment, type HTMLAttributes, type ReactNode } from "react"
+import { MoneyText } from "@/components/money/MoneyText"
+import { Avatar, avatarTint } from "@/components/pot/Avatar"
+import { CoverTile } from "@/components/pot/CoverTile"
+import { StatusChip } from "@/components/pot/StatusChip"
 import { buttonVariants } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import { cn } from "@/lib/client/cn"
+import { dollars, type Micro } from "@/lib/client/money"
 import { CHAT_CAST } from "./ChatThread"
 import { Sequences } from "./motion/Sequences"
 import { Section, SectionHead } from "./Section"
 
-const FACTS = [
-  { id: "dao", title: t("home.tech.dao.title"), body: t("home.tech.dao.body") },
-  { id: "hub", title: t("home.tech.hub.title"), body: t("home.tech.hub.body") },
-  { id: "majority", title: t("home.tech.majority.title"), body: t("home.tech.majority.body") },
-  { id: "relayer", title: t("home.tech.relayer.title"), body: t("home.tech.relayer.body") },
-  { id: "auth", title: t("home.tech.auth.title"), body: t("home.tech.auth.body") },
-  { id: "money", title: t("home.tech.money.title"), body: t("home.tech.money.body") },
+const { maya: MAYA, sam: SAM, leo: LEO } = CHAT_CAST
+const POT = t("create.name.placeholder") // "Lisbon Trip"
+
+/** The bento's parts, in the flow's order (each the close-up of the node above it), with their lg spans (3·3 / 4·2 /
+ *  2·4: the person's side in halves, then the two richest visuals, the Hub's list and the money, on a diagonal). */
+const PARTS = [
+  { id: "auth", span: "lg:col-span-3", Visual: AuthVisual },
+  { id: "relayer", span: "lg:col-span-3", Visual: RelayerVisual },
+  { id: "hub", span: "lg:col-span-4", Visual: HubVisual },
+  { id: "majority", span: "lg:col-span-2", Visual: MajorityVisual },
+  { id: "dao", span: "lg:col-span-2", Visual: DaoVisual },
+  { id: "money", span: "lg:col-span-4", Visual: MoneyVisual },
 ] as const
 
 /** Only when the page itself is Night (html[data-theme=night]); inside the band, `dark:` would always match. */
@@ -96,13 +107,27 @@ export function UnderTheHood() {
         />
       </ol>
 
-      <ul className="mt-8 grid gap-3 md:grid-cols-2 lg:mt-10 lg:grid-cols-3 lg:gap-4">
-        {FACTS.map((f) => (
-          <li key={f.id} data-tech-fact={f.id} className={cn("rounded-md border border-line bg-surface p-4 lg:p-6", PAGE_NIGHT.card)}>
-            <h3 className="font-display text-heading text-ink">{f.title}</h3>
-            <p className="mt-2 text-body-sm text-ink-muted tabular-nums">
-              <Unbroken text={f.body} />
+      {/* the path above, the parts here: one cell per stop, in the same order (rows at lg: 3·3 / 4·2 / 2·4) */}
+      <h3 id="tech-parts-title" className="mt-8 text-label text-ink-muted lg:mt-10">
+        {t("home.tech.parts.label")}
+      </h3>
+      <ul aria-labelledby="tech-parts-title" className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-6 lg:gap-4">
+        {PARTS.map(({ id, span, Visual }) => (
+          <li
+            key={id}
+            data-tech-fact={id}
+            className={cn("@container/fact flex min-w-0 flex-col rounded-lg border border-line bg-surface p-4 md:p-6", PAGE_NIGHT.card, span)}
+          >
+            <h4 className="font-display text-heading text-ink">{t(`home.tech.${id}.title`)}</h4>
+            {/* the plain hook a friend could repeat (balanced: two short sentences break between them) */}
+            <p className="mt-2 text-body text-balance text-ink">{t(`home.tech.${id}.hook`)}</p>
+            <p className="mt-1 text-body-sm text-ink-muted tabular-nums">
+              <Unbroken text={t(`home.tech.${id}.body`)} />
             </p>
+            {/* the well sits at the cell's foot, so the wells of a row line up along its bottom */}
+            <div className="mt-auto pt-4">
+              <Visual />
+            </div>
           </li>
         ))}
       </ul>
@@ -334,5 +359,263 @@ function Lane({ tone, icon, title, body }: { tone: "instant" | "group"; icon: Re
         <p className="mt-0.5 text-body-sm text-ink-muted">{body}</p>
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Each part, up close (plan/design-direction/08-tech-bento.md): every visual is the product's own UI, built from
+// tokens and real components, in a `ground` well (the band showing through; in a Night page the darkest step, so it
+// still reads recessed). Names, ids and numbers are real or measured. No connectors, arrows, traces or `lit` rings
+// (the flow owns the path), no brand-soft and no marigold, no code font. Inner layouts answer to the cell
+// (@container/fact), not the viewport.
+
+/** One image with one sentence (the mock-UI rule of 03): its inside is aria-hidden and inert. */
+function Well({ id, label, children, ...rest }: { id: string; label: string; children: ReactNode } & HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div role="img" aria-label={label} data-tech-visual={id} className="rounded-md border border-line bg-ground p-3" {...rest}>
+      <div aria-hidden inert>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/** Maya's account: 0 NEAR, and the two keys it holds (the Pot, below, holds none). No account id: Maya is made up. */
+function AuthVisual() {
+  return (
+    <Well id="auth" label={t("home.tech.auth.visual")}>
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="flex items-center gap-2">
+          <Avatar person={MAYA} size="sm" />
+          <span className="font-display text-title whitespace-nowrap text-ink tabular-nums">{t("home.tech.auth.v.balance")}</span>
+        </span>
+        <span className="text-body-sm text-ink-muted">{t("home.tech.auth.v.balance_note")}</span>
+      </p>
+      <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-body-sm text-ink">
+        {[t("home.tech.auth.v.mpc"), t("home.tech.auth.v.device")].map((key) => (
+          <span key={key} className="flex items-center gap-1.5">
+            <KeyRound aria-hidden className="size-5 shrink-0 text-ink-muted" strokeWidth={2} />
+            {key}
+          </span>
+        ))}
+      </p>
+    </Well>
+  )
+}
+
+/**
+ * The receipt for the $84 the flow just traced: who paid what. Three columns from @sm (the lg halves), rows below it
+ * (label and payer on the left, the figure on the right; Maya's row under RefundTable's 2 px total rule). Always "≈",
+ * never struck through or green: it's a receipt, not a state.
+ */
+function RelayerVisual() {
+  const lines = [
+    { what: t("home.tech.relayer.v.gas"), by: t("home.tech.relayer.v.gas_by"), value: t("home.tech.relayer.v.gas_value") },
+    { what: t("home.tech.relayer.v.storage"), by: t("home.tech.relayer.v.storage_by"), value: t("home.tech.relayer.v.storage_value") },
+  ]
+  return (
+    <Well id="relayer" label={t("home.tech.relayer.visual")}>
+      <div className="flex flex-col gap-1.5 @sm/fact:grid @sm/fact:grid-cols-3 @sm/fact:gap-0">
+        {lines.map((l, i) => (
+          <ReceiptLine key={l.what} what={l.what} by={l.by} className={cn(i > 0 && "@sm/fact:border-l @sm/fact:pl-3", "@sm/fact:pr-3")}>
+            <span className="tabular-nums">{l.value}</span>
+          </ReceiptLine>
+        ))}
+        <ReceiptLine
+          what={t("home.tech.relayer.v.person")}
+          by={t("home.tech.relayer.v.person_by")}
+          className="mt-0.5 border-t-2 border-line-strong pt-2 @sm/fact:mt-0 @sm/fact:border-t-0 @sm/fact:border-l @sm/fact:border-l-line @sm/fact:pt-0 @sm/fact:pl-3"
+        >
+          <MoneyText micro={0n} variant="inline" />
+        </ReceiptLine>
+      </div>
+    </Well>
+  )
+}
+
+/** One receipt line: a row (what · by … value) below @sm, a column (what / value / by) from it. */
+function ReceiptLine({ what, by, className, children }: { what: string; by: string; className?: string; children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "flex items-baseline justify-between gap-2 border-line @sm/fact:flex-col @sm/fact:items-start @sm/fact:justify-start @sm/fact:gap-0",
+        className,
+      )}
+    >
+      {/* a row's left side; from @sm its two words join the column, the payer last */}
+      <span className="flex min-w-0 flex-wrap gap-x-2 @sm/fact:contents">
+        <span className="text-body-sm text-ink @sm/fact:text-ink-muted">{what}</span>
+        <span className="text-body-sm text-ink-muted @sm/fact:order-last">{by}</span>
+      </span>
+      {/* the figure: label type on its own 20 px line (an inline span would take the row's 24 px body line) */}
+      <span className="shrink-0 text-label text-ink">{children}</span>
+    </div>
+  )
+}
+
+/**
+ * The rulebot seat's whole job, as real content (no role="img": the list IS the fact): two labelled lists, side by
+ * side from @lg (the lg wide cell), stacked below it. The check is `approved` because it means exactly that here; the
+ * ✕ is ink-muted, not `declined`: these are permissions, not a request that failed. Icons decorative, words carry it.
+ */
+function HubVisual() {
+  const groups = [
+    {
+      id: "tech-hub-yes",
+      yes: true,
+      label: t("home.tech.hub.v.yes"),
+      items: [t("home.tech.hub.v.yes.rules"), t("home.tech.hub.v.yes.joins"), t("home.tech.hub.v.yes.one_ok"), t("home.tech.hub.v.yes.goal")],
+    },
+    { id: "tech-hub-no", yes: false, label: t("home.tech.hub.v.no"), items: [t("home.tech.hub.v.no.rules"), t("home.tech.hub.v.no.over")] },
+  ]
+  return (
+    <div data-tech-visual="hub" className="grid gap-x-8 gap-y-3 rounded-md border border-line bg-ground p-3 @lg/fact:grid-cols-[auto_auto] @lg/fact:justify-start">
+      {groups.map((g) => (
+        <div key={g.id}>
+          <p id={g.id} className="text-label text-ink">
+            {g.label}
+          </p>
+          <ul aria-labelledby={g.id} className="mt-1.5 flex flex-col gap-1">
+            {g.items.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-body-sm text-ink">
+                {g.yes ? (
+                  <Check aria-hidden className="size-5 shrink-0 text-approved" strokeWidth={2} />
+                ) : (
+                  <X aria-hidden className="size-5 shrink-0 text-ink-muted" strokeWidth={2} />
+                )}
+                <span>
+                  <Unbroken text={item} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Closing Lisbon Trip, in the demo VoteMeter's look (components/demo/cards/Proposal.tsx; a landing copy, like
+ * HowItWorks' CloseTable, because VoteMeter reads the demo's data types): approvals first, the "needs 2" rule, then
+ * who is left. The bento's one motion (08 §6), once in view: Maya's badge (her own approval, counted when she asked),
+ * Sam's, then the "Approved" chip; 1.02 s. The armed frame already shows the caption, the seats and "needs 2";
+ * reduced motion, no JS and a jump past it show the final frame (the server HTML).
+ */
+function MajorityVisual() {
+  return (
+    <Well id="majority" label={t("home.tech.majority.visual", { pot: POT })} data-sequence>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <p className="text-label text-ink">{t("home.tech.majority.v.caption", { pot: POT })}</p>
+        <span data-seq="pop" data-scale=".6" data-at={660} className="flex shrink-0">
+          <StatusChip status="approved" />
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Seat person={MAYA} at={0} />
+        <Seat person={SAM} at={400} />
+        <span className="flex items-center gap-1.5 text-body-sm text-ink">
+          <span aria-hidden className="h-6 w-0.5 rounded-pill bg-ink" />
+          {t("demo.proposal.needs", { k: 2 })}
+        </span>
+        <Seat person={LEO} />
+      </div>
+    </Well>
+  )
+}
+
+/** A member's seat: approved (a check badge that pops at `at`) or not yet (a dashed ring). */
+function Seat({ person, at }: { person: (typeof CHAT_CAST)[keyof typeof CHAT_CAST]; at?: number }) {
+  const yes = at !== undefined
+  return (
+    <span className="relative inline-grid">
+      <Avatar person={person} size="sm" className={cn(!yes && "outline-2 outline-offset-2 outline-line-strong outline-dashed")} />
+      {yes ? (
+        <span
+          data-seq="pop"
+          data-scale=".5"
+          data-at={at}
+          className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-pill bg-approved text-ground ring-2 ring-ground"
+        >
+          <Check aria-hidden className="size-3" strokeWidth={2} />
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
+/** The Pot's real account (the reference Pot on the preview root: no keys, member ×3 + rulebot, global code by
+ *  hash), as plain text: the Night band has no inline links. The id breaks only after its dots. */
+function DaoVisual() {
+  return (
+    <Well id="dao" label={t("home.tech.dao.visual", { pot: POT })}>
+      <div className="flex items-center gap-2">
+        <CoverTile emoji="🇵🇹" cover={0} size="sm" />
+        <div className="min-w-0 text-body-sm">
+          <p className="text-ink">
+            <DotBreaks value={t("home.tech.dao.v.account")} />
+          </p>
+          <p className="text-ink-muted">{t("home.tech.dao.v.code")}</p>
+        </div>
+      </div>
+      {/* the Pot's keys (none: the pair of Maya's two) and its roles, as two stats that wrap when narrow */}
+      <p className="mt-2 flex flex-wrap items-center justify-between gap-x-2 text-body-sm text-ink tabular-nums">
+        <span className="flex items-center gap-1.5">
+          <KeyRound aria-hidden className="size-5 shrink-0 text-ink-muted" strokeWidth={2} />
+          {t("home.tech.dao.v.keys")}
+        </span>
+        <span>{t("home.tech.dao.v.roles")}</span>
+      </p>
+    </Well>
+  )
+}
+
+/** An account id that wraps only after a dot (demo/Bits.tsx `Breaks`, kept local: the landing imports nothing from
+ *  the demo). */
+function DotBreaks({ value }: { value: string }) {
+  const parts = value.split(".")
+  return parts.map((p, i) => (
+    <Fragment key={i}>
+      <span className="whitespace-nowrap">{i < parts.length - 1 ? `${p}.` : p}</span>
+      {i < parts.length - 1 ? <wbr /> : null}
+    </Fragment>
+  ))
+}
+
+/**
+ * Pro rata as a picture: the "back" bar is cut exactly where the "put in" bar is (D-61's equal $150s, so equal
+ * thirds), and the sentence above says the rule in words. People are their colours (member tints, eggplant figures,
+ * 9.6-11:1); initials join the figures where a third has room (@sm). Nothing moves: How it works step 5 owns the
+ * refund's roll; this cell is the rule, not the event.
+ */
+function MoneyVisual() {
+  return (
+    <Well id="money" label={t("home.tech.money.visual")}>
+      <p className="text-body-sm text-ink">{t("home.tech.money.v.note")}</p>
+      {/* labels beside the bars from @2xs (md and 390 up); above them in a 320 cell, so each third keeps room for $150.00 */}
+      <div className="mt-2 grid gap-1 @2xs/fact:grid-cols-[auto_minmax(0,1fr)] @2xs/fact:items-center @2xs/fact:gap-x-2">
+        <ShareBar label={t("close.table.put_in")} each={dollars(150)} />
+        <ShareBar label={t("home.tech.money.v.back")} each={dollars(22)} />
+      </div>
+    </Well>
+  )
+}
+
+function ShareBar({ label, each }: { label: string; each: Micro }) {
+  return (
+    <>
+      <span className="text-body-sm text-ink-muted">{label}</span>
+      <span className="flex gap-0.5 overflow-hidden rounded-sm">
+        {[MAYA, SAM, LEO].map((p) => (
+          <span
+            key={p.id}
+            className={cn("flex h-7 min-w-0 flex-1 items-center justify-center gap-1.5 text-body-sm font-semibold", avatarTint(p.joinIndex))}
+          >
+            <span className="hidden @sm/fact:inline">{p.initials}</span>
+            <MoneyText micro={each} variant="inline" />
+          </span>
+        ))}
+      </span>
+    </>
   )
 }

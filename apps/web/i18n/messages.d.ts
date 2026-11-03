@@ -1139,10 +1139,22 @@ export interface Messages {
   "home.problem.split.verdict": undefined
   "home.problem.title": undefined
   "home.tech.auth.body": undefined
+  "home.tech.auth.hook": undefined
   "home.tech.auth.title": undefined
+  "home.tech.auth.v.balance": undefined
+  "home.tech.auth.v.balance_note": undefined
+  "home.tech.auth.v.device": undefined
+  "home.tech.auth.v.mpc": undefined
+  "home.tech.auth.visual": undefined
   "home.tech.built": undefined
   "home.tech.dao.body": undefined
+  "home.tech.dao.hook": undefined
   "home.tech.dao.title": undefined
+  "home.tech.dao.v.account": undefined
+  "home.tech.dao.v.code": undefined
+  "home.tech.dao.v.keys": undefined
+  "home.tech.dao.v.roles": undefined
+  "home.tech.dao.visual": { pot: string | number }
   "home.tech.demo.body": undefined
   "home.tech.demo.cta": undefined
   "home.tech.eyebrow": undefined
@@ -1160,14 +1172,41 @@ export interface Messages {
   "home.tech.flow.tap.body": undefined
   "home.tech.flow.tap.title": undefined
   "home.tech.hub.body": undefined
+  "home.tech.hub.hook": undefined
   "home.tech.hub.title": undefined
+  "home.tech.hub.v.no": undefined
+  "home.tech.hub.v.no.over": undefined
+  "home.tech.hub.v.no.rules": undefined
+  "home.tech.hub.v.yes": undefined
+  "home.tech.hub.v.yes.goal": undefined
+  "home.tech.hub.v.yes.joins": undefined
+  "home.tech.hub.v.yes.one_ok": undefined
+  "home.tech.hub.v.yes.rules": undefined
   "home.tech.intro": undefined
   "home.tech.majority.body": undefined
+  "home.tech.majority.hook": undefined
   "home.tech.majority.title": undefined
+  "home.tech.majority.v.caption": { pot: string | number }
+  "home.tech.majority.visual": { pot: string | number }
   "home.tech.money.body": undefined
+  "home.tech.money.hook": undefined
   "home.tech.money.title": undefined
+  "home.tech.money.v.back": undefined
+  "home.tech.money.v.note": undefined
+  "home.tech.money.visual": undefined
+  "home.tech.parts.label": undefined
   "home.tech.relayer.body": undefined
+  "home.tech.relayer.hook": undefined
   "home.tech.relayer.title": undefined
+  "home.tech.relayer.v.gas": undefined
+  "home.tech.relayer.v.gas_by": undefined
+  "home.tech.relayer.v.gas_value": undefined
+  "home.tech.relayer.v.person": undefined
+  "home.tech.relayer.v.person_by": undefined
+  "home.tech.relayer.v.storage": undefined
+  "home.tech.relayer.v.storage_by": undefined
+  "home.tech.relayer.v.storage_value": undefined
+  "home.tech.relayer.visual": undefined
   "home.tech.title": undefined
   "home.tech.tracks": undefined
   "home.trust.back.body": undefined

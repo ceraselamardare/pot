@@ -20,6 +20,12 @@ describe("en.json", () => {
     expect(lintCopy(messages)).toEqual([])
   })
 
+  it("keeps the tech bento's six hooks plain, though home.tech.* is exempt (design-direction 08 §8)", () => {
+    const hooks = Object.entries(messages).filter(([k]) => /^home\.tech\.\w+\.hook$/.test(k))
+    expect(hooks).toHaveLength(6)
+    for (const [k, v] of hooks) expect(findBanned(v), k).toBeNull()
+  })
+
   it("covers the ux-spec §5 keys the flows use", () => {
     for (const k of [
       "landing.title", "landing.trust", "setup.success.title", "pot.hero.label", "pot.cta.add", "spend.checking",
