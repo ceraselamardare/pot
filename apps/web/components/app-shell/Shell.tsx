@@ -3,7 +3,8 @@
 //  - TabBar: Pots · Requests · You at the bottom on phones (56 px + safe area); a 64 px top bar from bp-lg.
 //    The Requests badge counts what waits on you, in `ink` with `surface` numerals (never `declined` red).
 //    The person's own Pot dollars ride along: the You tab's label on phones, a pill at the end of the top bar.
-//  - SessionGate: signed out → SignedOutScreen; signed in → the tab content.
+//  - SessionGate: signed out → SignedOutScreen (the sign-in panel inline); signed in → the tab content; the server
+//    HTML (no JS) → a <noscript> line.
 //  - OfflineBanner + one polite LiveRegion per screen.
 import { Coins, House, Inbox, UserRound, WifiOff } from "lucide-react"
 import Link from "next/link"
@@ -12,15 +13,14 @@ import { useEffect, useRef, type ReactNode } from "react"
 import { toast } from "sonner"
 import { Lockup } from "@/components/brand/Lockup"
 import { Glyph } from "@/components/brand/Glyph"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import { useAnnouncement, useOnline } from "@/lib/client/browser"
 import { useMe, useOwnDollars, useWaitingCount } from "@/lib/client/data"
 import { formatUsd } from "@/lib/client/money"
-import { IS_LIVE } from "@/lib/client/config"
 import { signOut as endSession } from "@/lib/client/session"
 import { cn } from "@/lib/client/cn"
-import { SignInOptions } from "@/components/features/auth/SignInOptions"
+import { SignInPanel } from "@/components/features/auth/SignInPanel"
 
 const NAV = [
   { href: "/pots", key: "pots.title", icon: House, match: (p: string) => p === "/pots" || p.startsWith("/p/") },
@@ -183,27 +183,54 @@ export function LiveRegion() {
   )
 }
 
+/**
+ * Signed out on an app route (deep links, the installed app's start, after signing out, a stale hint, and the start
+ * CTAs' target without JS or in a new tab): the sign-in dialog's panel inline (site update 2026-11-03; 07 §2.10).
+ * Sign-in is the primary (Google, or the wallet when it's the only way, or "Open in Safari" in an in-app browser),
+ * [See a demo] secondary, "What is Pot?" a quiet link. After signing in SessionGate swaps the screen in place, so
+ * /pots?sheet=create goes on to the first-run intro, then Create. The H1 and the option names are the ones the
+ * integration and testnet suites press ("Sign in to Pot", "Continue with Google", "I have a NEAR wallet").
+ */
 export function SignedOutScreen() {
+  // start mode at the start CTAs' destination (client-only: this renders after the session check, never on the server)
+  const start = typeof window !== "undefined" && window.location.pathname === "/pots" && new URLSearchParams(window.location.search).get("sheet") === "create"
   return (
     <main id="main" className="mx-auto flex min-h-[70dvh] max-w-flow flex-col items-center justify-center px-4 py-12 text-center">
       <Glyph className="mb-6 h-14 w-auto" />
       <h1 className="font-display text-title text-ink">{t("signin.title")}</h1>
-      <p className="mt-2 max-w-80 text-body text-ink-muted">{t("signin.body")}</p>
-      <div className="mt-8 flex w-full max-w-80 flex-col gap-3">
-        <Button variant="primary" render={<Link href="/demo" />}>
-          {t("signin.demo")}
-        </Button>
-        <Button render={<Link href="/" />}>{t("signin.home")}</Button>
-      </div>
-      {/* integrations (F-14, F-19): NEAR Auth (localhost:3000 / flagged builds) and "I have a NEAR wallet" */}
-      {IS_LIVE && <SignInOptions className="mt-6 max-w-80" />}
+      <p className="mt-2 max-w-80 text-body text-ink-muted">{start ? t("signin.start.body") : t("signin.body")}</p>
+      <SignInPanel layout="page" goal={start ? "start" : "back"} className="mt-8 max-w-80" />
     </main>
+  )
+}
+
+/**
+ * The server HTML of every app route (the session is checked on the client, §0 #3). Without JS nothing can sign in
+ * (NEAR Auth's window and NEAR Connect both need it), so say so and point at what works without it: the demo's
+ * story list and the landing. With JS this is never shown (and React never renders a <noscript>'s children).
+ */
+function NoScriptSignIn() {
+  return (
+    <noscript>
+      <main id="main" className="mx-auto flex min-h-[70dvh] max-w-flow flex-col items-center justify-center px-4 py-12 text-center" data-nojs>
+        <h1 className="font-display text-title text-ink">{t("signin.title")}</h1>
+        <p className="mt-2 max-w-80 text-body text-ink-muted">{t("signin.nojs")}</p>
+        <div className="mt-8 flex w-full max-w-80 flex-col items-center gap-2">
+          <Link href="/demo" className={cn(buttonVariants({ variant: "primary" }), "w-full")}>
+            {t("signin.demo")}
+          </Link>
+          <Link href="/" className="inline-flex min-h-11 items-center rounded-sm px-3 text-body-sm text-ink underline underline-offset-4">
+            {t("signin.home")}
+          </Link>
+        </div>
+      </main>
+    </noscript>
   )
 }
 
 export function SessionGate({ children }: { children: ReactNode }) {
   const me = useMe()
-  if (me === undefined) return null // static shell: the client decides (no cookies() in layouts, §0 #3)
+  if (me === undefined) return <NoScriptSignIn /> // static shell: the client decides (no cookies() in layouts, §0 #3)
   if (me === null) return <SignedOutScreen />
   return <>{children}</>
 }

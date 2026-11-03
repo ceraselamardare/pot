@@ -1,12 +1,14 @@
 // A lock-screen notification (the video's PushNotification, marketing/video/src/ui/screens/Push.tsx), generic, no
 // real OS branding: a frosted `surface` card with the Pot app icon, "Pot" and "now", then the app's own push
-// copy (notif.approval.*): "Maya needs your OK" / "$300 for the boat trip · Lisbon Trip".
+// copy: notif.approval.* by default ("Maya needs your OK" / "$300 for the boat trip · Lisbon Trip"), or with
+// variant="one_ok" notif.one_ok.* ("Maya needs one OK" / "… · Lisbon Trip · Anyone can OK it", the landing's step 4).
 //
 // Logo: the app icon is the brand's <MarkTile> (components/brand, pot-mark.svg; 38 px, so the full mark, not the
 // small cut), never recoloured, always next to the name "Pot".
 //
 // Width: fills its parent up to 24rem; pass a width class. Semantics: aria-hidden by default (inside a
 // <PhoneFrame> or <FloatCard> that carries the label); pass `label` (home.chat.push.label) to make it one image.
+// `title`/`body` replace the words whole (the /demo explainer's close request).
 import { MarkTile } from "@/components/brand/MarkTile"
 import { t } from "@/i18n/t"
 import { cn } from "@/lib/client/cn"
@@ -18,13 +20,20 @@ export function PushCard({
   className,
   title,
   body,
+  variant = "approval",
 }: {
   label?: string
   className?: string
-  /** another notification's words (the /demo explainer's close request); default: Maya's $300 approval */
+  /** another notification's words (the /demo explainer's close request); default: Maya's $300 request */
   title?: string
   body?: string
+  /** the default words: the group's approval push (notif.approval.*) or the one-OK push (notif.one_ok.*) */
+  variant?: "approval" | "one_ok"
 }) {
+  const name = PEOPLE.maya.name
+  const vars = { amount: formatUsd(dollars(300), "whole"), reason: t("home.chat.push.reason"), potName: t("home.chat.title") }
+  const oneOk = variant === "one_ok"
+  const words = oneOk ? t("notif.one_ok.body", vars) : t("notif.approval.body", vars)
   return (
     <div
       data-push-card
@@ -43,17 +52,19 @@ export function PushCard({
             <span className="flex-1 font-semibold">{t("app.name")}</span>
             <span className="shrink-0">{t("home.chat.push.when")}</span>
           </p>
-          <p className="font-bold">{title ?? t("notif.approval.title", { name: PEOPLE.maya.name })}</p>
-          <p className="tabular-nums">
-            {body ?? t("notif.approval.body", {
-              amount: formatUsd(dollars(300), "whole"),
-              reason: t("home.chat.push.reason"),
-              // the Pot's name never breaks across lines ("… · Lisbon / Trip" at 390)
-              potName: t("home.chat.title").replaceAll(" ", "\u00a0"),
-            })}
-          </p>
+          <p className="font-bold">{title ?? (oneOk ? t("notif.one_ok.title", { name }) : t("notif.approval.title", { name }))}</p>
+          <p className="tabular-nums">{body ?? glue(words)}</p>
         </div>
       </div>
     </div>
   )
+}
+
+/** "$300 for the boat trip · Lisbon Trip · Anyone can OK it": a line breaks inside the first part only, so the Pot's
+ *  name and "Anyone can OK it" never split ("… · Lisbon / Trip", "Anyone can / OK it"). */
+function glue(text: string): string {
+  return text
+    .split(" · ")
+    .map((part, i) => (i === 0 ? part : part.replaceAll(" ", "\u00a0")))
+    .join(" · ")
 }

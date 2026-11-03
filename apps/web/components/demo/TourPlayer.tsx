@@ -185,6 +185,16 @@ function ownsArrows(el: Element | null): boolean {
   return !!el.closest("details, pre, [role=region][tabindex], [role=tablist], [role=radiogroup], [role=dialog]")
 }
 
+/**
+ * The sign-in dialog is up (the end's [Start a real Pot] opens it, components/features/auth): the tour never moves
+ * under it, even while focus sits outside it (NEAR Connect stacks its own picker on top, 07 §2.7). Its panel carries
+ * `data-signin-panel`; one inside a page Next keeps hidden after a client navigation (the app's signed-out screen)
+ * has no box and doesn't count.
+ */
+export function signInOpen(): boolean {
+  return [...document.querySelectorAll("[data-signin-panel]")].some((e) => !!e.closest("[role=dialog]") || e.getClientRects().length > 0)
+}
+
 export type FocusTarget = "next" | "title" | null
 
 interface Ctx extends TourState {
@@ -361,13 +371,13 @@ export function TourPlayer({ initial, chapter, children }: { initial: number; ch
     return () => window.removeEventListener("hashchange", onHash)
   }, [chapter, dispatch, openFromHash])
 
-  // → / ← move the tour unless what has focus owns the arrow keys, or the hood is open
+  // → / ← move the tour unless what has focus owns the arrow keys, or the hood, a glossary word or sign-in is open
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return
       if (hoodOpenRef.current || ownsArrows(document.activeElement)) return
-      if (document.querySelector("[data-glossary-popup]")) return
+      if (document.querySelector("[data-glossary-popup]") || signInOpen()) return
       e.preventDefault()
       if (e.key === "ArrowRight") next()
       else back()

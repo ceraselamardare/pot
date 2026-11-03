@@ -2,8 +2,8 @@
 // title, one sentence and a live fragment built from the app's own components with the D-61 numbers, so a judge
 // gets the product from the fragments alone and an AI judge reads them as text:
 //   1. the Pot rules as sentences · 2. Maya's invite in the chat, Leo is in, $450 of $450 collected ·
-//   3. $84 approved by Pot rules → $366.00 · 4. $300 needs 2 of 3 approvals, 1 of 2 so far, Leo's push → $66.00 ·
-//   5. the refund table, $150.00 in → $22.00 back each.
+//   3. $84 approved by Pot rules → $366.00 · 4. $300 needs one OK (a new Pot's default up to $300), Leo's push,
+//   approved by Leo's OK → $66.00 · 5. the refund table, $150.00 in → $22.00 back each.
 // Phones: five stacked cards in an <ol>. lg: a 2-2-1 bento (setup pair, then instant beside group, the page's key
 // contrast, then close at full width); the paired cards share rows through a subgrid, so their panels line up.
 // Fragments are `inert` + aria-hidden (a mock never takes focus or speaks; the step's sentence carries it), and
@@ -20,8 +20,9 @@
 // anywhere here: the burst answers the visitor's own tap in Try the rules. Each step's sticker is a child of its
 // panel (positioned against the step card), so it settles on the step's own sequence. At lg the right card of a pair
 // that enters in the same frame starts 300 ms after the left one.
-import { Check, Clock, UserRound, Users, Zap } from "lucide-react"
+import { Check, Hand, UserRound, Users, Zap } from "lucide-react"
 import type { HTMLAttributes, ReactNode } from "react"
+import { defaultExtras } from "@pot/sdk"
 import { TypingDots } from "@/components/feedback/TypingDots"
 import { MoneyText } from "@/components/money/MoneyText"
 import { Avatar } from "@/components/pot/Avatar"
@@ -47,6 +48,8 @@ const N = 3
 const K = approvalsNeeded(N) // 2 of 3
 const INSTANT_LIMIT = formatUsd(DEFAULT_RULES.instantCap, "whole") // "$100"
 const MEMBER_LIMIT = formatUsd(DEFAULT_RULES.memberBudget, "whole") // "$200"
+/** a Pot made today: one OK from anyone else up to 3 × the instant limit (the hub's defaultExtras) */
+const ONE_OK_LIMIT = formatUsd(defaultExtras({ ...DEFAULT_RULES, payeeAllowlist: [] }).oneOkCap, "whole") // "$300"
 const POT = t("create.name.placeholder") // "Lisbon Trip"
 
 /** Sentences keep whole dollars ("$84 sent to you"); displayed amounts go through MoneyText ("$84.00"). */
@@ -235,13 +238,15 @@ function Balance({ from, micro, at }: { from: Micro; micro: Micro; at: number })
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Step 1: the Lisbon Trip with its rules, the rules as sentences (the Rules tab's look).
-// Story (ends 640 ms): the Pot-name card is already there (the armed frame) → "Pot rules" (160) → the three rules,
-// 60 ms apart (240/300/360). The bold values don't animate on their own.
+// Step 1: the Lisbon Trip with its rules, the rules as sentences (the Rules tab's look and order: instant → one OK →
+// the group → per person).
+// Story (ends 700 ms): the Pot-name card is already there (the armed frame) → "Pot rules" (160) → the four rules,
+// 60 ms apart (240/300/360/420). The bold values don't animate on their own.
 
 function RulesFragment() {
   const rows = [
     { id: "instant", Icon: Zap, text: t("rules.instant", { instantLimit: mark(INSTANT_LIMIT) }) },
+    { id: "one_ok", Icon: Hand, text: t("rules.one_ok", { oneOk: mark(ONE_OK_LIMIT) }) },
     { id: "group", Icon: Users, text: t("rules.threshold", { k: `${MARK}${K}`, n: `${N}${MARK}` }) },
     { id: "person", Icon: UserRound, text: t("rules.budget", { memberBudget: mark(MEMBER_LIMIT) }) },
   ]
@@ -354,15 +359,18 @@ function InstantFragment() {
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Step 4: $300 for the boat trip needs 2 of 3 approvals; Maya's own counts (1 of 2); Leo's push; on its way → $66.00.
-// Story (ends 2.46 s): Maya's request and In the Pot $366.00 are already there (the armed frame) → "This needs 2 of 3
-// approvals" (280) → the "1 of 2 approvals" chip pops (640) + "Maya · asked, approval counted" (720) → Leo's push
-// drops in like a banner (1120, 12 px, 360) → "Approved! $300 is on its way to Maya." (1720) and its check pops
-// (1800) → In the Pot $366.00 → $66.00 (1960; one digit fewer, so the roll runs on a ghost that keeps the final
-// width). The chip stays "1 of 2": a log reading.
+// Step 4: $300 for the boat trip needs one OK from anyone else (over the $100 instant limit, up to the $300 one-OK
+// limit of a Pot made today); Leo's one-OK push; approved by Leo's OK → $66.00. The app's own words throughout
+// (preview.one_ok.*, feed.pending.one_ok, notif.one_ok.*, approve.decided.ok).
+// Story (ends 2.46 s): Maya's request and In the Pot $366.00 are already there (the armed frame) → "This needs one OK
+// from anyone else" (280) → the "Needs one OK" chip pops (640) + "Maya · asked, approval counted" (720) → Leo's push
+// drops in like a banner (1120, 12 px, 360) → "Approved by Leo's OK · $300 was sent to Maya." (1720) and its check
+// pops (1800) → In the Pot $366.00 → $66.00 (1960; one digit fewer, so the roll runs on a ghost that keeps the final
+// width). The chip stays "Needs one OK": a log reading.
 
 function GroupFragment() {
-  const [needs, why] = tLines("preview.vote.over_cap", { k: K, n: N, instantLimit: INSTANT_LIMIT })
+  const [needs, why] = tLines("preview.one_ok.over_cap", { limit: INSTANT_LIMIT })
+  const [approved, paid] = tLines("approve.decided.ok", { okName: LEO.name, amount: whole(dollars(300)), name: MAYA.name })
   return (
     <>
       <div className="rounded-md bg-surface p-3">
@@ -375,7 +383,7 @@ function GroupFragment() {
         </div>
         <div data-seq="fade" data-at="280" className="mt-3 flex items-start gap-3 border-t border-line pt-3">
           <Badge sunken>
-            <Clock aria-hidden className="size-4 text-waiting" strokeWidth={2} />
+            <Hand aria-hidden className="size-4 text-waiting" strokeWidth={2} />
           </Badge>
           <div className="min-w-0">
             <p className="text-label text-ink tabular-nums">{needs}</p>
@@ -384,7 +392,7 @@ function GroupFragment() {
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
           <span data-seq="pop" data-at="640" data-scale=".6" className="flex shrink-0">
-            <StatusChip status="needs">{t("approve.progress", { count: 1, k: K })}</StatusChip>
+            <StatusChip status="needs">{t("feed.pending.one_ok")}</StatusChip>
           </span>
           <span data-seq="fade" data-at="720" className="text-body-sm text-ink-muted">
             {t("approve.timeline.asked", { name: MAYA.name })}
@@ -392,7 +400,7 @@ function GroupFragment() {
         </div>
       </div>
       <div data-seq="drop" data-at="1120" data-y="12" data-dur="360">
-        <PushCard className="max-w-none" />
+        <PushCard variant="one_ok" className="max-w-none" />
       </div>
       <Row data-seq="fade-up" data-at="1720">
         <Badge sunken>
@@ -400,7 +408,10 @@ function GroupFragment() {
             <Check aria-hidden className="size-4 text-approved" strokeWidth={2} />
           </span>
         </Badge>
-        <span className="min-w-0 text-label text-pretty text-ink tabular-nums">{t("approve.final", { amount: whole(dollars(300)), name: MAYA.name })}</span>
+        <div className="min-w-0">
+          <p className="text-label text-pretty text-ink tabular-nums">{approved}</p>
+          <p className="text-body-sm text-pretty text-ink-muted tabular-nums">{paid}</p>
+        </div>
       </Row>
       <Balance from={dollars(366)} micro={dollars(66)} at={1960} />
     </>

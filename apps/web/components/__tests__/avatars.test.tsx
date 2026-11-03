@@ -4,7 +4,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { readFileSync } from "node:fs"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AvatarPicker } from "@/components/app-shell/AvatarPicker"
 import { Avatar, AvatarStack } from "@/components/pot/Avatar"
@@ -12,8 +12,9 @@ import { AVATAR_IDS, avatarOrNull, avatarSrc, isAvatarId } from "@/lib/avatars"
 
 afterEach(() => cleanup())
 
-/** apps/web (vitest runs from the package root; jsdom's import.meta.url is not a file URL) */
-const WEB = process.cwd()
+/** apps/web, from this file (not process.cwd(): the root `pnpm test` runs from the repo root; jsdom's import.meta.url
+ *  is not a file URL) */
+const WEB = resolve(__dirname, "../..")
 
 const LEO = { name: "Leo", initials: "L", joinIndex: 2 }
 

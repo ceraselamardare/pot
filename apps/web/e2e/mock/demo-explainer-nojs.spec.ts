@@ -85,6 +85,12 @@ test("J-6: every tour page's server HTML is the whole story, in order, with five
   // the spec's judge strings for the $84 spend (05 §1, still true of /demo/4)
   const html = await (await page.goto("/demo/4"))!.text()
   for (const s of ["Approved by Pot rules", "request_spend", "VoteApprove", "84000000", "Simulated", "https://testnet.nearblocks.io/txns/"]) expect(html, s).toContain(s)
+  // the story's phones tell today's rules too: part 4 ends on Leo's one OK, and its hood says the recorded steps
+  // under it are the group's path, which spends over the one-OK limit still take (site update, 2026-11-03)
+  const p4 = page.locator('section#story [data-tour-list-part="4"] [data-phone-frame]')
+  await expect(p4).toContainText(fill(en["approve.ok.done"]!, { amount: "$300", name: "Maya" }))
+  await expect(p4).not.toContainText("approvals")
+  expect(html).toContain(en["demo.near.p4.summary"]!.replaceAll("'", "&#x27;"))
 
   const night = info.project.use.colorScheme === "dark"
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(night ? "rgb(28, 20, 36)" : "rgb(250, 249, 246)")

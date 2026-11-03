@@ -212,7 +212,11 @@ export function JoinCta({
         <>
           {/* integrations (F-14, F-19): NEAR Auth and "I have a NEAR wallet"; once signed in, straight on to joining */}
           <SignInOptions join primary onSignedIn={() => dispatch({ type: "TAP_JOIN", signedIn: true, needsAuth: false })} />
-          <p className="text-center text-body-sm text-ink-muted">{t("signin.body")}</p>
+          {/* the invite's own line (as the mock below), not the app's signed-out screen's */}
+          <p className="mt-1 flex flex-wrap justify-center gap-x-1 text-center text-body-sm text-ink-muted">
+            <span>{t("landing.legal")}</span>
+            <span>{t("landing.no_app")}</span>
+          </p>
         </>
       ) : s.tag !== "joined" ? (
         <>

@@ -2,7 +2,8 @@
 // one interactive part, "Try the rules", is a client island, and so are the hero/problem typing dots.
 // It keeps the two jobs of the old lite landing: <HomeRedirect /> sends a signed-in visitor to /pots, and
 // <NearAuthCallback /> finishes a NEAR Auth redirect sign-in (the shared testnet client returns to "/").
-// [Start a Pot] in the hero is the page's only marigold button; every other button is secondary.
+// [Start a Pot] in the hero is the page's only marigold button; every other button is secondary. Every start CTA is a
+// <SignInLink> (a real link to /pots?sheet=create; with JS and no session it opens the sign-in dialog).
 import type { Metadata, ResolvingMetadata } from "next"
 import { NearAuthCallback } from "@/components/features/auth/NearAuthCallback"
 import { HomeRedirect } from "@/components/landing/HomeRedirect"
@@ -11,6 +12,7 @@ import { HomeRedirect } from "@/components/landing/HomeRedirect"
 import "@/components/landing/home/motion/landing-motion.css"
 // the header, hero and problem details (text wrapping, text-link press, nav bar, typing dots), after the toolkit
 import "@/components/landing/home/top.css"
+import { Features } from "@/components/landing/home/Features"
 import { FinalCta } from "@/components/landing/home/FinalCta"
 import { Hero } from "@/components/landing/home/Hero"
 import { HowItWorks } from "@/components/landing/home/HowItWorks"
@@ -60,6 +62,7 @@ export default function Home() {
         <Problem />
         <HowItWorks />
         <RulesPlayground />
+        <Features />
         <Trust />
         <UnderTheHood />
         <FinalCta />

@@ -64,6 +64,9 @@ test.describe("reflow and zoom", () => {
     await noHorizontalScroll(page, "/j")
     await page.goto("/")
     await noHorizontalScroll(page, "/")
+    // the header keeps [Start a Pot] at 320; its "Sign in" waits for 360 px (07 §1.2: the row has 288 px)
+    await expect(page.getByRole("banner").getByRole("link", { name: "Start a Pot" })).toBeVisible()
+    await expect(page.getByRole("banner").getByRole("link", { name: "Sign in" })).toBeHidden()
     await asPerson(page, "maya")
     for (const url of SCREENS_320) {
       await page.goto(url)

@@ -6,7 +6,7 @@
 // card still reads raised over its stage (detail audit C13/D4; tokens only; `PAGE_NIGHT` below).
 //   1. the flow diagram as a plain <ol> (vertical on phones, left to right from lg): Maya's tap → our relayer →
 //      the Pot Hub (the emphasised node: a marigold top edge, a card top, never text) → two lanes (inside the
-//      rules: approved instantly · bigger spends: members approve by majority) → the Pot pays out;
+//      rules: approved instantly · bigger spends: one member's OK, or a majority) → the Pot pays out;
 //   2. six fact cards (3 × 2 from lg); 3. the step-by-step explainer at chapter 4, the $84 spend (a secondary
 //      button), and the hackathon credit.
 // Precise and calm: thin `line-strong` connectors, aligned boxes, tabular numbers. No code font, no cubes, no glow,
@@ -117,7 +117,7 @@ export function UnderTheHood() {
         {/* a real link styled as a secondary button (buttonVariants), never role="button" */}
         <Link
           href="/demo/4"
-          // its arrow nudges 3 px on hover, like [Start your Pot →] (04 catalogue: links that carry an arrow)
+          // its arrow nudges 3 px on hover, like the final card's [Start a Pot →] (04 catalogue: links that carry an arrow)
           className={cn(buttonVariants({ variant: "secondary" }), "l-nudge w-full shrink-0 md:w-auto md:self-start lg:self-auto", PAGE_NIGHT.hover)}
         >
           {t("home.tech.demo.cta")}

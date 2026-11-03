@@ -6,6 +6,8 @@
 // Enter 360 ms ease-enter, exit 280 ms ease-exit; reduced motion: a 120 ms fade.
 // Multi-step sheets pass `stepKey`: when the step changes inside an open sheet (Next, Back, the browser's Back),
 // focus moves to the step's heading ([data-step-heading], else the sheet title) and the live region reads it.
+// `modal={false}` (2026-11-03) only while another layer sits on top and must stay fully usable (NEAR Connect's
+// wallet picker over the sign-in dialog): no focus trap, no aria-hidden page, no scroll lock, no dismissal by it.
 import { Drawer } from "@base-ui/react/drawer"
 import { ChevronLeft, X } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
@@ -30,6 +32,7 @@ export function Sheet({
   theme,
   className,
   stepKey,
+  modal = true,
 }: {
   open: boolean
   onClose: () => void
@@ -58,6 +61,13 @@ export function Sheet({
   className?: string
   /** the step a multi-step sheet shows; a change moves focus to the new step's heading and announces it */
   stepKey?: string | number
+  /**
+   * Default true. false only while another layer sits on top of this sheet and must be fully usable: NEAR Connect's
+   * wallet picker over the sign-in dialog (it appends itself to body at z-index 1e8). Then Base UI drops the focus
+   * trap, the aria-hidden on the page and the scroll lock, and pressing or focusing that layer never closes this one
+   * (disablePointerDismissal). Flip it back when the layer goes.
+   */
+  modal?: boolean
 }) {
   const titleRef = useRef<HTMLHeadingElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -150,6 +160,8 @@ export function Sheet({
   return (
     <Drawer.Root
       open={open}
+      modal={modal}
+      disablePointerDismissal={!modal}
       onOpenChange={(o) => {
         if (!o) onClose()
       }}

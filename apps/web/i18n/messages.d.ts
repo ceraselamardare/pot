@@ -390,13 +390,11 @@ export interface Messages {
   "create.cover.hint": undefined
   "create.cover.swatch": { n: string | number }
   "create.cta": undefined
-  "create.cta.next": undefined
   "create.error.limit": undefined
   "create.error.name": undefined
   "create.error.relayer": undefined
   "create.goal.amount.invalid": undefined
   "create.goal.amount.label": undefined
-  "create.goal.each": { amount: string | number }
   "create.goal.each.after": undefined
   "create.goal.inline": undefined
   "create.goal.label": undefined
@@ -446,9 +444,7 @@ export interface Messages {
   "create.rules.person.label": undefined
   "create.rules.person.max": { max: string | number }
   "create.slow": undefined
-  "create.step1.title": undefined
   "create.step2.title": undefined
-  "create.step_of": { step: string | number; total: string | number }
   "create.success": { potName: string | number }
   "create.summary.change": undefined
   "create.summary.change.label": undefined
@@ -1087,8 +1083,13 @@ export interface Messages {
   "home.chat.title": undefined
   "home.cta.demo": undefined
   "home.cta.start": undefined
+  "home.features.eyebrow": undefined
+  "home.features.goal": undefined
+  "home.features.links": undefined
+  "home.features.payin": undefined
+  "home.features.title": undefined
+  "home.features.trust": undefined
   "home.final.body": undefined
-  "home.final.cta.start": undefined
   "home.final.title": undefined
   "home.footer.preview": undefined
   "home.footer.top": undefined
@@ -1117,6 +1118,7 @@ export interface Messages {
   "home.nav.how": undefined
   "home.nav.label": undefined
   "home.nav.rules": undefined
+  "home.nav.signin": undefined
   "home.nav.tech": undefined
   "home.problem.eyebrow": undefined
   "home.problem.front.body": undefined
@@ -1183,12 +1185,15 @@ export interface Messages {
   "home.try.lead": undefined
   "home.try.leo.cta": undefined
   "home.try.leo.hint": undefined
+  "home.try.ok.cta": { amount: string | number }
+  "home.try.ok.hint": undefined
   "home.try.pot.members": undefined
   "home.try.pot.name": undefined
   "home.try.reason.boat": undefined
   "home.try.reason.dinner": undefined
   "home.try.reset": undefined
   "home.try.title": undefined
+  "home.try.trust": { amount: string | number }
   "invite.already_member.cta": { potName: string | number }
   "invite.already_member.title": { potName: string | number }
   "invite.expired.body": { inviter: string | number }
@@ -1233,6 +1238,7 @@ export interface Messages {
   "landing.no_app": undefined
   "landing.rules_peek": { instantLimit: string | number; thresholdWords: string | number }
   "landing.rules_peek.majority": undefined
+  "landing.rules_peek.one_ok": { instantLimit: string | number; oneOk: string | number; thresholdWords: string | number }
   "landing.share": { suggested: string | number }
   "landing.signed_in_as": { email: string | number }
   "landing.signed_in_as.cta": { potName: string | number }
@@ -1841,16 +1847,46 @@ export interface Messages {
   "share.rotate.confirm.cta": undefined
   "share.title": { potName: string | number }
   "sheet.back": undefined
+  "signin.back.body": undefined
   "signin.body": undefined
+  "signin.cancel": undefined
   "signin.demo": undefined
+  "signin.demo.hint": undefined
+  "signin.demo.lead": undefined
+  "signin.demo.quick": undefined
+  "signin.failed": undefined
+  "signin.fine": undefined
+  "signin.fine.wallet": undefined
   "signin.google": undefined
+  "signin.google_later": undefined
   "signin.home": undefined
+  "signin.inapp.body": { appName: string | number }
+  "signin.inapp.body_any": { browser: string | number; appName: string | number }
+  "signin.inapp.here": undefined
+  "signin.inapp.title": { browser: string | number }
   "signin.more": undefined
+  "signin.nojs": undefined
+  "signin.none.body": undefined
+  "signin.none.title": undefined
+  "signin.offline": undefined
   "signin.or": undefined
+  "signin.start.body": undefined
+  "signin.start.title": undefined
+  "signin.step.again": undefined
+  "signin.step.back": undefined
+  "signin.step.done": undefined
+  "signin.step.google": undefined
+  "signin.step.session": undefined
+  "signin.step.start": undefined
+  "signin.step.wallet": undefined
+  "signin.step.window": undefined
+  "signin.steps.a11y": undefined
+  "signin.timeout": undefined
   "signin.title": undefined
   "signin.unsupported_browser": undefined
   "signin.wallet.error": undefined
   "signin.wallet.limited": undefined
+  "signin.wallet.only": undefined
   "spend.amount.label": undefined
   "spend.approved": undefined
   "spend.became_vote": undefined
@@ -2060,11 +2096,6 @@ export interface Messages {
   "tour.cover.body": undefined
   "tour.cover.start": undefined
   "tour.cover.title": undefined
-  "tour.create.preset.club": undefined
-  "tour.create.preset.soon": undefined
-  "tour.create.preset.team": undefined
-  "tour.create.preset.trip": undefined
-  "tour.create.title": undefined
   "tour.end.cta": undefined
   "tour.end.home": undefined
   "tour.end.l1": undefined

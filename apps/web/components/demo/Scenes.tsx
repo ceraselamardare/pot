@@ -7,13 +7,19 @@
 // MoneyText, Celebration…). Where a part isn't exported (the Spend result card, the hero), the copy here keeps the
 // same markup and classes (the CloseTable precedent, notes/landing.md).
 //
-// The one actionable control is the scene's own primary ([Create Pot], [Get $84 back], [Approve $300]…): marigold,
+// The one actionable control is the scene's own primary ([Create Pot], [Get $84 back], [OK $300]…): marigold,
 // and the same as Next. Everything else is shown but inert (no focus, no clicks). A beat that repeats the previous
 // beat's screen is the moment right after that tap: the screen shows its busy state instead of the button. On a
 // screen with no next tap (the last beat), the primary is drawn secondary and inert: no marigold is visible. A result
 // screen's [Done] and the share sheet's [Share link] take `active` too (the /demo tour's steps 2, 7, 9 and 11 make
 // them live: a person taps them to go on).
-import { ArrowUpRight, Check, ChevronLeft, Clock, Plane, Plus, ShieldCheck, Users, Gift, X } from "lucide-react"
+//
+// Today's rules (site update, 2026-11-03): the story's Pot has the rules every Pot gets now (STORY_EXTRAS: trust
+// grows, one OK up to $300), and the app's own rule math decides each spend, so Maya's $300 tickets are a one-OK
+// spend: [Ask for one OK] → "Needs one OK" → Leo's [OK $300] → "Done. Your OK sent $300 to Maya.". Create is the lean
+// one-screen "Start a Pot". The dataset (and so the hood) was recorded before one OK existed; demo.near.p4.summary
+// says so. A spend over the one-OK limit would still show the group's path (the vote screens below).
+import { ArrowUpRight, Check, Clock, Hand, Pencil, Plus, ShieldCheck, X } from "lucide-react"
 import { createContext, useContext, type ReactNode } from "react"
 import { Celebration } from "@/components/money/Celebration"
 import { AmountDisplay } from "@/components/money/Keypad"
@@ -38,7 +44,8 @@ import { cn } from "@/lib/client/cn"
 import { PEOPLE } from "@/lib/client/mock/fixtures"
 import type { PersonVM } from "@/lib/client/mock/types"
 import { formatUsd, type Micro } from "@/lib/client/money"
-import { previewSpend, DEFAULT_RULES } from "@/lib/client/rules"
+import { previewSpend, DEFAULT_RULES, type SpendPreview } from "@/lib/client/rules"
+import { ONE_OK_MULT } from "@/lib/client/wave4-form"
 import type { AppScene, Category, Persona } from "@/app/demo/_data/types"
 
 /** What every scene can read: the story's numbers at this chapter, decided on the server from the dataset. */
@@ -79,6 +86,32 @@ export interface SceneProps {
 
 const micro = (s: string): Micro => BigInt(s)
 const whole = (m: Micro) => formatUsd(m, "whole")
+
+/** The rules every new Pot gets today (the Create screen's defaults, lib/client/wave4-form): trust grows, and one OK
+ *  from anyone else covers spends up to 3 × the instant limit ($300); the group's majority only above that. */
+const STORY_EXTRAS = { trust: true, oneOkCap: DEFAULT_RULES.instantCap * ONE_OK_MULT }
+
+/** What the app's own rule math says about `amount` from `you` at this point of the story (the Spend sheet's
+ *  previewSpend with the Pot's rules). Trust stays at its first level: Maya has one paid spend, it takes three. */
+function storyPreview(story: PhoneStory, you: Persona, amount: Micro): SpendPreview {
+  return previewSpend({
+    amount,
+    balance: micro(story.potBefore),
+    rules: DEFAULT_RULES,
+    memberCount: story.membersBefore.length,
+    used: micro(story.ledger[you].instantUsed),
+    contributed: micro(story.ledger[you].contributed),
+    receiverIsMember: true,
+    extras: STORY_EXTRAS,
+    trustLevel: 0,
+  })
+}
+
+/** The story's request goes the one-OK way (its form, result, push and Approve sheet word it so). */
+function isOneOk(story: PhoneStory): boolean {
+  const r = story.request
+  return !!r && storyPreview(story, r.requester, micro(r.amount)).tier === "one_ok"
+}
 
 // ---------------------------------------------------------------------------------------------------------
 // Chrome
@@ -192,7 +225,8 @@ export function Scene(props: SceneProps) {
   const s = props.scene
   switch (s.scene) {
     case "create":
-      return s.step === 1 ? <CreateName {...props} /> : s.step === 2 ? <CreateRules {...props} /> : <Share {...props} />
+      // Create is one screen now (name, "$150 each", the rules line): the dataset's naming and rules beats both show it
+      return s.step === "share" ? <Share {...props} /> : <CreatePot {...props} />
     case "invite_landing":
       return <InviteLanding {...props} />
     case "youre_in":
@@ -215,63 +249,15 @@ export function Scene(props: SceneProps) {
 // ---------------------------------------------------------------------------------------------------------
 // Chapter 1: create
 
-const EMOJI = ["🇵🇹", "🏖️", "⛺", "🎉", "🍕", "⚽"] as const
-
-function CreateName({ story, people: all, you, active, onPrimary }: SceneProps) {
-  return (
-    <PhoneSheet
-      full
-      title={t("create.step1.title")}
-      peek={<div aria-hidden className="absolute inset-0 bg-ground" />}
-      footer={
-        <Primary active={active} onPrimary={onPrimary}>
-          {t("create.cta.next")}
-        </Primary>
-      }
-    >
-      <div className="flex flex-col gap-4 pt-1">
-        <p className="text-body-sm text-ink-muted">{t("create.step_of", { step: 1, total: 2 })}</p>
-        <figure className="flex flex-col gap-2">
-          <div className="flex items-center gap-3 rounded-lg bg-surface p-3 shadow-card ring-1 ring-line">
-            <CoverTile emoji={story.emoji} cover={0} size="lg" />
-            <div className="min-w-0">
-              <p className="truncate font-display text-heading text-ink">{story.potName}</p>
-              <p className="text-body-sm text-ink-muted">{t("create.preview.members")}</p>
-            </div>
-            <Avatar person={all[you]} size="sm" className="ml-auto" />
-          </div>
-          <figcaption className="text-body-sm text-ink-muted">{t("create.preview_hint")}</figcaption>
-        </figure>
-        <div className="flex flex-col gap-1.5">
-          <p className="flex items-center justify-between text-label text-ink">
-            {t("create.name.label")}
-            <span className="text-body-sm font-normal text-ink-muted tabular-nums">{t("create.name.count", { count: story.potName.length })}</span>
-          </p>
-          <p className="flex h-13 items-center rounded-sm border border-line-strong bg-surface-sunken px-3 text-body text-ink">{story.potName}</p>
-        </div>
-        <div>
-          <p className="mb-2 text-label text-ink">{t("create.cover")}</p>
-          <Inert className="grid grid-cols-6 gap-2">
-            {EMOJI.map((e) => (
-              <span
-                key={e}
-                aria-hidden
-                className={cn("grid aspect-square min-h-11 place-items-center rounded-md text-2xl", e === story.emoji ? "bg-brand-soft ring-2 ring-ink" : "bg-surface-sunken")}
-              >
-                {e}
-              </span>
-            ))}
-          </Inert>
-        </div>
-      </div>
-    </PhoneSheet>
-  )
-}
-
-function CreateRules({ story, tapped, active, onPrimary }: SceneProps) {
-  const [trip, ...lines] = t("tour.create.preset.trip").split(" · ")
+/**
+ * Create, as the app has it now (components/sheets/CreatePotSheet.tsx, the lean one-screen "Start a Pot" of
+ * 2026-11-02), same markup and classes: the cover preview with its pencil badge, the name, "Everyone chips in $150
+ * each" with its switch, the one rules line with [Change], and [Create Pot]. Maya keeps the suggested rules, so
+ * [Change] stays shut. Right after the tap the sheet shows its progress step ("Creating Lisbon Trip…").
+ */
+function CreatePot({ story, tapped, active, onPrimary }: SceneProps) {
+  const [creating, free] = t("create.progress", { potName: story.potName }).split(" · ")
   if (tapped) {
-    const [creating, free] = t("create.progress", { potName: story.potName }).split(" · ")
     return (
       <PhoneSheet full title={creating!} peek={<div aria-hidden className="absolute inset-0 bg-ground" />}>
         <div className="flex flex-col gap-6 pt-4" aria-busy="true" data-phone-busy>
@@ -289,61 +275,68 @@ function CreateRules({ story, tapped, active, onPrimary }: SceneProps) {
       </PhoneSheet>
     )
   }
+  const each = micro(story.goal) / 3n
   return (
     <PhoneSheet
       full
-      title={t("tour.create.title")}
+      title={t("create.title")}
       peek={<div aria-hidden className="absolute inset-0 bg-ground" />}
       footer={
-        <div className="flex flex-col gap-2">
-          <Primary active={active} onPrimary={onPrimary}>
-            {t("create.cta")}
-          </Primary>
-          <Inert>
-            <Button variant="ghost" className="w-full">
-              <ChevronLeft aria-hidden strokeWidth={2} />
-              {t("sheet.back")}
-            </Button>
-          </Inert>
-        </div>
+        <Primary active={active} onPrimary={onPrimary}>
+          {t("create.cta")}
+        </Primary>
       }
     >
-      <div className="flex flex-col gap-3 pt-1">
-        <p className="text-body-sm text-ink-muted">{t("create.step_of", { step: 2, total: 2 })}</p>
-        <div className="relative rounded-lg border-2 border-ink bg-brand-soft p-4">
-          <span aria-hidden className="absolute top-3 right-3 grid size-6 place-items-center rounded-pill bg-ink text-surface">
-            <Check className="size-4" strokeWidth={3} />
-          </span>
-          <p className="flex items-center gap-2 font-display text-heading text-ink">
-            <Plane aria-hidden className="size-5" strokeWidth={2} />
-            {trip}
-          </p>
-          <ul className="mt-2 flex flex-col gap-1 text-body text-ink">
-            {lines.map((line) => (
-              <li key={line} className="flex items-start gap-2">
-                <Check aria-hidden className="mt-1 size-4 shrink-0" strokeWidth={2.5} />
-                {line.charAt(0).toUpperCase() + line.slice(1)}
-              </li>
-            ))}
-          </ul>
-        </div>
-        {(["tour.create.preset.club", "tour.create.preset.team"] as const).map((k) => (
-          <div key={k} className="flex items-center justify-between rounded-lg bg-surface-sunken p-3">
-            <p className="flex items-center gap-2 font-display text-heading text-ink-muted">
-              {k === "tour.create.preset.club" ? <Users aria-hidden className="size-5" strokeWidth={2} /> : <Gift aria-hidden className="size-5" strokeWidth={2} />}
-              {t(k).split(" · ")[0]}
-            </p>
-            <span className="rounded-pill bg-surface px-2.5 py-0.5 text-body-sm font-semibold text-ink-muted">{t("tour.create.preset.soon")}</span>
+      <div className="flex flex-col gap-5 pt-1" data-phone-create>
+        <figure className="flex flex-col gap-2">
+          <div className="flex items-center gap-3 rounded-lg bg-surface p-3 shadow-card ring-1 ring-line">
+            <span className="relative shrink-0 rounded-md">
+              <CoverTile emoji={story.emoji} cover={0} size="lg" />
+              <span aria-hidden className="absolute -right-1.5 -bottom-1.5 grid size-6 place-items-center rounded-pill bg-surface text-ink shadow-card ring-1 ring-line-strong">
+                <Pencil className="size-3.5" strokeWidth={2} />
+              </span>
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-display text-heading text-ink">{story.potName}</p>
+              <p className="text-body-sm text-ink-muted">{t("create.preview.members")}</p>
+            </div>
           </div>
-        ))}
-        <div className="flex items-center justify-between gap-3 rounded-md border border-line p-3">
-          <span className="flex flex-col">
-            <span className="text-label text-ink">{t("create.goal.label")}</span>
-            <span className="text-body-sm text-ink-muted tabular-nums">{t("create.goal.each", { amount: whole(micro(story.goal) / 3n) })}</span>
-          </span>
-          <span aria-hidden className="relative h-7 w-12 shrink-0 rounded-pill bg-ink">
-            <span className="absolute top-0.5 left-0.5 size-6 translate-x-5 rounded-pill bg-surface shadow" />
-          </span>
+          {/* (the sheet adds "Tap the picture to change it.": the tour's picture doesn't change) */}
+          <figcaption className="text-body-sm text-ink-muted">{t("create.preview_hint")}</figcaption>
+        </figure>
+        <div className="flex flex-col gap-1.5">
+          <p className="flex items-center justify-between text-label text-ink">
+            {t("create.name.label")}
+            <span className="text-body-sm font-normal text-ink-muted tabular-nums">{t("create.name.count", { count: story.potName.length })}</span>
+          </p>
+          <p className="flex h-13 items-center rounded-sm border border-line-strong bg-surface-sunken px-3 text-body text-ink">{story.potName}</p>
+        </div>
+        <div className="flex flex-col divide-y divide-line rounded-md border border-line-strong">
+          {/* "Everyone chips in $[150] each" with its switch (on), as the sheet's EachRow. The phone's screen is a
+              little narrower than a 390 px phone, so the field is a touch narrower and the switch (only a picture
+              here) has no 44 px hit box: the row stays on one line, as it does in the app at 390 */}
+          <div className="flex items-center gap-2 px-3 py-1.5" data-phone-each>
+            <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1 text-body text-ink">
+              <span>{t("create.goal.inline")}</span>
+              <span className="relative inline-flex h-11 w-20 shrink-0 items-center rounded-sm border border-line-strong bg-surface-sunken pr-3 pl-7 text-body font-semibold text-ink tabular-nums">
+                <span className="absolute inset-y-0 left-3 flex items-center">{t("create.rules.dollar")}</span>
+                {String(each / 1_000_000n)}
+              </span>
+              <span>{t("create.goal.each.after")}</span>
+            </p>
+            <span aria-hidden className="relative h-7 w-12 shrink-0 rounded-pill bg-ink">
+              <span className="absolute top-0.5 left-0.5 size-6 translate-x-5 rounded-pill bg-surface shadow" />
+            </span>
+          </div>
+          {/* the one rules line and [Change] (the sheet's RulesSummary): Maya keeps the suggested rules */}
+          <div className="flex items-center gap-2 px-3 py-3" data-phone-rules-summary>
+            <p className="min-w-0 flex-1 text-body text-ink tabular-nums">{t("create.summary.instant", { instantLimit: whole(DEFAULT_RULES.instantCap) })}</p>
+            <Inert>
+              <Button variant="secondary" size="sm" className="px-3">
+                {t("create.summary.change")}
+              </Button>
+            </Inert>
+          </div>
         </div>
       </div>
     </PhoneSheet>
@@ -633,16 +626,11 @@ function PotHome({ story, people: all, you, adding }: SceneProps & { adding: boo
 function SpendForm({ story, people: all, you, active, onPrimary, amount, category }: SceneProps & { amount: Micro; category: Category }) {
   const members = story.membersBefore
   const used = micro(story.ledger[you].instantUsed)
-  const preview = previewSpend({
-    amount,
-    balance: micro(story.potBefore),
-    rules: DEFAULT_RULES,
-    memberCount: members.length,
-    used,
-    contributed: micro(story.ledger[you].contributed),
-    receiverIsMember: true,
-  })
-  const cta = preview.path === "vote" ? t("spend.cta.vote") : t("spend.cta.instant", { amount: whole(amount) })
+  // the Spend sheet's own decision with today's rules: $84 is instant; $300 is over the $100 instant limit and within
+  // one OK ("This needs one OK from anyone else", [Ask for one OK]); over $300 it would be the group's ([Ask the group])
+  const preview = storyPreview(story, you, amount)
+  const cta =
+    preview.path === "vote" ? (preview.tier === "one_ok" ? t("spend.cta.one_ok") : t("spend.cta.vote")) : t("spend.cta.instant", { amount: whole(amount) })
   return (
     <PhoneSheet
       title={t("spend.title", { potName: story.potName })}
@@ -698,11 +686,15 @@ function SpendResult({
   const k = story.membersBefore.length >= 3 ? 2 : story.membersBefore.length
   const n = story.membersBefore.length
   const vote = phase === "sent_to_group"
+  // the request went the one-OK way (today's rules for $300): "Sent · One OK from anyone else in the group and it's
+  // paid.", the request card's "Needs one OK" chip, and who can give it (the Approve sheet's one-OK line)
+  const oneOk = vote && isOneOk(story)
   const approvedish = phase === "approved" || phase === "sent"
   const balance = phase === "sent" ? micro(story.potAfter) : micro(story.potBefore)
   // the vote card keeps only "Sent to the group": its "Needs 2 of 3 approvals" beside the "1 of 2 approvals" chip read
   // as two fractions (tour QA F6). The rule (2 of 3) is on the form before it and in the caption; this screen is progress.
   const [voteTitle] = tLines("spend.vote_sent", { k, n })
+  const [okTitle, okBody] = tLines("spend.one_ok_sent")
   return (
     <PhoneSheet
       title={t("spend.title", { potName: story.potName })}
@@ -720,7 +712,21 @@ function SpendResult({
           <MoneyText micro={amount} variant="hero" className="text-ink" />
           <span className="text-body-sm text-ink-muted">{t(`spend.reason.chip.${category}`)}</span>
         </div>
-        {vote ? (
+        {oneOk ? (
+          <>
+            <div className="flex items-start gap-3 rounded-md bg-surface-sunken p-3" data-spend-sent="one_ok">
+              <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-waiting" strokeWidth={2.25} />
+              <div>
+                <p className="text-label text-ink">{okTitle}</p>
+                {okBody ? <p className="mt-0.5 text-body-sm text-ink-muted">{okBody}</p> : null}
+              </div>
+            </div>
+            <StatusChip status="needs" className="self-start">
+              {t("feed.pending.one_ok")}
+            </StatusChip>
+            <OneOkLine requester={all[you]} potName={story.potName} me={you} />
+          </>
+        ) : vote ? (
           <>
             <div className="flex items-center gap-3 rounded-md bg-surface-sunken p-3">
               <Clock aria-hidden className="size-5 shrink-0 text-waiting" strokeWidth={2.25} />
@@ -789,18 +795,32 @@ function SpendResult({
 // ---------------------------------------------------------------------------------------------------------
 // Chapter 5: the push and the Approve sheet
 
-/** A lock-screen notification: Maya's approval request (chapter 5) or her close request (chapter 6). `text` names
- *  which; the words are the app's own notification copy. */
-function Push({ story, text }: SceneProps & { text: string }) {
+/** A lock-screen notification: Maya's request (chapter 5) or her close request (chapter 6). `text` names which; the
+ *  words are the app's own notification copy (server/notify): a one-OK request says "Maya needs one OK · … · Anyone
+ *  can OK it", a group request "Maya needs your OK". */
+function Push({ story, people: all, text }: SceneProps & { text: string }) {
   const close = story.request === null || /close/i.test(text)
+  const req = story.request
+  const oneOk = !close && isOneOk(story)
   return (
     <div className="absolute inset-0 flex flex-col items-center bg-surface-sunken px-3 pt-[calc(var(--phone-safe-top)+2.5rem)] dark:bg-ground">
       <p aria-hidden className="font-display text-[4.5rem] leading-none font-bold text-ink tabular-nums">
         {t("home.chat.clock")}
       </p>
-      <div className="mt-10 w-full" data-phone-push>
+      <div className="mt-10 w-full" data-phone-push={close ? "close" : oneOk ? "one_ok" : "approval"}>
         {close ? (
           <PushCard className="max-w-none" title={t("close.approve.title", { name: PEOPLE.maya.name, potName: story.potName })} body={t("close.body")} />
+        ) : oneOk && req ? (
+          <PushCard
+            className="max-w-none"
+            title={t("notif.one_ok.title", { name: all[req.requester].name })}
+            body={t("notif.one_ok.body", {
+              amount: whole(micro(req.amount)),
+              reason: t(`spend.reason.word.${req.category}`),
+              // the Pot's name never breaks across lines ("… · Lisbon / Trip"), as PushCard's own default
+              potName: story.potName.replaceAll(" ", " "),
+            })}
+          />
         ) : (
           <PushCard className="max-w-none" />
         )}
@@ -809,23 +829,67 @@ function Push({ story, text }: SceneProps & { text: string }) {
   )
 }
 
+/**
+ * Who can give a one-OK request its OK (components/sheets/ApproveSheet.tsx OneOkLine, same markup and classes): the
+ * requester's own approval, counted, then "Anyone in Lisbon Trip except Maya can give it."; once given, who gave it
+ * ("You · gave the OK", approve.timeline.ok). `header`: the Approve sheet's "One OK needed".
+ */
+function OneOkLine({ requester, potName, me, okBy, header }: { requester: PersonVM; potName: string; me: Persona; okBy?: PersonVM; header?: boolean }) {
+  return (
+    <section className="flex flex-col gap-2" data-one-ok={okBy ? "given" : "waiting"}>
+      {header ? <h3 className="text-label text-ink">{t("approve.one_ok.header")}</h3> : null}
+      <p className="flex items-center gap-3 text-body-sm text-ink">
+        <span className="grid size-6 shrink-0 place-items-center rounded-pill bg-approved text-surface">
+          <Check aria-hidden className="size-4" strokeWidth={3} />
+        </span>
+        <Avatar person={requester} size="xs" />
+        {t("approve.timeline.asked", { name: requester.name })}
+      </p>
+      {okBy ? (
+        <p className="flex items-center gap-3 text-body-sm text-ink">
+          <span className="pot-pop grid size-6 shrink-0 place-items-center rounded-pill bg-approved text-surface">
+            <Check aria-hidden className="size-4" strokeWidth={3} />
+          </span>
+          <Avatar person={okBy} size="xs" />
+          {t("approve.timeline.ok", { name: okBy.id === me ? t("feed.you") : okBy.name })}
+        </p>
+      ) : (
+        <p className="flex items-center gap-3 text-body-sm text-ink-muted">
+          <span className="grid size-6 shrink-0 place-items-center">
+            <Hand aria-hidden className="size-5 text-waiting" strokeWidth={2.25} />
+          </span>
+          {t("approve.one_ok.who", { potName, name: requester.name })}
+        </p>
+      )}
+    </section>
+  )
+}
+
+/**
+ * The Approve sheet (components/sheets/ApproveSheet.tsx), Leo's side. A one-OK request (today's rules for the $300
+ * tickets): "Needs one OK from anyone in the group. It's over Maya's instant limit.", "One OK needed" with who can
+ * give it, [OK $300] → "Sending your OK…" → "Done. Your OK sent $300 to Maya." and "You · gave the OK". Over the
+ * one-OK limit it would be the group's: "Needs approval…", the approvals timeline and [Approve $300].
+ */
 function Approve({ story, people: all, you, tapped, active, onPrimary, done }: SceneProps & { done: boolean }) {
   const req = story.request ?? { amount: "300000000", category: "tickets" as const, requester: "maya" as const }
   const amount = micro(req.amount)
   const requester = all[req.requester]
+  const oneOk = isOneOk(story)
   const k = 2
   const others = story.membersBefore.filter((p) => p !== req.requester)
   const approvals = done ? [requester, all[you]] : [requester]
   const pending = others.filter((p) => !(done && p === you)).map((p) => all[p])
   const balanceAfter = micro(story.potAfter)
+  const vars = { amount: whole(amount), name: requester.name }
   return (
     <PhoneSheet
-      title={t("approve.title", { name: requester.name, amount: whole(amount) })}
+      title={t("approve.title", vars)}
       header={
         <div className="flex items-center gap-3">
           <Avatar person={requester} size="md" />
           <div className="min-w-0">
-            <h3 className="font-display text-heading text-ink tabular-nums">{t("approve.title", { name: requester.name, amount: whole(amount) })}</h3>
+            <h3 className="font-display text-heading text-ink tabular-nums">{t("approve.title", vars)}</h3>
             <p className="text-body-sm text-ink-muted">{t("approve.meta", { potName: story.potName, time: t("home.chat.push.when") })}</p>
           </div>
         </div>
@@ -840,11 +904,11 @@ function Approve({ story, people: all, you, tapped, active, onPrimary, done }: S
           <div className="grid grid-cols-[2fr_1fr] gap-2">
             {tapped ? (
               <Primary active={false} onPrimary={() => {}} busy>
-                {t("approve.cta.approving")}
+                {oneOk ? t("approve.cta.oking") : t("approve.cta.approving")}
               </Primary>
             ) : (
               <Primary active={active} onPrimary={onPrimary}>
-                {t("approve.cta.approve", { amount: whole(amount) })}
+                {oneOk ? t("approve.cta.ok", { amount: whole(amount) }) : t("approve.cta.approve", { amount: whole(amount) })}
               </Primary>
             )}
             <Inert>
@@ -854,7 +918,7 @@ function Approve({ story, people: all, you, tapped, active, onPrimary, done }: S
         )
       }
     >
-      <div className="flex flex-col gap-4 pt-2" data-phone-approve={done ? "done" : "form"}>
+      <div className="flex flex-col gap-4 pt-2" data-phone-approve={done ? "done" : "form"} data-tier={oneOk ? "one_ok" : "group"}>
         <div className="flex flex-col items-center gap-1 text-center">
           <MoneyText micro={amount} variant="hero" className="text-ink" />
           <span className="text-body-sm text-ink-muted">{t("approve.reason", { reason: t(`spend.reason.word.${req.category}`) })}</span>
@@ -864,15 +928,21 @@ function Approve({ story, people: all, you, tapped, active, onPrimary, done }: S
             <span className="pot-pop grid size-6 shrink-0 place-items-center rounded-pill bg-approved text-surface">
               <Check aria-hidden className="size-4" strokeWidth={3} />
             </span>
-            <p className="text-label text-ink tabular-nums">{t("approve.final", { amount: whole(amount), name: requester.name })}</p>
+            <p className="text-label text-ink tabular-nums">{oneOk ? t("approve.ok.done", vars) : t("approve.final", vars)}</p>
           </div>
+        ) : oneOk ? (
+          <p className="rounded-md bg-surface-sunken p-3 text-body text-ink">{t("approve.why.one_ok", { name: requester.name })}</p>
         ) : (
           <div className="flex items-start gap-3 rounded-md bg-surface-sunken p-3">
             <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-waiting" strokeWidth={2.25} />
             <p className="text-body-sm text-ink">{t("approve.why.cap", { instantLimit: whole(DEFAULT_RULES.instantCap) })}</p>
           </div>
         )}
-        <ApprovalTimeline r={{ approvals, declines: [], pending, requester, k }} me={you} />
+        {oneOk ? (
+          <OneOkLine requester={requester} potName={story.potName} me={you} okBy={done ? all[you] : undefined} header />
+        ) : (
+          <ApprovalTimeline r={{ approvals, declines: [], pending, requester, k }} me={you} />
+        )}
         {done ? (
           <InThePot balance={balanceAfter} />
         ) : (

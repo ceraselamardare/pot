@@ -1,5 +1,6 @@
 // Trust (plan/design-direction/03-landing.md §5): "is it safe?" answered by the product's trust sentence (the H2
-// and its body), the two lanes of money out as the app's own status chips, and three short facts.
+// and its body), the two lanes of money out as the app's own status chips (the $84 approved by Pot rules; the $300
+// boat trip waiting for one OK, a new Pot's default up to $300), and three short facts.
 // Phones: the head, the chips, then one card with three rows. lg: the head on the left (7 of 12) with the chips
 // on the right, then three fact cards in a row (Wise's pattern).
 // No padlocks, shields or "bank-grade" claims: the proof is behavioural. No check icons on the facts either,
@@ -13,11 +14,8 @@ import { Avatar } from "@/components/pot/Avatar"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { t } from "@/i18n/t"
 import { dollars } from "@/lib/client/money"
-import { approvalsNeeded } from "@/lib/client/rules"
 import { CHAT_CAST } from "./ChatThread"
 import { Section, SectionHead } from "./Section"
-
-const K = approvalsNeeded(3) // 2 of 3; Maya's own approval is the first
 
 const FACTS = [
   { id: "google", Icon: LogIn, title: t("home.trust.google.title"), body: t("home.trust.google.body") },
@@ -28,7 +26,7 @@ const FACTS = [
 /** The two lanes of money out, with the story's two spends (Maya's $84 groceries, her $300 boat trip). */
 const PROOF = [
   { id: "instant", reason: t("spend.reason.chip.groceries"), amount: dollars(84), status: "approved", word: t("spend.approved") },
-  { id: "group", reason: t("home.trust.proof.boat"), amount: dollars(300), status: "needs", word: t("approve.progress", { count: 1, k: K }) },
+  { id: "one_ok", reason: t("home.trust.proof.boat"), amount: dollars(300), status: "needs", word: t("feed.pending.one_ok") },
 ] as const
 
 export function Trust() {

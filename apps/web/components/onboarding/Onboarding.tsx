@@ -19,7 +19,7 @@
 // Skip on every screen, progress dots (buttons) on the intro, swipe left/right on touch, one marigold per screen.
 // The flag (localStorage pot.onboarding.v1) is set when it ends by any route: finished, Skip, ✕/Esc or Back.
 // "See the intro again" (You → Help) opens the same sheet; a replay never touches the flag.
-import { Check, Lock, UserRound, Users, X, Zap } from "lucide-react"
+import { Check, Hand, Lock, UserRound, Users, X, Zap } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
 import { toast } from "sonner"
@@ -47,6 +47,7 @@ import {
   type OnboardingRecord,
 } from "@/lib/client/onboarding"
 import { approvalsNeeded, DEFAULT_RULES } from "@/lib/client/rules"
+import { ONE_OK_MULT } from "@/lib/client/wave4-form"
 import { closeSheet, openSheet, replaceSheet, replaceSheetParams, useSheetParams } from "@/lib/client/sheet"
 import { loadMySurvey, sendSurvey } from "@/lib/client/survey"
 import {
@@ -283,6 +284,18 @@ const [MAYA, SAM, LEO] = CAST as [(typeof CAST)[number], (typeof CAST)[number], 
 
 // 1 ------------------------------------------------------------------------------------------------------
 
+/** The rules screen 1 shows: a new Pot's (what Create starts with: $100 without asking, one OK from anyone else up
+ *  to 3 × that, the group's majority above it) or the joiner's own Pot's. `oneOkCap` 0 = no one-OK step. */
+interface RulesView {
+  instantCap: Micro
+  oneOkCap: Micro
+  k: number
+  n: number
+}
+const NEW_POT: RulesView = { instantCap: DEFAULT_RULES.instantCap, oneOkCap: DEFAULT_RULES.instantCap * ONE_OK_MULT, k: approvalsNeeded(3), n: 3 }
+/** The example's bigger spend: Sam's $300 boat trip. */
+const BOAT = dollars(300)
+
 function RulesStep({ joined }: { joined: EntryContext | null }) {
   const id = useId()
   return (
@@ -292,7 +305,25 @@ function RulesStep({ joined }: { joined: EntryContext | null }) {
       title={joined ? t("onboarding.rules.title_joined", { potName: joined.potName }) : t("onboarding.rules.title")}
       body={joined ? t("onboarding.rules.body_joined") : t("onboarding.rules.body")}
     >
-      {joined ? <JoinedRules slug={joined.slug} /> : <RulesLines instantCap={DEFAULT_RULES.instantCap} k={approvalsNeeded(3)} n={3} />}
+      {joined ? <JoinedRules slug={joined.slug} /> : <RulesShown view={NEW_POT} />}
+    </StepFrame>
+  )
+}
+
+/** The joiner's own Pot rules (a new Pot's until it loads). */
+function JoinedRules({ slug }: { slug: string }) {
+  const pot = usePot(slug)
+  const p = pot.state === "ready" ? pot.data : null
+  return <RulesShown view={p ? { instantCap: p.rules.instantCap, oneOkCap: p.extras?.oneOkCap ?? 0n, k: p.k, n: p.n } : NEW_POT} />
+}
+
+/** The rules as sentences, then the example rows by the same rules: the $84 goes through on its own, and the $300
+ *  boat trip waits for one OK ("Needs one OK", the request card's chip), or for the group where one OK doesn't reach. */
+function RulesShown({ view }: { view: RulesView }) {
+  const oneOk = view.oneOkCap >= BOAT
+  return (
+    <>
+      <RulesLines view={view} />
       <Example>
         <ul className="flex flex-col gap-2">
           <CompactRow
@@ -306,31 +337,26 @@ function RulesStep({ joined }: { joined: EntryContext | null }) {
             ground="surface"
             lead={<LeadAvatar person={SAM} />}
             title={<RowTitle who={SAM.name} what={t("onboarding.rules.example.group")} />}
-            amount={<MoneyText micro={dollars(300)} sign="out" className="text-ink" />}
+            amount={<MoneyText micro={BOAT} sign="out" className="text-ink" />}
             meta={
               <StatusChip status="needs" size="sm">
-                {t("approve.progress", { count: 1, k: 2 })}
+                {oneOk ? t("feed.pending.one_ok") : t("approve.progress", { count: 1, k: view.k })}
               </StatusChip>
             }
           />
         </ul>
       </Example>
-    </StepFrame>
+    </>
   )
 }
 
-/** The joiner's own Pot rules (the defaults until it loads). */
-function JoinedRules({ slug }: { slug: string }) {
-  const pot = usePot(slug)
-  const p = pot.state === "ready" ? pot.data : null
-  return <RulesLines instantCap={p?.rules.instantCap ?? DEFAULT_RULES.instantCap} k={p?.k ?? approvalsNeeded(3)} n={p?.n ?? 3} />
-}
-
-/** The rules as the app says them (the Rules tab's sentences). Real text, read by screen readers. */
-function RulesLines({ instantCap, k, n }: { instantCap: Micro; k: number; n: number }) {
+/** The rules as the app says them (the Rules tab's sentences, in its order): what goes through on its own, then what
+ *  needs one OK (or, with no one-OK step, what needs the group). Real text, read by screen readers. */
+function RulesLines({ view }: { view: RulesView }) {
+  const { instantCap, oneOkCap, k, n } = view
   const rows: [typeof Zap, string][] = [
     [Zap, t("rules.instant", { instantLimit: formatUsd(instantCap, "whole") })],
-    [n > 1 ? Users : UserRound, t("rules.threshold", { k, n })],
+    oneOkCap > 0n ? [Hand, t("rules.one_ok", { oneOk: formatUsd(oneOkCap, "whole") })] : [n > 1 ? Users : UserRound, t("rules.threshold", { k, n })],
   ]
   return (
     <ul className="flex flex-col rounded-lg bg-surface-sunken px-3 py-1" data-onboarding-rules>

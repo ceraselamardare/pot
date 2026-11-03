@@ -81,10 +81,13 @@ describe("the intro", { timeout: 20_000 }, () => {
   it("screen 1 says the rules as sentences (read aloud); the example rows are decorative", () => {
     const d = sheet()
     const rules = d.querySelector("[data-onboarding-rules]")!
-    expect([...rules.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["Anyone can spend up to $100 without asking.", "Bigger spends need 2 of 3 approvals."])
+    // a new Pot's rules (what Create starts with): the $300 boat trip needs one OK, not 2 of 3
+    expect([...rules.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["Anyone can spend up to $100 without asking.", "Spends up to $300 need just one OK from anyone else."])
     const example = d.querySelector("[data-onboarding-example]")!
     expect(example.getAttribute("aria-hidden")).toBe("true")
     expect(example.hasAttribute("inert")).toBe(true)
+    expect([...example.querySelectorAll("[data-status]")].map((c) => c.textContent)).toEqual(["Instant", "Needs one OK"])
+    expect(example.textContent).not.toMatch(/approvals/)
     // the example is built from the app's parts: status chips are icon + word, amounts tabular
     for (const c of example.querySelectorAll("[data-status]")) expect(c.querySelector("svg") && c.textContent!.trim()).toBeTruthy()
     for (const m of example.querySelectorAll("[data-money]")) expect(m.className).toContain("tabular-nums")
@@ -117,11 +120,28 @@ describe("the intro", { timeout: 20_000 }, () => {
 
   it("a joiner reads about their own Pot and its real rules", () => {
     sessionStorage.setItem(ENTRY_KEY, JSON.stringify({ how: "joined", slug: "porto-weekend", potName: "Porto Weekend" }))
+    // a Pot from before one OK: the group decides everything over the instant limit
     potState.current = { state: "ready", data: { rules: { instantCap: 50_000_000n }, k: 2, n: 2 } }
     const d = sheet()
     expect(heading(d)).toBe("Welcome to Porto Weekend")
     expect(d.querySelector("[data-onboarding-rules]")!.textContent).toContain("Anyone can spend up to $50 without asking.")
     expect(d.querySelector("[data-onboarding-rules]")!.textContent).toContain("Bigger spends need 2 of 2 approvals.")
+    expect(d.querySelector("[data-onboarding-example] [data-status='needs']")!.textContent).toBe("1 of 2 approvals")
+  })
+
+  it("a joiner's Pot with one OK says so, and the example follows its limit", () => {
+    sessionStorage.setItem(ENTRY_KEY, JSON.stringify({ how: "joined", slug: "ski-chalet", potName: "Ski Chalet" }))
+    const pot = (oneOkCap: bigint) => ({ state: "ready", data: { rules: { instantCap: 100_000_000n }, extras: { trust: true, oneOkCap, links: true }, k: 2, n: 3 } })
+    potState.current = pot(300_000_000n)
+    let d = sheet()
+    expect([...d.querySelectorAll("[data-onboarding-rules] li")].map((li) => li.textContent)).toEqual(["Anyone can spend up to $100 without asking.", "Spends up to $300 need just one OK from anyone else."])
+    expect(d.querySelector("[data-onboarding-example] [data-status='needs']")!.textContent).toBe("Needs one OK")
+    cleanup()
+    // one OK only up to $150: the $300 boat trip goes to the group
+    potState.current = pot(150_000_000n)
+    d = sheet()
+    expect(d.querySelector("[data-onboarding-rules]")!.textContent).toContain("Spends up to $150 need just one OK from anyone else.")
+    expect(d.querySelector("[data-onboarding-example] [data-status='needs']")!.textContent).toBe("1 of 2 approvals")
   })
 })
 

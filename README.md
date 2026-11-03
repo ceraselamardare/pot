@@ -27,13 +27,13 @@ over five parts. The phone is the real Pot app, with one short sentence per step
 part has an **Under the hood** button: what each tap signed, what our relayer sent, every receipt, and the Sputnik DAO
 proposal with its votes; every hash there starts with `sim-`, and each part links to a real equivalent on testnet. The
 numbers are the demo story: everyone puts in $150 ($450); $84 of groceries is approved by the Pot's rules; a $300 boat
-trip needs 2 of 3 approvals; at close, everyone gets back $22.00. Step with Next (or →), or with the phone's own button.
+trip needs one OK from Sam or Leo; at close, everyone gets back $22.00. Step with Next (or →), or with the phone's own button.
 Every step has a link (`/demo#step-7` is the $84 approval); `/demo/4` opens part 3 at the $84 spend, and `#near` opens
 that part's Under the hood (`/demo/4#near`).
 
 <!-- J-1 -->
 **J-1. Open `<APP_URL>/demo` and tap "Show me how".**
-Part 1, "Start a Pot": Maya picks Trip rules and taps "Create Pot", then gets one link to share. Under the hood: what
+Part 1, "Start a Pot": Maya keeps the suggested rules and taps "Create Pot", then gets one link to share. Under the hood: what
 her one tap signed (`create_pot` to `pots.potprev.testnet`, 300 Tgas, deposit 0), the relayer's transaction around it,
 and the receipts that create `lisbon-trip-7k2f.pots.potprev.testnet` as a Sputnik DAO with **no access keys** and two
 roles: Maya, and the Pot Hub's `rulebot` seat.
@@ -53,9 +53,11 @@ sent to you"; the Pot shows **$366.00**. Nobody voted: under the hood the Hub's 
 
 <!-- J-4 -->
 **J-4. Part 4, "Bigger spends": a $300 boat trip.**
-The phone says "This needs 2 of 3 approvals" and, after "Ask the group", "1 of 2 approvals" (Maya's own counts). Then
-you're Leo: his lock screen shows Maya's request, and "Approve $300" makes it 2 of 2 (threshold
-`min(3 × 1 ÷ 2 + 1, 3) = 2`); the DAO pays Maya, and the Pot shows **$66.00**.
+The phone says "This needs one OK from anyone else" (a new Pot's rules: one OK covers spends up to $300) and, after
+"Ask for one OK", "Needs one OK". Then you're Leo: his lock screen shows "Maya needs one OK", and "OK $300" pays Maya
+("Done. Your OK sent $300 to Maya."); the Pot shows **$66.00**. Part 4's Under the hood was recorded before one OK
+existed: it shows the path that spends over the one-OK limit still take, with Maya's and Leo's approvals as DAO votes
+(2 of 3, threshold `min(3 × 1 ÷ 2 + 1, 3) = 2`).
 
 <!-- J-5 -->
 **J-5. Part 5, "Close and share back".**

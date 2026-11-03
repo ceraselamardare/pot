@@ -130,10 +130,16 @@ function InviteHero({ p }: { p: InvitePreview }) {
       </div>
       <div className="flex flex-col gap-1 text-center text-body-sm text-ink-muted">
         <p>
-          {t("landing.rules_peek", {
-            instantLimit: formatUsd(BigInt(p.instantCap), "whole"),
-            thresholdWords: t("landing.rules_peek.majority"),
-          })}
+          {p.oneOkCap
+            ? t("landing.rules_peek.one_ok", {
+                instantLimit: formatUsd(BigInt(p.instantCap), "whole"),
+                oneOk: formatUsd(BigInt(p.oneOkCap), "whole"),
+                thresholdWords: t("landing.rules_peek.majority"),
+              })
+            : t("landing.rules_peek", {
+                instantLimit: formatUsd(BigInt(p.instantCap), "whole"),
+                thresholdWords: t("landing.rules_peek.majority"),
+              })}
         </p>
         {p.expiresAt && <p>{t("landing.expiry", { date: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(p.expiresAt) })}</p>}
       </div>

@@ -199,3 +199,54 @@ Fixes to `scratchpad/tour-qa.md` findings 2-7 (M1-M5, L1, L2), with the director
 
 ### Open
 - `server/features/features.test.ts` "visitor ids are MAC'd" is flaky (≈ 1 in 58: the random id already ends in "0", so the tamper is a no-op). Not touched; backend owner.
+
+## Site update (Nov 3)
+
+Written 2026-11-03 by builder-tour (the website-update team; plan/design-direction/07-site-update.md, the copy table T1-T14 in the director's `site-facts.md`). The tour now tells the rules a Pot gets today (Pot Hub 1.2: one OK from anyone else covers spends up to 3 × the instant limit, so Maya's $300 tickets are a one-OK spend). The D-61 numbers are unchanged ($450 → $84 → $366 → $300 → $66 → $22 each).
+
+**Captions** (`tour.*`, still never allowlisted):
+- s1: "…and keeps the suggested rules: up to $100 without asking, bigger spends go to the group."
+- s8: "…That's over the $100 limit, so she needs one OK from Sam or Leo."
+- s9: "One OK from anyone else is enough. Sam and Leo both get a notification, and either one can give it."
+- s10: "…He sees exactly what he'd give the OK for…"
+- s11: "…Leo gave the OK, so the $300 goes to Maya. $66 is left."
+- s13: "…Closing always needs most of the group."
+- end.l3: "…Bigger ones wait for the group's OK."
+- `tour.end.note` is kept ("You'll sign in with Google…", Cerasela's decision 1).
+- The five `tour.create.*` keys are deleted. The captions total 268 words.
+
+**The phone** (`Scenes.tsx`):
+- `STORY_EXTRAS` holds the Create defaults (trust on, `oneOkCap` = 3 × $100). `storyPreview()` is the app's own `previewSpend` with those rules, and `isOneOk()` decides each screen.
+  - Step 8: the `RulePreview` hand icon, "This needs one OK from anyone else · It's over your $100 instant limit.", and [Ask for one OK].
+  - Step 9: "Sent · One OK from anyone else in the group and it's paid.", the "Needs one OK" chip, and `OneOkLine` (the Approve sheet's markup).
+  - Step 10: the push `notif.one_ok.*`, then `approve.why.one_ok`, "One OK needed" + who, [OK $300] → "Sending your OK…".
+  - Step 11: "Done. Your OK sent $300 to Maya." and "You · gave the OK".
+  - The group path (vote copy, timeline, [Approve $300]) stays for a spend over the one-OK limit. Closing is unchanged.
+- **Create (step 1)** is the lean one-screen "Start a Pot" (`CreatePot`, the sheet's markup). Both dataset create beats render it, and `CreateName`/`CreateRules` are gone. It has three deliberate differences from the sheet:
+  - no "Tap the picture to change it." (the tour's picture doesn't change);
+  - a `w-20` amount field;
+  - a decorative switch with no 44 px hit box.
+
+  The phone's screen is 370-390 logical px wide, so without these "each" wrapped and pushed the rules line under the footer at 390 × 664. Now nothing is clipped on the main path. On a deep link (sim line + tap hint, a 199 px phone) only the sheet's 16 px bottom padding is cut.
+- `create.step1.title`, `create.step_of`, `create.cta.next` and `create.goal.each` lost their last use with the old naming and rules screens; site-QA deleted them from en.json (the video keeps its own copies in `marketing/video/src/ui/copy.ts`).
+
+**The hood (T14, copy only)**:
+- `demo.near.p4.summary` says that today Leo's OK goes to the Hub, and that the steps below were recorded before one OK existed, on the path spends over the one-OK limit still take.
+- `demo.c1.b2` now reads "She keeps the suggested rules…".
+- `demo.c5.aha` now reads "Above the one-OK limit…", so `/demo/all` doesn't contradict the phone beside it.
+- No dataset change: `pnpm check:demo` passes.
+
+**The end**: [Start a real Pot] is `<SignInLink next="/pots?sheet=create" source="tour">` (still the screen's one marigold, `data-tour-cta`, a real href without JS). Signed out, it opens the sign-in dialog at `?signin=1#end`, and closing it returns to `#end`. The no-JS story list keeps a plain link. `TourPlayer`'s ←/→ stand down while `signInOpen()` is true: a `[data-signin-panel]` inside a `[role=dialog]`, or one with a box. That also covers focus outside the dialog under NEAR Connect's picker. A panel kept hidden in another page doesn't count.
+
+**The first-run intro** (`components/onboarding/Onboarding.tsx`, screen 1):
+- `RulesView`/`RulesShown` show a new Pot's rules: "Anyone can spend up to $100 without asking." and "Spends up to $300 need just one OK from anyone else." The example's $300 boat trip shows the "Needs one OK" chip.
+- A joiner sees their own Pot's rules: the one-OK row if `extras.oneOkCap > 0`, else "Bigger spends need k of n approvals.". The chip follows the same rules.
+
+**Tests**:
+- `demo-tour.test.tsx`: steps 1 and 8-11 in the app's words, closing still the group, the `tour.create.*` keys gone, the end's link, and the key guard.
+- `onboarding.test.tsx`: the creator lines and chip, plus joiners with and without one OK.
+- `e2e/mock/demo-explainer.spec.ts`: `PHONE_SAYS`; J-4 walks the one-OK path; J-1 and J-5 use `startRealPot()` (dialog in place, ←/→ inert even with focus outside it, Escape back to the same URL).
+- `-nojs.spec.ts`: part 4's no-JS phone shows Leo's OK, and the note is in the HTML.
+- `onboarding.spec.ts`: line 46 only.
+
+**Open:** the lock-screen push (steps 10 and 13) shows faint light corners at the phone screen's rounded clip in screenshots. It also happens on step 13's untouched push, so it isn't from this change.

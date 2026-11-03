@@ -1,7 +1,8 @@
-// The landing hero (design-direction 03 §1): what Pot is (the H1, the brand tagline with "its own rules" on the
-// rules' brand-soft highlight), how it behaves (the subhead), the page's ONLY marigold button [Start a Pot], a
-// secondary [Try the demo], then the proof: Maya's Lisbon Trip group chat on a phone with the "Approved by Pot
-// rules" card breaking out of it.
+// The landing hero (design-direction 03 §1, 07 §1): what Pot is (the H1, the brand tagline with "its own rules" on
+// the rules' brand-soft highlight), how it behaves (the subhead), the page's ONLY marigold button [Start a Pot] (a
+// <SignInLink>: /pots?sheet=create without JS, the sign-in dialog with it), a secondary [See a demo] (the /demo tour,
+// for people who aren't convinced yet), then the proof: Maya's Lisbon Trip group chat on a phone with the "Approved
+// by Pot rules" card breaking out of it.
 //  - 390: centred copy, then a phone cropped by the hero's bottom edge (it sinks into `ground` through a short
 //    fade), the breakout card just under the chat header, overhanging the phone's right edge, two stickers.
 //    The chat is bottom-anchored and the phone is tall, so the card floats over empty wallpaper and Maya's invite
@@ -20,6 +21,7 @@
 // 4.8 s at most (TypingInView). Reduced motion and no JS: the final frame, still.
 import Link from "next/link"
 import { Check } from "lucide-react"
+import { SignInLink } from "@/components/features/auth/SignInLink"
 import { MoneyText } from "@/components/money/MoneyText"
 import { Avatar } from "@/components/pot/Avatar"
 import { GoalBar } from "@/components/pot/GoalBar"
@@ -50,7 +52,7 @@ export function Hero() {
   const parts = t("home.hero.reassure").split(/( · )/)
   const reassure = parts.flatMap((item, i) => (i % 2 ? [] : [{ item, sep: i > 0 ? parts[i - 1] : null }]))
   return (
-    <section aria-labelledby="hero-title" className="overflow-x-clip">
+    <section aria-labelledby="hero-title" className="overflow-x-clip" data-landing-hero>
       <div className="mx-auto w-full max-w-app px-4 pt-4 md:px-6 md:pt-12 lg:grid lg:min-h-[40rem] lg:grid-cols-12 lg:items-center lg:gap-8 lg:py-8">
         <div className="text-center lg:col-span-6 lg:text-left">
           <p className="text-label text-ink-muted">{t("home.hero.eyebrow")}</p>
@@ -79,9 +81,9 @@ export function Hero() {
           <div className="mt-6 flex flex-col gap-3 xs:flex-row sm:justify-center lg:justify-start">
             {/* real links styled as buttons (buttonVariants): a Base UI <Button render={<Link />}> either logs an error
                 or, with nativeButton={false}, turns the link into role="button" */}
-            <Link href="/pots?sheet=create" className={cn(buttonVariants({ variant: "primary" }), CTA, PRIMARY_HOVER)}>
+            <SignInLink source="hero" className={cn(buttonVariants({ variant: "primary" }), CTA, PRIMARY_HOVER)}>
               {t("home.cta.start")}
-            </Link>
+            </SignInLink>
             <Link href="/demo" className={cn(buttonVariants({ size: "lg" }), CTA)}>
               {t("home.cta.demo")}
             </Link>

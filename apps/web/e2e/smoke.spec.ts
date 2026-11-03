@@ -1,5 +1,7 @@
 // F-01 smoke (F-04, then the landing page of design-direction 03: "Start a Pot" is a link styled as the primary
-// button): the home page renders with the brand tokens in Day and Night, with no a11y violations at all.
+// button): the home page renders with the brand tokens in Day and Night, with no a11y violations at all. Since the
+// site update (07 §1): one main action everywhere, [Start a Pot] (header, hero, final card: real links to the app's
+// sign-in that open the sign-in dialog with JS), the demo the secondary choice, and "What else a Pot can do".
 // Brand rules covered here in miniature: M-20 (one marigold button, eggplant text, Day border), M-21 (theme
 // set before paint from the OS scheme), M-22 (tabular figures), W-08 (static security headers).
 import { AxeBuilder } from "@axe-core/playwright"
@@ -34,8 +36,10 @@ test("home renders the headline, the lockup and one marigold primary button in t
   const fills = await buttons.evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor))
   expect(fills.filter((c) => c === BRAND)).toHaveLength(1)
 
-  const primary = page.getByRole("link", { name: "Start a Pot" })
+  // three [Start a Pot]s on the page now (header, hero, final card): the marigold is the hero's
+  const primary = page.locator("[data-landing-hero]").getByRole("link", { name: "Start a Pot" })
   await expect(primary).toBeVisible()
+  await expect(primary).toHaveAttribute("href", "/pots?sheet=create")
   const style = await primary.evaluate((el) => {
     const s = getComputedStyle(el)
     return {
@@ -63,6 +67,46 @@ test("home renders the headline, the lockup and one marigold primary button in t
   })
   expect(numeric.variant).toContain("tabular-nums")
   expect(numeric.font).toMatch(/Gabarito/)
+})
+
+test("one main action everywhere, the demo second, and What else a Pot can do (07)", async ({ page }) => {
+  await page.goto("/")
+  // header: a quiet "Sign in" for people who come back, then [Start a Pot] as a secondary button; no demo up here
+  const banner = page.getByRole("banner")
+  const signIn = banner.getByRole("link", { name: "Sign in" })
+  await expect(signIn).toBeVisible()
+  await expect(signIn).toHaveAttribute("href", "/pots")
+  const headerStart = banner.getByRole("link", { name: "Start a Pot" })
+  await expect(headerStart).toBeVisible()
+  await expect(headerStart).toHaveAttribute("href", "/pots?sheet=create")
+  await expect(banner.getByRole("link", { name: /demo/i })).toHaveCount(0)
+  // hero: [Start a Pot] (the marigold, above) beside [See a demo]
+  await expect(page.locator("[data-landing-hero]").getByRole("link", { name: "See a demo" })).toHaveAttribute("href", "/demo")
+  // final card: [Start a Pot →] then [See a demo], both secondary ("Start your Pot" is retired: one action, one name)
+  const final = page.locator("[data-final-cta]")
+  const finalStart = final.getByRole("link", { name: "Start a Pot" })
+  await expect(finalStart).toHaveAttribute("href", "/pots?sheet=create")
+  await expect(final.getByRole("link", { name: "See a demo" })).toHaveAttribute("href", "/demo")
+  await expect(page.getByRole("link", { name: "Start your Pot" })).toHaveCount(0)
+  for (const secondary of [headerStart, finalStart]) expect(await secondary.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(BRAND)
+  // four things a Pot does, named the way the app names them, between "Try the rules" and "Is it safe?"
+  const more = page.getByRole("region", { name: "What else a Pot can do" })
+  await expect(more.getByRole("heading", { level: 3 })).toHaveText(["Trust grows", "All or nothing", "Ask anyone to pay in", "Send by link"])
+  await expect(more.getByRole("button")).toHaveCount(0)
+  await expect(more.getByRole("link")).toHaveCount(0)
+  const order = await page.evaluate(() => ["#rules", "#more", "section[aria-labelledby='trust-title']"].map((s) => document.querySelector(s)!.getBoundingClientRect().top))
+  expect(order).toEqual([...order].sort((a, b) => a - b))
+})
+
+test.describe("without JS", () => {
+  test.use({ javaScriptEnabled: false })
+  test("the start CTAs are plain links into the app, the demo a link to the tour", async ({ page }) => {
+    await page.goto("/")
+    await expect(page.locator("[data-landing-hero]").getByRole("link", { name: "Start a Pot" })).toHaveAttribute("href", "/pots?sheet=create")
+    await expect(page.locator("[data-final-cta]").getByRole("link", { name: "Start a Pot" })).toHaveAttribute("href", "/pots?sheet=create")
+    await expect(page.getByRole("banner").getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/pots")
+    await expect(page.locator("[data-landing-hero]").getByRole("link", { name: "See a demo" })).toHaveAttribute("href", "/demo")
+  })
 })
 
 test("axe: no serious or critical violations (WCAG 2.2 AA)", async ({ page }) => {

@@ -6,16 +6,16 @@
 ## What `/` is now
 A static (○), server-rendered, mobile-first product landing page for two readers: the organizer on a phone (Maya), and the hackathon judges, both human and AI, who read the server HTML.
 - It keeps the old jobs of `/`: `HomeRedirect` sends a signed-in visitor to `/pots`, and `NearAuthCallback` hosts the Auth0 redirect.
-- Order: header → hero → the problem → how it works (`#how`) → try the rules (`#rules`, a sunken band) → trust → under the hood (`#tech`, a Night-scoped band) → final call to action → footer.
+- Order: header → hero → the problem → how it works (`#how`) → try the rules (`#rules`, a sunken band) → what else a Pot can do (`#more`, since Nov 3) → trust → under the hood (`#tech`, a Night-scoped band) → final call to action → footer.
 
 | File | What it is |
 |---|---|
 | `apps/web/app/page.tsx` | Assembles the page. `generateMetadata` uses `home.meta.*` and extends the layout's openGraph, so the OG image is kept |
 | `components/landing/home/Section.tsx` | `Section` (band: ground / sunken / night) and `SectionHead` (eyebrow → H2 → intro). Every section uses them |
-| `SiteHeader`, `Hero`, `Problem`, `TypingInView` | Sticky header (lockup link, anchor nav from lg, secondary [Try the demo]); hero with the H1 highlight, the single marigold [Start a Pot], and the phone with the breakout cards and 2 stickers; the "Leo is typing…" problem card |
+| `SiteHeader`, `Hero`, `Problem`, `TypingInView` | Sticky header (lockup link, anchor nav from lg, a "Sign in" text link and a secondary [Start a Pot], since Nov 3); hero with the H1 highlight, the single marigold [Start a Pot] (it opens the sign-in dialog) beside [See a demo], and the phone with the breakout cards and 2 stickers; the "Leo is typing…" problem card |
 | `HowItWorks`, `Trust`, `UnderTheHood`, `FinalCta`, `SiteFooter` | Five steps built from real components with D-61 numbers (a 2-2-1 bento at lg); trust; the tech band (flow `<ol>` + 6 facts + demo link); the `surface` call-to-action card; footer |
 | `components/landing/home/motion/` (+ `top.css`, `play.css`) | Round 2's motion toolkit: `Sequences` (play once in view, final = server HTML), `RollingMoney`/`LiveMoney`, `ScrollFlag`/`ActiveNav`/`SmoothAnchors`, press/nudge utilities. CSS + WAAPI only, no `motion` import (+4.8 KB gzip JS in total). API: the session scratchpad's `motion-kit.md`. `Reveal.tsx` was replaced by it |
-| `RulesPlayground.tsx` + `RulesParts.tsx` + `play.css` (+ `components/__tests__/RulesPlayground.test.tsx`, 12 tests) | The interactive "Try the rules": instant path with the burst → $366.00; $300 → "1 of 2 approvals" → [Approve as Leo] → $150.00; the $200 per-person rule; a balance floor. It uses `previewSpend` from `lib/client/rules.ts`. Round 2 motion: see below |
+| `RulesPlayground.tsx` + `RulesParts.tsx` + `play.css` (+ `components/__tests__/RulesPlayground.test.tsx`, 16 tests) | The interactive "Try the rules", with a new Pot's rules (since Nov 3, see "Site update" below): instant path with the burst → $366.00; $300 → one OK → [OK $300 as Leo] → $150.00; $400 → the group's 2 of 3 → [Approve as Leo]; the $200 per-person rule; trust that grows; a balance floor. It uses `previewSpend` from `lib/client/rules.ts`. Round 2 motion: see below |
 | `PhoneFrame`, `ChatThread`, `InviteBubble`, `PushCard`, `FloatCard`, `Sticker` + `stickers.ts` | The mock-UI kit, ported from the video's Remotion UI. Each mock is one `role="img"` with an `inert`/`aria-hidden` inside |
 | `components/brand/MarkTile.tsx`, `LockupOnBrand.tsx` | Logo pieces used inside the mocks, moved here so the logo has one source. The geometry is unchanged |
 | `public/landing/stickers/<name>-{256,512}.webp` | The video's 8 die-cut stickers at 27–39 KB each (512 px), from 0.4–0.9 MB PNGs |
@@ -23,7 +23,7 @@ A static (○), server-rendered, mobile-first product landing page for two reade
 
 ## Decisions and deviations (Cerasela to review)
 1. **`home.tech.` is in the jargon-lint allowlist** (`i18n/banned.mjs`), like `demo.` and `advanced.`. It is the only place on `/` where NEAR, Sputnik DAO, NEP-366 and USDC appear. If `/` should be fully jargon-free, delete the `UnderTheHood` section and point judges to `/demo`. The tech facts were checked against README, CLAUDE.md and kb (e.g. "no access keys": kb/sputnik-dao.md). "Keyless hub" was left out on purpose, because the hub keeps its key until the planned lock.
-2. **One marigold on the whole page:** the hero's [Start a Pot]. The header, the final call to action ("Start your Pot", deliberately not "Start a Pot", which tests look up by name) and every mock use secondary styles. Marigold appears only as a surface (the invite top, the goal bar, the Hub node's edge).
+2. **One marigold on the whole page:** the hero's [Start a Pot]. The header's and the final card's [Start a Pot] (one name since Nov 3; tests scope them by region) and every mock use secondary styles. Marigold appears only as a surface (the invite top, the goal bar, the Hub node's edge).
 3. **Link-buttons are `<Link className={buttonVariants(…)}>`**, not `<Button nativeButton={false} render={<Link/>}>`. With Base UI the latter gives the link `role="button"`.
 4. **The H1 is the tagline** (`text-balance-hero`, with "its own rules" on `brand-soft`). There is no new display-size token, so on desktop the H1 stays at 44 px. Alternative H1s are in the copy deck: "Put the trip money in the group chat, with rules." / "The group chat decides everything. Now it holds the money too."
 5. **"Under the hood" is a Night band** (`data-theme="night"` on the section) in both page themes, like the video's x-ray act. Its "Inside the rules" lane uses Night `brand-soft`, which reads olive. That is the brand's own Night highlight; plain `surface` would be calmer.
@@ -129,6 +129,33 @@ Direction: 04 §4, §6 and the micro-interaction catalogue; detail audit (C). Fi
   - One earlier full run had 2 failures in `e2e/mock/p2.spec.ts` "a sole member changes the rules directly" (mobile-night, desktop). They passed 6/6 alone and in the next full run, so this is a load-sensitive flake in an app flow, not the landing.
   - Motion QA (192 axe runs across Chromium, WebKit and Firefox, 0 violations; CLS 0; p95 frame 16.7 ms at 4× CPU) is in the session scratchpad's `motion-qa.md`.
 - `e2e/smoke.spec.ts` was updated: the h1 is the tagline, the lockup is the banner's "Pot, home" link, and the money check is scoped to `[data-try-balance] [data-money]`.
+
+## Site update (Nov 3): one main action, the one-OK truth, "What else a Pot can do"
+Built by builder-site from the director's brief and facts (the session scratchpad's `site-brief.md`, `site-facts.md` rows L1-L9, P1-P9, H1-H4) and [plan/design-direction/07-site-update.md](../plan/design-direction/07-site-update.md). The sign-in dialog is builder-signin's (`components/features/auth/`, notes/frontend.md "Sign-in dialog"); the tour is builder-tour's (notes/demo.md).
+- **CTAs (07 §1):** one main action everywhere, [Start a Pot], always a `<SignInLink>`: a real `<a href="/pots?sheet=create">` in the server HTML (no JS, new tabs, crawlers), the sign-in dialog in place with JS and no session.
+  - Header: "Sign in" (`home.nav.signin`, `next="/pots"`, a 44 px `ink` text link, hidden below 360 px) + [Start a Pot] secondary `sm`. The header's demo button is gone.
+  - Hero: [Start a Pot], still the page's one marigold, + [See a demo] (`home.cta.demo`, was "Try the demo").
+  - Final card: [Start a Pot →] + [See a demo], both secondary. "Start your Pot" (`home.final.cta.start`) is retired, so tests scope by region.
+  - Test hooks: `[data-landing-hero]`, `[data-header-signin]`, `[data-header-start]`, `[data-final-cta]`; SignInLink adds `data-signin-source`.
+  - Measured: the header's "Sign in" 70 px + [Start a Pot] 107 px fit from 360 px (at 320 only [Start a Pot]); the hero's buttons are 158 px at 360 and 173 px at 390. The press scale still works: SignInLink marks the dialog with `data-opens-dialog`, not `aria-haspopup`.
+- **The one-OK truth:** a Pot made today gets one OK up to $300 (3 × the instant limit), so the $300 boat needs one OK, not 2 of 3.
+  - How it works, step 4: `preview.one_ok.over_cap`, the chip `feed.pending.one_ok`, the push `notif.one_ok.*` (`PushCard variant="one_ok"`; after the first " · " a push's parts never break inside), then `approve.decided.ok`. Step 1 lists `rules.one_ok` in the app's order (instant → one OK → the group → per person). `home.how.group.*` reworded.
+  - Trust's proof chip: "Needs one OK". `home.chat.push.label` (unused) reworded too.
+  - Under the hood: the hub approves one-OK spends after a member's OK and the refund of a missed all-or-nothing goal, never rule changes; the majority is for spends over the one-OK limit; a wallet that can't sign delegates pays its own gas; the flow's group lane says "One member's OK, or a majority".
+  - Footer: "Preview: for now, Pots run on demo dollars (test money), so no real money is at risk."
+- **Try the rules:** it decides with the real defaults (`DEFAULT_RULES` + the sdk's `defaultExtras`: trust on, one OK $300) and words every preview with the Spend sheet's own `previewCopy`. Presets $20 · $84 · $300 · $400:
+  - $20, $84: instant, with the burst (unchanged);
+  - $300, or anything over the $200 per person up to $300: "Sent · One OK from anyone else in the group and it's paid.", "Needs one OK", [OK $300 as Leo] → "Approved by Leo's OK · $300 was sent to Maya.", "One OK", "Leo · gave the OK". No burst;
+  - $400: the group's 2-of-3 flow with [Approve as Leo], as before. The balance floor means it shows only while the Pot holds $400 (from the start, or after $20s).
+  - Trust follows the hub's `trust_settle` (`settleTrust`, exported for tests): every paid spend of $10 or more counts, and every 3rd raises Maya's instant limit by $100, up to $300. The spend that raises it shows one line, "Trust grows: you can now spend up to $200 at a time without asking." (`home.try.trust`), reserved from the tap like every other state. The $200 per person still caps it: at $300 a time, a $300 is "over the $200 … ($120 used)" and needs one OK.
+  - The rule list gains the one-OK row (Hand). The highlight follows who approves (instant, one OK, the group), plus the per-person row when that rule is the reason.
+- **"What else a Pot can do"** (`Features.tsx`, `#more`, 07 §3), between Try the rules and Is it safe?: Trust grows · All or nothing · Ask anyone to pay in · Send by link. The titles are the app's own keys (`create.trust.label`, `create.target.aon.label`, `payin.title`, `settings.sending`); the lines are `home.features.*`. Lucide sprout / target / qr-code / send at stroke 2; hairline cells (1 column below 360, 2 × 2, one row of four from lg); no cards, buttons, links or motion.
+- **Verified** (dev server :3311, mock data; `scratchpad/shots/site/`): every playground road at 390 × 844 Day/Night, 1280 × 800, 320 and reduced motion: CLS 0, axe 0, one marigold, no overflow, no console errors; pages at 390 × 844 Day/Night, 390 × 664, 1280 × 800 Day/Night, 360 and 320: the same. Without JS, the hero's and the final card's [Start a Pot] are `<a href="/pots?sheet=create">` and "Sign in" is `<a href="/pots">`. Typecheck, lint (jargon lint 0) and vitest (1654 passed) are clean. E2E on a mock build (`NEXT_PUBLIC_DATA_SOURCE=mock`, `NEXT_DIST_DIR=.next-site`): `smoke.spec.ts` (+ the CTA system, the feature block and a no-JS test), `mock/screens.spec.ts` and `mock/a11y.spec.ts` (320 px: the header keeps [Start a Pot] and hides "Sign in"): 55 passed, 14 skipped (per-project), 0 failed; `/` stays static (○).
+- **Decisions for review:**
+  1. The pay-in cell says "Ask anyone to pay in" (the app's `payin.title`), not the brief's "Ask anyone to chip in": on the site members chip in, while people outside pay in and don't join.
+  2. The trust line is built from the app's words (`create.trust.label` + `trust.person.body.you`) rather than `trust.level_up` ("You're now Trusted in Lisbon Trip: you can spend up to $200 without asking."): "at a time" keeps it apart from the $200 in total.
+  3. After Leo's OK the playground's "who" row reads `approve.timeline.ok` ("Leo · gave the OK"), not `feed.approved.ok`, which would repeat the capsule's "Approved by Leo's OK".
+  4. App copy, outside the landing: for spends over the one-OK limit the app's why is still "It's over the $100 instant limit." (`previewCopy`, also on the playground's $400). It's true, but it isn't why the group decides.
 
 ## Open items
 | # | Item | Owner |

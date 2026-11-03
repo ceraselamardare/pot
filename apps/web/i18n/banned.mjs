@@ -81,8 +81,12 @@ export const ALLOW_PREFIXES = [
   "home.tech.",
 ]
 
-/** Exact keys that may use them. */
-export const ALLOW_KEYS = ["add.usdc_note", "landing.more.wallet", "advanced.wallet"]
+/**
+ * Exact keys that may use them. `signin.wallet.only` ("Continue with a NEAR wallet", 2026-11-03 site update): the
+ * sign-in dialog's one marigold on builds where a NEAR wallet is the only way in (NEAR Auth flagged off); the same
+ * exemption D-20 gave `landing.more.wallet` for the same option.
+ */
+export const ALLOW_KEYS = ["add.usdc_note", "landing.more.wallet", "advanced.wallet", "signin.wallet.only"]
 
 export const BANNED_CI_RE = new RegExp(`\\b(?:${BANNED_CI.join("|")})\\b`, "i")
 export const BANNED_CS_RE = new RegExp(`\\b(?:${BANNED_CS.join("|")})\\b`)

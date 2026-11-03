@@ -43,7 +43,9 @@ test("first sign-in: the intro, then 'Help us make Pot better' → sent; not sho
   await expect(page).toHaveURL(/\?sheet=intro$/)
 
   await expect(heading(page)).toHaveText("Group money with its own rules")
-  await expect(intro.locator("[data-onboarding-rules] li")).toHaveText(["Anyone can spend up to $100 without asking.", "Bigger spends need 2 of 3 approvals."])
+  // a new Pot's rules (what Create starts with): the $300 boat trip in the example needs one OK
+  await expect(intro.locator("[data-onboarding-rules] li")).toHaveText(["Anyone can spend up to $100 without asking.", "Spends up to $300 need just one OK from anyone else."])
+  await expect(intro.locator("[data-onboarding-example] [data-status='needs']")).toHaveText("Needs one OK")
   await expect(intro.getByRole("button", { name: "Screen 1 of 3" })).toHaveAttribute("aria-current", "step")
   await checks(page)
   await shot(page, "rules", info.project.name)

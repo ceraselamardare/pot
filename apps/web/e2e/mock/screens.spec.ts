@@ -20,7 +20,9 @@ async function shot(page: Page, name: string, project: string) {
 
 test("public screens: home, invite landing, demo", async ({ page }, info) => {
   await page.goto("/")
-  await expect(page.getByRole("link", { name: "Start a Pot" })).toBeVisible()
+  // [Start a Pot] is in the header, the hero and the final card (07 §1): the hero's is the one marigold
+  await expect(page.locator("[data-landing-hero]").getByRole("link", { name: "Start a Pot" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "What else a Pot can do" })).toBeAttached()
   await check(page, "one")
 
   await page.goto(PORTO_INVITE_URL)
@@ -117,9 +119,12 @@ test("Pots home and Create", async ({ page }, info) => {
   await check(page, "one")
 })
 
-test("signed out: the app shell offers the demo", async ({ page }) => {
+test("signed out: the app shell offers sign-in first, the demo second", async ({ page }) => {
   await page.goto("/pots")
   await expect(page.getByRole("heading", { level: 1, name: "Sign in to Pot" })).toBeVisible()
+  // the sign-in dialog's panel inline (e2e/mock/signin.spec.ts): the marigold is sign-in, not the demo
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toHaveAttribute("data-variant", "primary")
+  await expect(page.getByRole("link", { name: "See a demo" })).toBeVisible()
   await check(page, "one")
 })
 

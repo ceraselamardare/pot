@@ -1,3 +1,80 @@
+> **2026-11-03: Sign-in dialog: the site's [Start a Pot] signs you in in place** (website update; design-direction 07
+> §1.3, §2). No server change.
+> - **What:** every start CTA on the site (`<SignInLink>`: the landing's header, hero and final card, the tour's end) is
+>   still a real `<a href="/pots?sheet=create">` (no JS, new tabs, crawlers), but with JS and no session hint a plain
+>   click pushes `?signin=1` and the dialog opens in place. The header's "Sign in" is the same link with
+>   `next="/pots"`. After signing in: `/pots?sheet=create` → the first-run intro → Create (or `/pots`). The
+>   hydrated link says so with `data-opens-dialog`, not `aria-haspopup` (that would switch off the buttons' press
+>   scale, `active:not-aria-[haspopup]:scale-[.97]`, on the hero's [Start a Pot]).
+> - **Files:** `lib/client/signin.ts` (no data-layer imports, no "use client": `DEFAULT_NEXT`, `safeNext`,
+>   `hasSessionHint`, `openSignIn`/`closeSignIn`, `currentSignInRequest`, `signInMethods(inApp)`, the hand-off flag);
+>   `components/features/auth/{SignInLink,SignInHost,SignInDialog,SignInPanel}.tsx`; `SignInOptions.tsx` gained a
+>   `layout="direct"`; `WalletSignIn.tsx` exports `walletSignIn()`; `InAppBanner` takes `href`/`purpose`/`tone`.
+>   The host sits in `app/providers.tsx` inside its own `<Suspense>`, ignores `?signin=1` on app routes, and loads the
+>   dialog with `next/dynamic` (preloaded on a CTA's hover/focus/touch), so `/` and `/demo` ship none of it.
+> - **`next` never rides in the URL:** the opener's `{next, source}` lives in memory and
+>   `sessionStorage['pot.signin']` (a reload reopens the same dialog), always through `safeNext()` (refuses `//`,
+>   backslashes, schemes, whitespace and control characters). Back closes the dialog (we push one entry, `potSignIn`
+>   in `history.state`); a cold `/?signin=1` is stripped in place.
+> - **What each build shows** (`signInMethods`): NEAR Auth on → [Continue with Google] (the marigold, the app's
+>   `GoogleMark`) · [Continue with email] · "or" · "I have a NEAR wallet" (a ghost row, Lucide wallet); NEAR Auth off
+>   (today's hosted testnet) → the wallet alone as the marigold, "Continue with a NEAR wallet" (`signin.wallet.only`,
+>   the one new `ALLOW_KEYS` entry; the app screen keeps "I have a NEAR wallet", the name the suites press) +
+>   "Google sign-in isn't on in this test version yet."; an in-app browser → "Open Pot in Safari/Chrome to sign in"
+>   leads (its marigold opens `next` there), then "Or continue here" with email and the wallet; a browser without
+>   IndexedDB/WebCrypto → `signin.unsupported_browser` instead of Google/email; nothing at all → "Sign-in isn't open
+>   here yet" + [See a demo]. **Mock builds simulate** the full set: any option signs in as Alex
+>   (`mockJoinSession("alex")`, after a 700 ms "window" beat); mock-only `?signin_preview=wallet|none` shows the
+>   hosted and the nothing-available variants for review. Passkey is left out of the direct layout (07 §2.4 rule 4:
+>   today it opens the same NEAR Auth page as email); the invite/claim/gift pages keep the old "More ways" layout.
+> - **States:** a tap swaps the options for the app's stepper (`ProgressSteps`): ① "Finish with Google in the new
+>   window" / "Finish in the sign-in window" / "Confirm it's you in the window that opened", ② "Setting up your Pot
+>   account…" (or "Signing you in…"), ③ "Name your Pot and pick its rules" / "Open your Pots"; [Cancel] and "Can't see
+>   it? Open it again" while a window is up. NEAR Auth's window is caught as the client opens it (a scoped
+>   `window.open` wrapper), so Cancel closes it and "Open it again" focuses it without opening one ourselves; Cancel
+>   waits for the window to leave our blank page first (closing it earlier would push the flow to its full-page
+>   redirect). ① → ② when NEAR Auth's `web_message` arrives. Escape means Cancel while a window is up (a capture
+>   listener, so the dialog under it stays), and dismisses NEAR Connect's picker when that's on top (it clicks the
+>   picker's own backdrop: its "User rejected" is our silent cancel). Errors: an `x` in `declined` + words
+>   (`auth.popup_blocked`, `auth.service_down`, `signin.failed`, `signin.timeout`, `signin.wallet.*`); offline:
+>   `signin.offline` and `aria-disabled` options. Focus: the title on open, [Cancel] while waiting, the option used
+>   after a cancel or an error, the CTA after a close.
+> - **The hand-off** (auth-map §5 risk 1): on success (or when a session shows up while it's open) the dialog calls
+>   `beginHandoff()`, unmounts at once (no 280 ms exit under the intro) and `router.replace(next)`, which also drops
+>   the `?signin=1` entry. `HomeRedirect` stands down while a hand-off runs and checks one task late, so neither
+>   ordering of the race sends you to a bare `/pots` (live: the session query notifies a task after the sign-in's
+>   callback; mock: the store notifies first). `NearAuthCallback` holds the hand-off while it works (and passes
+>   `returnTo` through `safeNext`); `SignInHost` ends it when the route changes. Redirect-mode sign-ins carry
+>   `returnTo = next`. Closing the dialog never breaks a sign-in in flight: its callback is the always-mounted
+>   dialog's, so a window that finishes later still lands on `next`.
+> - **Signed-out app screen** (`SessionGate` → `SignedOutScreen`): the same `SignInPanel layout="page"` under the H1
+>   "Sign in to Pot" (start mode at `/pots?sheet=create`: "It's free. Next you name it…"; else the rewritten
+>   `signin.body`), [See a demo] secondary and "What is Pot?" a quiet link (`<Link className={buttonVariants()}>`, no
+>   more Base UI nativeButton errors). SessionGate's server HTML is a `<noscript>` "Pot needs JavaScript to sign
+>   in…" with [See a demo] and [What is Pot?]. `JoinCta` shows the invite's own line instead of `signin.body`;
+>   `landing.legal` lost its Terms clause (there is no Terms page).
+> - **Tests:** `lib/client/signin.test.ts` (39), `components/__tests__/signin.test.tsx` (34: the live variants with
+>   stubbed flags, the stepper, Cancel/Escape/"Open it again", errors, the hand-off, `HomeRedirect` in both race
+>   orderings, which fail on the old `HomeRedirect`), `e2e/mock/signin.spec.ts` (the walks in 3 projects, axe, one
+>   marigold, no-JS, 320 px, reduced motion). `data-signin-panel` on the panel's root (the tour's ←/→ guard).
+> - **NEAR Connect's picker over the dialog** (hosted testnet: the wallet is the only way in, so the picker must be
+>   fully usable): `Sheet` takes `modal` (default true; every other sheet unchanged), passed to Base UI's root with
+>   `disablePointerDismissal={!modal}`. `SignInDialog` watches body for a shown `.hot-connector-popup` (the picker,
+>   and a wallet's own panel after a pick, use that root; `useWalletPickerUp`, a MutationObserver while open) and is
+>   non-modal meanwhile: no focus trap, no `aria-hidden` on the page or the picker (Base UI marks only what exists
+>   at open, and never sets real `inert`), no scroll lock or internal backdrop, and pressing or focusing the picker
+>   never closes it. A close request then (Escape, Android back) dismisses the picker, the topmost layer. When the
+>   picker goes, the sheet is modal again and focus returns inside if it was left outside. Proven with a stand-in
+>   (a fixed z-index 1e8 root with a button, appended after opening; the real picker is never opened): jsdom (page
+>   un-hidden, focus stays on the stand-in, Escape removes it, the page hidden again) and e2e (a hit-tested click,
+>   Tab reaches it and Enter presses it, the dialog stays, then Tab ×10 never leaves the dialog). Both fail with the
+>   sheet pinned modal. Known: the picker's own wallet rows are `div`s (not focusable): a NEAR Connect limitation.
+> - **Open / for a human:** a real NEAR wallet through the stacked dialog (Meteor or Intear; 390 and 1280): the
+>   picker opens above ours and is usable by pointer and keyboard, Escape dismisses it and returns to the options,
+>   an outside click on it cancels silently, a confirmed wallet lands on Create. Real Google through the dialog on
+>   localhost:3000 (notes/near-auth-manual-test.md step 1), an Instagram in-app check, and iOS standalone (redirect
+>   mode).
+
 > **2026-11-03: "Pay in": money flows named by direction, one place to make each thing, and a Settings tab.** Approved
 > proposal. **No contract change** (every internal name stays: `gift_link`, `set_gifts`, `gift_received`, the `"gift"`
 > msg key, relay rules, `/g/<slug>/<id>`, `/give/<slug>`, `/c/…`). Server side + migration `0008_payin_tone.sql`:

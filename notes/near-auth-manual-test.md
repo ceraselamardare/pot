@@ -22,12 +22,29 @@
    another port: the tenant answers "Callback URL mismatch" (403) for anything else.
 3. Use a normal Chrome window with popups allowed for localhost:3000. Open DevTools → Network if you can.
 
-## 1. Google sign-in in the popup (F-14, F-27, B-07, B-20)
+## 1. Google sign-in in the popup (F-14, F-27, B-07, B-20), from the site's sign-in dialog
 
-- [ ] Go to `/pots`. You see "Sign in to Pot" with [Try the demo] and a **[Continue with Google]** button.
-- [ ] Tap it. A window opens **at once**, inside the tap. It's NEAR Auth's page (branded "Example"), then
-      Google's account picker.
-- [ ] Pick your account. The window closes by itself, and Pots opens signed in. Time from tap to Pots: ____ s.
+Since 2026-11-03 the site's [Start a Pot] opens a sign-in dialog in place (notes/frontend.md "Sign-in dialog").
+Use a browser profile that has never opened Pot on localhost:3000 (or clear its site data), so you also see the
+first-run intro.
+
+- [ ] Go to `http://localhost:3000/` and tap the hero's **[Start a Pot]**. A dialog "Sign in to start your Pot"
+      slides up (a centred dialog on a laptop) and the address bar shows `/?signin=1`. It offers, in this order:
+      **[Continue with Google]** (the marigold, with the G on a white disc), [Continue with email], "or",
+      "I have a NEAR wallet", then the line "Sign-in opens in a new window…" and "Not ready? See a quick demo".
+- [ ] Press Escape: it closes and you're back on `/`. Tap [Start a Pot] again.
+- [ ] Tap [Continue with Google]. A window opens **at once**, inside the tap. It's NEAR Auth's page (branded
+      "Example"), then Google's account picker. The dialog now shows the steps "Finish with Google in the new
+      window" (with "Can't see it? Open it again" and [Cancel]), "Setting up your Pot account…", "Name your Pot and
+      pick its rules".
+- [ ] Optional, once: tap "Can't see it? Open it again" while the window is behind this one: it comes to the front.
+      [Cancel] closes the window and brings the options back (nothing changed).
+- [ ] Pick your account. The window closes by itself, the first step turns into "Signed in", then the dialog closes
+      and the app's first-run intro ("Welcome to Pot") slides up at `/pots?sheet=intro&then=create`; Skip it and
+      "Start a Pot" (Create) opens. It must **not** stop at a bare `/pots` on the way. Time from tap to the intro:
+      ____ s.
+- [ ] Signed out on an app route (`/pots`) you see the same options inline under "Sign in to Pot": Google is the
+      marigold, [See a demo] is secondary, "What is Pot?" a quiet link. Steps 2-5 start there.
 - [ ] Network: the window's `/authorize` request has `code_challenge_method=S256`, `response_mode=web_message`,
       `connection=google-oauth2` and a 43-character `nonce`; then `POST /oauth/token` → 200 and `POST /api/session`
       → 200 with `isNew: true`.
@@ -46,13 +63,16 @@ question for the NEAR Auth team), and step 2 still works.
 - [ ] Sign out. In Chrome's site settings, block pop-ups for localhost:3000.
 - [ ] Tap [Continue with Google]. The whole page goes to NEAR Auth / Google, then back to `http://localhost:3000/`
       with a short "Finishing sign-in…" bar, then to `/pots`, signed in. The URL has no `?code=` left in it.
+- [ ] Sign out and do the same from the landing's dialog (`/` → [Start a Pot] → [Continue with Google]): after
+      "Finishing sign-in…" you land on `/pots?sheet=create` (the intro or Create), not on `/pots`.
 - [ ] Allow pop-ups again.
 
 ## 3. Errors
 
 - [ ] Tap [Continue with Google] and close the window without picking an account: nothing happens, no error.
-- [ ] "More ways to sign in" → "Continue with email": NEAR Auth's email page opens (sign-up or sign-in). Optional:
-      sign up with a throwaway email and password; you land in Pots with a new account.
+- [ ] [Continue with email] (shown directly on `/pots` and in the dialog; the invite page keeps it under "More ways
+      to join"): NEAR Auth's email page opens (sign-up or sign-in). Optional: sign up with a throwaway email and
+      password; you land in Pots with a new account.
 
 ## 4. Joining from an invite
 

@@ -3,9 +3,11 @@
 // budget, the main-path copy (`tour.*`) is never allowlisted and never says a banned word, every key the tour names
 // exists, each step's beats resolve in the dataset, every state of the stage is jargon-free with at most one
 // marigold, and the player's rules (bounds, the 1.2 s hold, the one burst, deep links, legacy #beat-k).
+// Site update (2026-11-03): the phone tells today's rules (step 1 is the one-screen Create; the $300 tickets need one
+// OK, steps 8-11), the end's [Start a real Pot] is the sign-in link, and ←/→ never move the tour under that dialog.
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { peopleVMs } from "@/components/demo/Chapter"
+import { peopleVMs, phoneBeats } from "@/components/demo/Chapter"
 import { getChapter, sceneAt } from "@/components/demo/data"
 import { Scene } from "@/components/demo/Scenes"
 import { Stage } from "@/components/demo/Stage"
@@ -98,6 +100,88 @@ describe("main-path copy (S4)", () => {
     ]
     expect(need.filter((k) => !(k in keys))).toEqual([])
   })
+
+  it("drops the presets' copy: Create has no Trip / Club / Team any more", () => {
+    expect(Object.keys(keys).filter((k) => k.startsWith("tour.create."))).toEqual([])
+  })
+})
+
+/** What the phone says on step `n`'s settled screen (or the push it opens on), spaces normalised. */
+function phoneText(n: number, which: "screen" | "push" | "busy" = "screen"): string {
+  const step = TOUR[n - 1]!
+  const [c, b] = which === "busy" ? [step.beats[0]![0], step.beats[0]![1] + 1] : step.beats.at(-1)!
+  const ch = getChapter(c)
+  const beat = phoneBeats(ch)[b - 1]!
+  const scene = which === "push" ? beat.before! : beat.scene
+  const { container, unmount } = render(
+    <Scene scene={scene} story={phoneStory(ch)} you={step.you} people={peopleVMs()} tapped={beat.tapped} active={step.tap && which === "screen"} onPrimary={() => {}} burst={0} />,
+  )
+  const text = (container.textContent ?? "").replaceAll(" ", " ")
+  unmount()
+  return text
+}
+const fill = (s: string, v: Record<string, string>) => s.replace(/\{(\w+)\}/g, (_m, k: string) => v[k]!)
+
+describe("today's rules on the phone (site update)", () => {
+  it("step 1 is the one-screen Create: the name, $150 each, the suggested rules with [Change], [Create Pot]", () => {
+    const s = phoneText(1)
+    for (const k of ["create.title", "create.preview.members", "create.preview_hint", "create.name.label", "create.goal.inline", "create.goal.each.after", "create.summary.change", "create.cta"])
+      expect(s, k).toContain(keys[k])
+    expect(s).toContain("Lisbon Trip")
+    expect(s).toContain("150")
+    expect(s).toContain(fill(keys["create.summary.instant"]!, { instantLimit: "$100" }))
+    // no presets, no second step
+    for (const gone of ["How should it work?", "Coming soon", "Step 2 of 2", "Club", "Team"]) expect(s).not.toContain(gone)
+    // right after the tap: the sheet's progress step
+    expect(phoneText(1, "busy")).toContain("Creating Lisbon Trip…")
+  })
+
+  it("step 8: the $300 tickets are over the $100 instant limit and within one OK: [Ask for one OK]", () => {
+    const s = phoneText(8)
+    expect(s).toContain("This needs one OK from anyone else")
+    expect(s).toContain("It's over your $100 instant limit.")
+    expect(s).toContain(keys["spend.cta.one_ok"])
+    expect(s).not.toContain("approvals")
+    expect(s).not.toContain(keys["spend.cta.vote"])
+  })
+
+  it("step 9: sent, 'Needs one OK', and anyone else can give it", () => {
+    const s = phoneText(9)
+    const [sent, paid] = keys["spend.one_ok_sent"]!.split(" · ")
+    expect(s).toContain(sent)
+    expect(s).toContain(paid)
+    expect(s).toContain(keys["feed.pending.one_ok"])
+    expect(s).toContain("Maya · asked, approval counted")
+    expect(s).toContain("Anyone in Lisbon Trip except Maya can give it.")
+    expect(s).toContain("$366.00")
+    expect(s).not.toMatch(/of 2 approvals|Sent to the group/)
+  })
+
+  it("step 10: Leo's push says one OK, then the Approve sheet's one-OK header, who, and [OK $300] → Sending your OK…", () => {
+    const push = phoneText(10, "push")
+    expect(push).toContain("Maya needs one OK")
+    expect(push).toContain("$300 for tickets · Lisbon Trip · Anyone can OK it")
+    const s = phoneText(10)
+    expect(s).toContain("Needs one OK from anyone in the group. It's over Maya's instant limit.")
+    expect(s).toContain(keys["approve.one_ok.header"])
+    expect(s).toContain("Anyone in Lisbon Trip except Maya can give it.")
+    expect(s).toContain("OK $300")
+    expect(s).toContain("$66.00")
+    expect(s).not.toMatch(/Approve \$300|of 2/)
+    expect(phoneText(10, "busy")).toContain(keys["approve.cta.oking"])
+  })
+
+  it("step 11: 'Done. Your OK sent $300 to Maya.', who gave the OK, $66 left", () => {
+    const s = phoneText(11)
+    expect(s).toContain("Done. Your OK sent $300 to Maya.")
+    expect(s).toContain("You · gave the OK")
+    expect(s).toContain("$66.00")
+    expect(s).not.toMatch(/Approved!|2 of 2/)
+  })
+
+  it("closing still goes to the group (step 13)", () => {
+    expect(phoneText(13)).toContain("Approvals · 1 of 2")
+  })
 })
 
 describe("step → beat mapping", () => {
@@ -171,6 +255,20 @@ describe("the stage", () => {
     expect(document.querySelector("[data-tour-live]")!.textContent).toBe(`Step 2 of 14. ${keys["tour.s2"]}`)
     expect(document.querySelector("[data-tour-stage]")!.getAttribute("data-state")).toBe("2")
   })
+
+  it("ends on [Start a real Pot]: the site's start link (sign in, then Create), the screen's one marigold", () => {
+    const { container } = render(
+      <TourPlayer initial={TOUR_END} chapter={null}>
+        <Stage phones={phones} people={people} />
+      </TourPlayer>,
+    )
+    const cta = container.querySelector("[data-tour-cta]")!
+    expect(cta.tagName).toBe("A")
+    expect(cta.getAttribute("href")).toBe("/pots?sheet=create")
+    expect(cta.textContent).toBe(keys["tour.end.cta"])
+    expect(cta.className.split(/\s+/)).toContain("bg-brand")
+    expect(container.querySelector("[data-tour-note]")!.textContent).toBe(keys["tour.end.note"])
+  })
 })
 
 function Probe() {
@@ -210,6 +308,30 @@ describe("the tour player", () => {
     act(() => void fireEvent.keyDown(window, { key: "ArrowLeft" }))
     next()
     expect(probe()).toMatchObject({ at: 7, frame: 0, holding: true, burst: false })
+  })
+
+  it("ignores ←/→ while the sign-in dialog is up, even with focus outside it (NEAR Connect's picker on top)", () => {
+    render(
+      <TourPlayer initial={TOUR_END} chapter={null}>
+        <Probe />
+      </TourPlayer>,
+    )
+    const key = (k: string) => act(() => void fireEvent.keyDown(window, { key: k }))
+    const dialog = document.createElement("div")
+    dialog.setAttribute("role", "dialog")
+    dialog.innerHTML = "<div data-signin-panel></div>"
+    document.body.append(dialog)
+    expect(document.activeElement).toBe(document.body)
+    key("ArrowLeft")
+    expect(probe().at).toBe(TOUR_END)
+    dialog.remove()
+    // a panel outside any dialog with no box (the app's signed-out screen in a page Next keeps hidden) doesn't count
+    const kept = document.createElement("div")
+    kept.innerHTML = "<div data-signin-panel></div>"
+    document.body.append(kept)
+    key("ArrowLeft")
+    expect(probe().at).toBe(14)
+    kept.remove()
   })
 
   it("opens a deep link at its step on the settled screen, without a burst", () => {

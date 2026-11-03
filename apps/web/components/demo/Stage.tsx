@@ -11,11 +11,14 @@
 // its box (a size container, demo.css), not from a guessed chrome height.
 // The cover (state 0) and the end (state 15) reuse the same slots: the cover's [Show me how] and the end's
 // [Start a real Pot] are the one marigold; on a tap step it is the phone's own primary, and Next stays secondary.
+// [Start a real Pot] is the site's main action (07 §1.2): a SignInLink, so signed out it opens the sign-in dialog in
+// place (then the intro and Create), signed in it goes straight to /pots?sheet=create; its href stays that for no-JS.
 // The server HTML is the cover, with [Show me how] and [Skip to the end] as links into the story list below.
 import { ArrowLeft, ArrowRight, Check, ChevronRight, FlaskConical, Layers, Pointer } from "lucide-react"
 import Link from "next/link"
 import type { Persona } from "@/app/demo/_data/types"
 import { Lockup } from "@/components/brand/Lockup"
+import { SignInLink } from "@/components/features/auth/SignInLink"
 import { Avatar } from "@/components/pot/Avatar"
 import { buttonVariants } from "@/components/ui/button"
 import { t } from "@/i18n/t"
@@ -236,10 +239,10 @@ export function Stage({ phones, people }: { phones: TourPhones; people: Record<P
             </>
           ) : mode === "end" ? (
             <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-              <Link href="/pots?sheet=create" className={cn(PRIMARY, "w-full md:w-auto")} data-tour-cta>
+              <SignInLink next="/pots?sheet=create" source="tour" className={cn(PRIMARY, "w-full md:w-auto")} data-tour-cta>
                 {t("tour.end.cta")}
                 <ArrowRight aria-hidden strokeWidth={2} />
-              </Link>
+              </SignInLink>
               <p className="text-body-sm text-pretty text-ink-muted md:order-last md:basis-full" data-tour-note>
                 {t("tour.end.note")}
               </p>

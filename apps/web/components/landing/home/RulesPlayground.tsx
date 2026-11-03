@@ -1,33 +1,48 @@
 "use client"
 // "Try the rules" (landing section 4): the visitor is Maya in the D-61 Lisbon Trip and feels the Pot's rules
-// decide a spend. Everything runs on local state: no network, no session, no data hooks. The rule maths is the
-// app's own (lib/client/rules.ts → @pot/sdk previewSpendDecision, the twin of the hub's decide()) and so is the
-// copy (preview.*, spend.*, approve.*, rules.*; ux-spec §4.9-4.10, §6.3-6.4; design-direction 02 §3-4).
+// decide a spend. Everything runs on local state: no network, no session, no data hooks. The rules are the ones a
+// Pot made today starts with (DEFAULT_RULES + the hub's defaultExtras: $100 at a time and $200 per person without
+// asking, trust on, one OK up to $300), the maths is the app's own (lib/client/rules.ts → @pot/sdk
+// previewSpendDecision, the twin of the hub's decide()), the preview's words are the Spend sheet's (RulePreview
+// previewCopy) and the rest of the copy is the app's too (spend.*, approve.*, feed.*, rules.*; ux-spec §4.9-4.10,
+// §6.3-6.4; design-direction 02 §3-4).
 //
 // One box, the STAGE, sits right above the action button: before the tap it is the neutral preview ("This will be
 // approved instantly"); on the tap it becomes the result in the same place (ux-spec: "the sheet morphs into the
-// result card"), so the answer is always where the visitor is looking:
-//  - inside the rules: "Checking Pot rules…" with the typing dots for the 1.2 s beat → "Approved by Pot rules" on
-//    brand-soft + the one 600 ms marigold burst from the button → "$84 sent to you" → "In the Pot" counts down;
-//  - over a limit: "Sent to the group" + why, 1 of 2 approvals (Maya's own counts), and the action button becomes
-//    [Approve as Leo] → "Approved! …", 2 of 2, check + word and no burst (brand README §8) → the count down.
+// result card"), so the answer is always where the visitor is looking. The presets ($20 · $84 · $300 · $400) reach
+// all three roads:
+//  - inside the rules ($20, $84): "Checking Pot rules…" with the typing dots for the 1.2 s beat → "Approved by Pot
+//    rules" on brand-soft + the one 600 ms marigold burst from the button → "$84 sent to you" → "In the Pot" counts down;
+//  - one OK (over Maya's instant limit up to $300, the $300; or over the $200 she can spend without asking): "Sent ·
+//    One OK from anyone else…", "Needs one OK", and the action button becomes [OK $300 as Leo] (the app's [OK $300])
+//    → "Approved by Leo's OK", check + word and no burst (brand README §8) → the count down;
+//  - the group (over $300, the $400): "Sent to the group" + why, 1 of 2 approvals (Maya's own counts), and the button
+//    becomes [Approve as Leo] → "Approved! …", 2 of 2, no burst → the count down.
+// Maya's trust is tracked as the hub tracks it (trust_settle; the mock's wave4.ts): every paid spend of a tenth of the
+// instant limit or more counts, every 3rd raises her instant limit by $100, up to $300 (nobody declines here, so it
+// never drops). The $200 she can spend without asking in total still caps it. The spend that raises it says so in one
+// line ("Trust grows: you can now spend up to $200 at a time without asking."), reserved from the tap like every
+// other state.
 // Motion (design-direction 04 §4): the stage's height changes only on the visitor's own taps and glides over 280 ms
 // (useGlide); every timer-driven state is reserved up front (Layers), so nothing below the card ever moves on its
 // own (CLS 0). Text swaps cross-fade, checks pop on the spring, the amount thumb slides, a chip's check slot opens.
 // The result carries its own "In the Pot" line, and THAT is the one number that rolls (500 ms): the top balance is
 // often off-screen (a phone; a 1280 x 800 laptop with the button centred), so the money always moves where the
-// visitor is looking; the top balance follows with a 200 ms fade, so the card never shows two rolls (04 §4). Quick double taps are safe: busy taps are ignored, and after Leo's approval the button
-// ignores taps for 400 ms. Reduced motion: no burst, nothing moves or scales, text and numbers swap instantly; the
-// 1.2 s beat stays (pacing, not motion). The server HTML is the complete first state (Groceries, $84, the preview,
-// the button); nothing reads `window` during render. One polite live region speaks each outcome sentence once.
-import { Check, Clock, RotateCcw, UserRound, Users, X, Zap } from "lucide-react"
+// visitor is looking; the top balance follows with a 200 ms fade, so the card never shows two rolls (04 §4). Quick
+// double taps are safe: busy taps are ignored, and after Leo's OK or approval the button ignores taps for 400 ms.
+// Reduced motion: no burst, nothing moves or scales, text and numbers swap instantly; the 1.2 s beat stays (pacing,
+// not motion). The server HTML is the complete first state (Groceries, $84, the preview, the button); nothing reads
+// `window` during render. One polite live region speaks each outcome sentence once.
+import { Check, Clock, Hand, RotateCcw, Sprout, UserRound, Users, X, Zap } from "lucide-react"
 import { useEffect, useId, useReducer, useRef, type ReactNode, type Ref } from "react"
+import { defaultExtras, WAVE4_LIMITS } from "@pot/sdk"
 import { TypingDots } from "@/components/feedback/TypingDots"
 import { Celebration } from "@/components/money/Celebration"
 import { MoneyText } from "@/components/money/MoneyText"
 import { Avatar, AvatarStack } from "@/components/pot/Avatar"
 import { CoverTile } from "@/components/pot/CoverTile"
 import { StatusChip } from "@/components/pot/StatusChip"
+import { previewCopy } from "@/components/sheets/RulePreview"
 import { Button } from "@/components/ui/button"
 import { t, tLines } from "@/i18n/t"
 import { prefersReducedMotion } from "@/lib/client/browser"
@@ -41,16 +56,21 @@ import { Section, SectionHead } from "./Section"
 import "./play.css"
 
 // ---------------------------------------------------------------------------------------------------------
-// The D-61 demo story: Maya, Sam and Leo put in $150 each; the Pot holds $450.00.
+// The D-61 demo story: Maya, Sam and Leo put in $150 each; the Pot holds $450.00. Its rules are a new Pot's.
 
 const MAYA = { id: "maya", name: "Maya", initials: "M", joinIndex: 0 }
 const SAM = { id: "sam", name: "Sam", initials: "S", joinIndex: 1 }
 const LEO = { id: "leo", name: "Leo", initials: "L", joinIndex: 2 }
 const PEOPLE = [MAYA, SAM, LEO]
+const N = PEOPLE.length
 const START_BALANCE = dollars(450)
 const MAYA_PUT_IN = dollars(150)
-const K = approvalsNeeded(PEOPLE.length) // 2 of 3
-const PRESETS = [20, 84, 150, 300] as const
+const RULES = DEFAULT_RULES
+/** what the hub gives a Pot made today (defaultExtras): earned trust on, one OK up to 3 × the instant limit ($300) */
+const { trust: TRUST_ON, oneOkCap: ONE_OK_CAP } = defaultExtras({ ...RULES, payeeAllowlist: [] })
+const EXTRAS = { trust: TRUST_ON, oneOkCap: ONE_OK_CAP }
+const K = approvalsNeeded(N) // 2 of 3
+const PRESETS = [20, 84, 300, 400] as const
 const REASONS = [
   { id: "groceries", label: "spend.reason.chip.groceries" },
   { id: "dinner", label: "home.try.reason.dinner" },
@@ -59,21 +79,44 @@ const REASONS = [
 
 /** duration-moderate: the stage's glide, and how long a closing result stays to fade under it */
 const GLIDE_MS = 280
-/** after [Approve as Leo] the same button is Spend again: taps on it are ignored this long, so the second tap of a
- *  double tap never closes the result or starts a new spend */
+/** after Leo's OK or approval the same button is Spend again: taps on it are ignored this long, so the second tap of
+ *  a double tap never closes the result or starts a new spend */
 const GUARD_MS = 400
 
 type ReasonId = (typeof REASONS)[number]["id"]
-type RuleId = "instant" | "group" | "person"
+type RuleId = "instant" | "oneok" | "group" | "person"
 
 /** Sentences and buttons keep whole dollars ("Spend $84"); displayed amounts use MoneyText ("$84.00"). */
 const whole = (m: Micro) => formatUsd(m, "whole")
-const INSTANT_LIMIT = whole(DEFAULT_RULES.instantCap)
-const MEMBER_LIMIT = whole(DEFAULT_RULES.memberBudget)
+const INSTANT_LIMIT = whole(RULES.instantCap)
+const MEMBER_LIMIT = whole(RULES.memberBudget)
+const ONE_OK_LIMIT = whole(ONE_OK_CAP)
 
 // ---------------------------------------------------------------------------------------------------------
-// State: the Pot (balance, Maya's spends without asking), the picker, the last spend's outcome, and the outcome the
-// stage is closing (while it fades under the glide back to the preview).
+// Earned trust, as the hub counts it (lib.rs trust_settle; lib/client/mock/wave4.ts trustSettle).
+
+interface Trust {
+  /** 0-2: the instant limit is the Pot's × (1 + level) */
+  level: number
+  /** qualifying paid spends toward the next level */
+  streak: number
+}
+
+const NEW_MEMBER: Trust = { level: 0, streak: 0 }
+
+/** A paid spend counts once when it is at least a tenth of the instant limit; every 3rd raises the level, up to 2. */
+export function settleTrust(tr: Trust, amount: Micro): Trust {
+  if (amount * WAVE4_LIMITS.trustMinSpendDiv < RULES.instantCap) return tr
+  const streak = Math.min(WAVE4_LIMITS.trustStep, tr.streak + 1)
+  return streak >= WAVE4_LIMITS.trustStep && tr.level < WAVE4_LIMITS.trustMaxLevel ? { level: tr.level + 1, streak: 0 } : { level: tr.level, streak }
+}
+
+/** The instant limit at a trust level (the hub's effective_cap). */
+const limitAt = (level: number) => RULES.instantCap * BigInt(1 + (TRUST_ON ? level : 0))
+
+// ---------------------------------------------------------------------------------------------------------
+// State: the Pot (balance, Maya's spends without asking, her trust), the picker, the last spend's outcome, and the
+// outcome the stage is closing (while it fades under the glide back to the preview).
 
 interface Spend {
   amount: Micro
@@ -81,9 +124,14 @@ interface Spend {
   preview: SpendPreview
   /** Maya's spends without asking before this one (the over-the-$200 sentence quotes it) */
   usedBefore: Micro
+  /** her trust once this spend is paid (the hub counts it then) */
+  trustAfter: Trust
+  /** the level this spend raises her to when it's paid (its one line is reserved from the tap), else null */
+  levelUp: number | null
 }
 
-type OutcomeTag = "checking" | "approved" | "sent" | "asked" | "groupApproved"
+/** asked: waiting for Leo (his OK, or the group's second approval); leoApproved: he said yes and the money moved */
+type OutcomeTag = "checking" | "approved" | "sent" | "asked" | "leoApproved"
 type Outcome = { tag: OutcomeTag; spend: Spend }
 type Phase = { tag: "idle" } | Outcome
 
@@ -91,6 +139,7 @@ interface State {
   balance: Micro
   /** member_budget counts spends made without asking only (D-07) */
   used: Micro
+  trust: Trust
   reason: ReasonId
   amount: Micro
   phase: Phase
@@ -113,6 +162,7 @@ type Action =
 const INITIAL: State = {
   balance: START_BALANCE,
   used: 0n,
+  trust: NEW_MEMBER,
   reason: "groceries",
   amount: dollars(84),
   phase: { tag: "idle" },
@@ -120,23 +170,27 @@ const INITIAL: State = {
   closing: null,
 }
 
-/** While the rules check, approve or wait for the group, the picker is locked and Spend does nothing. */
+/** While the rules check, approve or wait for Leo, the picker is locked and Spend does nothing. */
 const isBusy = (p: Phase): p is { tag: "checking" | "approved" | "asked"; spend: Spend } =>
   p.tag === "checking" || p.tag === "approved" || p.tag === "asked"
 /** A finished result: the stage shows it until the visitor touches the picker again. */
-const isDone = (p: Phase): p is { tag: "sent" | "groupApproved"; spend: Spend } => p.tag === "sent" || p.tag === "groupApproved"
+const isDone = (p: Phase): p is { tag: "sent" | "leoApproved"; spend: Spend } => p.tag === "sent" || p.tag === "leoApproved"
 
-function previewFor(s: Pick<State, "amount" | "balance" | "used">): SpendPreview {
+function previewFor(s: Pick<State, "amount" | "balance" | "used" | "trust">): SpendPreview {
   return previewSpend({
     amount: s.amount,
     balance: s.balance,
-    rules: DEFAULT_RULES,
-    memberCount: PEOPLE.length,
+    rules: RULES,
+    memberCount: N,
     used: s.used,
     contributed: MAYA_PUT_IN,
     receiverIsMember: true,
+    extras: EXTRAS,
+    trustLevel: s.trust.level,
   })
 }
+
+const isOneOk = (p: SpendPreview) => p.path === "vote" && p.tier === "one_ok"
 
 /** Back to the preview: a finished result closes (fading under the glide) instead of vanishing. */
 const toPreview = (s: State, patch: Partial<State>): State =>
@@ -157,7 +211,9 @@ export function playgroundReducer(s: State, a: Action): State {
       const preview = previewFor(s)
       // over the balance is "blocked": the button says no, and tapping it after a result shows the preview's why
       if (preview.path !== "instant" && preview.path !== "vote") return toPreview(s, {})
-      const spend: Spend = { amount: s.amount, reason: s.reason, preview, usedBefore: s.used }
+      const trustAfter = settleTrust(s.trust, s.amount)
+      const levelUp = trustAfter.level > s.trust.level ? trustAfter.level : null
+      const spend: Spend = { amount: s.amount, reason: s.reason, preview, usedBefore: s.used, trustAfter, levelUp }
       return { ...s, phase: { tag: "checking", spend }, seq: s.seq + 1, closing: null }
     }
     case "checked":
@@ -165,15 +221,16 @@ export function playgroundReducer(s: State, a: Action): State {
       return { ...s, phase: { tag: s.phase.spend.preview.path === "instant" ? "approved" : "asked", spend: s.phase.spend } }
     case "shown": {
       if (s.phase.tag !== "approved") return s
-      const { amount } = s.phase.spend
+      const { amount, trustAfter } = s.phase.spend
       if (amount > s.balance) return s // never below $0.00
-      return { ...s, balance: s.balance - amount, used: s.used + amount, phase: { tag: "sent", spend: s.phase.spend } }
+      return { ...s, balance: s.balance - amount, used: s.used + amount, trust: trustAfter, phase: { tag: "sent", spend: s.phase.spend } }
     }
     case "approveAsLeo": {
+      // one OK or the group's second approval: paid, and it counts toward trust, but not toward the $200 (D-07)
       if (s.phase.tag !== "asked") return s
-      const { amount } = s.phase.spend
+      const { amount, trustAfter } = s.phase.spend
       if (amount > s.balance) return s
-      return { ...s, balance: s.balance - amount, phase: { tag: "groupApproved", spend: s.phase.spend } }
+      return { ...s, balance: s.balance - amount, trust: trustAfter, phase: { tag: "leoApproved", spend: s.phase.spend } }
     }
   }
 }
@@ -181,41 +238,46 @@ export function playgroundReducer(s: State, a: Action): State {
 // ---------------------------------------------------------------------------------------------------------
 // Copy
 
-/** The preview sentence (ux-spec §4.9 table): title + reason, from the same keys as the Spend sheet. */
-function previewLines(p: Pick<SpendPreview, "reason"> & Partial<SpendPreview>, balance: Micro, used: Micro): [string, string | null] {
-  switch (p.reason) {
-    case "ok":
-      return tLines("preview.instant", { instantLimit: INSTANT_LIMIT })
-    case "over_cap":
-      return tLines("preview.vote.over_cap", { k: K, n: PEOPLE.length, instantLimit: INSTANT_LIMIT })
-    case "over_budget":
-      return tLines("preview.vote.over_budget", { k: K, n: PEOPLE.length, memberBudget: MEMBER_LIMIT, used: whole(used) })
-    case "balance":
-      return tLines("preview.blocked.balance", { balance: formatUsd(balance) })
-    default:
-      // empty / recipient / new member can't happen here: Maya put money in and always reimburses herself
-      return [t("preview.empty", { instantLimit: INSTANT_LIMIT }), null]
-  }
+/** The preview sentence (title + why) in the Spend sheet's own words (RulePreview previewCopy), for this Pot. */
+const copyOf = (p: SpendPreview, balance: Micro, used: Micro) => previewCopy(p, { rules: RULES, balance }, used)
+
+/** Why a spend needs someone's OK, in the rules' words ("It's over your $100 instant limit."). */
+function whyAsked(spend: Spend): string {
+  return copyOf(spend.preview, 0n, spend.usedBefore)[1] ?? ""
 }
 
-/** Why a spend went to the group, in the rules' words ("It's over the $100 instant limit."). */
-function whyGroup(spend: Spend): string {
-  return previewLines(spend.preview, 0n, spend.usedBefore)[1] ?? ""
-}
+/** The one line when a paid spend raises Maya's trust. */
+const trustLine = (level: number) => t("home.try.trust", { amount: whole(limitAt(level)) })
+
+const sentences = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(" ")
 
 /** The one sentence the live region speaks for each outcome (and nothing in between). */
 function liveSentence(phase: Phase): string {
-  if (phase.tag === "sent") return `${t("spend.approved")}. ${t("spend.sent", { amount: whole(phase.spend.amount) })}.`
+  if (phase.tag === "idle" || phase.tag === "checking" || phase.tag === "approved") return ""
+  const { spend } = phase
+  const amount = whole(spend.amount)
+  const trust = spend.levelUp !== null ? trustLine(spend.levelUp) : null
+  if (phase.tag === "sent") return sentences(`${t("spend.approved")}.`, `${t("spend.sent", { amount })}.`, trust)
   if (phase.tag === "asked") {
-    const [sent] = tLines("spend.vote_sent", { k: K, n: PEOPLE.length })
-    return `${sent}. ${whyGroup(phase.spend)} ${t("approve.own.counted", { remaining: K - 1 })}`
+    if (isOneOk(spend.preview)) {
+      const [waiting, who] = tLines("approve.ok.own")
+      return sentences(`${tLines("spend.one_ok_sent")[0]}.`, whyAsked(spend), `${waiting}.`, who)
+    }
+    return sentences(`${tLines("spend.vote_sent", { k: K, n: N })[0]}.`, whyAsked(spend), t("approve.own.counted", { remaining: K - 1 }))
   }
-  if (phase.tag === "groupApproved") return t("approve.final", { amount: whole(phase.spend.amount), name: MAYA.name })
-  return ""
+  if (isOneOk(spend.preview)) {
+    const [approved, paid] = tLines("approve.decided.ok", { okName: LEO.name, amount, name: MAYA.name })
+    return sentences(`${approved}.`, paid, trust)
+  }
+  return sentences(t("approve.final", { amount, name: MAYA.name }), trust)
 }
 
-function ruleOf(p: SpendPreview): RuleId | null {
-  return p.reason === "ok" ? "instant" : p.reason === "over_cap" ? "group" : p.reason === "over_budget" ? "person" : null
+/** The rules that decide a spend: who approves it, and the per-person total when that's why it isn't instant. */
+function rulesOf(p: SpendPreview): RuleId[] {
+  if (p.path === "instant") return ["instant"]
+  if (p.path !== "vote") return []
+  const who: RuleId = p.tier === "one_ok" ? "oneok" : "group"
+  return p.reason === "over_budget" ? [who, "person"] : [who]
 }
 
 const reasonLabel = (id: ReasonId) => t((REASONS.find((r) => r.id === id) ?? REASONS[0]).label)
@@ -258,7 +320,7 @@ export function RulesPlayground({ id = "rules", className }: { id?: string; clas
   useEffect(() => {
     if (shownBalance.current === s.balance) return
     shownBalance.current = s.balance
-    if ((tag === "sent" || tag === "groupApproved") && !prefersReducedMotion()) once(balanceRef.current, [{ opacity: 0 }, { opacity: 1 }], 200)
+    if ((tag === "sent" || tag === "leoApproved") && !prefersReducedMotion()) once(balanceRef.current, [{ opacity: 0 }, { opacity: 1 }], 200)
   }, [s.balance, tag])
 
   const preview = previewFor(s)
@@ -267,21 +329,23 @@ export function RulesPlayground({ id = "rules", className }: { id?: string; clas
   const dirty = s.balance !== START_BALANCE || s.used !== 0n || tag !== "idle"
   /** the result the stage shows (or is closing); null = the preview */
   const result: Outcome | null = tag !== "idle" ? phase : s.closing
-  const highlight = tag !== "idle" ? ruleOf(phase.spend.preview) : ruleOf(preview)
+  const highlight = tag !== "idle" ? rulesOf(phase.spend.preview) : rulesOf(preview)
 
-  // the action button: [Spend $84], or [Approve as Leo] while the group decides
+  // the action button: [Spend $84], or Leo's while Maya waits ([OK $300 as Leo] for one OK, [Approve as Leo] for the group)
   const job = tag === "asked" ? "approve" : "spend"
+  const leoLabel =
+    phase.tag === "asked" && isOneOk(phase.spend.preview) ? t("home.try.ok.cta", { amount: whole(phase.spend.amount) }) : t("home.try.leo.cta")
   const guardUntil = useRef(0)
   const blocked = job === "spend" && !canSpend
 
   const onAction = () => {
-    if (Date.now() < guardUntil.current) return // the second tap of a double tap on [Approve as Leo]
+    if (Date.now() < guardUntil.current) return // the second tap of a double tap on Leo's button
     if (job === "spend") return dispatch({ type: "spend" })
     guardUntil.current = Date.now() + GUARD_MS
-    // Leo's approval: if the same amount can't be spent next, focus never stays on a "no" button: it moves to the
-    // result (no scroll: the visitor is already looking at it)
-    const amount = phase.tag === "asked" ? phase.spend.amount : 0n
-    const next = previewFor({ amount: s.amount, balance: s.balance - amount, used: s.used })
+    // Leo's OK or approval: if the same amount can't be spent next, focus never stays on a "no" button: it moves to
+    // the result (no scroll: the visitor is already looking at it)
+    const paid = phase.tag === "asked" ? phase.spend : null
+    const next = previewFor({ amount: s.amount, balance: s.balance - (paid?.amount ?? 0n), used: s.used, trust: paid?.trustAfter ?? s.trust })
     const focused = document.activeElement === actionRef.current
     dispatch({ type: "approveAsLeo" })
     if (focused && next.path === "blocked") capsuleRef.current?.focus({ preventScroll: true })
@@ -403,7 +467,7 @@ export function RulesPlayground({ id = "rules", className }: { id?: string; clas
               seq={s.seq}
             />
             {result && (
-              <ResultRows key={result.spend.preview.path} result={result} closing={tag === "idle"} balance={s.balance} leoId={leoId} />
+              <ResultRows key={roadOf(result.spend.preview)} result={result} closing={tag === "idle"} balance={s.balance} leoId={leoId} />
             )}
           </div>
 
@@ -428,10 +492,10 @@ export function RulesPlayground({ id = "rules", className }: { id?: string; clas
                 {job === "approve" ? (
                   <span key="approve" className="play-label inline-flex items-center gap-2">
                     <Check aria-hidden className="size-5" strokeWidth={2} />
-                    {t("home.try.leo.cta")}
+                    {leoLabel}
                   </span>
                 ) : (
-                  <span key="spend" className={cn(tag === "groupApproved" && "play-label")}>
+                  <span key="spend" className={cn(tag === "leoApproved" && "play-label")}>
                     {t("home.try.cta", { amount: whole(s.amount) })}
                   </span>
                 )}
@@ -450,18 +514,23 @@ export function RulesPlayground({ id = "rules", className }: { id?: string; clas
 
 const toWholeDollars = (m: Micro) => Number(m / 1_000_000n)
 
+/** instant · one OK · the group: a new road mounts its own result rows (the same road keeps them) */
+const roadOf = (p: SpendPreview) => (p.path === "instant" ? "instant" : isOneOk(p) ? "one_ok" : "group")
+
 /** A one-off Web Animation on ease-standard (where the API exists). */
 function once(el: Element | null | undefined, keyframes: Keyframe[], ms: number) {
   if (el && typeof el.animate === "function") el.animate(keyframes, { duration: ms, easing: "cubic-bezier(0.2, 0, 0, 1)" })
 }
 
-function RuleList({ highlight, used }: { highlight: RuleId | null; used: Micro }) {
+function RuleList({ highlight, used }: { highlight: RuleId[]; used: Micro }) {
   // "You've used $84 of it." appears when the money moves (a timer), so its line is always there, invisible until
   // then: the card below never moves (on phones the list sits above it)
   const usedLine = t("rules.budget.used", { used: whole(used > 0n ? used : dollars(84)) })
+  // the app's Rules tab order (components/pot/Tabs.tsx): instant → one OK → the group → per person
   const rows = [
     { id: "instant", Icon: Zap, text: t("rules.instant", { instantLimit: INSTANT_LIMIT }), sub: null },
-    { id: "group", Icon: Users, text: t("rules.threshold", { k: K, n: PEOPLE.length }), sub: null },
+    { id: "oneok", Icon: Hand, text: t("rules.one_ok", { oneOk: ONE_OK_LIMIT }), sub: null },
+    { id: "group", Icon: Users, text: t("rules.threshold", { k: K, n: N }), sub: null },
     {
       id: "person",
       Icon: UserRound,
@@ -474,30 +543,33 @@ function RuleList({ highlight, used }: { highlight: RuleId | null; used: Micro }
       <h3 className="text-label text-ink">{t("rules.label")}</h3>
       {/* the highlight keeps the page's gutter on phones; it hangs into the column's margin only beside the card */}
       <ul className="mt-1 flex flex-col gap-1 @3xl/try:-mx-3">
-        {rows.map(({ id, Icon, text, sub }) => (
-          <li
-            key={id}
-            data-rule={id}
-            data-active={highlight === id || undefined}
-            className={cn(
-              "flex items-start gap-3 rounded-md px-3 py-2 transition-colors duration-200 ease-standard motion-reduce:transition-none",
-              highlight === id && "bg-surface dark:ring-1 dark:ring-line",
-            )}
-          >
-            <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2} />
-            <div className="min-w-0">
-              <p className="text-body text-pretty text-ink tabular-nums">{text}</p>
-              {sub && (
-                <p
-                  aria-hidden={used > 0n ? undefined : true}
-                  className={cn("play-fade-line text-body-sm text-ink-muted tabular-nums", used > 0n ? "opacity-100" : "invisible opacity-0")}
-                >
-                  {sub}
-                </p>
+        {rows.map(({ id, Icon, text, sub }) => {
+          const active = highlight.includes(id)
+          return (
+            <li
+              key={id}
+              data-rule={id}
+              data-active={active || undefined}
+              className={cn(
+                "flex items-start gap-3 rounded-md px-3 py-2 transition-colors duration-200 ease-standard motion-reduce:transition-none",
+                active && "bg-surface dark:ring-1 dark:ring-line",
               )}
-            </div>
-          </li>
-        ))}
+            >
+              <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2} />
+              <div className="min-w-0">
+                <p className="text-body text-pretty text-ink tabular-nums">{text}</p>
+                {sub && (
+                  <p
+                    aria-hidden={used > 0n ? undefined : true}
+                    className={cn("play-fade-line text-body-sm text-ink-muted tabular-nums", used > 0n ? "opacity-100" : "invisible opacity-0")}
+                  >
+                    {sub}
+                  </p>
+                )}
+              </div>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -507,16 +579,45 @@ function RuleList({ highlight, used }: { highlight: RuleId | null; used: Micro }
 // The stage's capsule: the one box that is the preview and then the rules' answer. Every sentence it can show for
 // this spend is stacked in it (Layers), so it never changes height on a timer.
 
-type CapsuleLayer = "p:ok" | "p:over_cap" | "p:over_budget" | "p:balance" | "checking" | "rules" | "asked" | "group"
+/** Every preview this Pot can show (instant · one OK, over the limit or over the $200 · the group · over the balance). */
+const KINDS = ["instant", "one_ok:over_cap", "one_ok:over_budget", "group", "balance"] as const
+type PreviewKind = (typeof KINDS)[number]
+type CapsuleLayer = `p:${PreviewKind}` | "sizer" | "checking" | "rules" | "asked" | "decided"
+
+function kindOf(p: SpendPreview): PreviewKind {
+  if (p.path === "instant") return "instant"
+  if (p.path !== "vote") return "balance"
+  if (p.tier !== "one_ok") return "group"
+  return p.reason === "over_budget" ? "one_ok:over_budget" : "one_ok:over_cap"
+}
+
+/** One preview of each kind for Maya's current limit; the live preview stands in for its own kind, word for word. */
+function previewSamples(live: SpendPreview): Record<PreviewKind, SpendPreview> {
+  const base = { k: K, n: N, effectiveCap: live.effectiveCap }
+  return {
+    instant: { ...base, path: "instant", reason: "ok", tier: "instant" },
+    "one_ok:over_cap": { ...base, path: "vote", reason: "over_cap", tier: "one_ok" },
+    "one_ok:over_budget": { ...base, path: "vote", reason: "over_budget", tier: "one_ok" },
+    group: { ...base, path: "vote", reason: "over_cap", tier: "group" },
+    balance: { ...base, path: "blocked", reason: "balance" },
+    [kindOf(live)]: live,
+  }
+}
+
+/** The Spend sheet's decision icons (RulePreview): a check, the one-OK hand, the group's clock, the balance's x. */
+const PREVIEW_ICON: Record<PreviewKind, ReactNode> = {
+  instant: <Check aria-hidden className="size-5 text-approved" strokeWidth={2} />,
+  "one_ok:over_cap": <Hand aria-hidden className="size-5 text-waiting" strokeWidth={2} />,
+  "one_ok:over_budget": <Hand aria-hidden className="size-5 text-waiting" strokeWidth={2} />,
+  group: <Clock aria-hidden className="size-5 text-waiting" strokeWidth={2} />,
+  balance: <X aria-hidden className="size-5 text-declined" strokeWidth={2} />,
+}
 
 function capsuleLayerOf(result: Outcome | null, preview: SpendPreview): CapsuleLayer {
-  if (!result) {
-    const r = preview.reason
-    return r === "over_cap" || r === "over_budget" || r === "balance" ? `p:${r}` : "p:ok"
-  }
+  if (!result) return `p:${kindOf(preview)}`
   if (result.tag === "checking") return "checking"
   if (result.tag === "approved" || result.tag === "sent") return "rules"
-  return result.tag === "asked" ? "asked" : "group"
+  return result.tag === "asked" ? "asked" : "decided"
 }
 
 function Lines({ title, body, id }: { title: ReactNode; body?: ReactNode; id?: string }) {
@@ -552,41 +653,44 @@ function Capsule({
   /** the preview's layer describes Spend (aria-describedby) even while the result shows */
   const described = capsuleLayerOf(null, preview)
   const spend = (result ?? closing)?.spend
-  const lines = (reason: SpendPreview["reason"], u = used) => previewLines({ reason }, balance, u)
-  const pv = (reason: SpendPreview["reason"], key: CapsuleLayer): Layer => {
-    const [title, body] = lines(reason)
+  const samples = previewSamples(preview)
+  const pv = (kind: PreviewKind): Layer => {
+    const [title, body] = copyOf(samples[kind], balance, used)
+    const key = `p:${kind}` as const
     return { id: key, node: <Lines id={described === key ? previewId : undefined} title={title} body={body} /> }
   }
-  const text: Layer[] = [
-    pv("ok", "p:ok"),
-    pv("over_cap", "p:over_cap"),
-    pv("over_budget", "p:over_budget"),
-    pv("balance", "p:balance"),
-    // the longest preview, with a 3-digit total, so the box is as tall as it will ever need to be for it
-    { id: "sizer", node: <Lines title={lines("over_budget")[0]} body={lines("over_budget", dollars(188))[1]} /> },
-  ]
-  const icons: Layer[] = [
-    { id: "p:ok", node: <Check aria-hidden className="size-5 text-approved" strokeWidth={2} /> },
-    { id: "p:over_cap", node: <Clock aria-hidden className="size-5 text-waiting" strokeWidth={2} /> },
-    { id: "p:over_budget", node: <Clock aria-hidden className="size-5 text-waiting" strokeWidth={2} /> },
-    { id: "p:balance", node: <X aria-hidden className="size-5 text-declined" strokeWidth={2} /> },
-  ]
+  // the longest preview (one OK over the $200, with a 3-digit total), so the box is as tall as it will ever need to be
+  const [sizerTitle, sizerBody] = copyOf(samples["one_ok:over_budget"], balance, dollars(188))
+  const text: Layer[] = [...KINDS.map(pv), { id: "sizer", node: <Lines title={sizerTitle} body={sizerBody} /> }]
+  const icons: Layer[] = KINDS.map((kind) => ({ id: `p:${kind}`, node: PREVIEW_ICON[kind] }))
   if (spend) {
-    const instant = spend.preview.path === "instant"
     const amount = whole(spend.amount)
     text.push({ id: "checking", enter: true, node: <Lines title={t("spend.checking")} /> })
     icons.push({ id: "checking", enter: true, node: <TypingDots key={seq} size="sm" className="text-ink-muted" /> })
-    if (instant) {
+    if (spend.preview.path === "instant") {
       text.push({ id: "rules", node: <Lines title={t("spend.approved")} body={t("feed.instant.rule", { instantLimit: INSTANT_LIMIT })} /> })
       icons.push({ id: "rules", node: <Check aria-hidden className="play-pop size-5 text-approved" strokeWidth={2} /> })
     } else {
-      text.push(
-        { id: "asked", node: <Lines title={tLines("spend.vote_sent", { k: K, n: PEOPLE.length })[0]} body={whyGroup(spend)} /> },
-        { id: "group", node: <Lines title={t("approve.final", { amount, name: MAYA.name })} /> },
-      )
+      const oneOk = isOneOk(spend.preview)
+      // one OK: the Spend sheet's "Sent · One OK from anyone else…", then the request's "Approved by Leo's OK · …";
+      // the group: "Sent to the group" + why, then the approver's "Approved! … is on its way"
+      const [asked, askedBody]: [string, string | null] = oneOk
+        ? tLines("spend.one_ok_sent")
+        : [tLines("spend.vote_sent", { k: K, n: N })[0], whyAsked(spend)]
+      const [decided, decidedBody]: [string, string | null] = oneOk
+        ? tLines("approve.decided.ok", { okName: LEO.name, amount, name: MAYA.name })
+        : [t("approve.final", { amount, name: MAYA.name }), null]
+      text.push({ id: "asked", node: <Lines title={asked} body={askedBody} /> }, { id: "decided", node: <Lines title={decided} body={decidedBody} /> })
       icons.push(
-        { id: "asked", node: <Clock aria-hidden className="play-pop size-5 text-waiting" strokeWidth={2} /> },
-        { id: "group", node: <Check aria-hidden className="play-pop size-5 text-approved" strokeWidth={2} /> },
+        {
+          id: "asked",
+          node: oneOk ? (
+            <Hand aria-hidden className="play-pop size-5 text-waiting" strokeWidth={2} />
+          ) : (
+            <Clock aria-hidden className="play-pop size-5 text-waiting" strokeWidth={2} />
+          ),
+        },
+        { id: "decided", node: <Check aria-hidden className="play-pop size-5 text-approved" strokeWidth={2} /> },
       )
     }
   }
@@ -596,6 +700,7 @@ function Capsule({
       tabIndex={-1}
       data-capsule
       data-rule-preview={preview.path}
+      data-tier={preview.tier}
       className={cn(
         "play-capsule flex items-center gap-3 rounded-md p-3 outline-offset-2",
         on === "rules" ? "bg-brand-soft" : "bg-surface-sunken",
@@ -610,13 +715,15 @@ function Capsule({
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// The result's rows under the capsule: what the money is doing, who approved (group), and the Pot's balance (below
-// a 768 px container, where the top balance is often off-screen). Each row stacks this path's states.
+// The result's rows under the capsule: what the money is doing, who approved (one OK or the group), the trust line
+// when this spend raises Maya's limit, and the Pot's balance. Each row stacks this road's states.
 
 function ResultRows({ result, closing, balance, leoId }: { result: Outcome; closing: boolean; balance: Micro; leoId: string }) {
   const { tag, spend } = result
   const instant = spend.preview.path === "instant"
+  const oneOk = isOneOk(spend.preview)
   const amount = whole(spend.amount)
+  const paid = tag === "sent" || tag === "leoApproved"
   const status: Layer[] = [
     {
       id: "checking",
@@ -658,19 +765,20 @@ function ResultRows({ result, closing, balance, leoId }: { result: Outcome; clos
         node: (
           <Row>
             <p className="min-w-0 text-body-sm text-ink-muted">{reasonLabel(spend.reason)}</p>
+            {/* the app's request chips: "Needs one OK" (Feed, RequestCard), or the group's count */}
             <StatusChip status="needs" className="play-pop play-pop-chip tabular-nums">
-              {t("approve.progress", { count: 1, k: K })}
+              {oneOk ? t("feed.pending.one_ok") : t("approve.progress", { count: 1, k: K })}
             </StatusChip>
           </Row>
         ),
       },
       {
-        id: "groupApproved",
+        id: "leoApproved",
         node: (
           <Row>
             <p className="min-w-0 text-body-sm text-ink-muted">{reasonLabel(spend.reason)}</p>
             <StatusChip status="approved" className="play-pop play-pop-chip tabular-nums">
-              {t("approve.progress", { count: K, k: K })}
+              {oneOk ? t("row.status.one_ok") : t("approve.progress", { count: K, k: K })}
             </StatusChip>
           </Row>
         ),
@@ -682,13 +790,19 @@ function ResultRows({ result, closing, balance, leoId }: { result: Outcome; clos
       node: (
         <p id={leoId} className="flex items-start gap-2 text-body-sm text-pretty text-ink-muted">
           <Avatar person={LEO} size="xs" />
-          <span className="min-w-0">{t("home.try.leo.hint")}</span>
+          <span className="min-w-0">{oneOk ? t("home.try.ok.hint") : t("home.try.leo.hint")}</span>
         </p>
       ),
     },
     {
-      id: "groupApproved",
-      node: (
+      id: "leoApproved",
+      node: oneOk ? (
+        // the request's timeline line (ApproveSheet): "Leo · gave the OK"
+        <p className="flex items-start gap-2 text-body-sm text-pretty text-ink-muted">
+          <Avatar person={LEO} size="xs" />
+          <span className="min-w-0">{t("approve.timeline.ok", { name: LEO.name })}</span>
+        </p>
+      ) : (
         <p className="flex items-start gap-2 text-body-sm text-pretty text-ink-muted">
           <AvatarStack people={[MAYA, LEO]} size="xs" ring="surface" />
           <span className="min-w-0">{t("feed.approved.sub", { names: t("feed.and", { a: MAYA.name, b: LEO.name }) })}</span>
@@ -696,8 +810,6 @@ function ResultRows({ result, closing, balance, leoId }: { result: Outcome; clos
       ),
     },
   ]
-  // the status row's layer for this moment ("approved" and "sent" are their own rows on the instant path)
-  const statusOn = tag === "checking" ? "checking" : tag
   return (
     <div
       data-closing={closing || undefined}
@@ -706,12 +818,30 @@ function ResultRows({ result, closing, balance, leoId }: { result: Outcome; clos
       className="play-rows mt-3 flex flex-col gap-2 px-1"
       data-try-result={tag}
     >
-      <Layers on={statusOn} layers={status} />
-      {!instant && <Layers on={tag === "asked" || tag === "groupApproved" ? tag : null} layers={who} />}
+      {/* the status row for this moment ("approved" and "sent" are their own rows on the instant road) */}
+      <Layers on={tag} layers={status} />
+      {!instant && <Layers on={tag === "asked" || tag === "leoApproved" ? tag : null} layers={who} />}
+      {/* Trust grows: the spend that raises Maya's limit says so once it's paid (its space is kept from the tap) */}
+      {spend.levelUp !== null && (
+        <Layers
+          on={paid ? "trust" : null}
+          layers={[
+            {
+              id: "trust",
+              node: (
+                <p className="flex items-start gap-2 text-body-sm text-pretty text-ink tabular-nums" data-try-trust>
+                  <Sprout aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" strokeWidth={2} />
+                  <span className="min-w-0">{trustLine(spend.levelUp)}</span>
+                </p>
+              ),
+            },
+          ]}
+        />
+      )}
       {/* the money moving, where the visitor is looking: the one roll of a spend */}
       <p className="mt-1 flex items-baseline justify-between gap-3 border-t border-line pt-3" data-try-stage-balance>
         <span className="text-body-sm text-ink-muted">{t("pot.hero.label")}</span>
-        <LiveMoney micro={balance} roll={!closing && (tag === "sent" || tag === "groupApproved")} ghost="end" variant="title" className="text-ink" />
+        <LiveMoney micro={balance} roll={!closing && paid} ghost="end" variant="title" className="text-ink" />
       </p>
     </div>
   )

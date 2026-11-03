@@ -28,6 +28,9 @@ export interface InvitePreview {
   goal: string | null
   goalEach: string | null
   instantCap: string
+  /** hub 1.1.0: spends over the instant cap up to this need one OK from another member (MicroStr); null = off or a
+   *  Pot made before 1.1.0, where every bigger spend goes to the majority */
+  oneOkCap: string | null
   memberCount: number
   /** only with an active ?i=: one seat per member in join order; the inviter's carries their initials, every other
    *  seat is a plain circle in its join colour (no one else's name or picture) */
@@ -85,6 +88,7 @@ function mockPreview(slug: string, invitePk: string | null, now: number): Invite
     goal: pot.goal?.toString() ?? null,
     goalEach: pot.goalEach?.toString() ?? null,
     instantCap: pot.rules.instantCap.toString(),
+    oneOkCap: pot.extras && pot.extras.oneOkCap > 0n ? pot.extras.oneOkCap.toString() : null,
     memberCount: pot.members.length,
     seats: active
       ? pot.members
@@ -140,6 +144,7 @@ async function livePreview(slug: string, invitePk: string | null, now: number): 
     goal: goalEach === null ? null : (goalEach * BigInt(Math.max(3, pot.memberCount))).toString(),
     goalEach: goalEach?.toString() ?? null,
     instantCap: pot.rules.instantCap.toString(),
+    oneOkCap: pot.extras && pot.extras.oneOkCap > 0n ? pot.extras.oneOkCap.toString() : null,
     memberCount: pot.memberCount,
     seats: active
       ? members

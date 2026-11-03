@@ -1,7 +1,9 @@
 // The /demo tour (plan/design-direction/06 §1.3, §8.4; README J-1…J-5): a cover, 14 steps in 5 parts and an end
 // screen. The walk with Next and with the phone's own primary, at most one marigold in every state, the 1.2 s rules
 // check and exactly one burst on step 7, the persona chips, the pushes on 10 and 13, Back, Skip, the keyboard and
-// focus, the live region, the end's [Start a real Pot], deep links (old /demo/N and #beat-k too), the optional
+// focus, the live region, the end's [Start a real Pot] (the sign-in link: signed out it opens the sign-in dialog,
+// and ←/→ leave the tour alone under it), today's rules on the phone (one-screen Create; the $300 tickets need one
+// OK), deep links (old /demo/N and #beat-k too), the optional
 // "Under the hood" sheet (Night, the decoded cards, real testnet links, the glossary), the stage fitting one
 // viewport, axe, and no network at all (nothing is signed or sent). Runs in mobile-day, mobile-night and desktop on
 // the mock build. Selectors are the tour's data-* hooks; copy comes from en.json, step data from tour.ts.
@@ -141,14 +143,43 @@ async function checkState(page: Page, n: number, sims: { n: number }) {
   else await expect(page.locator("[data-tour-back]")).toBeEnabled()
 }
 
-/** The D-61 numbers on the phone (06 §8.4 J-1). */
+/** The D-61 numbers on the phone (06 §8.4 J-1), with today's rules: Create is one screen, and the $300 tickets need
+ *  one OK (site update, 2026-11-03). */
 const PHONE_SAYS: Record<number, string[]> = {
+  1: [en["create.title"]!, en["create.goal.inline"]!, fill(en["create.summary.instant"]!, { instantLimit: "$100" }), en["create.cta"]!],
   4: ["You're in!"],
   5: ["$450.00"],
   7: ["Approved by Pot rules", "$366.00"],
-  9: ["1 of 2 approvals"],
-  11: ["$66.00"],
+  8: [en["preview.one_ok.over_cap"]!.split(" · ")[0]!, en["spend.cta.one_ok"]!],
+  9: [en["feed.pending.one_ok"]!, "$366.00"],
+  10: [fill(en["approve.cta.ok"]!, { amount: "$300" })],
+  11: [fill(en["approve.ok.done"]!, { amount: "$300", name: "Maya" }), "$66.00"],
   14: ["$22.00"],
+}
+
+/**
+ * The end's [Start a real Pot] is the site's start action (a SignInLink, design-direction 07 §1.2): a real link to
+ * Create for no-JS and new tabs; signed out, a click opens the sign-in dialog in place. The tour stays on its end
+ * under it: ←/→ never move it, even with focus outside the dialog (NEAR Connect stacks its own picker on top), and
+ * Escape brings the end back as it was. (Signing in from it is e2e/mock/signin.spec.ts.)
+ */
+async function startRealPot(page: Page) {
+  const cta = page.locator("[data-tour-cta]")
+  await expect(cta).toHaveText(en["tour.end.cta"]!)
+  await expect(cta).toHaveAttribute("href", "/pots?sheet=create")
+  const url = page.url()
+  await cta.click()
+  const panel = page.locator("[role='dialog'] [data-signin-panel]")
+  await expect(panel).toBeVisible()
+  await brandChecks(page, { marigold: "at-most-one" })
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  for (const k of ["ArrowLeft", "ArrowRight"]) await page.keyboard.press(k)
+  await expect(stage(page)).toHaveAttribute("data-state", String(TOUR_END))
+  await page.keyboard.press("Escape")
+  await expect(panel).toHaveCount(0)
+  await expect(stage(page)).toHaveAttribute("data-state", String(TOUR_END))
+  // back where it was opened (/demo#end, or /demo/6#end)
+  await expect(page).toHaveURL(url)
 }
 
 /** The whole tour, cover to end, checking every state; the D-61 numbers on the phone as they come. */
@@ -185,16 +216,12 @@ test("J-1: /demo → Show me how → every step with Next → Start a real Pot",
   // "This is a simulation" is said once (S8)
   expect(sims).toBe(1)
   expect(await bursts(page)).toBe(1)
-  // the end: one marigold, [Start a real Pot] → the real create sheet, and a quiet way home
+  // the end: one marigold, [Start a real Pot] → sign in (then Create), and a quiet way home
   await expect(page.locator("[data-tour-title]")).toHaveText(en["tour.end.title"]!)
   await expect(page.locator("[data-tour-skip]")).toHaveCount(0)
   await expect(page.locator("[data-tour-home]")).toHaveAttribute("href", "/")
-  const cta = page.locator("[data-tour-cta]")
-  await expect(cta).toHaveText(en["tour.end.cta"]!)
-  await expect(cta).toHaveAttribute("href", "/pots?sheet=create")
   expect(page.url()).toMatch(/\/demo#end$/)
-  await cta.click()
-  await expect(page).toHaveURL(/\/pots\?sheet=create$/)
+  await startRealPot(page)
 })
 
 test("J-2: the phone's own buttons walk the tour too; steps 5 and 14 have none", async ({ page }) => {
@@ -296,22 +323,30 @@ test("taps: a visible hint on the first tap step until the phone is used; an ine
   await expect(stage(page)).toHaveAttribute("data-poke-to", "phone")
 })
 
-test("J-4: part 4, the $300 boat tickets go to the group; Leo's push on step 10 and Sam's on step 13", async ({ page }) => {
+test("J-4: part 4, the $300 boat tickets need one OK: Leo's push and his OK on steps 10-11; Sam's push on step 13", async ({ page }) => {
   expect(TOUR.filter((s) => s.push).map((s) => s.n)).toEqual([10, 13])
   await open(page, "/demo/5", TOUR_CHAPTER_START[5])
-  await expect(phone(page)).toContainText("This needs 2 of 3 approvals")
+  // today's rules: over the $100 instant limit, within one OK ($300)
+  for (const s of en["preview.one_ok.over_cap"]!.replace("{limit}", "$100").split(" · ")) await expect(phone(page)).toContainText(s)
+  await expect(primary(page)).toHaveText(en["spend.cta.one_ok"]!)
   await expect(page.locator("[data-phone-push]")).toHaveCount(0)
-  await forward(page, "phone") // [Ask the group]
-  await expect(phone(page)).toContainText("1 of 2 approvals")
+  await forward(page, "phone") // [Ask for one OK]
+  for (const s of [...en["spend.one_ok_sent"]!.split(" · "), en["feed.pending.one_ok"]!, fill(en["approve.one_ok.who"]!, { potName: "Lisbon Trip", name: "Maya" })])
+    await expect(phone(page)).toContainText(s)
+  await expect(phone(page)).not.toContainText("approvals")
   await expect(page.locator("[data-phone-push]")).toHaveCount(0)
-  await forward(page) // step 10: Leo's lock screen first, then the Approve sheet
+  await forward(page) // step 10: Leo's lock screen first ("Maya needs one OK"), then the Approve sheet
   await expect(page.locator("[data-tour-you]")).toHaveAttribute("data-tour-you", "leo")
-  await expect(page.locator("[data-tour-stage] [data-phone-push]")).toBeVisible()
+  const push = page.locator("[data-tour-stage] [data-phone-push]")
+  await expect(push).toBeVisible()
+  await expect(push).toContainText(fill(en["notif.one_ok.title"]!, { name: "Maya" }))
   await expect(primary(page)).toHaveCount(0)
   await expect(page.locator("[data-phone-push]")).toHaveCount(0)
-  await expect(primary(page)).toBeVisible()
-  await forward(page, "phone") // [Approve $300]
-  for (const s of ["Approved! $300 is on its way to Maya.", "$66.00"]) await expect(phone(page)).toContainText(s)
+  await expect(primary(page)).toHaveText(fill(en["approve.cta.ok"]!, { amount: "$300" }))
+  for (const s of [fill(en["approve.why.one_ok"]!, { name: "Maya" }), en["approve.one_ok.header"]!]) await expect(phone(page)).toContainText(s)
+  await forward(page, "phone") // [OK $300]
+  for (const s of [fill(en["approve.ok.done"]!, { amount: "$300", name: "Maya" }), fill(en["approve.timeline.ok"]!, { name: "You" }), "$66.00"])
+    await expect(phone(page)).toContainText(s)
   await expect(page.locator("[data-phone-push]")).toHaveCount(0)
   // Back into step 10 shows the sheet straight away: the push is for stepping forward only
   await page.locator("[data-tour-back]").click()
@@ -352,8 +387,7 @@ test("J-5: part 5, close the Pot and $22 back each, then the end screen and Star
   for (const k of ["tour.end.l1", "tour.end.l2", "tour.end.l3", "tour.end.l4", "tour.end.l5", "tour.end.note"]) await expect(stage(page)).toContainText(en[k]!)
   await brandChecks(page, { marigold: "one" })
   await expect(page.locator("[data-tour-home]")).toHaveText(en["tour.end.home"]!)
-  await page.locator("[data-tour-cta]").click()
-  await expect(page).toHaveURL(/\/pots\?sheet=create$/)
+  await startRealPot(page)
 })
 
 /** Each part's judge strings (05 J-1…J-5's hood checks, now one sheet per part). */
