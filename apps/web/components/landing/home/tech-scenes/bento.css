@@ -1,0 +1,1027 @@
+/* "Each part, up close" (plan/design-direction/08-tech-bento.md, v2): the six looping scenes. Imported by
+   UnderTheHood.tsx. Like the toolkit's landing-motion.css, every rule is scoped under [data-landing] (Next keeps a
+   page's CSS after a client navigation) and every keyframe is pot-sc-*; tokens only (--ease-* from globals.css,
+   --ease-spring from landing-motion.css, colours from tokens.css).
+   Grammar:
+   - The markup (server HTML) is each scene's END frame, its most explanatory one. That is what no JS, reduced motion
+     and a scene that hasn't started show; the static rules below only hide what exists mid-loop.
+   - SceneLoops sets [data-scenes] on the list: every .sc part then gets its loop, paused on its first keyframe, which
+     IS the end frame (so arming changes nothing on screen). A scene runs only with [data-play]: on screen, tab
+     visible, not paused by the visitor. Pausing freezes it where it is (animation-play-state).
+   - One loop per scene, every part on the same clock: keyframes are percentages of --sc-loop (4 s: 1 % = 40 ms;
+     5 s: 1 % = 50 ms; the ms are in the comments). Each loop opens with a 200 ms reset (the end frame fades out, the
+     start frame in), then the action, then a rest on the end frame (~1.7-2 s).
+   - transform (translate/scale) and opacity only, plus clip-path for the meter's fills (paint, never layout); travel
+     in rem or in the stage's own width (cqw). Calm easings, the spring only for pops; no flashing, no marigold. */
+
+@layer theme, base, components, utilities;
+
+/* -------------------------------------------------------------------------------------------------------------
+   The clock */
+[data-landing] [data-scene] {
+  --sc-loop: 4s;
+}
+[data-landing] :is([data-scene="hub"], [data-scene="money"]) {
+  --sc-loop: 5s;
+}
+/* staggered first starts (the end frame holds meanwhile): the right-hand scene of each lg row 600 ms after its
+   partner, and row 2 another 300 ms on, so rows that come into view together never beat or reset in unison */
+[data-landing] :is([data-scene="relayer"], [data-scene="money"]) {
+  --sc-delay: 600ms;
+}
+[data-landing] [data-scene="hub"] {
+  --sc-delay: 300ms;
+}
+[data-landing] [data-scene="majority"] {
+  --sc-delay: 900ms;
+}
+[data-landing] [data-scenes] .sc {
+  animation-duration: var(--sc-loop);
+  animation-delay: var(--sc-delay, 0ms);
+  animation-timing-function: linear; /* each keyframe sets its own easing */
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-play-state: paused;
+}
+[data-landing] [data-scenes] [data-play] .sc {
+  animation-play-state: running;
+}
+
+/* -------------------------------------------------------------------------------------------------------------
+   Static: what the end frame hides, and each scene's geometry (always on) */
+[data-landing] .sc-auth-btn,
+[data-landing] .sc-auth-ripple,
+[data-landing] .sc-maj-c1,
+[data-landing] .sc-money-bar,
+[data-landing] .sc-money-450,
+[data-landing] .sc-money-in {
+  opacity: 0;
+}
+/* the tap's ripple: the button's own ink (Day, inside the mock), faint */
+[data-landing] .sc-auth-ripple {
+  background: color-mix(in srgb, var(--pot-ink) 18%, transparent);
+}
+/* relayer: the figure shows its last line, $0.00; the crossing lines draw from the left */
+[data-landing] .sc-relay-roll {
+  translate: 0 -75%;
+}
+[data-landing] :is(.sc-relay-x1, .sc-relay-x2) {
+  transform-origin: left center;
+}
+/* hub: everything hangs off the gate. It sits at 40 % of the lane, or further left when the pass lane needs the
+   room ($84 + "Approved": ~11.25rem; ~9.75rem on the narrowest stage, whose pills drop their emoji) */
+[data-landing] .sc-hub > * {
+  --gate: min(40cqw, 100cqw - 11.25rem);
+}
+@container hub (width < 16rem) {
+  [data-landing] .sc-hub > * {
+    --gate: calc(100cqw - 9.75rem);
+  }
+}
+[data-landing] .sc-hub-at {
+  left: var(--gate);
+}
+[data-landing] .sc-hub-pass {
+  left: calc(var(--gate) + 0.5rem);
+}
+/* the $300 ends right where it stopped, its right edge 8 px before the gate, one lane down */
+[data-landing] .sc-hub-boat {
+  right: calc(100% - var(--gate) + 0.5rem);
+}
+[data-landing] .sc-hub-stop {
+  left: calc(var(--gate) - 0.25rem);
+}
+/* dao: the refused key rests dimmed */
+[data-landing] .sc-dao-keyicon {
+  opacity: 0.5;
+}
+/* money: the Pot's bar (100cqw, thirds 2 px apart) shrinks to its centre (× 0.1467). Its thirds start on the members'
+   slots one row (1.625rem) down: the slots are 8 px apart, so each third starts 0/2/4 px to the right at 96.5 % width
+   (≈ (W − 16) / (W − 4)) and widens from its left edge as it rises. Each $22 starts on its third of the shrunken bar:
+   third i's left edge is at 42.67cqw + i × 4.89cqw, slot i's at i × (33.33cqw + 2.67px), so
+   dx = 42.67cqw − i × (28.44cqw + 2.57px). */
+[data-landing] .sc-money-bar {
+  transform-origin: center;
+}
+[data-landing] :is(.sc-money-t1, .sc-money-t2, .sc-money-t3) {
+  transform-origin: left center;
+}
+[data-landing] .sc-money-t2 {
+  --sc-x: 2px;
+}
+[data-landing] .sc-money-t3 {
+  --sc-x: 4px;
+}
+[data-landing] .sc-money-b1 {
+  --dx: 42.67cqw;
+}
+[data-landing] .sc-money-b2 {
+  --dx: calc(14.22cqw - 2.57px);
+}
+[data-landing] .sc-money-b3 {
+  --dx: calc(-14.22cqw - 5.14px);
+}
+
+/* -------------------------------------------------------------------------------------------------------------
+   1. auth, 4 s: reset · 1000 the tap (press + ripple) · 1400 the button resolves into Maya's account · 1900 "0 NEAR"
+   pops · 2300 the key slides in · rest */
+[data-landing] [data-scenes] .sc-auth-btn {
+  animation-name: pot-sc-auth-btn;
+}
+[data-landing] [data-scenes] .sc-auth-ripple {
+  animation-name: pot-sc-auth-ripple;
+}
+[data-landing] [data-scenes] .sc-auth-chip {
+  animation-name: pot-sc-auth-chip;
+}
+[data-landing] [data-scenes] .sc-auth-near {
+  animation-name: pot-sc-auth-near;
+}
+[data-landing] [data-scenes] .sc-auth-key {
+  animation-name: pot-sc-auth-key;
+}
+@keyframes pot-sc-auth-btn {
+  0%,
+  2% {
+    opacity: 0;
+    scale: 0.96;
+    animation-timing-function: var(--ease-enter);
+  }
+  7% /* 280 */ {
+    opacity: 1;
+    scale: 1;
+  }
+  25% /* 1000: press… */ {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  27.5% /* …release */ {
+    opacity: 1;
+    scale: 0.96;
+    animation-timing-function: var(--ease-standard);
+  }
+  32.5% {
+    opacity: 1;
+    scale: 1;
+  }
+  35% /* 1400: resolves */ {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-exit);
+  }
+  40%,
+  100% {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+@keyframes pot-sc-auth-ripple {
+  0%,
+  25% {
+    opacity: 0;
+    scale: 0.3;
+  }
+  25.5% /* 1020 */ {
+    opacity: 1;
+    scale: 0.3;
+    animation-timing-function: var(--ease-enter);
+  }
+  30% {
+    opacity: 0.8;
+    scale: 1.8;
+    animation-timing-function: var(--ease-standard);
+  }
+  37.5% /* 1500 */ {
+    opacity: 0;
+    scale: 2.8;
+  }
+  100% {
+    opacity: 0;
+    scale: 0.3;
+  }
+}
+@keyframes pot-sc-auth-chip {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    scale: 1;
+  }
+  36% /* 1440 */ {
+    opacity: 0;
+    scale: 0.9;
+    animation-timing-function: var(--ease-spring);
+  }
+  45% /* 1800 */,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pot-sc-auth-near {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    scale: 0.6;
+  }
+  47.5% /* 1900 */ {
+    opacity: 0;
+    scale: 0.6;
+    animation-timing-function: var(--ease-spring);
+  }
+  56.5% /* 2260 */,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pot-sc-auth-key {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    translate: -0.5rem 0;
+  }
+  57.5% /* 2300 */ {
+    opacity: 0;
+    translate: -0.5rem 0;
+    animation-timing-function: var(--ease-enter);
+  }
+  64.5% /* 2580 */,
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* -------------------------------------------------------------------------------------------------------------
+   2. relayer, 4 s: reset to $0.03 · 1100 "gas" crossed off, 1200 tick · 1400 "deposits" crossed off, 1500 tick ·
+   1750 tick to $0.00 · 1800 "Pot pays" slides in · rest */
+[data-landing] [data-scenes] .sc-relay-roll {
+  animation-name: pot-sc-relay-roll;
+}
+[data-landing] [data-scenes] .sc-relay-x1 {
+  animation-name: pot-sc-relay-x1;
+}
+[data-landing] [data-scenes] .sc-relay-x2 {
+  animation-name: pot-sc-relay-x2;
+}
+[data-landing] [data-scenes] .sc-relay-pot {
+  animation-name: pot-sc-relay-pot;
+}
+@keyframes pot-sc-relay-roll {
+  0% {
+    opacity: 1;
+    translate: 0 -75%;
+    animation-timing-function: var(--ease-standard);
+  }
+  2.5% /* 100: out… */ {
+    opacity: 0;
+    translate: 0 -75%;
+  }
+  2.6% /* …back to $0.03, in */ {
+    opacity: 0;
+    translate: 0 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  5%,
+  30% /* 1200 */ {
+    opacity: 1;
+    translate: 0 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  33.5%,
+  37.5% /* 1500 */ {
+    opacity: 1;
+    translate: 0 -25%;
+    animation-timing-function: var(--ease-standard);
+  }
+  41%,
+  43.75% /* 1750 */ {
+    opacity: 1;
+    translate: 0 -50%;
+    animation-timing-function: var(--ease-standard);
+  }
+  47.25%,
+  100% {
+    opacity: 1;
+    translate: 0 -75%;
+  }
+}
+@keyframes pot-sc-relay-x1 {
+  0% {
+    scale: 1 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  27.5% /* 1100 */ {
+    scale: 0 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  32.5%,
+  100% {
+    scale: 1 1;
+  }
+}
+@keyframes pot-sc-relay-x2 {
+  0% {
+    scale: 1 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  35% /* 1400 */ {
+    scale: 0 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  40%,
+  100% {
+    scale: 1 1;
+  }
+}
+@keyframes pot-sc-relay-pot {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    translate: -0.5rem 0;
+  }
+  45% /* 1800 */ {
+    opacity: 0;
+    translate: -0.5rem 0;
+    animation-timing-function: var(--ease-enter);
+  }
+  52% /* 2080 */,
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* -------------------------------------------------------------------------------------------------------------
+   3. hub, 5 s: reset · 300-1100 the $84 rides through the gate · 1150 "Approved" pops · 1700-2300 the $300 rides to
+   the gate · a 4 px recoil · 2600 it drops a lane · 2850 "Needs one OK" pops, 3000 "from anyone" · rest */
+[data-landing] [data-scenes] .sc-hub-84 {
+  animation-name: pot-sc-hub-84;
+}
+[data-landing] [data-scenes] .sc-hub-ok {
+  animation-name: pot-sc-hub-ok;
+}
+[data-landing] [data-scenes] .sc-hub-300 {
+  animation-name: pot-sc-hub-300;
+}
+[data-landing] [data-scenes] .sc-hub-wait {
+  animation-name: pot-sc-hub-wait;
+}
+[data-landing] [data-scenes] .sc-hub-anyone {
+  animation-name: pot-sc-hub-anyone;
+}
+/* the $84 starts just off stage left (its own width + the gate + the inset) */
+@keyframes pot-sc-hub-84 {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  4.1%,
+  6% /* 300 */ {
+    opacity: 1;
+    translate: calc(-100% - var(--gate) - 1.25rem) 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  22% /* 1100 */,
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes pot-sc-hub-ok {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    scale: 0.6;
+  }
+  23% /* 1150 */ {
+    opacity: 0;
+    scale: 0.6;
+    animation-timing-function: var(--ease-spring);
+  }
+  30.2% /* 1510 */,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+/* the $300 rides lane 1 (one lane up), from just off stage left to its stop, recoils, then drops into lane 2 */
+@keyframes pot-sc-hub-300 {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  4.1%,
+  34% /* 1700 */ {
+    opacity: 1;
+    translate: calc(-0.25rem - var(--gate)) -2.375rem;
+    animation-timing-function: var(--ease-enter);
+  }
+  46% /* 2300: at the gate */ {
+    opacity: 1;
+    translate: 0 -2.375rem;
+    animation-timing-function: var(--ease-standard);
+  }
+  48% {
+    opacity: 1;
+    translate: -0.25rem -2.375rem;
+    animation-timing-function: var(--ease-standard);
+  }
+  50%,
+  52% /* 2600: drops */ {
+    opacity: 1;
+    translate: 0 -2.375rem;
+    animation-timing-function: var(--ease-standard);
+  }
+  57.6% /* 2880 */,
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes pot-sc-hub-wait {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    scale: 0.6;
+  }
+  57% /* 2850 */ {
+    opacity: 0;
+    scale: 0.6;
+    animation-timing-function: var(--ease-spring);
+  }
+  64.2% /* 3210 */,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pot-sc-hub-anyone {
+  0% {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  60% /* 3000 */ {
+    opacity: 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  64% /* 3200 */,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* -------------------------------------------------------------------------------------------------------------
+   4. majority, 4 s: reset · 600 Maya's check pops, her segment fills, "1 of 3" · 1200 Sam's, "2 of 3" · 1700
+   "Approved" lands · rest */
+[data-landing] [data-scenes] .sc-maj-m {
+  animation-name: pot-sc-maj-m;
+}
+[data-landing] [data-scenes] .sc-maj-s {
+  animation-name: pot-sc-maj-s;
+}
+[data-landing] [data-scenes] .sc-maj-f1 {
+  animation-name: pot-sc-maj-f1;
+}
+[data-landing] [data-scenes] .sc-maj-f2 {
+  animation-name: pot-sc-maj-f2;
+}
+[data-landing] [data-scenes] .sc-maj-c1 {
+  animation-name: pot-sc-maj-c1;
+}
+[data-landing] [data-scenes] .sc-maj-c2 {
+  animation-name: pot-sc-maj-c2;
+}
+[data-landing] [data-scenes] .sc-maj-ok {
+  animation-name: pot-sc-maj-ok;
+}
+@keyframes pot-sc-maj-m {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  15% /* 600 */ {
+    opacity: 0;
+    scale: 0.5;
+    animation-timing-function: var(--ease-spring);
+  }
+  24% /* 960 */,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pot-sc-maj-s {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  30% /* 1200 */ {
+    opacity: 0;
+    scale: 0.5;
+    animation-timing-function: var(--ease-spring);
+  }
+  39% /* 1560 */,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pot-sc-maj-f1 {
+  0% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 999px);
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+  4.1%,
+  15% /* 600 */ {
+    opacity: 1;
+    clip-path: inset(0 100% 0 0 round 999px);
+    animation-timing-function: var(--ease-standard);
+  }
+  22% /* 880 */,
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+}
+@keyframes pot-sc-maj-f2 {
+  0% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 999px);
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+  4.1%,
+  30% /* 1200 */ {
+    opacity: 1;
+    clip-path: inset(0 100% 0 0 round 999px);
+    animation-timing-function: var(--ease-standard);
+  }
+  37% /* 1480 */,
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+}
+@keyframes pot-sc-maj-c1 {
+  0%,
+  15% {
+    opacity: 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  20%,
+  30% {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  32%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes pot-sc-maj-c2 {
+  0% {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  31% {
+    opacity: 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  36%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes pot-sc-maj-ok {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    scale: 0.6;
+  }
+  42.5% /* 1700 */ {
+    opacity: 0;
+    scale: 0.6;
+    animation-timing-function: var(--ease-spring);
+  }
+  51.5% /* 2060 */,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* -------------------------------------------------------------------------------------------------------------
+   5. dao, 4 s: reset (the seats dim) · 300-800 a key comes at the Pot · it bumps back, ✕, "0 keys" · 1500-2280 the
+   seats light up, one by one · rest */
+[data-landing] [data-scenes] .sc-dao-key {
+  animation-name: pot-sc-dao-key;
+}
+[data-landing] [data-scenes] .sc-dao-keyicon {
+  animation-name: pot-sc-dao-keyicon;
+}
+[data-landing] [data-scenes] .sc-dao-x {
+  animation-name: pot-sc-dao-x;
+}
+[data-landing] [data-scenes] .sc-dao-zero {
+  animation-name: pot-sc-dao-zero;
+}
+[data-landing] [data-scenes] .sc-dao-s1 {
+  animation-name: pot-sc-dao-s1;
+}
+[data-landing] [data-scenes] .sc-dao-s2 {
+  animation-name: pot-sc-dao-s2;
+}
+[data-landing] [data-scenes] .sc-dao-s3 {
+  animation-name: pot-sc-dao-s3;
+}
+[data-landing] [data-scenes] .sc-dao-s4 {
+  animation-name: pot-sc-dao-s4;
+}
+@keyframes pot-sc-dao-key {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  4.1%,
+  7.5% /* 300 */ {
+    opacity: 0;
+    translate: -2.5rem 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  20% /* 800: bumps the Pot's side */ {
+    opacity: 1;
+    translate: 0.5rem 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  25% /* 1000: pushed back */,
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes pot-sc-dao-keyicon {
+  0% {
+    opacity: 0.5;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  21% /* 840 */ {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  27%,
+  100% {
+    opacity: 0.5;
+  }
+}
+@keyframes pot-sc-dao-x {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  21% /* 840 */ {
+    opacity: 0;
+    scale: 0.5;
+    animation-timing-function: var(--ease-spring);
+  }
+  30% /* 1200 */,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pot-sc-dao-zero {
+  0% {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  24% /* 960 */ {
+    opacity: 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  29%,
+  100% {
+    opacity: 1;
+  }
+}
+/* the seats: dim and a little smaller from the reset, then each lights up on the spring, 140 ms apart */
+@keyframes pot-sc-dao-s1 {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  5%,
+  37.5% /* 1500 */ {
+    opacity: 0.3;
+    scale: 0.9;
+    animation-timing-function: var(--ease-spring);
+  }
+  46.5%,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pot-sc-dao-s2 {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  5%,
+  41% /* 1640 */ {
+    opacity: 0.3;
+    scale: 0.9;
+    animation-timing-function: var(--ease-spring);
+  }
+  50%,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pot-sc-dao-s3 {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  5%,
+  44.5% /* 1780 */ {
+    opacity: 0.3;
+    scale: 0.9;
+    animation-timing-function: var(--ease-spring);
+  }
+  53.5%,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pot-sc-dao-s4 {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  5%,
+  48% /* 1920 */ {
+    opacity: 0.3;
+    scale: 0.9;
+    animation-timing-function: var(--ease-spring);
+  }
+  57%,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* -------------------------------------------------------------------------------------------------------------
+   6. money, 5 s: reset to the three $150 bars · 1000-1600 they rise and join: $450 · 2000-2600 spends shrink it to
+   $66 · 2700-3300 it splits, each third drops into its owner's slot: $22 each · rest */
+[data-landing] [data-scenes] .sc-money-bar {
+  animation-name: pot-sc-money-bar;
+}
+[data-landing] [data-scenes] :is(.sc-money-t1, .sc-money-t2, .sc-money-t3) {
+  animation-name: pot-sc-money-third;
+}
+[data-landing] [data-scenes] :is(.sc-money-b1, .sc-money-b2, .sc-money-b3) {
+  animation-name: pot-sc-money-b;
+}
+[data-landing] [data-scenes] .sc-money-slot {
+  animation-name: pot-sc-money-slot;
+}
+[data-landing] [data-scenes] .sc-money-in {
+  animation-name: pot-sc-money-in;
+}
+[data-landing] [data-scenes] .sc-money-back {
+  animation-name: pot-sc-money-back;
+}
+[data-landing] [data-scenes] .sc-money-450 {
+  animation-name: pot-sc-money-450;
+}
+[data-landing] [data-scenes] .sc-money-66 {
+  animation-name: pot-sc-money-66;
+}
+@keyframes pot-sc-money-bar {
+  0% {
+    opacity: 0;
+    scale: 0.1467 1;
+  }
+  4% {
+    opacity: 0;
+    scale: 1 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  8%,
+  40% /* 2000: spends */ {
+    opacity: 1;
+    scale: 1 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  52%,
+  54% /* 2700: splits */ {
+    opacity: 1;
+    scale: 0.1467 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  56%,
+  100% {
+    opacity: 0;
+    scale: 0.1467 1;
+  }
+}
+/* each third: its owner's $150 bar on their slot in the row below, then up into the Pot, closing the gaps */
+@keyframes pot-sc-money-third {
+  0%,
+  20% /* 1000 */ {
+    translate: var(--sc-x, 0px) 1.625rem;
+    scale: 0.965 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  32% /* 1600 */,
+  100% {
+    translate: 0 0;
+    scale: 1 1;
+  }
+}
+@keyframes pot-sc-money-b {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  4% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  4.1%,
+  54% /* 2700 */ {
+    opacity: 0;
+    translate: var(--dx) -1.625rem;
+  }
+  55% {
+    opacity: 1;
+    translate: var(--dx) -1.625rem;
+    animation-timing-function: var(--ease-standard);
+  }
+  66% /* 3300 */,
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+/* the slots: gone while the $150s sit on them, back when the $22s land */
+@keyframes pot-sc-money-slot {
+  0% {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  56% /* 2800 */ {
+    opacity: 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  62%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes pot-sc-money-in {
+  0% {
+    opacity: 0;
+  }
+  4% {
+    opacity: 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  8%,
+  20% /* 1000 */ {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  24%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes pot-sc-money-back {
+  0% {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  62% /* 3100 */ {
+    opacity: 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  66%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes pot-sc-money-450 {
+  0%,
+  28% /* 1400 */ {
+    opacity: 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  32%,
+  44% /* 2200 */ {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  47%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes pot-sc-money-66 {
+  0% {
+    opacity: 1;
+    animation-timing-function: var(--ease-standard);
+  }
+  4%,
+  46% /* 2300 */ {
+    opacity: 0;
+    animation-timing-function: var(--ease-standard);
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* -------------------------------------------------------------------------------------------------------------
+   Reduced motion: SceneLoops never arms the loops; this backs it up. Every scene is its end frame. */
+@media (prefers-reduced-motion: reduce) {
+  [data-landing] .sc {
+    animation: none !important;
+  }
+}

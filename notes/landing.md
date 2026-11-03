@@ -1,6 +1,6 @@
 # Landing page notes: `/`
 
-> Written 2026-10-22. Built by a team of agents at Cerasela's request: references, copy, kit and playground in parallel, then two builders in parallel, then QA and polish.
+> Written 2026-10-22. Built by a team of agents at the design lead's request: references, copy, kit and playground in parallel, then two builders in parallel, then QA and polish.
 > Direction: [plan/design-direction/03-landing.md](../plan/design-direction/03-landing.md), from 19 Mobbin searches. Brand: `brand/README.md` + `tokens.json`. Story and numbers: D-61 and the video brief (`marketing/video/brief/`).
 
 ## What `/` is now
@@ -21,7 +21,7 @@ A static (○), server-rendered, mobile-first product landing page for two reade
 | `public/landing/stickers/<name>-{256,512}.webp` | The video's 8 die-cut stickers at 27–39 KB each (512 px), from 0.4–0.9 MB PNGs |
 | `i18n/en.json` | About 120 `home.*` keys. `home.title`, `home.body` and `home.sample.label` were removed |
 
-## Decisions and deviations (Cerasela to review)
+## Decisions and deviations (for the design lead to review)
 1. **`home.tech.` is in the jargon-lint allowlist** (`i18n/banned.mjs`), like `demo.` and `advanced.`. It is the only place on `/` where NEAR, Sputnik DAO, NEP-366 and USDC appear. If `/` should be fully jargon-free, delete the `UnderTheHood` section and point judges to `/demo`. The tech facts were checked against README, CLAUDE.md and kb (e.g. "no access keys": kb/sputnik-dao.md). "Keyless hub" was left out on purpose, because the hub keeps its key until the planned lock.
 2. **One marigold on the whole page:** the hero's [Start a Pot]. The header's and the final card's [Start a Pot] (one name since Nov 3; tests scope them by region) and every mock use secondary styles. Marigold appears only as a surface (the invite top, the goal bar, the Hub node's edge).
 3. **Link-buttons are `<Link className={buttonVariants(…)}>`**, not `<Button nativeButton={false} render={<Link/>}>`. With Base UI the latter gives the link `role="button"`.
@@ -31,7 +31,7 @@ A static (○), server-rendered, mobile-first product landing page for two reade
 7. "Built at NEAR HACKATHON 2026" appears only at the end of `#tech`; it was removed from the footer.
 
 ## Round 2: details, micro-animation, motion (2026-10-22)
-Cerasela asked for more attention to details, micro-animations, motion and interactions. Direction: [plan/design-direction/04-landing-motion.md](../plan/design-direction/04-landing-motion.md), from 16 recorded live sites, Mobbin and craft sources, plus a 45-item detail audit. The grammar: every motion explains, answers or guides; scrolling a section into view plays its story **once** (a landing-only extension of the brand's "motion answers the person's own action"); on load only the hero moves (≤ 0.8 s, CSS only, the H1 and CTAs never move); the burst stays the one celebration; nothing loops over 5 s; reduced motion, no-JS and jump-past always show the final state. Its "No" list (parallax, scroll-jacking, headline reveals, marquees, fake cursors, 3D tilt, View Transitions) is binding.
+The design lead asked for more attention to details, micro-animations, motion and interactions. Direction: [plan/design-direction/04-landing-motion.md](../plan/design-direction/04-landing-motion.md), from 16 recorded live sites, Mobbin and craft sources, plus a 45-item detail audit. The grammar: every motion explains, answers or guides; scrolling a section into view plays its story **once** (a landing-only extension of the brand's "motion answers the person's own action"); on load only the hero moves (≤ 0.8 s, CSS only, the H1 and CTAs never move); the burst stays the one celebration; nothing loops over 5 s; reduced motion, no-JS and jump-past always show the final state. Its "No" list (parallax, scroll-jacking, headline reveals, marquees, fake cursors, 3D tilt, View Transitions) is binding.
 
 ## Round 2 motion: header, hero, problem (motion-top)
 - **Header:** a hairline draws in once scrolled; from lg a 2 px ink bar tracks the section in view (`aria-current` on its link; transform-only, 280 ms). Anchors land the band exactly under the header (`scroll-mt-14 lg:scroll-mt-16` in `Section.tsx`); after a nav jump focus moves to the section's H2.
@@ -164,15 +164,26 @@ From [08-tech-bento.md](../plan/design-direction/08-tech-bento.md): six cells in
 - **Height:** 1,078 → 1,604 px at 1280 and 2,032 → 2,975 px at 390 (spec ≈ 1,800 / ≈ 3,250; brief ≤ ~1,400 / ≤ ~2,700). The floor: lg rows 2-3 are set by the narrow cells (≈ 280 px each), and the Hub's six-item list needs a wide cell, so 1,400 would mean dropping hooks or visuals.
 - **Deviations for the design lead:** the majority's "Maya asked…" line lives only in the well's label; the receipt has no caption (the $84 is in Maya's column); the keys read "MPC recovery key" and "Device key"; the relayer line leaves "per-method allowlists and caps" to the flow node above it; the bars' second label is "Back" (`home.tech.money.v.back`), so a third fits $150.00 at 320.
 
+### v2 (Nov 3): six looping scenes ([08 §v2](../plan/design-direction/08-tech-bento.md))
+- **Each cell** is a title, a line of at most 8 plain words, a looping scene that shows the fact in about 2 s, and 3 tech tags. The v1 paragraphs and wells are gone, and their keys are retired. Code: `components/landing/home/tech-scenes/` (6 server scenes, the `Scene` stage, `bento.css`) and one island, `SceneLoops.tsx`.
+- **Loops are CSS only.** Each one starts and ends on its end frame, which is also the server HTML, the reduced-motion frame and the no-JS frame. A scene plays only while at least half of it is on screen and the tab is visible. One Pause/Play toggle covers all six (`aria-pressed`, 44 px), and it is hidden without JS or with reduced motion.
+- **Grid:** lg is 10 columns, 5·5 / 6·4 / 4·6, on a CSS subgrid, so the scenes of a row align.
+- **Band heights:** 1,604 → 1,592 px at 1280 and 2,975 → 2,772 px at 390.
+- **Verified:** 57/57 contract checks: in-view gating, pause, tab hidden, reduced motion, no JS, axe 0 in Day/Night × 390/1280 × running/paused, one marigold, CLS 0, no console errors. The landing e2e passed 61, skipped 14 and failed 0.
+- **Review (fresh eyes, same day):**
+  - **auth:** the Google G now stays on as a badge on Maya's avatar. Before, Google was on screen for only 1.2 s of the 4 s loop and was missing from the still frame.
+  - **hub:** the gate carries the rulebot (the DAO scene's bot icon), so the title's "rulebot" is on stage. "to the group" became "from anyone" (`home.tech.hub.s.anyone`): one OK is one member, not the majority of the next cell. The hint now sits on the stage colour, because lane 2's line had run through it like a strike-through.
+  - **Also checked:** keyboard (Tab, focus ring, Space and Enter, `aria-pressed`, fixed name); reduced motion switched on mid-session; 320 with JS while the scenes run; no marigold text at 21 moments with all six playing; WebKit and Firefox (hub, money, auth).
+
 ## Open items
 | # | Item | Owner |
 |---|---|---|
 | 1 | `/` loads about 382 KB of gzipped JS (25 chunks), against 226 KB for `/demo`. Most of it is the always-mounted `HomeRedirect` (the `useMe` data layer) and `NearAuthCallback` (auth0). Fix: `next/dynamic` the callback only when `?code&state` is present, and gate the redirect on a cheap session hint. This predates the landing work | P2 |
-| 2 | Token-level calls the round-2 audit raised: a display size for the desktop H1/H2s (D7); 36 px H1 below 390 px rather than 360 (A4); Night `surface` is darker than `surface-sunken`, so cards on sunken stages look recessed (D4; the landing works around it with `dark:bg-ground` stages) | Cerasela |
-| 3 | `StatusChip` icons use stroke 2.25 and `Chip`'s check 2.5, against the brand's "Lucide at stroke 2". Change the rule or the code | Cerasela |
+| 2 | Token-level calls the round-2 audit raised: a display size for the desktop H1/H2s (D7); 36 px H1 below 390 px rather than 360 (A4); Night `surface` is darker than `surface-sunken`, so cards on sunken stages look recessed (D4; the landing works around it with `dark:bg-ground` stages) | Design lead |
+| 3 | `StatusChip` icons use stroke 2.25 and `Chip`'s check 2.5, against the brand's "Lucide at stroke 2". Change the rule or the code | Design lead |
 | 4 | `metadataBase` falls back to `VERCEL_URL`. Set `NEXT_PUBLIC_APP_URL`, or crawlers can't fetch `og:image` behind deployment protection | P1 / deploy |
-| 5 | With iOS's 17 px root, the hero's proof card lands about 8 px below the fold in a 390 × 664 Safari tab (672 px). With a 16 px root it is at 561 px. Closing the gap needs a smaller H1 or no eyebrow | Cerasela |
+| 5 | With iOS's 17 px root, the hero's proof card lands about 8 px below the fold in a 390 × 664 Safari tab (672 px). With a 16 px root it is at 561 px. Closing the gap needs a smaller H1 or no eyebrow | Design lead |
 | 6 | `home.tech.demo.body` says Google sign-in works only on local builds (the NEAR Auth shared client), while the hero says "Sign in with Google". It's honest, but it changes once a hosted origin is allowed | P1 |
 | 7 | Turbopack's dev server served stale files after edits (en.json, globals.css) several times. Restart `next dev` with `.next/dev` deleted if strings show as raw keys or CSS doesn't update. Running `next build` into the shared `.next` while `next dev` runs seems to trigger it; use `NEXT_DIST_DIR=.next-<name>` for side builds and e2e | — |
 | 8 | `e2e/mock/p2.spec.ts` "a sole member changes the rules directly" flakes under full-suite load (see Verification) | P2 |
-| 9 | The hero's 0.8 s arrival replays when navigating back to `/` client-side. The spec accepts it; motion QA can add an opt-out | Cerasela |
+| 9 | The hero's 0.8 s arrival replays when navigating back to `/` client-side. The spec accepts it; motion QA can add an opt-out | Design lead |

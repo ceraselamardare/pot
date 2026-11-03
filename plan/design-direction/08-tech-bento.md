@@ -30,6 +30,59 @@ Written 2026-11-03 for the design lead and the builder. It replaces the six fact
 
 ---
 
+## v2 (built 2026-11-03): six looping scenes
+
+The user's verdict on v1: "the visuals are not really helping digest that section… the Google one should represent the Google sign-in; the gas fee one, something shorter, easier to grasp. Same for all of them… less text, more some visual moving." So each cell is now **one tiny animated scene that shows its fact in about two seconds**, with far less text. v1's tech paragraphs and data wells (the receipt, the Hub's lists, the account card) are gone; the flow diagram keeps its own lines, and `/demo/all` stays the full technical read. Where v2 differs, it supersedes §3.4-3.5 (anatomy, heights), §4's visuals, §6 (motion) and §8 (keys) below.
+
+**Cell anatomy.** Four rows of one CSS subgrid, so the scenes of a row line up even when a line wraps:
+1. the title (h4, `heading`; v1's titles, unchanged);
+2. one short line (`body`, `ink-muted`, at most 8 words, plain: `home.tech.<id>.hook`; the i18n test checks both);
+3. the scene: a 120 px `ground` stage (1 px `line`, `rounded-md`, clipped), `role="img"` with one sentence (`home.tech.<id>.scene`), its inside `aria-hidden` and `inert`;
+4. three tech tags (`home.tech.<id>.tags`, "A · B · C"): `body-sm`, `ink-muted`, 24 px outline chips, real text a judge can search for.
+
+**Grid.** lg is 10 columns, rows 5·5 / 6·4 / 4·6 (the narrow cells are 331-353 px inside, so every line and tag row stays on one line at lg and md); md 2 columns; phones 1. Same order as the flow.
+
+**The scenes as built.** Code: `components/landing/home/tech-scenes/` (one server component per scene, `Scene.tsx` the stage, `bento.css` the loops). Times are ms into the loop; every loop opens with a 200 ms reset (the end frame fades out, the start frame in) and ends on a 1.4-2 s rest on the end frame.
+
+| Scene | Loop (first start) | Storyboard |
+|---|---|---|
+| **auth** "Zero NEAR, zero popups" | 4 s (0) | A mock of Google's own light "Continue with Google" button (Day tokens inside the Night band, the app's `GoogleMark`; never marigold). 1000: one tap, a .96 press and a ripple from under the thumb. 1400: the button resolves into Maya's account chip, her avatar where the G was, and the G stays on as a 14 px badge on its corner (so the rest and the still frame say Google too). 1900: "0 NEAR" pops. 2300: "Key saved on this phone" slides in 8 px. |
+| **relayer** "Gas and deposits are on us" | 4 s (+600) | Starts at "$0.03 · you pay · gas, deposits". 1100: "gas" is crossed off (a line draws across it), and the figure ticks to $0.02. 1400: "deposits" is crossed off, $0.01. 1750: $0.00, big (`balance-hero`). 1800: a "Pot pays" tag (the relayer's send icon) slides in. Words are crossed off, never an amount (a struck amount means declined). The figure is a column of four `MoneyText` amounts rolling up a line per tick; $0.03 is about a tap's gas and deposits, and the scene never states it. |
+| **hub** "A rulebot on a short leash" | 5 s (+300) | Two faint lanes and the rulebot's gate, "Up to $100" with the bot (the DAO scene's rulebot icon), across the top one. 300-1100: "🛒 $84" rides in from off stage and through the gate; 1150: "Approved" pops. 1700-2300: "⛵ $300" rides to the gate and stops (a 4 px recoil); 2600: it drops to the lane below; 2850: "Needs one OK" pops, then "from anyone" (one member's OK, not the majority of the next cell: a Pot made today gets one OK up to $300). The hint sits on the stage's own `ground`, so lane 2 never reads as a line struck through it. Everything hangs off `--gate` (40 % of the stage, or further left when the pass lane needs the room); pills travel in `cqw`. Below 16rem the pills drop their emoji; "from anyone" shows from 24rem. |
+| **majority** "Majority rules. Literally." | 4 s (+900) | "Close the Pot" and three seats. 600: Maya's check pops (she asked, so hers counts), her meter segment fills, "1 of 3". 1200: Sam's, "2 of 3". 1700: "Approved" lands. Leo's seat stays dashed. |
+| **dao** "One Pot, one DAO, no keys" | 4 s (0) | Lisbon Trip as a sealed box, the four seats dimmed on its top and bottom edges. 300-800: a key comes at its side and bumps it; pushed back, it dims, a ✕ pops and "0 keys" appears (`ink-muted`: a permission, not a failed request). 1500-1920: the seats light up one by one: Maya, Sam, Leo, the rulebot. No padlock. |
+| **money** "Dollars in, fair shares out" | 5 s (+600) | Maya's, Sam's and Leo's $150.00 bars. 1000-1600: they rise and join into one bar, $450.00. 2000-2600: spends shrink it to its centre, thirds and all (× 0.1467): $66.00. 2700-3300: it splits, and each third drops into its owner's slot (the footprint their $150 left) as $22.00. |
+
+**Motion contract** (the director's decision, aligned with WCAG 2.2.2):
+- CSS keyframes only, transform and opacity (plus `clip-path` for the meter's fills: paint, never layout). Each loop's first and last keyframe is the scene's end frame, which is also the server HTML. So arming a loop changes nothing on screen, a pause can never strand an empty stage, and no JS, reduced motion and a scene that hasn't started all show the most explanatory frame.
+- One client island, `SceneLoops.tsx`. It marks the list `data-scenes` (the loops attach, paused) and gives a scene `data-play` only while at least half of it is on screen, the tab is visible and the visitor hasn't paused. Anything else freezes it where it is (`animation-play-state`), so off-screen loops cost nothing.
+- One Pause/Play control for all six, at the right end of the "Each part, up close" row. It is a toggle with one fixed name, "Pause the animations" (`home.tech.parts.pause`), and `aria-pressed` = paused. Its icon shows what a press does. It is a 44 px target around a 36 px secondary circle, with no marigold.
+- Without JS or with reduced motion, the control isn't rendered. Its row keeps its 44 px either way (CLS 0). Reduced motion gets no step button: the end frames already say it all.
+- First starts are staggered (relayer and money +600 ms, hub +300, majority +900), so rows that come into view together never reset in unison.
+- The flow's one-shot $84 trace is unchanged and stays the band's only `[data-sequence]`.
+
+**Copy.** New keys:
+- `home.tech.parts.pause`;
+- `home.tech.<id>.tags` and `home.tech.<id>.scene`;
+- the scenes' words, `home.tech.<id>.s.*`.
+
+The hooks were rewritten where needed: dao "It holds the money. Nobody holds a key.", money "Close it: everyone gets their share back.". Retired: every `home.tech.<id>.body`, `home.tech.<id>.visual` and `home.tech.<id>.v.*`. Reused app keys: `signin.google`, `feed.pending.one_ok`, `chip.approved`, `create.name.placeholder`.
+
+**Heights** (measured, reduced motion, Day):
+
+| Width | v1 band | v2 band | v2 bento |
+|---|---|---|---|
+| 1280 | 1,604 | 1,592 | 842 (rows of 270) |
+| 390 | 2,975 | 2,772 | 1,584 (cells of 254) |
+| 320 | — | 3,092 | — |
+
+**Deviations from the brief, for the design lead:**
+- The auth tags leave out "device key". It is in the flow's first node and in the scene's "Key saved on this phone", and three tags keep every tag row on one line at md. The DAO's "no access keys" tag reads "0 keys", the scene's own words, so it fits the 4/10 cell.
+- The hub pills show an emoji and whole dollars, like the playground's amount chips.
+- The 10-column grid replaces v1's 6 columns.
+
+---
+
 ## 1. What the references teach
 
 ### 1.1 Patterns from the two reference bentos

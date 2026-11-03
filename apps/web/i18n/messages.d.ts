@@ -1138,23 +1138,18 @@ export interface Messages {
   "home.problem.split.title": undefined
   "home.problem.split.verdict": undefined
   "home.problem.title": undefined
-  "home.tech.auth.body": undefined
   "home.tech.auth.hook": undefined
+  "home.tech.auth.s.balance": undefined
+  "home.tech.auth.s.key": undefined
+  "home.tech.auth.scene": undefined
+  "home.tech.auth.tags": undefined
   "home.tech.auth.title": undefined
-  "home.tech.auth.v.balance": undefined
-  "home.tech.auth.v.balance_note": undefined
-  "home.tech.auth.v.device": undefined
-  "home.tech.auth.v.mpc": undefined
-  "home.tech.auth.visual": undefined
   "home.tech.built": undefined
-  "home.tech.dao.body": undefined
   "home.tech.dao.hook": undefined
+  "home.tech.dao.s.keys": undefined
+  "home.tech.dao.scene": { pot: string | number }
+  "home.tech.dao.tags": undefined
   "home.tech.dao.title": undefined
-  "home.tech.dao.v.account": undefined
-  "home.tech.dao.v.code": undefined
-  "home.tech.dao.v.keys": undefined
-  "home.tech.dao.v.roles": undefined
-  "home.tech.dao.visual": { pot: string | number }
   "home.tech.demo.body": undefined
   "home.tech.demo.cta": undefined
   "home.tech.eyebrow": undefined
@@ -1171,42 +1166,33 @@ export interface Messages {
   "home.tech.flow.relay.title": undefined
   "home.tech.flow.tap.body": undefined
   "home.tech.flow.tap.title": undefined
-  "home.tech.hub.body": undefined
   "home.tech.hub.hook": undefined
+  "home.tech.hub.s.anyone": undefined
+  "home.tech.hub.s.gate": undefined
+  "home.tech.hub.scene": undefined
+  "home.tech.hub.tags": undefined
   "home.tech.hub.title": undefined
-  "home.tech.hub.v.no": undefined
-  "home.tech.hub.v.no.over": undefined
-  "home.tech.hub.v.no.rules": undefined
-  "home.tech.hub.v.yes": undefined
-  "home.tech.hub.v.yes.goal": undefined
-  "home.tech.hub.v.yes.joins": undefined
-  "home.tech.hub.v.yes.one_ok": undefined
-  "home.tech.hub.v.yes.rules": undefined
   "home.tech.intro": undefined
-  "home.tech.majority.body": undefined
   "home.tech.majority.hook": undefined
+  "home.tech.majority.s.ask": undefined
+  "home.tech.majority.s.count": { k: string | number; n: string | number }
+  "home.tech.majority.scene": undefined
+  "home.tech.majority.tags": undefined
   "home.tech.majority.title": undefined
-  "home.tech.majority.v.caption": { pot: string | number }
-  "home.tech.majority.visual": { pot: string | number }
-  "home.tech.money.body": undefined
   "home.tech.money.hook": undefined
+  "home.tech.money.scene": undefined
+  "home.tech.money.tags": undefined
   "home.tech.money.title": undefined
-  "home.tech.money.v.back": undefined
-  "home.tech.money.v.note": undefined
-  "home.tech.money.visual": undefined
   "home.tech.parts.label": undefined
-  "home.tech.relayer.body": undefined
+  "home.tech.parts.pause": undefined
   "home.tech.relayer.hook": undefined
+  "home.tech.relayer.s.deposits": undefined
+  "home.tech.relayer.s.gas": undefined
+  "home.tech.relayer.s.pot": undefined
+  "home.tech.relayer.s.you": undefined
+  "home.tech.relayer.scene": undefined
+  "home.tech.relayer.tags": undefined
   "home.tech.relayer.title": undefined
-  "home.tech.relayer.v.gas": undefined
-  "home.tech.relayer.v.gas_by": undefined
-  "home.tech.relayer.v.gas_value": undefined
-  "home.tech.relayer.v.person": undefined
-  "home.tech.relayer.v.person_by": undefined
-  "home.tech.relayer.v.storage": undefined
-  "home.tech.relayer.v.storage_by": undefined
-  "home.tech.relayer.v.storage_value": undefined
-  "home.tech.relayer.visual": undefined
   "home.tech.title": undefined
   "home.tech.tracks": undefined
   "home.trust.back.body": undefined

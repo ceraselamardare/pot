@@ -20,10 +20,17 @@ describe("en.json", () => {
     expect(lintCopy(messages)).toEqual([])
   })
 
-  it("keeps the tech bento's six hooks plain, though home.tech.* is exempt (design-direction 08 §8)", () => {
-    const hooks = Object.entries(messages).filter(([k]) => /^home\.tech\.\w+\.hook$/.test(k))
-    expect(hooks).toHaveLength(6)
-    for (const [k, v] of hooks) expect(findBanned(v), k).toBeNull()
+  it("keeps the tech bento's six short lines plain and short, though home.tech.* is exempt (design-direction 08 v2)", () => {
+    const lines = Object.entries(messages).filter(([k]) => /^home\.tech\.\w+\.hook$/.test(k))
+    expect(lines).toHaveLength(6)
+    for (const [k, v] of lines) {
+      expect(findBanned(v), k).toBeNull()
+      expect(v.split(/\s+/).length, k).toBeLessThanOrEqual(8)
+    }
+    // the tech terms live in each cell's tags: a row of 3-4 chips, not a sentence
+    const tags = Object.entries(messages).filter(([k]) => /^home\.tech\.\w+\.tags$/.test(k))
+    expect(tags).toHaveLength(6)
+    for (const [k, v] of tags) expect(v.split(" · ").length, k).toBeOneOf([3, 4])
   })
 
   it("covers the ux-spec §5 keys the flows use", () => {
