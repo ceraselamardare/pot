@@ -26,6 +26,7 @@ import { extrasRecOf } from "./wave4-form"
 import { newOpKey, receiptFingerprintOfRef, spendRef } from "@pot/sdk"
 import { receiptFingerprint, shortFingerprint, type SavedReceipt } from "@/lib/receipt-saved"
 import { attachReceipt, keepPendingReceipt } from "./receipts/saved"
+import { refreshTopups } from "./topups/actions"
 
 function revertToast(key: MessageKey) {
   toast.error(t(key as "generic.error"))
@@ -97,6 +98,8 @@ export function addMoney(
       onSuccess: () => {
         toast.success(t("add.success", { potName: pot.name, balance: formatUsd(pot.balance + amount) }))
         coachTrigger(pot.slug, "contribution") // F-23: install is earned after the first contribution
+        // "Ask for a top-up": the asks' progress moves with every add (the server reads it from the hub)
+        if (IS_LIVE) refreshTopups()
       },
     },
   )

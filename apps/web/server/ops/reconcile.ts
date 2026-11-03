@@ -9,6 +9,8 @@
 //   3. balances (relayer / hub / treasury) and global daily caps → alerts
 //   4. retention deletes
 //   5. pay by link (hub 1.1.0): expired, unclaimed links go back to their Pots (reclaim_link, ≤ 10 per run; ops/links.ts)
+//   6. "Ask for a top-up": open asks close when everyone added or their date passed; one due within 36 h reminds the
+//      people who haven't added, once (features/topups.ts reconcileTopups)
 // (The demo-only steps, DAO float top-ups for demo Pots and the demo pool refill, were removed in Rev 9.)
 import "server-only"
 import { and, gt, inArray, sql } from "drizzle-orm"
@@ -16,7 +18,8 @@ import { claimNamedLease, releaseLease } from "@/db/lease"
 import { chargeQuotas } from "@/db/quota"
 import { pot } from "@/db/schema"
 import { logError } from "../log"
-import { notify } from "../notify/notify"
+import { notify, notifyTopupReminder } from "../notify/notify"
+import { reconcileTopups, type TopupsReport } from "../features/topups"
 import { limit } from "../quotas"
 import { serverRetryPayout, serverSync, type RelayDeps } from "../relay/pipeline"
 import { reconcileStaleRelays } from "../relay/reconcile"
@@ -36,6 +39,7 @@ export interface ReconcileReport {
   caps?: Awaited<ReturnType<typeof checkGlobalCaps>>
   retention?: Record<string, number>
   links?: ReclaimReport
+  topups?: TopupsReport
   errors: string[]
 }
 
@@ -66,6 +70,17 @@ export async function runReconcile(
     report.caps = await step("caps", () => checkGlobalCaps(deps.db))
     report.retention = await step("retention", () => runRetention(deps.db))
     report.links = await step("links", () => reclaimExpiredLinks(deps, `${cause}:${opts.holder}`))
+    const push = deps.push ?? null
+    report.topups = await step("topups", () =>
+      reconcileTopups(
+        {
+          db: deps.db,
+          hub: deps.hub,
+          remind: push ? async (r) => void (await notifyTopupReminder({ db: deps.db, hub: deps.hub, cfg: deps.cfg, sender: push }, r)) : undefined,
+        },
+        (opts.now ?? new Date()).getTime(),
+      ),
+    )
   } finally {
     await releaseLease(deps.db, "cron:reconcile", opts.holder).catch(() => undefined)
     report.ms = Date.now() - started

@@ -142,6 +142,12 @@ const cases: Case[] = [
   ["R2 extras with a past goal deadline", HUB, () => [fc("create_pot", createArgs({ extras: { trust: true, one_ok_cap: "0", links: true, goal: { amount: "1", deadline_ms: NOW - 1, all_or_nothing: false } } }), 300)], "args_invalid"],
   ["R2 extras one-OK ceiling over the spend bound", HUB, () => [fc("create_pot", createArgs({ extras: { trust: true, one_ok_cap: "10000000001", links: true, goal: null } }), 300)], "args_invalid"],
   ["R7 propose_rules with extras", HUB, () => [fc("propose_rules", { pot: DAO, rules: RULES, extras: { trust: true, one_ok_cap: "300000000", links: true, goal: null } }, 100)], "R7"],
+  // the rules change sheet: an old Pot (hub 1.0.0 extras, all off) turns pay by link on; a Pot keeps its goal as it is,
+  // even past its date (the hub accepts an unchanged goal), while a create still needs a future date
+  ["R7 propose_rules turning links on (old Pot)", HUB, () => [fc("propose_rules", { pot: DAO, rules: RULES, extras: { trust: false, one_ok_cap: "0", links: true, goal: null } }, 100)], "R7"],
+  ["R6 set_rules turning links on (sole member)", HUB, () => [fc("set_rules", { pot: DAO, rules: RULES, extras: { trust: false, one_ok_cap: "0", links: true, goal: null } }, 30)], "R6"],
+  ["R7 propose_rules keeping a goal whose date has passed", HUB, () => [fc("propose_rules", { pot: DAO, rules: RULES, extras: { trust: true, one_ok_cap: "300000000", links: true, goal: { amount: "500000000", deadline_ms: NOW - 86_400_000, all_or_nothing: true } } }, 100)], "R7"],
+  ["R7 propose_rules goal date over a year out", HUB, () => [fc("propose_rules", { pot: DAO, rules: RULES, extras: { trust: true, one_ok_cap: "0", links: true, goal: { amount: "1", deadline_ms: NOW + 400 * 86_400_000, all_or_nothing: false } } }, 100)], "args_invalid"],
   ["R6 set_rules with bad extras", HUB, () => [fc("set_rules", { pot: DAO, rules: RULES, extras: { trust: "yes", one_ok_cap: "0", links: true, goal: null } }, 30)], "args_invalid"],
   ["R13 ok_request at 200 Tgas", HUB, () => [fc("ok_request", { pot: DAO, request_id: 7 }, 200)], "R13"],
   ["R13 ok_request gas 300", HUB, () => [fc("ok_request", { pot: DAO, request_id: 7 }, 300)], "gas_cap"],

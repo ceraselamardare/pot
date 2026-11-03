@@ -9,7 +9,7 @@
 //  - waiting: your approval is counted, who is left;
 //  - applied: the new rules apply to new spends from now on.
 import { Check, Clock, X } from "lucide-react"
-import { useReducer, useState } from "react"
+import { useEffect, useReducer, useRef, useState } from "react"
 import { Keypad } from "@/components/money/Keypad"
 import { MoneyText } from "@/components/money/MoneyText"
 import { Avatar } from "@/components/pot/Avatar"
@@ -22,8 +22,8 @@ import { t, type MessageKey } from "@/i18n/t"
 import { proposeRules, setRules, voteRules } from "@/lib/client/actions"
 import { announce, useOnline } from "@/lib/client/browser"
 import { ActionError } from "@/lib/client/errors"
-import type { ExtrasVM, PotVM, RulesChangeVM } from "@/lib/client/mock/types"
-import { currentExtras } from "@/lib/client/wave4-form"
+import type { PotVM, RulesChangeVM } from "@/lib/client/mock/types"
+import { changedExtras, extrasEditOf, rulesChangeExtras, type ExtrasEdit, type ExtrasField } from "@/lib/client/wave4-form"
 import { formatUsd, parseKeypad, toKeypad, type Micro } from "@/lib/client/money"
 import type { Rules } from "@/lib/client/rules"
 import { useNow } from "@/lib/client/time"
@@ -84,7 +84,7 @@ export function RulesSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
   return (
     <Sheet open={open} onClose={close} title={title} label={title} footer={undefined}>
       {mode === "change" ? (
-        <ChangeFace key={`${pot.rules.instantCap}-${pot.rules.memberBudget}-${pot.extras?.oneOkCap ?? 0n}-${pot.extras?.trust ?? false}`} pot={pot} phase={phase} dispatch={dispatch} />
+        <ChangeFace key={`${pot.rules.instantCap}-${pot.rules.memberBudget}-${pot.extras?.oneOkCap ?? 0n}-${pot.extras?.trust ?? false}-${pot.extras?.links ?? false}`} pot={pot} phase={phase} dispatch={dispatch} />
       ) : mode === "review" && change ? (
         <ReviewFace pot={pot} change={change} phase={phase} dispatch={dispatch} />
       ) : (
@@ -96,25 +96,37 @@ export function RulesSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
 
 function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispatch: (e: Ev) => void }) {
   const online = useOnline()
-  const curOneOk = pot.extras?.oneOkCap ?? 0n
-  const curTrust = pot.extras?.trust ?? false
+  // the Pot's real extras: a Pot from before hub 1.1.0 starts all off (never the new-Pot defaults)
+  const cur = extrasEditOf(pot)
+  const curOneOk = cur.oneOkCap
   const [values, setValues] = useState<Record<EditField, Micro>>({ instantCap: pot.rules.instantCap, memberBudget: pot.rules.memberBudget, oneOkCap: curOneOk })
-  const [trust, setTrust] = useState(curTrust)
+  const [trust, setTrust] = useState(cur.trust)
+  const [links, setLinks] = useState(cur.links)
   const [field, setField] = useState<EditField>("instantCap")
   const [fresh, setFresh] = useState(true)
+  const linksRef = useRef<HTMLDivElement>(null)
   const sole = pot.n === 1
   const changed = changedFields(pot.rules, values)
-  // hub 1.1.0 extras: sent only when they change (absent = keep the Pot's current ones, goal included)
-  const extrasChanged = values.oneOkCap !== curOneOk || trust !== curTrust
+  const edit: ExtrasEdit = { trust, oneOkCap: values.oneOkCap, links }
+  const extrasDiff = changedExtras(cur, edit)
+  // hub 1.1.0 extras: sent only when they change (then whole; absent = keep the Pot's current ones, goal included)
+  const extras = rulesChangeExtras(pot, edit)
   const oneOkBelow = values.oneOkCap > 0n && values.oneOkCap < values.instantCap
   const zero = values.instantCap <= 0n || values.memberBudget <= 0n
-  const nothing = changed.length === 0 && !extrasChanged
+  const nothing = changed.length === 0 && extrasDiff.length === 0
   const busy = phase.tag === "busy"
   const next: Rules = { ...pot.rules, instantCap: values.instantCap, memberBudget: values.memberBudget }
   const s = ruleSentences(next, pot.k, pot.n)
   const label = (f: EditField) => t(f === "instantCap" ? "rules.change.instant.label" : f === "memberBudget" ? "rules.change.budget.label" : "rules.change.oneok.label")
   const shown = (f: EditField) => (f === "oneOkCap" && values[f] === 0n ? t("rules.change.oneok.off") : formatUsd(values[f], "whole"))
-  const input = { instantCap: values.instantCap, memberBudget: values.memberBudget, ...(extrasChanged ? { extras: { ...currentExtras(pot), trust, oneOkCap: values.oneOkCap } } : {}) }
+  const input = { instantCap: values.instantCap, memberBudget: values.memberBudget, ...(extras ? { extras } : {}) }
+
+  // ?sheet=rules&rule=links (the Spend sheet's "Change the rules" when links are off): bring that switch into view
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("rule") !== "links") return
+    const id = requestAnimationFrame(() => linksRef.current?.scrollIntoView({ block: "center" }))
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   const submit = async () => {
     if (!online || busy || zero || nothing || oneOkBelow) return
@@ -193,30 +205,10 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
         disabled={busy}
       />
 
-      {/* hub 1.1.0: earned trust (a switch: there's no amount to type) */}
-      <div className="flex items-center justify-between gap-3 rounded-md border border-line-strong p-3" data-rules-trust>
-        <div className="min-w-0">
-          <span id="rules-trust-label" className="text-label text-ink">
-            {t("rules.change.trust.label")}
-          </span>
-          <p id="rules-trust-hint" className="text-body-sm text-ink-muted">
-            {t("rules.change.trust.hint")}
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={trust}
-          aria-labelledby="rules-trust-label"
-          aria-describedby="rules-trust-hint"
-          disabled={busy}
-          onClick={() => setTrust((x) => !x)}
-          className="grid h-11 w-14 shrink-0 place-items-center"
-        >
-          <span className={cn("relative h-7 w-12 rounded-pill transition-colors duration-200", trust ? "bg-ink" : "bg-line-strong")}>
-            <span className={cn("absolute top-0.5 left-0.5 size-6 rounded-pill bg-surface shadow transition-transform duration-200 motion-reduce:transition-none", trust && "translate-x-5")} />
-          </span>
-        </button>
+      {/* hub 1.1.0: the on/off rules (switches: there's no amount to type) */}
+      <div className="flex flex-col divide-y divide-line rounded-md border border-line-strong">
+        <SwitchRow id="trust" on={trust} onChange={setTrust} disabled={busy} label={t("rules.change.trust.label")} hint={t("rules.change.trust.hint")} />
+        <SwitchRow ref={linksRef} id="links" on={links} onChange={setLinks} disabled={busy} label={t("rules.change.links.label")} hint={t("rules.change.links.hint")} />
       </div>
 
       <section aria-labelledby="rules-preview-h" className="rounded-md bg-surface-sunken p-3">
@@ -226,12 +218,13 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
         <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-body text-ink">
           <li className={cn(changed.includes("instantCap") && "font-semibold")}>{s.instant}</li>
           <li className={cn(changed.includes("memberBudget") && "font-semibold")}>{s.budget}</li>
-          {(values.oneOkCap > 0n || values.oneOkCap !== curOneOk) && (
-            <li className={cn(values.oneOkCap !== curOneOk && "font-semibold")}>{extrasLine({ trust, oneOkCap: values.oneOkCap, links: false }, "oneOk", values.instantCap)}</li>
-          )}
-          {(trust || trust !== curTrust) && (
-            <li className={cn(trust !== curTrust && "font-semibold")}>{extrasLine({ trust, oneOkCap: values.oneOkCap, links: false }, "trust", values.instantCap)}</li>
-          )}
+          {(["oneOk", "trust", "links"] as const)
+            .filter((w) => extrasDiff.includes(w) || (w === "oneOk" ? edit.oneOkCap > 0n : edit[w]))
+            .map((w) => (
+              <li key={w} className={cn(extrasDiff.includes(w) && "font-semibold")} data-rules-preview={w}>
+                {extrasLine(edit, w, values.instantCap)}
+              </li>
+            ))}
         </ul>
         <p className="mt-2 text-body-sm text-ink-muted">{t("rules.change.applies_note")}</p>
       </section>
@@ -270,15 +263,62 @@ function ChangeFace({ pot, phase, dispatch }: { pot: PotVM; phase: Phase; dispat
   )
 }
 
-/** hub 1.1.0: the one-OK / trust sentence for a set of extras. */
-function extrasLine(x: ExtrasVM, which: "oneOk" | "trust", instantCap: Micro): string {
+/** hub 1.1.0: the one-OK / trust / pay-by-link sentence for a set of extras (the change preview and the review diff). */
+export function extrasLine(x: ExtrasEdit, which: ExtrasField, instantCap: Micro): string {
   if (which === "oneOk") return x.oneOkCap > 0n ? t("rules.change.oneok.on", { oneOk: formatUsd(x.oneOkCap, "whole") }) : t("rules.change.one_ok.off")
+  if (which === "links") return t(x.links ? "rules.links.on" : "rules.links.off")
   return x.trust ? t("rules.trust", { step: 3, instantLimit: formatUsd(instantCap, "whole"), max: formatUsd(instantCap * 3n, "whole") }) : t("rules.change.trust.off")
+}
+
+/** An on/off rule in the change sheet: the label and one line, and a switch (≥ 44 px target). */
+function SwitchRow({
+  id,
+  on,
+  onChange,
+  disabled,
+  label,
+  hint,
+  ref,
+}: {
+  id: string
+  on: boolean
+  onChange: (on: boolean) => void
+  disabled: boolean
+  label: string
+  hint: string
+  ref?: React.Ref<HTMLDivElement>
+}) {
+  return (
+    <div ref={ref} className="flex items-center justify-between gap-3 p-3" data-rules-switch={id}>
+      <div className="min-w-0">
+        <span id={`rules-${id}-label`} className="text-label text-ink">
+          {label}
+        </span>
+        <p id={`rules-${id}-hint`} className="text-body-sm text-ink-muted">
+          {hint}
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-labelledby={`rules-${id}-label`}
+        aria-describedby={`rules-${id}-hint`}
+        disabled={disabled}
+        onClick={() => onChange(!on)}
+        className="grid h-11 w-14 shrink-0 place-items-center"
+      >
+        <span className={cn("relative h-7 w-12 rounded-pill transition-colors duration-200", on ? "bg-ink" : "bg-line-strong")}>
+          <span className={cn("absolute top-0.5 left-0.5 size-6 rounded-pill bg-surface shadow transition-transform duration-200 motion-reduce:transition-none", on && "translate-x-5")} />
+        </span>
+      </button>
+    </div>
+  )
 }
 
 function Diff({ change }: { change: RulesChangeVM }) {
   const fields = changedFields(change.from, change.to)
-  const extras = change.toExtras && change.fromExtras ? (["oneOk", "trust"] as const).filter((w) => (w === "oneOk" ? change.fromExtras!.oneOkCap !== change.toExtras!.oneOkCap : change.fromExtras!.trust !== change.toExtras!.trust)) : []
+  const extras = change.toExtras && change.fromExtras ? changedExtras(change.fromExtras, change.toExtras) : []
   const shown = fields.length || extras.length ? fields : (["instantCap", "memberBudget"] as const)
   const before = ruleSentences(change.from, change.k, change.n)
   const after = ruleSentences(change.to, change.k, change.n)
@@ -300,7 +340,7 @@ function Diff({ change }: { change: RulesChangeVM }) {
       ))}
       {extras.map((w) => (
         <div key={w} className="flex flex-col gap-1 rounded-md border border-line p-3" data-rules-diff-extra={w}>
-          <dt className="sr-only">{w === "oneOk" ? t("rules.change.oneok.label") : t("rules.change.trust.label")}</dt>
+          <dt className="sr-only">{t(w === "oneOk" ? "rules.change.oneok.label" : w === "trust" ? "rules.change.trust.label" : "rules.change.links.label")}</dt>
           <dd className="text-body-sm text-ink-muted">
             <span className="mr-1 font-semibold">{t("approve.rules.now")}</span>
             <span className="line-through">{extrasLine(change.fromExtras!, w, change.from.instantCap)}</span>

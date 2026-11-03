@@ -10,6 +10,7 @@ import {
   Coins,
   Gift,
   Globe,
+  HandCoins,
   History,
   Link2,
   Lock,
@@ -50,6 +51,8 @@ const MEMBERS: [LucideIcon, PrivacyKey][] = [
   [ReceiptText, "privacy.members.receipts"],
   [Link2, "privacy.members.links"],
   [History, "privacy.members.activity"],
+  // "Ask for a top-up": the asks, their reasons and who added (2026-11-03)
+  [HandCoins, "privacy.members.topups"],
   // gift notes: members (and the giver); the public gift page only if the giver chose
   ...(GIFTS_ON ? ([[Gift, "privacy.members.gift_notes"]] as [LucideIcon, PrivacyKey][]) : []),
 ]

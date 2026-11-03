@@ -10,15 +10,20 @@ import { ApproveSheet } from "@/components/sheets/ApproveSheet"
 import { pageTitle, t } from "@/i18n/t"
 import { useMe, usePot, useRequests } from "@/lib/client/data"
 import { closeSheet, useSheetParams } from "@/lib/client/sheet"
+import { TopupCard } from "@/components/topups/TopupCard"
+import { useInboxTopups } from "@/lib/client/topups/data"
 import { useNow } from "@/lib/client/time"
 
 export function RequestsScreen() {
   const reqs = useRequests()
+  // "Ask for a top-up": open asks in my Pots where I haven't added my part sit with what's waiting on me
+  const topups = useInboxTopups() ?? []
   const me = useMe()
   const now = useNow()
   const { requestId, params } = useSheetParams()
   const potSlug = params.get("pot")
-  const empty = reqs && reqs.waiting.length === 0 && reqs.mine.length === 0 && reqs.decided.length === 0
+  const empty = reqs && reqs.waiting.length === 0 && reqs.mine.length === 0 && reqs.decided.length === 0 && topups.length === 0
+  const waitingN = (reqs?.waiting.length ?? 0) + topups.length
   return (
     <>
       <title>{pageTitle(t("requests.title"))}</title>
@@ -33,9 +38,12 @@ export function RequestsScreen() {
             <section aria-labelledby="rq-waiting" className="flex flex-col gap-3">
               <h2 id="rq-waiting" className="font-display text-heading text-ink">
                 {t("requests.section.waiting")}
-                {reqs.waiting.length > 0 && <span className="text-ink-muted tabular-nums">{countSuffix(reqs.waiting.length)}</span>}
+                {waitingN > 0 && <span className="text-ink-muted tabular-nums">{countSuffix(waitingN)}</span>}
               </h2>
-              {reqs.waiting.length === 0 ? (
+              {topups.map((v) => (
+                <TopupCard key={`${v.slug}:topup:${v.id}`} v={v} me={me} now={now} showPot />
+              ))}
+              {waitingN === 0 ? (
                 <p className="flex items-center gap-2 text-body-sm text-ink-muted">
                   <Check aria-hidden className="size-4 text-approved" strokeWidth={2.5} />
                   {t("requests.section.waiting.empty")}

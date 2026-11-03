@@ -10,7 +10,7 @@
 //     DATABASE_URL=postgres://pot:pot@localhost:54329/pot_xcbug DATABASE_URL_UNPOOLED=postgres://pot:pot@localhost:54329/pot_xcbug \
 //     pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts deposit-partial
 import { expect, test, type Page } from "@playwright/test"
-import { createPot, typeAmount } from "../fixtures/pot"
+import { addFlow, createPot } from "../fixtures/pot"
 import { createTestAccounts } from "./accounts"
 import { accountOf, chain, eventually, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -42,7 +42,7 @@ async function openAdd(page: Page, amount: string) {
   const sheet = page.getByRole("dialog", { name: `Add money to ${POT_NAME}` })
   await expect(sheet).toBeVisible()
   for (let i = 0; i < 6; i++) await sheet.getByRole("button", { name: "delete", exact: true }).click()
-  if (amount) await typeAmount(page, amount)
+  if (amount) await addFlow(page, { amount })
   return sheet
 }
 
@@ -76,6 +76,7 @@ test("an underpaid simulated deposit → 'send more' twice → it arrives → $3
     // Add money $5 → another app → Solana → "Send less than needed"
     const add = await openAdd(page, "5")
     await add.getByRole("radio", { name: /Another app or exchange/ }).click()
+    await add.getByRole("button", { name: "Continue", exact: true }).click()
     const sheet = page.getByRole("dialog", { name: "Add from another wallet or exchange" })
     await expect(sheet).toBeVisible()
     await sheet.getByRole("radio", { name: /Solana/ }).click()

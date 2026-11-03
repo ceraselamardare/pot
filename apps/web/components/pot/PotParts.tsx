@@ -1,8 +1,8 @@
 "use client"
-// PotHeader (cover tile + H1 + seats + ••• menu) and PotCard (Pots home), design-direction 02 §1-2.
-import { Menu } from "@base-ui/react/menu"
-import { ChevronLeft, EllipsisVertical, Eye, Gift, ListChecks, LogOut, Share2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+// PotHeader (cover tile + H1 + seats) and PotCard (Pots home), design-direction 02 §1-2.
+// The Pot's ••• lives in its action row (components/pot/PotActions → ?sheet=more); a closed Pot has no row, so its
+// header keeps a ••• that opens the same sheet (one "more" list, never two).
+import { ChevronLeft, Ellipsis } from "lucide-react"
 import Link from "next/link"
 import { AvatarStack } from "@/components/pot/Avatar"
 import { CoverTile } from "@/components/pot/CoverTile"
@@ -14,13 +14,8 @@ import { formatUsd } from "@/lib/client/money"
 import type { PotCardVM, PotVM } from "@/lib/client/mock/types"
 import { openSheet } from "@/lib/client/sheet"
 import { cn } from "@/lib/client/cn"
-import { GIFTS_ON } from "@/lib/client/gifts/flag"
-
-const itemCls =
-  "flex min-h-12 w-full cursor-default items-center gap-3 rounded-sm px-3 text-left text-body text-ink outline-none select-none data-highlighted:bg-surface-sunken data-disabled:text-ink-muted"
 
 export function PotHeader({ pot }: { pot: PotVM }) {
-  const router = useRouter()
   return (
     <header className="flex flex-wrap items-center gap-2 pt-3 pb-4">
       <Link
@@ -34,61 +29,18 @@ export function PotHeader({ pot }: { pot: PotVM }) {
       {/* rem-based min width: at 200 % text the name takes a line of its own instead of truncating (F-25) */}
       <h1 className="min-w-[7.5rem] flex-1 font-display text-title break-words text-ink">{pot.name}</h1>
       <AvatarStack people={pot.members.map((m) => m.person).sort((a, b) => (a.joinIndex ?? 0) - (b.joinIndex ?? 0))} size="sm" />
-      <Menu.Root>
-        <Menu.Trigger
+      {pot.status === "closed" && (
+        <button
+          type="button"
           aria-label={t("pot.menu.label", { potName: pot.name })}
-          className="-mr-2 grid size-11 shrink-0 place-items-center rounded-pill text-ink hover:bg-surface-sunken data-popup-open:bg-surface-sunken"
+          aria-haspopup="dialog"
+          onClick={() => openSheet("more")}
+          className="-mr-2 grid size-11 shrink-0 place-items-center rounded-pill text-ink hover:bg-surface-sunken"
+          data-header-more
         >
-          <EllipsisVertical aria-hidden className="size-6" strokeWidth={2} />
-        </Menu.Trigger>
-        <Menu.Portal>
-          <Menu.Positioner sideOffset={6} align="end" className="z-50 outline-none">
-            <Menu.Popup className="min-w-60 origin-(--transform-origin) rounded-md border border-line bg-surface p-1 shadow-card outline-none transition-[opacity,scale] duration-120 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
-              <Menu.Item className={itemCls} onClick={() => openSheet("share")}>
-                <Share2 aria-hidden className="size-5" strokeWidth={2} />
-                {t("pot.menu.share")}
-              </Menu.Item>
-              {/* hub 1.1.0: the public Pot record (every spend, shareable, CSV) */}
-              <Menu.Item className={itemCls} onClick={() => router.push(`/p/${pot.slug}/record`)} data-menu-record>
-                <ListChecks aria-hidden className="size-5" strokeWidth={2} />
-                <span className="flex flex-col py-1">
-                  <span>{t("pot.menu.record")}</span>
-                  <span className="text-body-sm text-ink-muted">{t("pot.menu.record.sub")}</span>
-                </span>
-              </Menu.Item>
-              {/* hub 1.2.0: gifts on/off, the public gift page */}
-              {GIFTS_ON && (
-                <Menu.Item className={itemCls} onClick={() => openSheet("gifts")} data-menu-gifts>
-                  <Gift aria-hidden className="size-5" strokeWidth={2} />
-                  <span className="flex flex-col py-1">
-                    <span>{t("gift.menu")}</span>
-                    <span className="text-body-sm text-ink-muted">{t("gift.menu.sub")}</span>
-                  </span>
-                </Menu.Item>
-              )}
-              {/* privacy audit 2026-11-02: what's public and what only the Pot sees (the shell's PwaHost opens it) */}
-              <Menu.Item className={itemCls} onClick={() => openSheet("privacy")} data-menu-privacy>
-                <Eye aria-hidden className="size-5" strokeWidth={2} />
-                <span className="flex flex-col py-1">
-                  <span>{t("privacy.menu")}</span>
-                  <span className="text-body-sm text-ink-muted">{t("privacy.menu.sub")}</span>
-                </span>
-              </Menu.Item>
-              <Menu.Item className={itemCls} onClick={() => openSheet("close")} data-menu-close>
-                <LogOut aria-hidden className="size-5" strokeWidth={2} />
-                {pot.status === "closed" ? (
-                  t("close.summary.cta")
-                ) : (
-                  <span className="flex flex-col py-1">
-                    <span>{t("pot.menu.close")}</span>
-                    <span className="text-body-sm text-ink-muted">{pot.status === "closing" ? t("close.menu.waiting") : t("close.menu.sub")}</span>
-                  </span>
-                )}
-              </Menu.Item>
-            </Menu.Popup>
-          </Menu.Positioner>
-        </Menu.Portal>
-      </Menu.Root>
+          <Ellipsis aria-hidden className="size-6" strokeWidth={2} />
+        </button>
+      )}
     </header>
   )
 }

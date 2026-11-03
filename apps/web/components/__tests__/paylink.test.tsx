@@ -102,7 +102,7 @@ describe("the Spend sheet's link fields", () => {
     unmount()
     const lisbon = W.potView(world(), "lisbon-trip", "maya", NOW)!
     render(<PayLinkFields pot={lisbon} label="" onLabel={() => {}} />)
-    expect(screen.getByText(/Paying by link isn't on for this Pot yet/)).toBeTruthy()
+    expect(screen.getByText(/Paying people outside the Pot is off here/)).toBeTruthy()
   })
 })
 

@@ -26,11 +26,11 @@ test("(a) invite landing → join → You're in → add $150 → the balance upd
   // the #secret is stripped from the URL after the join
   expect(new URL(page.url()).hash).toBe("")
 
-  // tap 3: Add my $150 share → the Add sheet, prefilled
+  // tap 3: Add my $150 share → the Add sheet, prefilled, straight on its step 2 (how to add it)
   await youreIn.getByRole("button", { name: "Add my $150 share" }).click()
-  await expect(page).toHaveURL(/\/p\/porto-weekend\?sheet=add&amount=150/)
+  await expect(page).toHaveURL(/\/p\/porto-weekend\?sheet=add&amount=150&step=source/)
   const add = await openedSheet(page, "Add money to Porto Weekend")
-  await expect(add.locator("[data-amount-display]")).toHaveText("$150")
+  await expect(add.locator("[data-add-amount]")).toHaveText("How much? $150")
   await expect(add.getByText("Porto Weekend will have $450.00. Goal reached.")).toBeVisible()
   await expect(add.getByRole("radio", { name: /Demo dollars \(test money\)/ })).toHaveAttribute("aria-checked", "true")
   await brandChecks(page, { marigold: "one" })

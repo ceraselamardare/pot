@@ -32,6 +32,9 @@ const DEFAULTS: Record<string, [bigint, bigint]> = {
   user_receipt_save_burst: [10n, 10n], // per minute
   user_survey: [20n, 20n], // "Help us make Pot better" saves per day (one row per person, upserted)
   user_survey_burst: [5n, 5n], // per minute
+  user_topups: [10n, 10n], // "Ask for a top-up": asks made per day
+  user_topup_burst: [5n, 5n], // asks and cancels, per minute
+  user_nudges: [10n, 10n], // people nudged per sender per day (api-spec §2.5)
   // per Pot per day
   pot_contribute: [200n, 200n],
   pot_spend: [100n, 100n],

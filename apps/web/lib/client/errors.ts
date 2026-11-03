@@ -22,7 +22,13 @@ export class ActionError extends Error {
   readonly requestId?: string
   readonly txHash?: string
   readonly moneyMoved: "no" | "unknown" | "not_yet"
-  constructor(cls: ErrorClass, reason: string, extra: { requestId?: string; txHash?: string; moneyMoved?: "no" | "unknown" | "not_yet"; message?: string } = {}) {
+  /** the API's machine-readable extras (e.g. `{cause: "topup_open"}`), when it sent any */
+  readonly detail?: Record<string, unknown>
+  constructor(
+    cls: ErrorClass,
+    reason: string,
+    extra: { requestId?: string; txHash?: string; moneyMoved?: "no" | "unknown" | "not_yet"; message?: string; detail?: Record<string, unknown> } = {},
+  ) {
     super(extra.message ?? `${cls}: ${reason}`)
     this.name = "ActionError"
     this.cls = cls
@@ -30,6 +36,7 @@ export class ActionError extends Error {
     this.requestId = extra.requestId
     this.txHash = extra.txHash
     this.moneyMoved = extra.moneyMoved ?? "no"
+    if (extra.detail) this.detail = extra.detail
   }
 }
 

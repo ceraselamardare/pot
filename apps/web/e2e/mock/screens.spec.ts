@@ -3,7 +3,7 @@
 // The mobile projects also save review screenshots for Cerasela to notes/screens/.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, createPot, openedSheet, PORTO_INVITE_URL, spendFlow } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, createPot, openedSheet, potMore, PORTO_INVITE_URL, spendFlow } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 test.use({ reducedMotion: "reduce" })
@@ -63,8 +63,10 @@ test("the Pot: activity, members, rules, and its sheets", async ({ page }, info)
     await expect(page.getByRole("dialog")).toBeHidden()
   }
 
-  await page.getByRole("button", { name: "More options for Lisbon Trip" }).click()
-  await page.getByRole("menuitem", { name: "Share invite" }).click()
+  const more = await potMore(page, "Lisbon Trip")
+  await check(page, "none") // a list of places to go: no primary action
+  await shot(page, "pot-more", info.project.name)
+  await more.getByRole("button", { name: "Invite friends" }).click()
   await openedSheet(page, "Invite friends to Lisbon Trip")
   await check(page, "one")
 })

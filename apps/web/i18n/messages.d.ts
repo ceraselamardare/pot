@@ -30,6 +30,7 @@ export interface Messages {
   "activity.refund": { who: string | number; amount: string | number }
   "activity.rules_asked": { who: string | number }
   "activity.rules_changed": { who: string | number }
+  "activity.topup": { who: string | number; amount: string | number }
   "activity.voted.approve": { who: string | number; name: string | number; amount: string | number }
   "activity.voted.approve.other": { who: string | number }
   "activity.voted.close.approve": { who: string | number }
@@ -40,10 +41,13 @@ export interface Messages {
   "activity.voted.rules.reject": { who: string | number }
   "add.after": { potName: string | number; balance: string | number }
   "add.after.goal": { potName: string | number; balance: string | number }
+  "add.amount.change": undefined
+  "add.amount.change.a11y": undefined
   "add.amount.label": undefined
   "add.chip.share": { suggested: string | number }
   "add.cta": { amount: string | number }
   "add.cta.empty": undefined
+  "add.cta.other": undefined
   "add.error.busy": undefined
   "add.error.closed": undefined
   "add.error.generic": undefined
@@ -56,6 +60,9 @@ export interface Messages {
   "add.error.sign_in_again": undefined
   "add.finish_pending.body": { amount: string | number; potName: string | number }
   "add.finish_pending.title": { amount: string | number }
+  "add.for_topup": { name: string | number; amount: string | number }
+  "add.for_topup.mine": { amount: string | number }
+  "add.next": undefined
   "add.offline": undefined
   "add.range": { max: string | number }
   "add.refund_after": { refund: string | number }
@@ -70,6 +77,8 @@ export interface Messages {
   "add.source.short": { amount: string | number }
   "add.source.soon": undefined
   "add.source.test_pill": undefined
+  "add.source.title": undefined
+  "add.step.amount": undefined
   "add.success": { potName: string | number; balance: string | number }
   "add.title": { potName: string | number }
   "add.usdc_note": undefined
@@ -197,6 +206,7 @@ export interface Messages {
   "avatar.pot-09": undefined
   "avatar.pot-10": undefined
   "chip.approved": undefined
+  "chip.cancelled": undefined
   "chip.declined": undefined
   "chip.expired": undefined
   "chip.failed": undefined
@@ -928,6 +938,7 @@ export interface Messages {
   "feed.rules_changed.group": undefined
   "feed.rules_requested": { name: string | number }
   "feed.rules_requested.sub": { k: string | number }
+  "feed.topup": { name: string | number; amount: string | number }
   "feed.withdrawn": { name: string | number; amount: string | number }
   "feed.you": undefined
   "generic.checking": undefined
@@ -1333,10 +1344,16 @@ export interface Messages {
   "notif.link.returned.body_cancelled": { name: string | number }
   "notif.link.returned.title": { amount: string | number; potName: string | number }
   "notif.nudge.body": { suggested: string | number; potName: string | number }
+  "notif.nudge.body_plain": { potName: string | number }
   "notif.nudge.title": { name: string | number }
   "notif.ok_approved.body": { name: string | number; reason: string | number }
   "notif.one_ok.body": { amount: string | number; reason: string | number; potName: string | number }
   "notif.one_ok.title": { name: string | number }
+  "notif.topup.body": { reason: string | number; potName: string | number }
+  "notif.topup.body_plain": { potName: string | number }
+  "notif.topup.reminder.body": { name: string | number; date: string | number }
+  "notif.topup.reminder.title": { amount: string | number; potName: string | number }
+  "notif.topup.title": { name: string | number; amount: string | number }
   "notif.trust.body": { amount: string | number }
   "notif.trust.title": { level: string | number; potName: string | number }
   "offline.banner": undefined
@@ -1394,6 +1411,7 @@ export interface Messages {
   "paylink.label.label": undefined
   "paylink.label.placeholder": undefined
   "paylink.off": undefined
+  "paylink.off.cta": undefined
   "paylink.one_ok_sent": undefined
   "paylink.panel.for": { who: string | number }
   "paylink.panel.title": undefined
@@ -1434,6 +1452,10 @@ export interface Messages {
   "paylink.who.me": undefined
   "paylink.who.member": undefined
   "person.fallback": undefined
+  "pot.action.ask": undefined
+  "pot.action.invite": undefined
+  "pot.action.more": undefined
+  "pot.actions.label": undefined
   "pot.back": undefined
   "pot.closed.hero": { date: string | number }
   "pot.closing": undefined
@@ -1455,8 +1477,9 @@ export interface Messages {
   "pot.menu.label": { potName: string | number }
   "pot.menu.record": undefined
   "pot.menu.record.sub": undefined
-  "pot.menu.share": undefined
   "pot.mine.header": undefined
+  "pot.more.invite.sub": undefined
+  "pot.more.title": undefined
   "pot.not_found.body": undefined
   "pot.not_found.cta": undefined
   "pot.not_found.title": undefined
@@ -1507,6 +1530,7 @@ export interface Messages {
   "privacy.members.names": undefined
   "privacy.members.notes": undefined
   "privacy.members.receipts": undefined
+  "privacy.members.topups": undefined
   "privacy.members.why": undefined
   "privacy.menu": undefined
   "privacy.menu.sub": undefined
@@ -1670,9 +1694,12 @@ export interface Messages {
   "rules.change.cta.sole": undefined
   "rules.change.edit": { label: string | number; amount: string | number }
   "rules.change.error": undefined
+  "rules.change.h": undefined
   "rules.change.in_flight": undefined
   "rules.change.instant.help": undefined
   "rules.change.instant.label": undefined
+  "rules.change.links.hint": undefined
+  "rules.change.links.label": undefined
   "rules.change.needs": { k: string | number; n: string | number }
   "rules.change.note": { k: string | number; n: string | number }
   "rules.change.one_ok.off": undefined
@@ -1701,6 +1728,9 @@ export interface Messages {
   "rules.instant.none": { k: string | number; n: string | number }
   "rules.label": undefined
   "rules.leftovers": undefined
+  "rules.links.off": undefined
+  "rules.links.on": undefined
+  "rules.more.label": undefined
   "rules.new_member": undefined
   "rules.one_ok": { oneOk: string | number }
   "rules.recipients": undefined
@@ -1902,6 +1932,67 @@ export interface Messages {
   "time.just_now": undefined
   "time.minutes_ago": { n: string | number }
   "time.soon": undefined
+  "topup.amount.each": undefined
+  "topup.amount.total": undefined
+  "topup.cancel": undefined
+  "topup.cancel.confirm": undefined
+  "topup.cancel.failed": undefined
+  "topup.cancel.no": undefined
+  "topup.cancel.title": undefined
+  "topup.cancel.yes": undefined
+  "topup.cancelled": undefined
+  "topup.card.add": { amount: string | number }
+  "topup.card.nudge.a11y": { names: string | number }
+  "topup.card.nudged": undefined
+  "topup.card.nudged.a11y": undefined
+  "topup.card.progress": { done: string | number; n: string | number }
+  "topup.card.reason": { reason: string | number }
+  "topup.card.sum": { total: string | number; date: string | number }
+  "topup.card.title": { name: string | number; amount: string | number }
+  "topup.card.title.mine": { amount: string | number }
+  "topup.card.waiting_for": { names: string | number }
+  "topup.card.you_done": { amount: string | number }
+  "topup.chip.asking": undefined
+  "topup.chip.cancelled": undefined
+  "topup.chip.done": undefined
+  "topup.chip.ended": undefined
+  "topup.cta.each": { amount: string | number }
+  "topup.cta.empty": undefined
+  "topup.cta.total": { amount: string | number }
+  "topup.due.14": undefined
+  "topup.due.3": undefined
+  "topup.due.7": undefined
+  "topup.due.date": { date: string | number }
+  "topup.due.label": undefined
+  "topup.error.alone": undefined
+  "topup.error.closed": undefined
+  "topup.error.failed": undefined
+  "topup.error.limit": undefined
+  "topup.error.max": { max: string | number }
+  "topup.error.min": { min: string | number }
+  "topup.error.open": undefined
+  "topup.everyone": undefined
+  "topup.menu": undefined
+  "topup.menu.alone": undefined
+  "topup.menu.open": { name: string | number }
+  "topup.menu.open_mine": undefined
+  "topup.menu.sub": undefined
+  "topup.mode.each": undefined
+  "topup.mode.label": undefined
+  "topup.mode.total": undefined
+  "topup.notify": undefined
+  "topup.nudge.failed": undefined
+  "topup.nudge.too_soon": undefined
+  "topup.offline": undefined
+  "topup.reason.count": { n: string | number; max: string | number }
+  "topup.reason.label": undefined
+  "topup.reason.placeholder": undefined
+  "topup.row.progress": { done: string | number; n: string | number }
+  "topup.row.title": { amount: string | number }
+  "topup.sent": { amount: string | number }
+  "topup.split.each": { total: string | number; n: string | number }
+  "topup.split.total": { part: string | number; n: string | number }
+  "topup.title": undefined
   "tour.back": undefined
   "tour.cast.label": undefined
   "tour.cast.leo": undefined

@@ -1,14 +1,15 @@
 // Status = icon + word + colour, never colour alone (brand README §4, ux-spec §3). A pill on surface-sunken:
 // approved/sent = `approved` + check; instant = `approved` + zap (approved by the Pot's rules); needs = `waiting` +
-// clock; declined/failed = `declined` + x; sending = ink-muted + send; expired = ink-muted + hourglass.
+// clock; declined/failed = `declined` + x; sending = ink-muted + send; expired = ink-muted + hourglass; cancelled =
+// ink-muted + ban (a top-up ask its asker took back).
 // `size="sm"` is the compact chip of a list row's meta line (24 px); `ground="surface"` puts the pill on surface
 // for rows that are themselves sunken or tinted (the instant row's brand-soft: `approved` text on it fails 4.5:1).
-import { Check, Clock, Hourglass, Send, X, Zap } from "lucide-react"
+import { Ban, Check, Clock, Hourglass, Send, X, Zap } from "lucide-react"
 import type { ReactNode } from "react"
 import { t } from "@/i18n/t"
 import { cn } from "@/lib/client/cn"
 
-export type ChipStatus = "sending" | "sent" | "approved" | "instant" | "needs" | "declined" | "expired" | "failed"
+export type ChipStatus = "sending" | "sent" | "approved" | "instant" | "needs" | "declined" | "expired" | "failed" | "cancelled"
 
 const META = {
   sending: { icon: Send, color: "text-ink-muted", key: "chip.sending" },
@@ -19,6 +20,8 @@ const META = {
   declined: { icon: X, color: "text-declined", key: "chip.declined" },
   expired: { icon: Hourglass, color: "text-ink-muted", key: "chip.expired" },
   failed: { icon: X, color: "text-declined", key: "chip.failed" },
+  // "Ask for a top-up": the asker took it back (quiet, not a failure)
+  cancelled: { icon: Ban, color: "text-ink-muted", key: "chip.cancelled" },
 } as const
 
 /** The pill's shape, shared with LinkStatusChip. */

@@ -11,6 +11,7 @@ import { approvalsNeeded, expiresAt, previewSpend, type Rules } from "../rules"
 import { DAY, HOUR, LISBON_INVITE, MIN, PEOPLE, PORTO_INVITE } from "./fixtures"
 import { effectiveLink, LINK_RECEIVER, linkReceiverVM, linkVM, openLinks } from "./links"
 import { closeMathWithGifts, giftFeedItems, giftsTotalOf, giftsVM, giverOf } from "./gifts"
+import { topupsOf, topupsView, topupVM } from "./topups"
 import {
   canOk,
   checkGoalReached,
@@ -43,6 +44,7 @@ import type {
   PotVM,
   ProposalRec,
   RequestRec,
+  TopupVM,
   RequestVM,
   RulesChangeVM,
   RulesProposalRec,
@@ -855,6 +857,8 @@ export function potView(w: World, slug: string, me: string | null, now: number):
   const meVM = members.find((m) => m.isMe) ?? null
   const reqs = pot.requests.map((r) => requestVM(pot, r, me, now))
   // hub 1.2.0 gifts: members see each one (with its note) in the feed
+  // "Ask for a top-up": the open ask (the card) and every ask as a feed row, members only
+  const topups = topupsView(w, pot, me, now, (id) => person(pot, id))
   const gifts = giftsVM(w, pot, (g) => giverOf(g, nameOf, initialsOf, (id) => avatarOrNull(viewAvatars[id])), (g) => mockTxHash(`${pot.slug}:gift:${g.ref}`))
   const feed: FeedItemVM[] = [
     ...pot.events.map((e: EventRec): FeedItemVM => {
@@ -870,6 +874,7 @@ export function potView(w: World, slug: string, me: string | null, now: number):
       : []),
     ...(pot.status === "closed" && pot.closedAt ? [{ key: `closed:${pot.slug}`, kind: "closed" as const, at: pot.closedAt, txHash: mockTxHash(`${pot.slug}:closed`) }] : []),
     ...giftFeedItems(gifts),
+    ...topups.feed,
     ...(pot.rulesProposal && pot.rulesProposal.status === "proposed"
       ? [{ key: `rules:${pot.rulesProposal.id}`, kind: "rules_requested" as const, at: pot.rulesProposal.createdAt, actor: person(pot, pot.rulesProposal.proposer), k: approvalsNeeded(pot.members.length), txHash: mockTxHash(`${pot.slug}:rules:${pot.rulesProposal.id}`) }]
       : []),
@@ -918,6 +923,7 @@ export function potView(w: World, slug: string, me: string | null, now: number):
     ...(pot.extras ? { extras: extrasVM(pot.extras), policyVersion: pot.policyVersion ?? 1 } : {}),
     goalDetail,
     gifts,
+    topup: topups.open,
   }
 }
 
@@ -979,6 +985,29 @@ export function requestsOf(w: World, me: string, now: number): RequestsVM {
     mine: all.filter((r) => r.mine && r.status === "needs"),
     decided: all.filter((r) => r.status !== "needs" && now - (r.decidedAt ?? r.expiresAt) < 30 * DAY),
   }
+}
+
+/** Requests: the open asks in my Pots where I haven't added my part yet. */
+export function inboxTopupsOf(w: World, me: string, now: number): TopupVM[] {
+  withAvatars(w)
+  const out: TopupVM[] = []
+  for (const p of Object.values(w.pots)) {
+    if (!isMember(p, me)) continue
+    const open = topupsView(w, p, me, now, (id) => person(p, id)).open
+    if (open && open.me && !open.me.done) out.push(open)
+  }
+  return out.sort((a, b) => b.createdAt - a.createdAt)
+}
+
+/** You → Your activity: the asks I made, newest first. */
+export function myTopupAsksOf(w: World, me: string, now: number): TopupVM[] {
+  withAvatars(w)
+  const out: TopupVM[] = []
+  for (const p of Object.values(w.pots)) {
+    if (!isMember(p, me)) continue
+    for (const r of topupsOf(w, p.slug)) if (r.by === me) out.push(topupVM(w, p, r, me, now, (id) => person(p, id)))
+  }
+  return out.sort((a, b) => b.createdAt - a.createdAt)
 }
 
 export function waitingCount(w: World, me: string, now: number): number {

@@ -5,7 +5,7 @@
 // The mobile projects save notes/screens/refund-preview-{day,night}.png (the explainer sheet).
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, brandChecks, openedSheet, spendFlow, spendNext, spendWhy, typeAmount } from "../fixtures/pot"
+import { addNext, asPerson, axe, brandChecks, openedSheet, spendFlow, spendNext, spendWhy, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -68,6 +68,8 @@ test("Add money: what you'd get back after this, and the hero agrees once it lan
   const sheet = await openedSheet(page, "Add money to Lisbon Trip")
   await expect(sheet.locator("[data-add-refund]")).toHaveCount(0) // nothing typed yet
   await typeAmount(page, "50")
+  await expect(sheet.locator("[data-add-refund]")).toHaveCount(0) // step 1 is just the amount
+  await addNext(page)
   // $416 in the Pot, Maya $200 of $500 put in: 416 × 200 / 500 = $166.40
   await expect(sheet.locator("[data-add-refund]")).toHaveText("After this, you'd get back $166.40 if the Pot closed.")
   await brandChecks(page, { marigold: "one" })

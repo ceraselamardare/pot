@@ -1,7 +1,7 @@
 // Degraded and edge states (M-10, M-15, M-05, M-21 c): offline banner + disabled money CTAs, revert-with-toast,
 // reduced motion (no burst, the 1.2 s beat stays), inline approve with Undo, Appearance switching.
 import { expect, test } from "@playwright/test"
-import { asPerson, becomePerson, openedSheet, spendFlow, typeAmount } from "../fixtures/pot"
+import { asPerson, becomePerson, openedSheet, spendFlow, addFlow } from "../fixtures/pot"
 
 test("offline: banner, cached numbers stay, money buttons explain; back online", async ({ page, context }) => {
   await asPerson(page, "maya")
@@ -13,7 +13,8 @@ test("offline: banner, cached numbers stay, money buttons explain; back online",
   const add = page.getByRole("button", { name: "Add money" })
   await expect(add).toHaveAttribute("aria-disabled", "true")
   await add.click({ force: true }) // aria-disabled, but tapping explains why (ux-spec 4.20)
-  await expect(page.getByText("You're offline. Connect to add money.")).toBeVisible()
+  await expect(add).toHaveAccessibleDescription("You're offline. Connect to add money.")
+  await expect(page.locator("[data-sonner-toast]").getByText("You're offline. Connect to add money.")).toBeVisible()
   await expect(page.getByRole("dialog")).toBeHidden()
   await context.setOffline(false)
   await expect(page.locator("[data-offline-banner]")).toBeHidden()
@@ -25,7 +26,7 @@ test("a failed add reverts the Sending… item and says what happened (one toast
   await page.addInitScript(() => localStorage.setItem("pot.mock.fail", "add"))
   await page.goto("/p/lisbon-trip?sheet=add")
   const sheet = await openedSheet(page, "Add money to Lisbon Trip")
-  await typeAmount(page, "50")
+  await addFlow(page, { amount: "50" })
   await sheet.getByRole("button", { name: "Add $50" }).click()
   await expect(page.getByText("Adding $50…")).toBeVisible()
   await expect(page.getByText("We couldn't add your money right now. Nothing left your account. Try again in a minute.")).toBeVisible()

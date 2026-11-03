@@ -3,17 +3,16 @@
 // balance-hero with tabular figures, two decimals, on its own left-aligned line, counting up/down over 500 ms
 // when it changes (instant under reduced motion; never animated on first paint: it's the LCP element).
 // Pending money shows on its own line ("+$150 on the way") and is never added to the big number.
-// [Add money] is the Pot screen's one marigold button; [Spend] is secondary (design-direction fix).
+// Under it, the Pot's actions (components/pot/PotActions, passed in as `actions`): round buttons with a label under
+// each, Add money the screen's one marigold. A closed Pot is read-only: no actions.
 // "You'd get back $122 · You put in $150" is a quiet button (R-33 M-6): it opens ?sheet=refund, what you'd get back if the
 // Pot closed now and how it's worked out (components/sheets/RefundSheet.tsx).
-import { ArrowUpRight, Clock, Info, Plus } from "lucide-react"
+import { Clock, Info } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import { MoneyText } from "@/components/money/MoneyText"
 import { GoalBar } from "@/components/pot/GoalBar"
 import { t } from "@/i18n/t"
-import { useOnline, useReducedMotion } from "@/lib/client/browser"
+import { useReducedMotion } from "@/lib/client/browser"
 import { formatUsd, type Micro } from "@/lib/client/money"
 import { formatDate } from "@/lib/client/time"
 import { cn } from "@/lib/client/cn"
@@ -48,15 +47,11 @@ export function BalanceHero({
   pendingIn,
   goal,
   collected,
-  onAdd,
-  onSpend,
+  actions,
   className,
-  closing,
   closedAt,
-  addVariant = "primary",
   onShare,
   goalSlot,
-  spendBlocked,
 }: {
   balance: Micro
   share: Micro
@@ -64,29 +59,17 @@ export function BalanceHero({
   pendingIn: Micro
   goal: Micro | null
   collected: Micro
-  onAdd: () => void
-  onSpend: () => void
+  /** the Pot's action row (components/pot/PotActions); not shown once the Pot is closed */
+  actions?: ReactNode
   className?: string
-  closing?: boolean
   /** a closed Pot is read-only: "Closed Nov 12" and no money buttons (ux-spec §4.4 Closed) */
   closedAt?: number | null
-  /** integrations (D-50): "secondary" while an arrived deposit card holds the screen's one marigold button */
-  addVariant?: "primary" | "secondary"
   /** R-33 M-6: "You'd get back" opens the refund explainer (?sheet=refund); without it the line is plain text */
   onShare?: () => void
   /** hub 1.1.0: the goal with a date (components/wave4/GoalBanner) in place of the plain goal bar */
   goalSlot?: ReactNode
-  /** hub 1.1.0: why Spend waits (an all-or-nothing goal not reached yet); Spend is aria-disabled and says it */
-  spendBlocked?: string | null
 }) {
   const shown = useCountUp(balance)
-  const online = useOnline()
-  const blocked = !online || closing
-  const guard = (fn: () => void, offlineKey: "add.offline" | "spend.offline") => () => {
-    if (closing) return toast(t("pot.closing"))
-    if (!online) return toast(t(offlineKey))
-    fn()
-  }
   return (
     <section
       aria-label={t("pot.hero.a11y", { balance: formatUsd(balance), share: formatUsd(share, "whole") })}
@@ -126,34 +109,7 @@ export function BalanceHero({
       ) : (
         goal !== null && goal > 0n && !closedAt && <GoalBar collected={collected} goal={goal} className="mt-4" />
       )}
-      {closedAt ? null : (
-        <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,9.5rem),1fr))] gap-2 lg:flex lg:gap-3">
-          <Button
-            variant={addVariant}
-            aria-disabled={blocked || undefined}
-            onClick={guard(onAdd, "add.offline")}
-            className={cn("w-full lg:w-auto lg:min-w-40", addVariant === "secondary" && "min-h-13", blocked && "opacity-50")}
-          >
-            <Plus aria-hidden strokeWidth={2.25} />
-            {t("pot.cta.add")}
-          </Button>
-          <Button
-            aria-disabled={blocked || !!spendBlocked || undefined}
-            aria-describedby={spendBlocked && !blocked ? "spend-blocked-why" : undefined}
-            onClick={spendBlocked && !blocked ? () => toast(spendBlocked) : guard(onSpend, "spend.offline")}
-            className={cn("min-h-13 w-full lg:w-auto lg:min-w-40", (blocked || spendBlocked) && "opacity-50")}
-            data-spend-blocked={spendBlocked ? "goal" : undefined}
-          >
-            <ArrowUpRight aria-hidden strokeWidth={2.25} />
-            {t("pot.cta.spend")}
-          </Button>
-          {spendBlocked && !blocked && (
-            <span id="spend-blocked-why" className="sr-only">
-              {spendBlocked}
-            </span>
-          )}
-        </div>
-      )}
+      {closedAt ? null : actions}
     </section>
   )
 }

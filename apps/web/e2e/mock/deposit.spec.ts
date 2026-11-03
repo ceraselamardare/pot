@@ -1,17 +1,17 @@
-// F-21 / D-50 on the mock data source: Add money → "Another app or exchange" → network → simulated address (the QR
+// F-21 / D-50 on the mock data source: Add money → $150 → [Next] → "Another app or exchange" → [Continue] → network → simulated address (the QR
 // reads "DO NOT SEND", the testnet pill) → [Simulate sending] → the 5-step DepositStepper → "Your $X arrived" →
 // one tap adds it to the Pot. Scenarios: ok, partial (+ top-up), slow ("Taking longer" at 5 min), failed, a paused
 // network; and the Pot-screen deposit card that takes the marigold while an arrived deposit waits.
 // The page clock is faked (Playwright clock), so the simulator's measured timings run in a few seconds.
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, brandChecks, openedSheet } from "../fixtures/pot"
+import { addFlow, asPerson, axe, brandChecks, openedSheet } from "../fixtures/pot"
 
 async function openDeposit(page: Page) {
   await page.goto("/p/lisbon-trip")
   await page.getByRole("button", { name: "Add money" }).first().click()
-  const add = await openedSheet(page, "Add money to Lisbon Trip")
-  await add.getByRole("radio", { name: /Another app or exchange/ }).click()
-  await expect(page).toHaveURL(/sheet=add&src=xc/)
+  await openedSheet(page, "Add money to Lisbon Trip")
+  await addFlow(page, { amount: "150", source: "Another app or exchange", submit: "Continue" })
+  await expect(page).toHaveURL(/sheet=add&step=source&src=xc&amount=150/)
   return openedSheet(page, "Add from another wallet or exchange")
 }
 
@@ -179,14 +179,16 @@ test("closing keeps it going: the Pot card shows progress, then 'Your $X arrived
   await expect(card).toBeHidden({ timeout: 10_000 })
 })
 
-test("Back: address → network (kept) → Add sheet (amount kept); the browser's Back steps the same; no Back once on its way", async ({ page }) => {
+test("Back: address → network (kept) → Add sheet (amount + source kept); the browser's Back steps the same; no Back once on its way", async ({ page }) => {
   await page.goto("/p/lisbon-trip")
   await page.getByRole("button", { name: "Add money" }).first().click()
   let add = await openedSheet(page, "Add money to Lisbon Trip")
   await expect(add.getByRole("button", { name: "Back" })).toHaveCount(0) // the first step has none
   await add.getByRole("button", { name: "$100", exact: true }).click()
-  await add.getByRole("radio", { name: /Another app or exchange/ }).click()
-  await expect(page).toHaveURL(/sheet=add&src=xc&amount=100/)
+  await addFlow(page, { next: true, source: "Another app or exchange" })
+  await brandChecks(page, { marigold: "one" }) // [Continue]
+  await add.getByRole("button", { name: "Continue", exact: true }).click()
+  await expect(page).toHaveURL(/sheet=add&step=source&src=xc&amount=100/)
   let sheet = await openedSheet(page, "Add from another wallet or exchange")
   await expect(sheet.getByText("Adding $100 to Lisbon Trip")).toBeVisible()
   await expect(sheet.getByRole("button", { name: "Back" })).toBeVisible()
@@ -204,17 +206,27 @@ test("Back: address → network (kept) → Add sheet (amount kept); the browser'
   await expect(sheet.locator("[data-step-heading]")).toBeFocused()
   await expect(sheet.locator("[data-step-live]")).toHaveText("Which network are you sending from?")
 
-  // network → [Back] → the Add sheet with $100 still there
+  // network → [Back] → the Add sheet's step 2: $100 and "Another app or exchange" still there
   await sheet.getByRole("button", { name: "Back" }).click()
   add = await openedSheet(page, "Add money to Lisbon Trip")
   await expect(page).not.toHaveURL(/src=xc/)
+  await expect(page).toHaveURL(/step=source/)
+  await expect(add.locator("[data-add-amount]")).toHaveText("How much? $100")
+  await expect(add.getByRole("radio", { name: /Another app or exchange/ })).toHaveAttribute("aria-checked", "true")
+  await expect(add.getByRole("heading", { name: "Add money to Lisbon Trip" })).toBeFocused()
+  await brandChecks(page, { marigold: "one" })
+  // step 2 → [Back] → step 1, $100 still typed
+  await add.getByRole("button", { name: "Back" }).click()
+  await expect(add.locator("[data-add-body='1']")).toBeVisible()
+  await expect(page).not.toHaveURL(/step=source/)
   await expect(add.locator("[data-amount-display]")).toHaveText("$100")
   await expect(add.getByRole("button", { name: "$100", exact: true })).toHaveAttribute("aria-pressed", "true")
-  await expect(add.getByRole("heading", { name: "Add money to Lisbon Trip" })).toBeFocused()
   await brandChecks(page, { marigold: "one" })
 
   // forward again, then the browser's Back does the same steps
-  await add.getByRole("radio", { name: /Another app or exchange/ }).click()
+  await addFlow(page, { next: true })
+  await expect(add.getByRole("radio", { name: /Another app or exchange/ })).toHaveAttribute("aria-checked", "true")
+  await add.getByRole("button", { name: "Continue", exact: true }).click()
   sheet = await openedSheet(page, "Add from another wallet or exchange")
   await expect(sheet.getByRole("radio", { name: /Solana/ })).toHaveAttribute("aria-checked", "true")
   await getAddress(page, "Base")
@@ -223,6 +235,9 @@ test("Back: address → network (kept) → Add sheet (amount kept); the browser'
   await expect(sheet.getByRole("radio", { name: /Base/ })).toHaveAttribute("aria-checked", "true")
   await page.goBack()
   add = await openedSheet(page, "Add money to Lisbon Trip")
+  await expect(add.locator("[data-add-amount]")).toHaveText("How much? $100")
+  await page.goBack()
+  await expect(add.locator("[data-add-body='1']")).toBeVisible()
   await expect(add.locator("[data-amount-display]")).toHaveText("$100")
   await page.goBack()
   await expect(page.getByRole("dialog")).toBeHidden()

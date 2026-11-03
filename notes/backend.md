@@ -581,6 +581,9 @@ failure to read the members fails closed: the reader is treated as not a member,
 | | landing `/g/<slug>/<id>` (`GET /api/gift-links/[id]`) | – (new) | **whoever holds the link**: the Pot's name, emoji, status and member count (ledger), the link's amount and the link's own note (a member wrote it *for* the givers; shown only while the link works), whether the Pot takes gifts. Never a member's or a giver's name |
 | The public page's one-liner (`gift_page.line`) | `/give/<slug>` | – (new) | anyone **while the page is on** (members wrote it for the public); off → not served |
 | "Help us make Pot better" answers (`user_survey`: enum ids, version, context, build; onboarding 2026-11-02) | `GET/POST /api/me/survey` | – (new) | **the person, their own row only**; the Pot team through `scripts/run survey-report` (counts only). Never in a Pot response, feed, push or another person's answer; deleted with the person (cascade) |
+| Top-up asks (`topup_request`: amount, the reason, due date, who was asked, progress) and nudges (`nudge`; "Ask for a top-up" 2026-11-03) | `GET/POST /api/pots/[pot]/topups`, `DELETE …/[id]`, `POST /api/nudges` | – (new) | the Pot's active members (403 before any read); cancel: the asker only |
+| | `GET /api/me/topups` | – (new) | the person: asks in Pots they're **still** in (where they're asked and not done, plus their own); names of people in those Pots |
+| | push (`topup_asked` with the reason, `topup_reminder`, `nudge`) | – (new) | active members asked, minus the asker / the nudged person only; amounts and names, the reason in the ask's push (see open question) |
 | Gift amounts and sender accounts | the hub's `gift_received{pot,from,amount,ref}` event, the token transfer | – | **public on the ledger** anyway; the public page shows totals and opted-in givers only, never account ids |
 | Goal "$X each" | the creator's device; the landing shows the default $150 | – | – |
 | Error responses | `not_a_member` 403 / `not_signed_in` 401 / `pot_unknown` 404 | – | Pot existence and request ids are public, so a 403 only reveals public facts. **`POST /api/devices` returned the raw internal error text** (now `internal` with no message, logged instead; fixed) |
@@ -757,3 +760,70 @@ partial answers, upsert (one row), 10 refusals (free text, unknown option/questi
 another version, a list for a single answer) + non-JSON, auth gates (signed out, pending device, wrong origin, wrong
 content type), the 5/min burst (another person unaffected), GET returns only your own row, `private, no-store`,
 cascade delete, the DB CHECKs, `appVersion`. `lib/survey-report.test.ts` (3).
+
+
+---
+
+# "Ask for a top-up" (2026-11-03)
+
+The frontend side is in notes/frontend.md ("Ask for a top-up"). No contract change. **Migration
+`0007_topup_request.sql`** (drizzle-kit generate; additive; new tables). **Apply it before deploying this build**
+(`migrate` against `DATABASE_URL_UNPOOLED`). Applied so far only to the private `pot_topup`; not to the shared `pot`.
+
+- **`topup_request`**:
+  - Columns: `id` bigserial · `pot_id` → pot · `created_by` · `mode` each|total · `per_person` / `total` numeric (Micro;
+    total ≥ per_person > 0) · `reason` (1-80, null = none) · `due_at` · `baselines` jsonb **array** `[{a: account, c:
+    contributed}]` (who was asked, in join order) · `progress` jsonb `{account: added}` (frozen when it ends) ·
+    `closed_at` + `close_cause` done|due · `cancelled_at` · `reminder_at` · `client_key` · `created_at`.
+  - **Partial unique index `topup_request_open_uq` (pot) where open: one open ask per Pot.**
+  - CHECKs: mode, amounts, reason, close/cause pairing, never closed and cancelled, json types.
+- **`nudge`**: `pot_id`, `topup_id` (null = a plain nudge), sender, target (≠ sender, CHECK), `client_key`, `created_at`;
+  index (pot, target, created_at). Retention deletes rows older than 30 days (`server/ops/retention.ts`).
+- **Rules** (`lib/topups.ts`, shared with the mock):
+  - Everyone active when asked is asked, the asker too.
+  - A total is split equally, rounded up to the cent. Every part is $1-$10,000 (`amount_too_low/high`).
+  - Due: 1 h-60 days ahead, default 7 days.
+  - Progress = hub `get_members.contributed` now − baseline. A person who left drops out; one who joined later isn't asked.
+  - **done** = everyone still in has added their part; **ended** = the due date passed; **cancelled** = by the asker.
+- **Routes** (`server/features/topups.ts`). All are members-only (`get_members` active, every call, 403 `not_a_member`
+  before any row is read). Writes need same-origin JSON + strict zod + an active device:
+  - `GET /api/pots/[pot]/topups`: the open ask first (live progress, `nudgedAt` per person in the last 24 h), then the
+    last 20.
+  - `POST /api/pots/[pot]/topups` `{mode, amount, reason?, dueAt?, idempotencyKey}` → 201.
+    - A retry with the same key: 200 `replayed`; another body under it: 409 `idempotency_conflict`.
+    - 409 `pot_closed` when the Pot isn't open.
+    - 409 `action_not_allowed {cause: alone}` (< 2 members) or `{cause: topup_open, id}`.
+    - Quotas: `user_topup_burst` 5/min (429 `rate_limited`), `user_topups` 10/day (429 `quota_exceeded {family: topups}`).
+  - `DELETE /api/pots/[pot]/topups/[id]`: the asker only (403 `{cause: not_asker}`); idempotent; an ended ask → 409
+    `{cause: topup_ended}`.
+  - `GET /api/me/topups`: `open` (where I'm asked and haven't added, in Pots I'm still in) + `mine` (asks I made,
+    90 days) + `profiles`.
+  - **`POST /api/nudges`** (api-spec §2.5, extended): `{pot, to: account | account[] (≤ 50), topup?, idempotencyKey}` →
+    `{delivered: push|none, nudged, skipped: [{account, why: self|not_member|not_asked|done|too_soon}]}`.
+    - **One per (Pot, target) per rolling 24 h whoever sends it**, checked under `pg_advisory_xact_lock` per Pot.
+    - Nobody left: 429 `nudge_too_soon` (+ `retryAfterMs`) or 409 `{cause: nothing_to_nudge}`.
+    - `user_nudges` 10 people/day per sender (`quota_exceeded {family: nudges}`).
+    - An ended ask → 409 `{cause: topup_ended}`. A retried key replays.
+  - sdk types: `NudgeReq.to` may be a list, `+ topup`; `NudgeRes.nudged/skipped`; `QuotaFamily` `topups` / `nudges`;
+    `NotificationType "topup"`.
+- **Ending:**
+  - **Lazily** wherever it's read (GET, POST, cancel, nudge, /me): everyone added → `done`, its date passed → `due`, with
+    `progress` frozen. Guarded on still being open.
+  - **The cron** (`reconcile.ts` step 6, `reconcileTopups`) does the same for every open ask. One due within 36 h gets
+    **one** reminder (`reminder_at` claimed first; `notification_log` dedupes too) to the people asked who haven't
+    added, minus the asker.
+- **Push** (`server/notify/notify.ts`). Only active members, deduped in `notification_log`:
+  - `topup_asked` → everyone asked but the asker: "Maya asks everyone for $50 more" / "Hotel went up · Lisbon Trip"
+    (no reason: "For Lisbon Trip. Tap to add yours."), opening the Pot. Key `topup:<pot>:<id>`.
+  - `topup_reminder`: "Reminder: $50 for Lisbon Trip" / "Maya asked everyone to add it by Nov 10." (UTC date), opening
+    the Add sheet for the ask.
+  - `nudge` → the person only: "Sam nudged you" / "Add your $30 share to Lisbon Trip." (what's left), opening
+    `?sheet=add&amount=30&topup=<id>`. A plain nudge says "Add money to Lisbon Trip when you can." Key
+    `nudge:<pot>:<to>:<nudge id>`.
+- **Tests** (`server/features/topups.test.ts`, 21, private schema on `pot_topup`): the lib rules, asking
+  (baselines/order/push recipients, total split, members only incl. joining, every validation, closed Pot, a Pot of one,
+  one-open + the DB index, idempotency, burst/daily), progress (only after the ask, done + frozen, leave/join), due /
+  cancel / not-asker / ended, the DB CHECKs, nudges (skips, 24 h across senders, `nudgedAt`, replay, outsiders, ended,
+  plain nudge, daily cap), `/api/me/topups` (incl. a member who left), the cron (reminder once, due, done), the push
+  copy and recipients, and route-level gates with privacy markers. Four readers: member, left, never and signed out; the
+  reason never reaches the last three.

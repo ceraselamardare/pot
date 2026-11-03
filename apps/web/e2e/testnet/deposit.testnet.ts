@@ -1,6 +1,6 @@
 // D-50 on the real testnet (the gated tier): the labelled 1Click simulator delivers REAL "USDC (test)" from the
 // treasury through the token, and one tap adds it to the Pot with the member's own relayed `ft_transfer_call`.
-//   a NEAR wallet sign-in (the e2e mock wallet, a throwaway 0-NEAR account; Rev 9) creates a Pot → Add money → "Another app or exchange" → Base → a simulated address (QR: DO NOT SEND)
+//   a NEAR wallet sign-in (the e2e mock wallet, a throwaway 0-NEAR account; Rev 9) creates a Pot → Add money $150 → [Next] → "Another app or exchange" → [Continue] → Base → a simulated address (QR: DO NOT SEND)
 //   → [Simulate sending $150] → the stepper → "Your $X arrived" (the member's balance rose on chain)
 //   → [Add it to the Pot] → the Pot's balance on chain = the arrived amount, the deposit is ADDED.
 // Also: a dry quote through our API comes from the LIVE 1Click API (mainnet, read-only, signed).
@@ -8,7 +8,7 @@
 //   scripts/with-testnet-lock.sh env E2E_TESTNET=1 E2E_PORT=3427 NEXT_DIST_DIR=.next-testnet-int \
 //     pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts deposit.testnet.ts
 import { expect, test } from "@playwright/test"
-import { createPot } from "../fixtures/pot"
+import { addFlow, createPot } from "../fixtures/pot"
 import { createTestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, potBalance, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -56,7 +56,9 @@ test("simulate a deposit → it arrives on chain → one tap adds it to the Pot 
     await page.getByRole("button", { name: "Add money" }).first().click()
     const add = page.getByRole("dialog", { name: `Add money to ${POT_NAME}` })
     await expect(add).toBeVisible()
-    await add.getByRole("radio", { name: /Another app or exchange/ }).click()
+    // step 1: $150 (any prefill cleared) → [Next]; step 2: another app → [Continue]
+    for (let i = 0; i < 6; i++) await add.getByRole("button", { name: "delete", exact: true }).click()
+    await addFlow(page, { amount: "150", source: "Another app or exchange", submit: "Continue" })
     const sheet = page.getByRole("dialog", { name: "Add from another wallet or exchange" })
     await expect(sheet).toBeVisible()
     await sheet.getByRole("radio", { name: /Base/ }).click()

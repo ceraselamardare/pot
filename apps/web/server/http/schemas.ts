@@ -94,3 +94,24 @@ export const pushSubReq = z.strictObject({
 })
 
 export const pushUnsubReq = z.strictObject({ endpoint: z.string().min(1).max(1024) })
+
+/** POST /api/pots/[pot]/topups ("Ask for a top-up"): the reason is cleaned and length-checked in server/features/topups.ts
+ *  (cleanReason: ≤ 80 code points, one line); the raw cap here only bounds the work. `dueAt` ISO (absent = in 7 days). */
+export const topupPostReq = z.strictObject({
+  mode: z.enum(["each", "total"]),
+  amount: micro,
+  reason: z.string().max(400).nullable().optional(),
+  dueAt: z.string().min(10).max(40).optional(),
+  idempotencyKey: opKey,
+})
+
+/** POST /api/nudges: one person or several (≤ 50), optionally about a top-up ask. */
+export const nudgeReq = z.strictObject({
+  pot: z.string().min(2).max(64),
+  to: z.union([accountId, z.array(accountId).min(1).max(50)]),
+  topup: z
+    .string()
+    .regex(/^[1-9][0-9]{0,15}$/)
+    .optional(),
+  idempotencyKey: opKey,
+})

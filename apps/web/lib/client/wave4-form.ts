@@ -155,3 +155,36 @@ export function currentExtras(pot: { extras?: ExtrasVM; goalDetail?: GoalVM | nu
 }
 
 export { cents }
+
+/** The extras a rules change can edit in the sheet (the goal isn't edited there: it's kept as it is). */
+export interface ExtrasEdit {
+  trust: boolean
+  oneOkCap: Micro
+  links: boolean
+}
+
+/** What the change sheet starts from: the Pot's real extras (a Pot from before hub 1.1.0 reads all off, never the new-Pot defaults). */
+export function extrasEditOf(pot: { extras?: ExtrasVM }): ExtrasEdit {
+  const x = pot.extras
+  return { trust: x?.trust ?? false, oneOkCap: x?.oneOkCap ?? 0n, links: x?.links ?? false }
+}
+
+export type ExtrasField = "oneOk" | "trust" | "links"
+
+/** Which extras differ (the review face diffs these, in this order). */
+export function changedExtras(from: ExtrasEdit, to: ExtrasEdit): ExtrasField[] {
+  const out: ExtrasField[] = []
+  if (from.oneOkCap !== to.oneOkCap) out.push("oneOk")
+  if (from.trust !== to.trust) out.push("trust")
+  if (from.links !== to.links) out.push("links")
+  return out
+}
+
+/**
+ * The `extras` a rules change sends: none when nothing in them changed (the hub then keeps the Pot's own), else
+ * whole, with the goal kept exactly as it is (`currentExtras`).
+ */
+export function rulesChangeExtras(pot: { extras?: ExtrasVM; goalDetail?: GoalVM | null }, edit: ExtrasEdit): RuleExtras | null {
+  if (changedExtras(extrasEditOf(pot), edit).length === 0) return null
+  return { ...currentExtras(pot), trust: edit.trust, oneOkCap: edit.oneOkCap, links: edit.links }
+}

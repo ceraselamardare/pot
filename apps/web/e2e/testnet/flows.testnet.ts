@@ -10,7 +10,7 @@
 import { skipOnboarding } from "../fixtures/onboarding"
 import { fileURLToPath } from "node:url"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { createPot, spendFlow, typeAmount } from "../fixtures/pot"
+import { addFlow, createPot, potMore, spendFlow, typeAmount } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, nearBalance, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -38,8 +38,7 @@ async function addMoney(page: Page, amount: number) {
   await expect(sheet).toBeVisible()
   // clear any prefill, then type
   for (let i = 0; i < 6; i++) await sheet.getByRole("button", { name: "delete", exact: true }).click()
-  await typeAmount(page, String(amount))
-  await sheet.getByRole("button", { name: `Add $${amount}` }).click()
+  await addFlow(page, { amount: String(amount), submit: `Add $${amount}` })
   await expect(page.getByRole("dialog")).toBeHidden()
   await expect(page.getByText(`+$${amount} on the way`)).toBeVisible()
 }
@@ -230,8 +229,7 @@ test("E-f: close → pro-rata refunds visible and paid on chain", async () => {
   const [a0, b0] = [await usdcOf(accA), await usdcOf(accB)]
   await A.goto(`/p/${slug}`)
   await expect(hero(A)).toHaveText("$110.00", { timeout: 30_000 })
-  await A.getByRole("button", { name: `More options for ${POT_NAME}` }).click()
-  await A.getByRole("menuitem", { name: /Close Pot/ }).click()
+  await potMore(A, POT_NAME, /Close Pot/)
   // the title stays "Close …?" for the person who asked (the sheet turns into the "waiting for the group" face)
   const sheet = A.getByRole("dialog")
   await expect(sheet.getByRole("heading", { name: `Close ${POT_NAME}?` })).toBeVisible()
@@ -277,8 +275,7 @@ test("E-f: close → pro-rata refunds visible and paid on chain", async () => {
   await A.goto(`/p/${slug}?tab=members`)
   await expect(hero(A)).toHaveText("$0.00", { timeout: 30_000 })
   await expect(A.getByText("Pot closed").first()).toBeVisible()
-  await A.getByRole("button", { name: `More options for ${POT_NAME}` }).click()
-  await A.getByRole("menuitem", { name: "See who got what" }).click()
+  await potMore(A, POT_NAME, "See who got what")
   const done = A.getByRole("dialog", { name: "Pot closed" })
   await expect(done.locator('[data-refund-row="Ana"]')).toContainText("$44.00")
   await expect(done.locator('[data-refund-row="Ben"]')).toContainText("$66.00")

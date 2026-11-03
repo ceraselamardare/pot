@@ -8,18 +8,18 @@
 // one marigold) opens the change sheet; while a change waits (≤ 1 per Pot, ERR_RULES_PENDING) a waiting card with
 // [Review] replaces it. A sole member changes the rules directly (set_rules).
 import { HUB_LIMITS } from "@pot/sdk"
-import { Clock, Flag, Hand, Hourglass, ListChecks, Sprout, Undo2, UserCheck, UserRound, Users, UsersRound, Zap } from "lucide-react"
+import { ArrowUpRight, ChevronRight, Clock, Flag, Globe, Hand, Hourglass, Link2, ListChecks, ShieldCheck, Sprout, Undo2, UserCheck, UserRound, Users, UsersRound, Zap } from "lucide-react"
 import Link from "next/link"
 import { MyTrustCard, TrustBadge, trustWord } from "@/components/wave4/Trust"
 import { formatDate } from "@/lib/client/time"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { Avatar } from "@/components/pot/Avatar"
 import { MoneyText } from "@/components/money/MoneyText"
 import { inWords } from "@/components/pot/Feed"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { Sheet } from "@/components/sheets/Sheet"
-import { ExplorerAccountLink } from "@/components/receipt/ReceiptLink"
 import { daoOf } from "@/lib/client/config"
+import { explorerAccountUrl } from "@/lib/client/explorer"
 import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import { formatUsd } from "@/lib/client/money"
@@ -166,6 +166,7 @@ export function extrasSentences(pot: Pick<PotVM, "rules" | "extras" | "goalDetai
         ? t("rules.goal.aon", { amount: formatUsd(g.amount, "whole"), date: formatDate(g.deadline) })
         : t("rules.goal", { amount: formatUsd(g.amount, "whole"), date: formatDate(g.deadline) })
       : null,
+    links: t(x?.links ? "rules.links.on" : "rules.links.off"),
   }
 }
 
@@ -189,6 +190,8 @@ export function RulesTab({ pot }: { pot: PotVM }) {
     { icon: Hourglass, text: sentences.expiry },
     { icon: Undo2, text: sentences.leftovers },
     { icon: UsersRound, text: sentences.size },
+    // hub 1.1.0 pay by link: always said, on or off (a Pot from before 1.1.0 reads off until a rules change turns it on)
+    { icon: Link2, text: extra.links },
   ]
   return (
     <section aria-labelledby="rules-h" className="flex flex-col gap-4">
@@ -222,33 +225,58 @@ export function RulesTab({ pot }: { pot: PotVM }) {
           </li>
         ))}
       </ul>
-      {pot.me && pot.me.contributed === 0n && <p className="text-body-sm text-ink-muted">{t("rules.new_member")}</p>}
-      <p className="text-body-sm text-ink-muted">{t("rules.footer", { creator: pot.creator.name })}</p>
+      {/* footnotes under the list: quiet, one icon each */}
+      <div className="-mt-1 flex flex-col gap-2">
+        {pot.me && pot.me.contributed === 0n && <p className="text-body-sm text-ink-muted">{t("rules.new_member")}</p>}
+        <p className="flex items-start gap-2 text-body-sm text-ink-muted" data-rules-footnote>
+          <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={2} />
+          {t("rules.footer", { creator: pot.creator.name })}
+        </p>
+      </div>
       <RulesChange pot={pot} />
-      {/* hub 1.1.0: the public record of every spend (a page anyone with the link can read) */}
-      <Link
-        href={`/p/${pot.slug}/record`}
-        className="-my-1 inline-flex min-h-11 items-center gap-2 self-start rounded-sm text-label text-link underline-offset-4 hover:underline"
-        data-record-link
-      >
-        <ListChecks aria-hidden className="size-5" strokeWidth={2} />
-        {t("rules.record")}
-      </Link>
-      {/* the Pot's own account on the explorer: quiet, for people who want to check (never marigold) */}
-      <p className="-mt-1">
-        <ExplorerAccountLink account={daoOf(pot.slug)} label={t("pot.explorer.label", { potName: pot.name })} />
-      </p>
+      {/* quiet rows, one look: the public record of every spend (hub 1.1.0; also in ••• More) and the Pot's own
+          account on the explorer. Ink, never the link gold or marigold. */}
+      <nav aria-label={t("rules.more.label")}>
+        <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-md bg-surface" data-rules-more>
+          <li>
+            <Link href={`/p/${pot.slug}/record`} className={MORE_ROW} data-record-link>
+              <ListChecks aria-hidden className="size-5 shrink-0" strokeWidth={2} />
+              <span className="min-w-0 flex-1">{t("rules.record")}</span>
+              <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" strokeWidth={2} />
+            </Link>
+          </li>
+          <li>
+            <a
+              href={explorerAccountUrl(daoOf(pot.slug))}
+              target="_blank"
+              rel="noopener"
+              aria-label={t("pot.explorer.label", { potName: pot.name })}
+              className={MORE_ROW}
+              data-explorer-account
+            >
+              <Globe aria-hidden className="size-5 shrink-0" strokeWidth={2} />
+              <span className="min-w-0 flex-1">{t("pot.explorer")}</span>
+              <ArrowUpRight aria-hidden className="size-5 shrink-0 text-ink-muted" strokeWidth={2} />
+            </a>
+          </li>
+        </ul>
+      </nav>
     </section>
   )
 }
 
+const MORE_ROW = "flex min-h-13 items-center gap-3 px-4 py-3 text-body text-ink transition-colors duration-120 hover:bg-surface-sunken"
+
+/** One card: "Changing the rules", what it takes, and the one way in (or the change that's waiting). */
 function RulesChange({ pot }: { pot: PotVM }) {
   const now = useNow()
   const change = pot.rulesChange && pot.rulesChange.status === "needs" ? pot.rulesChange : null
-  if (pot.status !== "open") return <p className="text-body-sm text-ink-muted">{t("rules.change.closing")}</p>
-  if (change)
-    return (
-      <div className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4 shadow-card" data-rules-pending={change.proposalId}>
+  const sole = pot.n === 1
+  let body: ReactNode
+  if (pot.status !== "open") body = <p className="text-body-sm text-ink-muted">{t("rules.change.closing")}</p>
+  else if (change)
+    body = (
+      <div className="flex flex-col gap-3" data-rules-pending={change.proposalId}>
         <div className="flex items-start gap-3">
           <Avatar person={change.proposer} size="sm" ring="surface" />
           <div className="min-w-0 flex-1">
@@ -265,20 +293,28 @@ function RulesChange({ pot }: { pot: PotVM }) {
       </div>
     )
   // the hub says a change is open but this device can't show it yet: hold the button (ERR_RULES_PENDING)
-  if (pot.rulesPending)
-    return (
+  else if (pot.rulesPending)
+    body = (
       <p className="flex items-start gap-2 rounded-md bg-surface-sunken p-3 text-body-sm text-ink" data-rules-in-flight>
         <Clock aria-hidden className="mt-0.5 size-4 shrink-0 text-waiting" strokeWidth={2.25} />
         {t("rules.change.in_flight")}
       </p>
     )
-  const sole = pot.n === 1
+  else
+    body = (
+      <>
+        <p className="-mt-2 text-body-sm text-ink-muted">{sole ? t("rules.change.sole_note") : t("rules.change.note", { k: pot.k, n: pot.n })}</p>
+        <Button className="w-full" onClick={() => openSheet("rules")}>
+          {sole ? t("rules.change.cta.sole") : t("rules.change.cta")}
+        </Button>
+      </>
+    )
   return (
-    <div className="flex flex-col gap-2" data-rules-change>
-      <Button className="w-full" onClick={() => openSheet("rules")}>
-        {sole ? t("rules.change.cta.sole") : t("rules.change.cta")}
-      </Button>
-      <p className="text-body-sm text-ink-muted">{sole ? t("rules.change.sole_note") : t("rules.change.note", { k: pot.k, n: pot.n })}</p>
-    </div>
+    <section aria-labelledby="rules-change-h" className="flex flex-col gap-3 rounded-md bg-surface p-4" data-rules-change>
+      <h3 id="rules-change-h" className="text-label text-ink">
+        {t("rules.change.h")}
+      </h3>
+      {body}
+    </section>
   )
 }

@@ -4,7 +4,7 @@
 // The mobile projects save review screenshots to notes/screens/p2-*.png (Day and Night).
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, type MockPerson, openedSheet, spendWhy, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, type MockPerson, openedSheet, potMore, spendWhy, typeAmount } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -26,7 +26,7 @@ test.describe("rules change (P-8)", () => {
     await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip?tab=rules")
     await expect(page.getByText("Anyone can spend up to $100 without asking.")).toBeVisible()
-    await expect(page.getByText("Changes need the group's approval. They apply once 2 of 3 approve.")).toBeVisible()
+    await expect(page.getByText("Changes apply once 2 of 3 approve.")).toBeVisible()
     await shot(page, "rules", info.project.name)
     await page.getByRole("button", { name: "Ask the group to change a rule" }).click()
 
@@ -34,7 +34,7 @@ test.describe("rules change (P-8)", () => {
     await expect(sheet.getByRole("radio", { name: "Change the Instant limit, now $100" })).toHaveAttribute("aria-checked", "true")
     // unchanged → nothing to ask yet
     await expect(sheet.getByRole("button", { name: "Ask the group" })).toBeDisabled()
-    await expect(sheet.getByText("Change an amount to ask the group.")).toBeVisible()
+    await expect(sheet.getByText("Change a rule to ask the group.")).toBeVisible()
     await typeAmount(page, "50")
     await expect(sheet.getByText("Anyone can spend up to $50 without asking.")).toBeVisible()
     await expect(sheet.getByText("This needs 2 of 3 approvals.")).toBeVisible()
@@ -121,8 +121,8 @@ test.describe("close (P-9)", () => {
   test("Maya asks → money just moved → try again → Sam approves → closed, read-only, refunds shown", async ({ page }, info) => {
     await asPerson(page, "maya")
     await page.goto("/p/lisbon-trip")
-    await page.getByRole("button", { name: "More options for Lisbon Trip" }).click()
-    const item = page.getByRole("menuitem", { name: /Close Pot/ })
+    const more = await potMore(page, "Lisbon Trip")
+    const item = more.getByRole("button", { name: /Close Pot/ })
     await expect(item).toContainText("Ask the group to end it and share out what's left")
     await item.click()
 
@@ -148,13 +148,14 @@ test.describe("close (P-9)", () => {
     await expect(sheet.getByText("Maya · asked, approval counted")).toBeVisible()
     await brandChecks(page, { marigold: "one" })
     await sheet.getByRole("button", { name: "Done" }).click()
+    await expect(page.getByRole("dialog")).toBeHidden()
 
     // closing: the lock shows before it bites
     await expect(page.locator("[data-pot-closing]")).toContainText("This Pot is closing. Adding money and spending are paused.")
     const add = page.getByRole("button", { name: "Add money" })
     await expect(add).toHaveAttribute("aria-disabled", "true")
     await add.click({ force: true })
-    await expect(page.getByText("This Pot is closing. Adding money and spending are paused.").last()).toBeVisible()
+    await expect(page.locator("[data-sonner-toast]").getByText("This Pot is closing. Adding money and spending are paused.")).toBeVisible()
 
     await switchTo(page, "Maya", "Sam")
     const card = page.locator("[data-close-card]").locator("visible=true")
@@ -192,8 +193,7 @@ test.describe("close (P-9)", () => {
 
     await switchTo(page, "Sam", "Leo")
     await expect(page.locator("[data-pot-closed]")).toContainText("$150.00 is in your Pot account.")
-    await page.getByRole("button", { name: "More options for Lisbon Trip" }).click()
-    await page.getByRole("menuitem", { name: "See who got what" }).click()
+    await potMore(page, "Lisbon Trip", "See who got what")
     const summary = await openedSheet(page, "Pot closed")
     await expect(summary.locator('[data-refund-row="Leo"]')).toContainText("$150.00")
   })

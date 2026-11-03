@@ -156,8 +156,11 @@ export function checkRules(r: unknown, field = "rules", ids?: { hubId: string; u
  * hub 1.1.0 rule extras (R2, R6, R7 `extras`): exact keys, one-OK ceiling ≤ the instant-cap bound of R2,
  * goal amount ≤ $10M-ish bound and a deadline in (now, now + 366 days]. The hub re-validates everything
  * (ERR_EXTRAS_INVALID / ERR_GOAL_*); this only keeps garbage off the relayer's bill.
+ * `keptGoal` (R6/R7, a rules change): the extras carry the Pot's current goal as it is (the sheet doesn't edit it), and
+ * the hub accepts an unchanged goal whatever its date (validate_extras), so a goal whose date has passed (a reached
+ * all-or-nothing goal, a soft goal past its date) mustn't block turning links or trust on; only the upper bound applies.
  */
-export function checkExtras(x: unknown, nowMs: number, field = "extras"): void {
+export function checkExtras(x: unknown, nowMs: number, field = "extras", keptGoal = false): void {
   if (typeof x !== "object" || x === null || Array.isArray(x)) return deny("args_invalid", field)
   const o = x as Obj
   keys(o, ["trust", "one_ok_cap", "links"], ["goal"])
@@ -171,7 +174,7 @@ export function checkExtras(x: unknown, nowMs: number, field = "extras"): void {
     keys(go, ["amount", "deadline_ms", "all_or_nothing"])
     amount(go, "amount", 1n, MAX_GOAL)
     const d = go.deadline_ms
-    if (typeof d !== "number" || !Number.isSafeInteger(d) || d <= nowMs || d > nowMs + 366 * 24 * 3600 * 1000)
+    if (typeof d !== "number" || !Number.isSafeInteger(d) || d <= (keptGoal ? 0 : nowMs) || d > nowMs + 366 * 24 * 3600 * 1000)
       deny("args_invalid", `${field}.goal.deadline_ms`)
     if (typeof go.all_or_nothing !== "boolean") deny("args_invalid", `${field}.goal.all_or_nothing`)
   }
@@ -494,7 +497,7 @@ function r6r7(call: Extract<DecodedAction, { kind: "functionCall" }>, ctx: Polic
   keys(o, ["pot", "rules"], ["extras"])
   const pot = potArg(o, ctx.hubId)
   checkRules(o.rules, "rules", ctx)
-  if (o.extras !== undefined && o.extras !== null) checkExtras(o.extras, ctx.nowMs)
+  if (o.extras !== undefined && o.extras !== null) checkExtras(o.extras, ctx.nowMs, "extras", true)
   intentMust(ctx, propose ? "propose_rules" : "set_rules")
   return {
     rule: propose ? "R7" : "R6",

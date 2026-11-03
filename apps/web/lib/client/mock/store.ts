@@ -13,6 +13,7 @@ import * as W from "./world"
 import { refundDue, withShowcase } from "./wave4"
 import { sweepExpiredLinks, withLinkShowcase } from "./links"
 import * as G from "./gifts"
+import * as T_ from "./topups"
 import { newGiftRef } from "@/lib/gifts"
 import { withGiftShowcase } from "./gifts"
 import { compactAnswers, type SurveyReq, type SurveyWire } from "@/lib/survey"
@@ -156,8 +157,8 @@ export function resetWorld() {
 // async actions (relay-shaped results)
 
 export class MockRelayError extends ActionError {
-  constructor(reason: string) {
-    super(classOfReason(reason), reason)
+  constructor(reason: string, detail?: Record<string, unknown>) {
+    super(classOfReason(reason), reason, detail ? { detail } : {})
   }
 }
 
@@ -509,4 +510,65 @@ export async function giveGift(input: Omit<G.GiveInput, "who">): Promise<{ ref: 
 export async function editGift(ref: string, patch: { name?: string | null; note?: string | null; showPublic?: boolean }): Promise<void> {
   await sleep(LATENCY.comment)
   commit(giftCall(() => G.editGift(ensureWorld(), ref, me(), patch)))
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// "Ask for a top-up" (the mock's /api/pots/[pot]/topups and /api/nudges). Fault hooks: 'topup' (the ask fails like an
+// unreachable server), 'topup_cancel', 'nudge'.
+
+export const LATENCY_TOPUP = { ask: 600, cancel: 400, nudge: 400 } as const
+
+function topupCall<T>(fn: () => T): T {
+  try {
+    return fn()
+  } catch (e) {
+    if (e instanceof T_.TopupWorldError) {
+      const c = e.code
+      throw new MockRelayError(
+        c === "not_member"
+          ? "not_a_member"
+          : c === "not_found"
+            ? "not_found"
+            : c === "closed"
+              ? "pot_closed"
+              : c === "too_low"
+                ? "amount_too_low"
+                : c === "too_high"
+                  ? "amount_too_high"
+                  : c === "invalid"
+                    ? "bad_request"
+                    : c === "too_soon"
+                      ? "nudge_too_soon"
+                      : "action_not_allowed",
+        { cause: c === "open" ? "topup_open" : c === "ended" ? "topup_ended" : c === "nothing" ? "nothing_to_nudge" : c },
+      )
+    }
+    throw e
+  }
+}
+
+/** Ask everyone in the Pot for more money; resolves with the ask's id. */
+export async function askTopup(slug: string, input: T_.AskInput): Promise<string> {
+  await sleep(LATENCY_TOPUP.ask)
+  maybeFail("topup")
+  const id = `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
+  const r = topupCall(() => T_.askTopup(ensureWorld(), slug, me(), input, Date.now(), id, W.nameOf))
+  commit(r.world)
+  return r.rec.id
+}
+
+export async function cancelTopup(slug: string, id: string): Promise<void> {
+  await sleep(LATENCY_TOPUP.cancel)
+  maybeFail("topup_cancel")
+  const next = topupCall(() => T_.cancelTopup(ensureWorld(), slug, me(), id, Date.now()))
+  if (next !== world) commit(next)
+}
+
+/** Nudge people who haven't added; resolves with who was nudged. */
+export async function nudgeTopup(slug: string, id: string, targets: readonly string[]): Promise<string[]> {
+  await sleep(LATENCY_TOPUP.nudge)
+  maybeFail("nudge")
+  const r = topupCall(() => T_.nudgeTopup(ensureWorld(), slug, me(), id, targets, Date.now(), W.nameOf))
+  commit(r.world)
+  return r.nudged
 }

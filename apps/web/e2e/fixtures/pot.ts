@@ -34,8 +34,13 @@ export async function marigoldButtons(page: Page): Promise<number> {
     }
     const dialog = [...document.querySelectorAll('[role="dialog"]')].find(visible)
     const root = dialog ?? document.body
+    // a round action (components/pot/PotActions) is marigold through its circle: `[data-circle]` inside the button
+    const fill = (el: Element) => {
+      const circle = el.querySelector(":scope > [data-circle]")
+      return getComputedStyle(circle ?? el).backgroundColor
+    }
     return [...root.querySelectorAll('button, a, [role="button"]')].filter(
-      (el) => visible(el) && !el.closest('[aria-hidden="true"], [inert]') && getComputedStyle(el).backgroundColor === brand,
+      (el) => visible(el) && !el.closest('[aria-hidden="true"], [inert]') && fill(el) === brand,
     ).length
   }, BRAND)
 }
@@ -85,6 +90,18 @@ export async function openedSheet(page: Page, name: string | RegExp) {
   return dialog
 }
 
+/**
+ * The Pot's ••• More (the hero's action row, or the header's on a closed Pot) → the "More options" sheet. With
+ * `item`, press that row of it (e.g. "Invite friends", /Ask for more money/, /Gifts/, "Pot record", /Who can see
+ * what/, /Close Pot/, "See who got what"). Returns the More sheet.
+ */
+export async function potMore(page: Page, potName: string, item?: string | RegExp) {
+  await page.getByRole("button", { name: `More options for ${potName}` }).click()
+  const sheet = await openedSheet(page, "More options")
+  if (item !== undefined) await sheet.getByRole("button", { name: item }).click()
+  return sheet
+}
+
 /** Type an amount on the custom keypad inside a sheet. */
 export async function typeAmount(page: Page, amount: string) {
   const dialog = page.getByRole("dialog")
@@ -123,6 +140,33 @@ export async function spendFlow(
   if (o.member) await sheet.getByRole("radiogroup", { name: "Who gets the money?" }).getByRole("radio", { name: o.member }).click()
   if (o.submit) await sheet.getByRole("button", { name: o.submit }).click()
   return sheet
+}
+
+/** The Add money sheet's [Next]: step 1 "How much?" → step 2 "How do you want to add it?" (&step=source). */
+export async function addNext(page: Page) {
+  const dialog = page.getByRole("dialog")
+  await dialog.getByRole("button", { name: "Next", exact: true }).click()
+  await expect(dialog.locator("[data-add-body='2']")).toBeVisible()
+  return dialog
+}
+
+/**
+ * The Add money sheet in its two steps (open it first): type `amount` on step 1 and press [Next] (omit `amount` when
+ * the sheet already shows step 2, e.g. a link with ?amount=, or when the amount on step 1 is fine as it is: then
+ * `next: true`), pick `source` on step 2 ("Demo dollars" | "Pot dollars" | "Another app or exchange"), and press
+ * `submit` when given (e.g. "Add $50", or "Continue" for another app). Returns the dialog.
+ */
+export async function addFlow(
+  page: Page,
+  o: { amount?: string; next?: boolean; source?: "Demo dollars" | "Pot dollars" | "Another app or exchange"; submit?: string | RegExp },
+) {
+  const dialog = page.getByRole("dialog")
+  if (o.amount) await typeAmount(page, o.amount)
+  if (o.amount || o.next) await addNext(page)
+  await expect(dialog.locator("[data-add-body='2']")).toBeVisible()
+  if (o.source) await dialog.getByRole("radio", { name: new RegExp(`^${o.source}`) }).click()
+  if (o.submit) await dialog.getByRole("button", { name: o.submit, exact: typeof o.submit === "string" }).click()
+  return dialog
 }
 
 /**

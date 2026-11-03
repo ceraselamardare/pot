@@ -16,7 +16,7 @@
 // axe 0 serious + the brand checks on every screen; the mobile projects save notes/screens/gifts-*-{day,night}.png.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, potMore } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 const LINK_RE = /\/g\/lisbon-trip\/[A-Za-z0-9_-]{22}$/
@@ -31,15 +31,9 @@ async function shot(page: Page, name: string, project: string, fullPage = false)
 
 const path = (url: string) => url.replace(/^https?:\/\/[^/]+/, "")
 
-async function openMenu(page: Page, potName = "Lisbon Trip") {
-  await page.getByRole("button", { name: `More options for ${potName}` }).click()
-  await page.waitForTimeout(300) // the menu's fade
-}
-
-/** Pot ••• → Share invite → the "Gift link" tab. */
+/** Pot ••• More → Invite friends → the "Gift link" tab. */
 async function giftTab(page: Page) {
-  await openMenu(page)
-  await page.getByRole("menuitem", { name: "Share invite" }).click()
+  await potMore(page, "Lisbon Trip", "Invite friends")
   const sheet = await openedSheet(page, /Invite friends to Lisbon Trip/)
   await sheet.getByRole("tab", { name: "Gift link" }).click()
   return openedSheet(page, "Gift link for Lisbon Trip")
@@ -175,8 +169,7 @@ test("the public gift page: off by default → a member turns it on → visitors
   // a member turns it on, with a line
   await becomePerson(page, "maya")
   await page.goto("/p/lisbon-trip")
-  await openMenu(page)
-  await page.getByRole("menuitem", { name: /Gifts/ }).click()
+  await potMore(page, "Lisbon Trip", /Gifts/)
   await expect(page).toHaveURL(/\/p\/lisbon-trip\?sheet=gifts$/)
   const sheet = await openedSheet(page, "Gifts")
   await expect(sheet.getByText("No gifts yet. Share a gift link to get the first one.")).toBeVisible()
@@ -274,8 +267,7 @@ test("turning a link off, and turning gifts off, each stop the giver with a calm
   await giftTab(page)
   const url2 = await makeLink(page)
   await page.keyboard.press("Escape")
-  await openMenu(page)
-  await page.getByRole("menuitem", { name: /Gifts/ }).click()
+  await potMore(page, "Lisbon Trip", /Gifts/)
   const gifts = await openedSheet(page, "Gifts")
   const on = gifts.getByRole("switch", { name: "Taking gifts" })
   await on.click()

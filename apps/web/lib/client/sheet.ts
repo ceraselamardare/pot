@@ -2,7 +2,7 @@
 // Sheets are URL query state, not routes (frontend-architecture §2.2): ?sheet=add|spend|share|create and
 // ?r=<id>. Opened with native history.pushState (Next integrates it with useSearchParams), so Back closes the
 // sheet and deep links work.
-// Multi-step sheets push one entry per step (Add money → network → address; Create name → rules; Spend how much →
+// Multi-step sheets push one entry per step (Add money how much → how (&step=source) → network → address; Create name → rules; Spend how much →
 // what for), so the browser/Android Back steps back one level like the in-sheet [Back]. Every entry we push carries its depth in
 // history.state (`potSheet`: 1 = the sheet's first step). close() unwinds all of the sheet's entries with
 // history.go(-depth); a cold deep link (depth 0) is stripped with replaceState, so it never leaves the app.
@@ -11,7 +11,9 @@ import { useCallback } from "react"
 
 // gifts (hub 1.2.0): "gifts" = ••• → Gifts (on/off, the public page); "gift" = one gift's details (&gift=<ref>)
 // "intro": the first-run intro + "Help us make Pot better" (components/onboarding; &then=create ends in Create)
-export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink" | "privacy" | "gifts" | "gift" | "intro"
+// "topup": the hero's Ask (the ask form); `&topup=<id>` on ?sheet=add marks an add made for that ask
+// "more": the hero's ••• More (components/pot/PotActions: invite, gifts, the record, who can see what, close)
+export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink" | "privacy" | "gifts" | "gift" | "intro" | "topup" | "more"
 
 /** Our keys in history.state (Next.js copies its own internals in beside them). */
 interface SheetEntry {
@@ -72,7 +74,8 @@ export function openRequest(id: number, pot?: string) {
 // "link": the payment link sheet's request id (?sheet=paylink&link=<id>; not ?r=, which opens the request sheet)
 // "gift": a gift's ref (?sheet=gift&gift=<ref>); "kind": the share sheet's tab (?sheet=share&kind=gift)
 // "then": where the intro goes when it ends (?sheet=intro&then=create)
-const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link", "gift", "kind", "then"]
+// "rule": the rules sheet's switch to bring into view (?sheet=rules&rule=links, from the Spend sheet's links-off line)
+const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link", "gift", "kind", "then", "topup", "rule"]
 const strip = (p: URLSearchParams) => SHEET_PARAMS.forEach((k) => p.delete(k))
 
 /**
@@ -143,6 +146,22 @@ export function replaceSheet(name: SheetName | null) {
     urlWith((p) => {
       SHEET_PARAMS.forEach((k) => p.delete(k))
       if (name) p.set("sheet", name)
+    }),
+  )
+}
+
+/**
+ * Swap the open sheet for another in the same history entry, keeping its depth (••• More → Invite friends): ✕ or Back
+ * then leaves both at once, and no bare-page duplicate is left behind.
+ */
+export function swapSheet(name: SheetName, extra: Record<string, string> = {}) {
+  window.history.replaceState(
+    ours(),
+    "",
+    urlWith((p) => {
+      strip(p)
+      p.set("sheet", name)
+      for (const [k, v] of Object.entries(extra)) p.set(k, v)
     }),
   )
 }

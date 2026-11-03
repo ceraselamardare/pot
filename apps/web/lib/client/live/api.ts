@@ -9,6 +9,7 @@ export interface ApiErrBody {
   reason: string
   retryAfterMs?: number
   txHash?: string
+  detail?: Record<string, unknown>
 }
 
 export async function api<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", path: string, body?: unknown, init: RequestInit = {}): Promise<{ status: number; data: T }> {
@@ -34,7 +35,7 @@ export async function api<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   if (!res.ok || (data && (data as { ok?: boolean }).ok === false)) {
     const err = (data ?? {}) as Partial<ApiErrBody>
     const reason = err.reason ?? (res.status >= 500 ? "service_unavailable" : "bad_request")
-    throw new ActionError(classOfReason(reason, res.status), reason, { requestId: err.requestId, txHash: err.txHash })
+    throw new ActionError(classOfReason(reason, res.status), reason, { requestId: err.requestId, txHash: err.txHash, ...(err.detail && typeof err.detail === "object" ? { detail: err.detail } : {}) })
   }
   return { status: res.status, data: data as T }
 }

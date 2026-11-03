@@ -4,7 +4,7 @@
 import { skipOnboarding } from "../fixtures/onboarding"
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, spendFlow, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, spendFlow, addFlow } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 const UA = {
@@ -29,9 +29,8 @@ test.describe("install coach", () => {
       test.skip(info.project.name === "desktop", "never on desktop")
       await asPerson(page, "maya")
       await page.goto("/p/lisbon-trip?sheet=add")
-      const add = await openedSheet(page, "Add money to Lisbon Trip")
-      await typeAmount(page, "20")
-      await add.getByRole("button", { name: "Add $20" }).click()
+      await openedSheet(page, "Add money to Lisbon Trip")
+      await addFlow(page, { amount: "20", submit: "Add $20" })
       const card = page.locator("[data-coach-card]")
       await expect(card).toBeVisible({ timeout: 10_000 })
       await expect(card.getByRole("heading", { name: "Put Pot on your Home Screen" })).toBeVisible()
@@ -52,9 +51,8 @@ test.describe("install coach", () => {
       await expect(page.locator("[data-coach-card]")).toHaveCount(0)
       // a second contribution doesn't bring it back (first contribution only)
       await page.goto("/p/lisbon-trip?sheet=add")
-      const again = await openedSheet(page, "Add money to Lisbon Trip")
-      await typeAmount(page, "5")
-      await again.getByRole("button", { name: "Add $5" }).click()
+      await openedSheet(page, "Add money to Lisbon Trip")
+      await addFlow(page, { amount: "5", submit: "Add $5" })
       await expect(page.getByText("Added. Lisbon Trip now has", { exact: false })).toBeVisible({ timeout: 10_000 })
       await expect(page.locator("[data-coach-card]")).toHaveCount(0)
     })

@@ -585,6 +585,9 @@ interface NoteRes extends Ok { note: { kind: NoteReq['kind']; pot: DaoId; ref: s
 
 #### `POST /api/nudges` (§8 Rev 1, Phase 2)
 
+> Built 2026-11-03 with "Ask for a top-up", extended: `to` may list several people and `topup` names the ask. Push
+> only; no email. See notes/backend.md "Ask for a top-up".
+
 ```ts
 interface NudgeReq { pot: DaoId; to: AccountId; idempotencyKey: OpKey }
 interface NudgeRes extends Ok { delivered: 'push' | 'email' | 'none' }

@@ -5,7 +5,7 @@
 // The mobile projects save notes/screens/you-{day,night}.png (balance + activity).
 import { fileURLToPath } from "node:url"
 import { expect, test, type Locator, type Page } from "@playwright/test"
-import { asPerson, axe, brandChecks, openedSheet, spendFlow } from "../fixtures/pot"
+import { addFlow, asPerson, axe, brandChecks, openedSheet, spendFlow } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 const TX_URL = /^https:\/\/testnet\.nearblocks\.io\/txns\/[1-9A-HJ-NP-Za-km-z]{43,44}$/
@@ -137,6 +137,7 @@ test("Add money: Pot dollars you already have (none → can't pick; some → Use
   await asPerson(page, "maya")
   await page.goto("/p/porto-weekend?sheet=add")
   let sheet = await openedSheet(page, "Add money to Porto Weekend")
+  await addFlow(page, { amount: "10" })
   const own = sheet.getByRole("radio", { name: /^Pot dollars you have · \$0\.00/ })
   await expect(own).toHaveAttribute("aria-disabled", "true")
   await expect(own).toContainText("You don't have any yet")
@@ -147,6 +148,7 @@ test("Add money: Pot dollars you already have (none → can't pick; some → Use
   await instantSpend(page)
   await page.goto("/p/porto-weekend?sheet=add")
   sheet = await openedSheet(page, "Add money to Porto Weekend")
+  await addFlow(page, { amount: "1" })
   await sheet.getByRole("radio", { name: /^Pot dollars you have · \$84\.00/ }).click()
   await sheet.getByRole("button", { name: "Use all $84.00" }).click()
   await expect(sheet.getByRole("button", { name: "Add $84" })).toBeEnabled()

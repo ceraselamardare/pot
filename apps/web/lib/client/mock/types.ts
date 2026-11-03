@@ -217,6 +217,46 @@ export interface CommentRec {
   deletedAt?: number
 }
 
+/** "Ask for a top-up" (the mock's topup_request; amounts in cents). Status is derived (lib/topups.ts statusOf). */
+export interface TopupRec {
+  id: string
+  /** Pot slug */
+  pot: string
+  /** the asker (a person id) */
+  by: string
+  mode: "each" | "total"
+  /** cents: each person's part */
+  perPerson: number
+  /** cents */
+  total: number
+  reason: string | null
+  dueAt: number
+  createdAt: number
+  /** who was asked and what each had put in then (cents), join order */
+  baselines: { id: string; c: number }[]
+  cancelledAt?: number | null
+  /** frozen at the cancel: person → added (cents) */
+  progress?: Record<string, number> | null
+}
+
+/** A nudge (the mock's nudge table). */
+export interface NudgeRec {
+  pot: string
+  from: string
+  to: string
+  topupId: string | null
+  at: number
+}
+
+/** The mock's push stub: what a push would have said (the mock has no push; e2e reads these). Newest last, ≤ 50. */
+export interface MockPushRec {
+  to: string
+  title: string
+  body: string
+  url: string
+  at: number
+}
+
 export interface World {
   v: 1
   pots: Record<string, PotRec>
@@ -231,6 +271,12 @@ export interface World {
   gifts?: GiftRec[]
   /** gift links (the mock's gift_link table) */
   giftLinks?: GiftLinkRec[]
+  /** "Ask for a top-up" asks, oldest first */
+  topups?: TopupRec[]
+  /** nudges, oldest first */
+  nudges?: NudgeRec[]
+  /** the push stub (lib/client/mock/topups.ts) */
+  pushes?: MockPushRec[]
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -342,6 +388,45 @@ export type FeedItemVM =
   | { key: string; kind: "goal"; at: number; state: "reached" | "refunding" | "refunded"; amount: Micro; txHash?: string }
   /** hub 1.2.0: someone sent the Pot a gift */
   | { key: string; kind: "gift"; at: number; gift: GiftVM; txHash?: string }
+  /** "Ask for a top-up": a member asked everyone for more money (off-chain; members only) */
+  | { key: string; kind: "topup"; at: number; topup: TopupVM; txHash?: string }
+
+/** One person asked by a top-up ask. */
+export interface TopupMemberVM {
+  person: PersonVM
+  part: Micro
+  /** added since the ask */
+  added: Micro
+  done: boolean
+  /** they got a nudge in this Pot in the last 24 h (ms), else null */
+  nudgedAt: number | null
+}
+
+/** "Ask for a top-up" as the Pot's members see it (lib/topups.ts has the rules). */
+export interface TopupVM {
+  id: string
+  slug: string
+  potName: string
+  potEmoji: string
+  potCover: number
+  asker: PersonVM
+  mode: "each" | "total"
+  /** each person's part */
+  perPerson: Micro
+  total: Micro
+  reason: string | null
+  dueAt: number
+  createdAt: number
+  status: "open" | "done" | "ended" | "cancelled"
+  endedAt: number | null
+  /** the people asked who are still in the Pot */
+  members: TopupMemberVM[]
+  doneCount: number
+  /** I asked */
+  mine: boolean
+  /** my part, when I'm asked */
+  me: TopupMemberVM | null
+}
 
 /** A gift as the Pot's members see it (the giver's note included). */
 export interface GiftVM {
@@ -478,6 +563,8 @@ export interface PotVM {
   policyVersion?: number
   /** hub 1.2.0 gifts (absent = the gifts feature is off in this build, or not read yet) */
   gifts?: GiftsVM
+  /** "Ask for a top-up": the open ask (null = none; absent = not read yet) */
+  topup?: TopupVM | null
 }
 
 export interface PotCardVM {

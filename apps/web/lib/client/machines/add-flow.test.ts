@@ -23,14 +23,18 @@ describe("add money flow: steps and Back (notes/frontend.md 'Back in multi-step 
     previousParams("address")!(p)
     expect(p.toString()).toBe("sheet=add&src=xc&amount=100")
     previousParams("network")!(p)
-    expect(p.toString()).toBe("sheet=add&amount=100")
+    expect(p.toString()).toBe("sheet=add&amount=100&step=source")
     expect(previousParams("amount")).toBeNull()
     expect(previousParams("tracking")).toBeNull()
   })
 
-  it("network → Back keeps the amount and the source", () => {
-    const s = run([url("amount"), { type: "AMOUNT", value: "100" }, { type: "SOURCE", value: "pot_dollars" }, url("network"), url("amount")])
-    expect(s).toMatchObject({ step: "amount", typed: "100", source: "pot_dollars", closing: false })
+  it("network → Back keeps the amount, with Another app or exchange still chosen", () => {
+    const s = run([url("amount"), { type: "AMOUNT", value: "100" }, { type: "SOURCE", value: "xc" }, url("network"), url("amount")])
+    expect(s).toMatchObject({ step: "amount", typed: "100", source: "xc", closing: false })
+    // a deep link straight to the network step (an in-progress deposit's card): its Back also lands on that choice
+    expect(run([url("network"), url("amount")])).toMatchObject({ step: "amount", source: "xc" })
+    // the source picked on step 2 is kept while the amount step comes and goes
+    expect(run([url("amount"), { type: "SOURCE", value: "pot_dollars" }, url("amount")]).source).toBe("pot_dollars")
   })
 
   it("address → Back keeps the network; Back again keeps the amount", () => {

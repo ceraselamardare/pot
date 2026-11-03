@@ -149,6 +149,9 @@ export type QuotaFamily =
   | "faucet"
   | "notes"
   | "comments"
+  /** "Ask for a top-up" (2026-11-03): asks per user per day; nudges per sender per day */
+  | "topups"
+  | "nudges"
   | "xc"
   | "budget"
   | "finalize"
@@ -506,14 +509,20 @@ export interface NoteRes extends Ok {
   note: { kind: NoteReq["kind"]; pot: DaoId; ref: string; createdAt: IsoTime }
 }
 
-/** POST /api/nudges (Phase 2) */
+/**
+ * POST /api/nudges (built 2026-11-03 with "Ask for a top-up"; apps/web/lib/topups-api.ts): `to` may list several
+ * people; `topup` names the ask it's about. 1 per (Pot, target) per rolling 24 h, whoever sends it; 10 per sender a day.
+ */
 export interface NudgeReq {
   pot: DaoId
-  to: AccountId
+  to: AccountId | AccountId[]
+  topup?: string
   idempotencyKey: OpKey
 }
 export interface NudgeRes extends Ok {
   delivered: "push" | "email" | "none"
+  nudged: AccountId[]
+  skipped: { account: AccountId; why: "too_soon" | "done" | "not_asked" | "not_member" | "self" }[]
 }
 
 /** GET /api/pots/[pot]/feed query ([pot] is a slug or a DAO id) */
@@ -642,7 +651,7 @@ export interface PushUnsubReq {
 export type PushUnsubRes = Ok
 
 /** §6.2 Declarative Web Push payload (≤ 2,500 bytes as JSON). */
-export type NotificationType = "approval_needed" | "request_resolved" | "money_arrived" | "member_joined" | "deposit_status" | "pot_closed" | "nudge" | "comment" | "trust_up" | "goal"
+export type NotificationType = "approval_needed" | "request_resolved" | "money_arrived" | "member_joined" | "deposit_status" | "pot_closed" | "nudge" | "comment" | "trust_up" | "goal" | "topup"
 export interface PushPayload {
   web_push: 8030
   notification: {

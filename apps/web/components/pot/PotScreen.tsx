@@ -3,7 +3,8 @@
 // the Pot, and what's needed from me?". Phones: header, hero, Activity · Members · Rules, "Waiting on you"
 // pinned above the feed. From bp-lg (1024 px): two columns, the Pot on the left (Activity · Rules) and
 // Waiting on you, your requests and Members on the right (sticky).
-// Sheets are URL state: ?sheet=add|spend|share|close|rules|refund and ?r=<id> (PotSheetHost). A push opens
+// Under the balance, the action row (PotActions): Add money · Spend · Ask (Invite in a Pot of one) · More.
+// Sheets are URL state: ?sheet=add|spend|share|close|rules|refund|topup|more and ?r=<id> (PotSheetHost). A push opens
 // ?pid=<proposal id> (the SW maps the notification's proposal to it); it resolves here to the request, the close
 // or the rules change behind that proposal.
 import { Check, Clock } from "lucide-react"
@@ -15,6 +16,7 @@ import { EmptyState, PotSkeleton } from "@/components/feedback/States"
 import { BalanceHero } from "@/components/pot/BalanceHero"
 import { ActivityFeed, RequestRow } from "@/components/pot/Feed"
 import { PotHeader } from "@/components/pot/PotParts"
+import { PotActions, PotMoreSheet } from "@/components/pot/PotActions"
 import { RequestCard } from "@/components/pot/RequestCard"
 import { MembersTab, RulesTab } from "@/components/pot/Tabs"
 import { TabList } from "@/components/pot/Controls"
@@ -42,6 +44,9 @@ import { GiftsSheet } from "@/components/gifts/GiftsSheet"
 import { GiftDetailsSheet } from "@/components/gifts/GiftDetailsSheet"
 import { GIFTS_ON } from "@/lib/client/gifts/flag"
 import { collectedOf, useWithGifts } from "@/lib/client/gifts/data"
+import { TopupCard } from "@/components/topups/TopupCard"
+import { TopupSheet } from "@/components/topups/TopupSheet"
+import { useWithTopups } from "@/lib/client/topups/data"
 
 const TABS = ["activity", "members", "rules"] as const
 /** ?sheet=paylink&link=<request id> */
@@ -79,7 +84,9 @@ export function PotScreen() {
 
 function PotLoaded({ pot: base }: { pot: PotVM }) {
   // hub 1.2.0 gifts: the feed rows and the goal's count (the mock's potView has them; testnet adds them here)
-  const pot = useWithGifts(base)
+  const withGifts = useWithGifts(base)
+  // "Ask for a top-up": the open ask (its card) and the asks' feed rows (the mock's potView has them; testnet adds them)
+  const pot = useWithTopups(withGifts)
   const now = useNow()
   const ops = useOps()
   const potOps = ops.filter((o) => o.pot === pot.slug)
@@ -159,14 +166,16 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
             pendingIn={pendingIn(potOps, pot.slug)}
             goal={pot.goal}
             collected={collectedOf(pot)}
-            closing={pot.status !== "open" || !!pot.closingInFlight}
             closedAt={pot.status === "closed" ? (pot.closedAt ?? null) : null}
-            onAdd={() => openSheet("add")}
-            onSpend={() => openSheet("spend")}
-            addVariant={arrived ? "secondary" : "primary"}
             onShare={() => openSheet("refund")}
             goalSlot={pot.goalDetail && !goalRefund ? <GoalBanner goal={pot.goalDetail} potName={pot.name} now={now} /> : undefined}
-            spendBlocked={pot.goalDetail?.spendsBlocked && pot.status === "open" ? t("spend.goal_blocked") : null}
+            actions={
+              <PotActions
+                pot={pot}
+                addVariant={arrived ? "secondary" : "primary"}
+                spendBlocked={pot.goalDetail?.spendsBlocked && pot.status === "open" ? t("spend.goal_blocked") : null}
+              />
+            }
           />
           <div className="mt-6">
             {/* phones: three tabs; desktop: Activity · Rules (Members live in the right column) */}
@@ -214,6 +223,7 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
                 {goalRefund && pot.goalDetail && <GoalBanner goal={pot.goalDetail} potName={pot.name} now={now} />}
                 {!(goalRefund && pot.status === "closing") && <PotStateCard pot={pot} />}
                 <DepositCards pot={pot} actor={meId} />
+                {pot.topup && <TopupCard v={pot.topup} me={meId} />}
                 <CoachCard pot={pot.slug} />
                 {(pot.waitingOnMe.length > 0 || closeWaiting || rulesWaiting) && <div className="lg:hidden">{waiting("m")}</div>}
                 <div className="-mt-2">
@@ -255,6 +265,8 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
       <CloseSheet pot={pot} open={sheet === "close"} onClose={closeSheet} />
       <RulesSheet pot={pot} open={sheet === "rules"} onClose={closeSheet} />
       <RefundSheet pot={pot} open={sheet === "refund"} onClose={closeSheet} />
+      <TopupSheet pot={pot} open={sheet === "topup"} onClose={closeSheet} />
+      <PotMoreSheet pot={pot} open={sheet === "more"} onClose={closeSheet} />
       <PersonActivitySheet pot={pot} who={params.get("who")} open={sheet === "person" && !!params.get("who")} onClose={closeSheet} />
       <PayLinkSheet pot={pot} id={linkParam(params.get("link"))} open={sheet === "paylink" && linkParam(params.get("link")) !== null} onClose={closeSheet} />
       {GIFTS_ON && (

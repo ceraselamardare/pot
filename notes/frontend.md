@@ -1,3 +1,238 @@
+> **2026-11-03: A calm Rules tab footer, and pay by link in the rules change.** Owner (Night screenshot of the bottom
+> of Rules): "text, links, buttons here look a bit messy. Also, I can't see in the change rules how I can enable pay by
+> link to external users." (`components/pot/Tabs.tsx`, `components/sheets/RulesSheet.tsx`, `lib/client/wave4-form.ts`,
+> `components/paylink/PayLinkFields.tsx`, `server/relay/policy.ts`.)
+> - **Rules tab, after the rule rows:** (1) footnotes in `body-sm` `ink-muted`: the "new member" line (when it applies)
+>   and `rules.footer` with a ShieldCheck icon (`data-rules-footnote`); (2) **one card "Changing the rules"**
+>   (`section` named by its `h3`, `data-rules-change`, `surface`, `radius-md`, `p-4`): "Changes apply once 2 of 3
+>   approve." (`rules.change.note`, shortened) + the one secondary [Ask the group to change a rule]; a sole member reads
+>   "You're the only one here, so changes apply right away." + [Change rules]; the waiting change (avatar, "1 of 2
+>   approvals" chip, [Review]), the in-flight line and the closing line now sit inside the same card; (3) **quiet
+>   rows** in one `surface` list (`nav` "More about this Pot", `data-rules-more`, 52 px rows, divided): ListChecks
+>   "See every spend" + ChevronRight (`/p/<slug>/record`, `data-record-link`, kept here as well as in More because the
+>   rules are where people ask "can I check?") and Globe "View on explorer" + ArrowUpRight (new tab, same accessible
+>   name as before, `data-explorer-account`). Both are `ink` text with `ink-muted` trailing icons, so the Night `link`
+>   gold (#ffc94d, the legitimate `link` token, not marigold) is gone from this screen. Screens:
+>   `notes/screens/rules-tab-{day,night}.png`, `rules-tab-day-320.png`.
+> - **A new rule row, always shown:** Link2 "Paying people outside the Pot by link: on." / "…: off." (`rules.links.on|off`,
+>   from `pot.extras.links`; a Pot from before hub 1.1.0 reads off).
+> - **Rules change sheet:** the on/off rules are one bordered group of two switch rows (`SwitchRow`,
+>   `data-rules-switch="trust|links"`): "Trust grows" and the new **"Pay people outside the Pot"** ("Send money to
+>   anyone with a payment link. They don't need to join."). Everything is **prefilled from what the Pot has**
+>   (`extrasEditOf`: no extras record = all off, never the new-Pot defaults; the old Lisbon Trip shows trust off, One OK
+>   Off, links off). The preview lists the links sentence when it's on or changed (bold when changed,
+>   `data-rules-preview`). `changedExtras` (one-OK, trust, links) drives the CTA ("Change a rule to ask the group." when
+>   nothing changed; `rules.change.same` reworded since switches count) and the review: `Diff` shows
+>   "Now ~~Paying people outside the Pot by link: off.~~ / New Paying people outside the Pot by link: on."
+>   (`data-rules-diff-extra="links"`). Payload (`rulesChangeExtras`): no `extras` when none changed; else the extras
+>   **whole**, the goal kept exactly (`currentExtras`), via `propose_rules` (group) or `set_rules` (sole member), live
+>   and mock as before. Screens: `notes/screens/rules-change-links-{day,night}.png`.
+> - **Spend → "Someone else" when links are off:** "Paying people outside the Pot is off here. Turn on “Pay people
+>   outside the Pot” in Rules." + a secondary **[Change the rules]** (open Pots only) → `swapSheet("rules", {rule:
+>   "links"})` (same history entry, so Done/✕ leaves both); the rules sheet scrolls that switch into view on
+>   `&rule=links` (`rule` joined `SHEET_PARAMS`).
+> - **Relayer fix (R6/R7):** `checkExtras(…, keptGoal)` no longer refuses a rules change whose extras carry the Pot's
+>   current goal with a date in the past (a reached all-or-nothing goal, a soft goal past its date). The sheet always
+>   sends the goal as it is and the hub accepts an unchanged goal (`validate_extras`), so before this such a Pot could
+>   never turn links or trust on. Create (R2) still needs a future date. Allowed and tested: `propose_rules` /
+>   `set_rules` with `{trust:false, one_ok_cap:"0", links:true, goal:null}` (an old Pot opting in).
+> - **Old Pots on testnet** (e.g. the owner's `halloween-2026-qe0j`: hub 1.2.0, `extras` all off, `policy_version 1`,
+>   3 members, 2 approvals): Rules → [Ask the group to change a rule] → "Pay people outside the Pot" on → [Ask the
+>   group] → one other member approves the review → links on; Spend → Someone else then works. The hub side of this
+>   path (a migrated 1.0.0 Pot opting in through `propose_rules` with `extras`, then a link request + claim) is the
+>   sandbox test `m1_upgrade_1_0_to_1_1` step 4. **Not run on testnet** (signing needs the human's OK).
+> - **Tests:** unit `lib/client/wave4-form.test.ts` (+4: prefill, diff, payload for an old Pot, payload keeping a past
+>   goal), `server/relay/policy.test.ts` (+4 R6/R7 rows), new `components/__tests__/rules-change.test.tsx` (6: links
+>   off row, the footer anatomy (one card, one secondary button, ink rows, stroke 2), sole member, old Pot → ask with
+>   extras → Sam's review diff → approve → links on + the link fields, sole member `set_rules` payload, the Spend
+>   off-line → `?sheet=rules&rule=links` + scroll); `paylink.test.tsx` copy. Mock e2e new `e2e/mock/rules-links.spec.ts`
+>   (old Pot: Rules tab off + calm footer → Spend "Someone else" off → [Change the rules] → switch in view → on → ask
+>   → Sam approves from the review → tab says on → "Send $30 by link" enabled; 320 px reflow + 44 px switch);
+>   `p2.spec` copy updated.
+> - **Open:** (1) Create still has no links switch (new Pots always get links on). (2) The goal still can't be edited in
+>   the change sheet. (3) At 390 px the links sentence wraps "off." onto its own line; fine at other widths.
+
+> **2026-11-03: The Add money sheet in two steps, like Spend.** Owner: "When we send money, we have a multi step modal;
+> we should have the same behaviour on adding money too." (`components/sheets/AddMoneySheet.tsx`, `AddFlow.tsx`,
+> `lib/client/machines/add-flow.ts`.)
+> - **Step 1 "How much?"** (`data-add-body="1"`): "How much?" + the big amount, the chips (Your share $150 · $50 · $100,
+>   one scrolling row), the $10,000 line (`add.error.max`, role=alert), and the "For Maya's ask" line when the add
+>   answers an ask. Footer: **[Next]** (the one marigold; off at $0 and over $10,000) over the keypad; Enter = Next.
+> - **Step 2 "How do you want to add it?"** (`?sheet=add&step=source`, pushed like Spend's `&step=details`): the amount
+>   as a title line (sr-only "How much?") with a quiet **[Change]** link (= Back), the ask line, the `h3` step heading
+>   (focus + the sheet's live region on every step change), the source list (Demo dollars (Test) · Pot dollars you
+>   have · $X (off at $0, "You don't have any yet") · Another app or exchange + its networks), **[Use all $X]** (a
+>   chip under the list while Pot dollars is picked), the insufficient line (`add.error.insufficient_own`), the
+>   first-time digital-dollar note. Footer, pinned: "Lisbon Trip will have $500.00." + "After this, you'd get back $200
+>   if the Pot closed." (two short lines, no ⓘ needed), the offline line, **[Add $50]** or, with Another app or
+>   exchange picked, **[Continue]** (`add.cta.other`) into the existing deposit flow (`&src=xc&amount=`), and
+>   **[‹ Back]** (`SheetBack`, ghost). One marigold per step. "Another app" used to jump to the network step on tap;
+>   it is now a choice like the others (`AddSource` gains `"xc"`).
+> - **Back:** step 2's [Back] / [Change] and the browser's Back agree; the amount and source are kept (the flow
+>   reducer holds them). The deposit's network step now goes back to step 2 (`previousParams("network")` sets
+>   `step=source`; the reducer re-selects "Another app or exchange", also after a deep link to the network step).
+> - **Links / prefill:** an amount from a link (`?sheet=add&amount=150`: "Add my $150 share" from You're in!, a top-up
+>   card's / Requests' [Add $50]) opens **straight on step 2**; the entry is corrected in place (`replaceSheetParams`
+>   adds `step=source`), so the browser's Back still leaves the sheet and [Back] / [Change] reach the keypad. A link
+>   over $10,000 opens on step 1 with the limit line. A cold `&step=source` with nothing typed and no `amount` is
+>   corrected to step 1 (the "what's left of your share" suggestion alone doesn't count; [Next] on it makes it typed).
+>   The arrived deposit's [Add it to the Pot] (card + stepper) never opened this sheet: unchanged, one tap.
+> - **Taps** (hero → added): typed or chip amount, demo dollars 3 → 4 (+ Next); Add my $150 share 2 → 2; a top-up's
+>   [Add $50] 2 → 2; own Pot dollars with Use all 4 → 6 (an amount is needed before Next, then the source, then Use
+>   all); another app to the network step 3 → 5.
+> - **Measured** (Playwright, 390 × 844, mock Lisbon Trip, Maya, $50, the first-time note showing): step 1 body **160 px
+>   content in a 160 px window** (footer 337, popup 562 of 776); step 2 body **406 in 406** (footer 187, popup 658);
+>   step 2 with Another app (no note) 278 in 278. No scrolling, Day and Night (`notes/screens/add-step{1,2}-{day,night}.png`).
+>   320 × 568: step 1 160 in 153 (keys drop to 48 px), step 2 406 in 251: a short scroll, no sideways scroll, the ask
+>   and the keypad pinned.
+> - **i18n:** `add.next`, `add.step.amount` ("How much?"), `add.source.title`, `add.cta.other` ("Continue"),
+>   `add.amount.change` / `.a11y`. `add.source.label` ("From") stays for the /demo scene; `add.source.short` is unused.
+> - **Tests:** new `components/__tests__/add-steps.test.tsx` (9, with a URL mock that re-renders on push/replace/
+>   popstate); `add-max.test.tsx` (4: the cap on step 1, the $150 prefill → Change → appended $150,150, an over-cap
+>   link); `add-flow.test.ts` (the network's Back = step 2 with the source kept). e2e helpers `addNext(page)` +
+>   `addFlow(page, {amount, next, source, submit})` in `e2e/fixtures/pot.ts`; new `e2e/mock/add-steps.spec.ts` (two
+>   steps + heights + screenshots, browser Back/Forward, linked amount → step 2 → Change, cold step=source, 320 × 568);
+>   updated `deposit` (Continue; Back: address → network → step 2 → step 1 → closed), `activity` (Pot dollars, Use
+>   all), `refund-preview`, `states`, `pwa`, `a11y` (keyboard path: digits → Enter = Next → step heading → Add; the
+>   step-2 link in the 320 px list), `flows` (the joiner lands on step 2). `goal`, `onboarding`, `topup` pass as they
+>   were (their links open on step 2). Testnet specs edited, **not run**: `flows`, `p2`, `gifts`, `paylink` (type →
+>   Next → Add), `deposit`, `deposit-partial` (Next → Another app → Continue); the linked ones (`activity`,
+>   `comments`, `manual-add`, `spend-details`, `topup`, `wave4-trust-goal`) need no change.
+> - **Results:** typecheck, `pnpm --filter web lint` (2203 strings, 0 banned), unit **1541 passed / 17 skipped** (113
+>   files, DB tests on a private `pot_addsteps`, dropped after), `NEXT_DIST_DIR=.next-addsteps NEXT_PUBLIC_DATA_SOURCE=mock
+>   next build`, mock e2e on `next start -p 2310`: **391 passed, 47 skipped** (3 projects).
+> - **Supersedes:** the "Add money sheet" row under "Screens built" and "Back in multi-step sheets" (Add was amount +
+>   source on one entry; the network step's Back went to it).
+
+> **2026-11-03: Pot actions, a Revolut-style row (the owner's screenshot: round tinted buttons, label under each).**
+> - **Research (Mobbin):** Revolut [account](https://mobbin.com/screens/e93d0c63-dfcf-4eb2-bd22-0be63f571215)
+>   (Add money · Move · Details · More) and [Robo-Advisor](https://mobbin.com/screens/e3c1457a-750e-4d33-b531-2b822dfa48f3):
+>   four ~50 pt circles, one-or-two-word labels, More last. Wise [group balance](https://mobbin.com/screens/ff46bcd1-76b5-46ae-ad31-0d93202fb8cb)
+>   (Add filled, the others neutral, off ones greyed but visible) and [balance](https://mobbin.com/screens/ec7ab26c-36c2-4ba7-a9ac-3acb51e9df0a)
+>   (Add · Convert · Send · Request). Neo [account](https://mobbin.com/screens/0cb6443a-3639-4e3f-86ce-bb38badeeb27): the
+>   primary filled, the rest neutral; a secondary action opens a bottom-sheet list of icon + title + one line.
+> - **The row** (`components/pot/PotActions.tsx`, under the balance / "You'd get back" / goal, inside the hero card):
+>   1. **Add money** (Plus): the screen's one marigold: `brand` circle, `on-brand` icon, the Day `brand-deep` 1 px edge
+>      (as the primary Button). Neutral while an arrived deposit card holds the marigold (D-50).
+>   2. **Spend** (ArrowUpRight).
+>   3. **Ask** (HandCoins), named "Ask for more money" (the top-up ask; it left the ••• menu). In a Pot of one,
+>      slot 3 is **Invite** (UserPlus, named "Invite friends", opens Share): there's nobody to ask yet, and inviting
+>      is what a new Pot needs.
+>   4. **More** (Ellipsis), named "More options for <Pot>": `?sheet=more`.
+>   - The others: a `surface-sunken` circle with an `ink` icon (Day #f1eee9 on white, Night #33283f on #261c30);
+>     hover adds a `line-strong` edge. 56 px circles, 24 px Lucide icons at stroke 2, `body-sm` `ink` labels.
+>   - Phones: an even 4-up grid (each column ≥ 64 px at 320, so every target is well over 44 px); from bp-md the
+>     same row in fixed 80 px columns, left-aligned. **Desktop keeps the row too** (as Revolut's web app): one
+>     layout, one More list, and the hero's look matches the phone.
+>   - Each is one `<button>` (circle + label), the global focus ring, `aria-haspopup="dialog"`, a press scale
+>     (none under reduced motion). The accessible name starts with the visible label (WCAG 2.5.3).
+>   - **Off but visible** (as before for Add money / Spend): `aria-disabled`, half opacity, the reason as its
+>     description (sr-only text outside the button, so names stay "Add money" / "Spend"), a tap toasts it and opens
+>     nothing. Reasons: closing (`pot.closing`, Add · Spend · Ask), offline (`add.offline` / `spend.offline`), the
+>     all-or-nothing goal (`spend.goal_blocked`, Spend, `data-spend-blocked="goal"`), an open ask
+>     (`topup.menu.open` / `open_mine`). A closed Pot has no row (unchanged).
+> - **More** (`PotMoreSheet`, a ResponsiveSheet "More options", the Pot's name under it): Invite friends ("A link or
+>   QR code to join"; in a Pot of one this row is Ask, off: "Once someone else joins"), Gifts, Pot record, Who can see
+>   what, Close Pot / "Waiting for the group" / See who got what. 56 px rows, an icon on a sunken circle, title + one
+>   line; no marigold.
+>   - Picking a sheet **swaps** it in the same history entry (`swapSheet` in `lib/client/sheet.ts`, keeps the depth),
+>     so ✕ or Back leaves both. Pot record `router.replace`s the entry, so Back from the record lands on the Pot.
+> - **The header ••• is gone** while the row shows (no two "more" menus). A **closed Pot** keeps a header ••• (same
+>   name, "More options for <Pot>") that opens the same sheet, since it has no row.
+> - **BalanceHero** lost its buttons and their guard; it takes `actions` (the row) and hides it once closed.
+> - **Heights** (hero card, mock Lisbon Trip with its goal bar): 390 px 272 → 302 (+30); 320 px 324 → 314 (−10: the
+>   old pair stacked there); desktop 288 → 318. Screens: `notes/screens/pot-actions-{day,night,day-320,desktop}.png`,
+>   before: `pot-actions-before-*.png`; the More sheet: `{day,night}-pot-more.png` (screens.spec).
+> - **Copy:** `pot.actions.label` "What you can do", `pot.action.ask|invite|more`, `pot.more.title`, `pot.more.invite.sub`;
+>   `pot.menu.share` ("Share invite") removed.
+> - **Tests:** `components/__tests__/pot-actions.test.tsx` (10: the four, one marigold, each opens its sheet, arrived
+>   deposit, a Pot of one, goal lock, closing, keyboard, the More list, swap/replace, closed header); `topups.test.tsx`
+>   menu test → the hero's Ask. e2e: `potMore(page, potName, item?)` in `e2e/fixtures/pot.ts`; `marigoldButtons`
+>   counts a button whose `[data-circle]` is marigold. Updated: gifts, privacy, p2, screens, topup, states (toasts now
+>   asserted on `[data-sonner-toast]`, not loose text); testnet flows/p2/topup selectors (edited, not run).
+> - **Open:** the /demo tour's phone (`components/demo/Scenes.tsx`) still draws the old two-button hero.
+
+> **2026-11-03: "Ask for a top-up" (a member asks the group to add more money). No contract change; server side
+> (tables, routes, cron, privacy row) in notes/backend.md "Ask for a top-up". Apply migration `0007_topup_request.sql`
+> before deploying.**
+> - **Where the button lives:** the Pot's ••• menu, item "Ask for more money · Everyone adds a little more" (HandCoins,
+>   second item, open Pots only). The hero keeps its two buttons, and Add money stays the one marigold. The item is off,
+>   with the reason as its second line, while an ask is open ("Maya's ask is still open" / "Your ask is still open") or in a
+>   Pot of one ("Once someone else joins").
+> - **The sheet** (`?sheet=topup`, `components/topups/TopupSheet.tsx`), defaults first, so one tap sends it:
+>   - [Each person | In total]. The amount is the Pot's own "$X each" (`goalEach`), else $50; in total it's that × people.
+>   - Under the amount: "$150 in total from 3 people" / "$33.34 each from 3 people" (total split equally, rounded UP to
+>     the cent), and "Everyone in the Pot is asked, you too."
+>   - "Why? (optional)", ≤ 80 with a count. "By when?": [In 3 days][In a week ✓][In 2 weeks] + "By Nov 10".
+>   - [Ask for $50 each] / [Ask for $200 in total], the one marigold. $1 ≤ each part ≤ $10,000 (else the line says why
+>     and the button waits). Refusals say why: one open ask, a Pot of one, closed, the limit.
+> - **The card** (`components/topups/TopupCard.tsx`):
+>   - Where: on the Pot's Activity, and in Requests → Waiting on you with the Pot's name, only while I still have to
+>     add. It counts in "Waiting on you · n" and the nav badge (`useWaitingCount`).
+>   - What it says: "Maya asks everyone for $50 more" (asker: "You asked…"), "“Hotel went up”", [Asking] chip +
+>     "2 of 4 have added", "$200 in total · by Nov 10", "Waiting for Leo and Ana", "✓ You added your $50".
+>   - Buttons (all secondary):
+>     - [Add $50]: what's left of my part. It opens the existing Add sheet at `?sheet=add&amount=50&topup=<id>` (a link
+>       on Requests). The Add sheet then says "For Maya's ask: $50 each." (`data-add-topup`).
+>     - [Nudge]: named "Nudge Leo and Ana", it reaches everyone still to add who hasn't had a nudge today; then
+>       "✓ Nudged today".
+>     - The asker's ghost [Cancel ask]: an inline confirm ("Money already added stays in the Pot") → [Yes, cancel] [Keep it].
+> - **Feed row** (`components/topups/TopupRow.tsx`, CompactRow):
+>   - The asker's avatar + HandCoins badge, "**Maya** · Asked for $50 each", a chip with icon + word: Asking (needs,
+>     clock), Done (approved, check), Ended (expired, hourglass), Cancelled (new `cancelled` StatusChip: ink-muted + Ban).
+>   - "2 of 4 added", the time. No amount column (an ask moves no money).
+>   - Its name: "Maya asked everyone for $50 more. Hotel went up. 2 of 4 added. Asking. 10 min ago".
+> - **Your activity** (and a member's sheet): kind `topup`, "Asked for $50 each" + the same chip, opens the Pot.
+>   - Mock: from the Pot views.
+>   - Testnet: `GET /api/me/topups` `mine`, merged by key in `YourActivity`.
+> - **Who can see what** gains "Asks for more money and why" (members). The reason and names are members-only.
+> - **Data:**
+>   - `lib/topups.ts` holds the isomorphic rules: split, reason, due, progress = contributed now − baseline, status,
+>     nudgeable, `addHref`.
+>   - `lib/topups-api.ts` holds the wire types.
+>   - `lib/client/topups/{vm,data,actions}.ts`:
+>     - `useWithTopups(pot)` (testnet: GET every 10 s; the mock's potView already has `pot.topup` + rows);
+>     - `useInboxTopups` / `useMyTopupAsks` (testnet: `/api/me/topups` every 15 s);
+>     - `askTopup` / `cancelTopup` / `nudgeTopup`;
+>     - Add money's success refreshes the asks on testnet.
+>   - `ActionError` now carries the API's `detail` (for `cause: topup_open | alone`).
+>   - Mock: `lib/client/mock/topups.ts` (status derived; one open per Pot; nudges once/24 h), store actions with fault
+>     hooks `topup`, `topup_cancel`, `nudge`.
+>   - **The push stub:** the mock appends what the server would push to `world.pushes` (≤ 50), and the e2e reads it.
+> - **Decision: one open ask per Pot.** A new ask waits until the open one ends; the asker can cancel theirs. It's not
+>   replaced, because replacing someone else's ask felt rude.
+> - **The context marker** (`&topup=<id>`) drives the Add sheet's line and the refresh. Progress counts every add after
+>   the ask (baselines), so an add made from the hero counts too.
+> - **Copy:** `topup.*`, `chip.cancelled`, `feed.topup`, `add.for_topup*`, `activity.topup`, `privacy.members.topups`,
+>   `notif.topup.*`, `notif.nudge.body_plain`. The existing `members.nudge` / `members.nudge.sent` / `notif.nudge.*` are
+>   reused. Lint: 2191 strings, 0 banned.
+> - **Tests:**
+>   - Unit:
+>     - `lib/client/mock/topups.test.ts` (7);
+>     - `components/__tests__/topups.test.tsx` (10: sheet defaults/split/count/validation/send/second-ask error; card
+>       asker/member/Requests link, Nudge then "Nudged today", Cancel confirm; row chips + name; menu on/off; Add line);
+>     - `privacy-sheet.test.tsx` (+1 item);
+>     - server `server/features/topups.test.ts` (21).
+>   - Mock e2e `e2e/mock/topup.spec.ts` (3 tests × 3 projects; 320 px on mobile-day). Ask $50 each → card + push stub →
+>     menu off → Sam: Requests card → Add (prefilled, marked) → 1 of 3 → Nudge (stub) → row → Maya cancels → Cancelled.
+>     Then $90 in total → $30 each → all add via the card → Done → Your activity. Every screen: axe 0 serious + brandChecks.
+>   - Screens: `notes/screens/topup-{sheet,card-asker,requests,add,card-member,row,done}-{day,night}.png`.
+>   - Testnet `e2e/testnet/topup.testnet.ts`: **3/3 green** (2026-11-03). Pot `topup-trip-od5c-ys1j`: Ana asks $10 each,
+>     Ben adds $10 from Requests → done for him, nudges Ana (a second nudge → 429), Ana adds → Done. Cost: 0.0216 NEAR
+>     from the holding account (accounts) + one Pot's hub float (≈ 0.07) + relayer gas.
+> - **Gates:**
+>   - typecheck clean; `pnpm --filter web lint` clean; sdk typecheck clean;
+>   - full web unit **1521 passed / 17 skipped** (private `pot_topup`);
+>   - `NEXT_DIST_DIR=.next-topup NEXT_PUBLIC_DATA_SOURCE=mock next build` OK;
+>   - full mock e2e (`next start -p 2517`, private `--output`) **392 passed, 43 skipped, 0 failed**.
+> - **Open:**
+>   1. The push carries the reason ("Hotel went up · Lisbon Trip") as the spec asked. Gift notes and comments never go
+>      in a push (lock screen). Drop it if that rule should hold here too.
+>   2. The reminder prefills the full part, not what's left (one push per ask).
+>   3. No "everyone added" push to the asker.
+>   4. "Send a gift link" on the card for people outside the Pot was not built (optional).
+>   5. The daily cron closes and reminds; between runs an ask closes lazily when read.
+
 > **2026-11-02: Onboarding: a first-run intro + the optional "Help us make Pot better".** Server side (table, routes,
 > report, privacy row) in notes/backend.md "Help us make Pot better". **Apply migration `0006_user_survey.sql` before
 > deploying.**
@@ -745,7 +980,7 @@
 | `/pots` | header "+", waiting strip, PotCards (cover, seats, $ in Gabarito, share, waiting chip or goal bar), dashed ghost "Start a Pot", empty state with the glyph; 2-col grid from md |
 | `/p/[slug]` | header (back, cover, H1, seats, ••• menu: Share invite, Close Pot "coming soon"), BalanceHero (two decimals, 500 ms count-up, "+$150 on the way"), GoalBar with brand-deep edge + text twin, [Add money] marigold + [Spend] secondary (52 px), SegmentedTabs Activity · Members · Rules (`?tab=` replaceState), "Waiting on you" RequestCards, feed by day; **bp-lg two columns**: Activity · Rules left, Waiting on you / Your requests / Members right (sticky) |
 | Members / Rules tabs | totals strip, "Gets back" rows, explainer; rule rows with icons + personal ink meter |
-| Add money sheet | amount → chips → source (Demo dollars preselected, Pot dollars, "Another app or exchange" soon) → first-time USDC note → outcome line → [Add $150] → keypad; closes at once, op shows "Adding $150…" + Sending… |
+| Add money sheet | (two steps since 2026-11-03, see the top entry) 1: amount → chips → [Next] → keypad; 2 (`&step=source`): source (Demo dollars preselected, Pot dollars, "Another app or exchange" → [Continue]) → first-time USDC note → outcome lines → [Add $150] → [Back]; closes at once, op shows "Adding $150…" + Sending… |
 | Spend sheet | Reimburse me / Pay a member, keypad, RulePreview (instant / 2 of 3 / blocked), reason chips, note; result card: typing dots ≥ 1.2 s → brand-soft "Approved by Pot rules" + the 600 ms burst → "Sending…" → "$84 sent to you" (one announcement) → [Done]; vote path: "Sent to the group" + ApprovalTimeline |
 | Approve sheet (`?r=`) | amount, reason, why box, ApprovalTimeline, Pot after this, Expires; [Approve $300] marigold + [Decline] (optional reason); own / already / decided / expired / failed states; final = check + `approve.final`, **no burst** |
 | `/requests` | Waiting on you · Your requests · Decided; empty states; sheet via `?r=&pot=` |

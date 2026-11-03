@@ -1,12 +1,15 @@
 "use client"
 // The Spend sheet's "Someone else" choice (pay by link, hub 1.1.0): how it works in one line, and an optional "Who's it
 // for?" label that only the Pot's members see (kept off-chain with the request, like a note). When the Pot's rules
-// don't allow links yet, one calm line says so (the Rules tab turns them on).
+// don't allow links yet, one calm line says so and [Change the rules] swaps to the rules sheet with the
+// "Pay people outside the Pot" switch in view (?sheet=rules&rule=links).
 import { Link2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import type { PotVM } from "@/lib/client/mock/types"
 import { formatUsd } from "@/lib/client/money"
 import { LABEL_MAX } from "@/lib/client/paylink/link"
+import { swapSheet } from "@/lib/client/sheet"
 import { LinkShareBody, type LinkShareState } from "./LinkShare"
 
 /** Links are on for this Pot (hub 1.1.0 extras.links; a Pot made before 1.1.0 has them off until its rules change). */
@@ -15,10 +18,17 @@ export const payLinksOn = (pot: Pick<PotVM, "extras">): boolean => pot.extras?.l
 export function PayLinkFields({ pot, label, onLabel }: { pot: PotVM; label: string; onLabel: (v: string) => void }) {
   if (!payLinksOn(pot))
     return (
-      <p className="flex items-start gap-2 rounded-md bg-surface-sunken p-3 text-body-sm text-ink" data-paylink-off>
-        <Link2 aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={2} />
-        {t("paylink.off")}
-      </p>
+      <div className="flex flex-col items-start gap-3 rounded-md bg-surface-sunken p-3" data-paylink-off>
+        <p className="flex items-start gap-2 text-body-sm text-ink">
+          <Link2 aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={2} />
+          {t("paylink.off")}
+        </p>
+        {pot.status === "open" && (
+          <Button size="sm" className="min-h-11" onClick={() => swapSheet("rules", { rule: "links" })} data-paylink-rules>
+            {t("paylink.off.cta")}
+          </Button>
+        )}
+      </div>
     )
   return (
     <div className="flex flex-col gap-3" data-paylink-fields>

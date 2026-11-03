@@ -38,6 +38,8 @@ export const RETENTION: { name: string; stmt: SQL }[] = [
   },
   { name: "notification_log", stmt: del("notification_log", sql`created_at < now() - interval '30 days'`) },
   { name: "note", stmt: del("note", sql`kind = 'memo' AND matched_at IS NULL AND created_at < now() - interval '24 hours'`) },
+  // "Ask for a top-up": nudges only matter for their 24 h window
+  { name: "nudge", stmt: del("nudge", sql`created_at < now() - interval '30 days'`) },
   { name: "tg_link_token", stmt: del("tg_link_token", sql`expires_at < now() - interval '1 day'`) },
 ]
 

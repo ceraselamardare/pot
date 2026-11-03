@@ -1,6 +1,6 @@
 "use client"
-// The Add money flow (ux-spec §4.7-4.8): the Add sheet (amount + where it comes from) and, for "Another app or
-// exchange", the deposit sheet (network → address + QR → progress). The step is URL state, one history entry
+// The Add money flow (ux-spec §4.7-4.8): the Add sheet in two steps ("How much?" → "How do you want to add it?",
+// &step=source) and, for "Another app or exchange" + [Continue], the deposit sheet (network → address + QR → progress). The step is URL state, one history entry
 // per step, so [Back] in the sheet and the browser's Back both go one step back with the amount and the network
 // kept (lib/client/machines/add-flow.ts holds them). Once money is on its way there is no Back: a browser Back
 // closes the flow, like ✕ ("You can close this screen").
@@ -39,6 +39,7 @@ export function AddFlow({ pot, actor }: { pot: PotVM; actor: string }) {
         open={step === "amount" && !flow.closing}
         onClose={closeSheet}
         prefill={amount}
+        topupId={params.get("topup")}
         typed={flow.typed}
         onTyped={(value) => dispatch({ type: "AMOUNT", value })}
         source={flow.source}

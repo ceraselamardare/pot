@@ -15,6 +15,7 @@ import { cents, type Micro } from "./money"
 import { activityOfPerson, mergeActivity } from "./activity"
 import { PAGE as ACTIVITY_PAGE, useLiveActivity, type ActivityState } from "./live/activity"
 import { useMe } from "./session"
+import { useInboxTopups } from "./topups/data"
 
 export { useMe, useMeInfo } from "./session"
 export type { ActivityState } from "./live/activity"
@@ -88,7 +89,9 @@ export const useRequest: (slug: string, id: number | null) => RequestVM | null |
 
 export function useWaitingCount(): number {
   const r = useRequests()
-  return r?.waiting.length ?? 0
+  // "Ask for a top-up": an open ask I haven't added my part to waits on me too
+  const topups = useInboxTopups()
+  return (r?.waiting.length ?? 0) + (topups?.length ?? 0)
 }
 
 /** The mock's own Pot dollars: what Pots paid this person minus what they added from them (world.ownDollarsOf). */

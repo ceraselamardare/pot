@@ -4,7 +4,7 @@
 import { validateExtras } from "@pot/sdk"
 import { describe, expect, it } from "vitest"
 import { createReducer, initialCreate } from "./machines/create"
-import { checkExtrasForm, currentExtras, deadlineOf, defaultGoalDate, extrasFormReducer, extrasRecOf, initialExtrasForm, isoDay } from "./wave4-form"
+import { changedExtras, checkExtrasForm, currentExtras, deadlineOf, defaultGoalDate, extrasEditOf, extrasFormReducer, extrasRecOf, initialExtrasForm, isoDay, rulesChangeExtras } from "./wave4-form"
 
 const NOW = new Date(2026, 10, 1, 10, 0).getTime()
 const RULES = { instantCap: 100_000_000n, memberBudget: 200_000_000n, instantPayees: "members" as const, payeeAllowlist: [] }
@@ -69,5 +69,37 @@ describe("extras form", () => {
     expect(
       currentExtras({ extras: { trust: true, oneOkCap: 1n, links: true }, goalDetail: { amount: 2n, deadline: 3, allOrNothing: false, totalIn: 0n, state: "collecting", reachedAt: null, spendsBlocked: false } }),
     ).toEqual({ trust: true, oneOkCap: 1n, links: true, goal: { amount: 2n, deadlineMs: 3, allOrNothing: false } })
+  })
+})
+
+// The rules change sheet: it starts from what the Pot really has (an old Pot: all off), sends extras only when one of
+// them changes, and then sends them whole with the goal kept as it is.
+describe("rules change extras", () => {
+  const GOAL = { amount: 500_000_000n, deadline: NOW - 86_400_000, allOrNothing: true, totalIn: 600_000_000n, state: "reached" as const, reachedAt: NOW - 2, spendsBlocked: false }
+  it("prefill: a Pot from before hub 1.1.0 reads all off (not the new-Pot defaults); a new Pot reads its own", () => {
+    expect(extrasEditOf({})).toEqual({ trust: false, oneOkCap: 0n, links: false })
+    expect(extrasEditOf({ extras: { trust: false, oneOkCap: 0n, links: false } })).toEqual({ trust: false, oneOkCap: 0n, links: false })
+    expect(extrasEditOf({ extras: { trust: true, oneOkCap: 300_000_000n, links: true } })).toEqual({ trust: true, oneOkCap: 300_000_000n, links: true })
+  })
+  it("diff: which extras changed, in the review's order", () => {
+    const off = { trust: false, oneOkCap: 0n, links: false }
+    expect(changedExtras(off, off)).toEqual([])
+    expect(changedExtras(off, { ...off, links: true })).toEqual(["links"])
+    expect(changedExtras(off, { trust: true, oneOkCap: 300_000_000n, links: true })).toEqual(["oneOk", "trust", "links"])
+  })
+  it("payload: none when unchanged; an old Pot turning links on sends everything else as it is", () => {
+    expect(rulesChangeExtras({}, { trust: false, oneOkCap: 0n, links: false })).toBeNull()
+    const x = rulesChangeExtras({}, { trust: false, oneOkCap: 0n, links: true })
+    expect(x).toEqual({ trust: false, oneOkCap: 0n, links: true, goal: null })
+    expect(validateExtras(RULES, x!, NOW)).toBeNull()
+  })
+  it("payload: turning links off keeps trust, the one-OK limit and the goal (even past its date) exactly", () => {
+    const pot = { extras: { trust: true, oneOkCap: 300_000_000n, links: true }, goalDetail: GOAL }
+    expect(rulesChangeExtras(pot, { trust: true, oneOkCap: 300_000_000n, links: false })).toEqual({
+      trust: true,
+      oneOkCap: 300_000_000n,
+      links: false,
+      goal: { amount: 500_000_000n, deadlineMs: NOW - 86_400_000, allOrNothing: true },
+    })
   })
 })

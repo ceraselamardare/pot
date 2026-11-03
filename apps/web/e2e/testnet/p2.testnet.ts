@@ -7,7 +7,7 @@
 //   E2E_TESTNET=1 scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts p2.testnet.ts
 import { skipOnboarding } from "../fixtures/onboarding"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { createPot, typeAmount } from "../fixtures/pot"
+import { addFlow, createPot, potMore, typeAmount } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -32,8 +32,7 @@ async function addMoney(page: Page, amount: number) {
   const sheet = page.getByRole("dialog", { name: /^Add money to/ })
   await expect(sheet).toBeVisible()
   for (let i = 0; i < 6; i++) await sheet.getByRole("button", { name: "delete", exact: true }).click()
-  await typeAmount(page, String(amount))
-  await sheet.getByRole("button", { name: `Add $${amount}` }).click()
+  await addFlow(page, { amount: String(amount), submit: `Add $${amount}` })
   await expect(page.getByRole("dialog")).toBeHidden()
 }
 
@@ -165,8 +164,7 @@ test("P2-b: a full close of the fresh Pot, payouts verified on chain", async () 
 
   await A.goto(`/p/${slug}`)
   await expect(hero(A)).toHaveText("$250.00", { timeout: 30_000 })
-  await A.getByRole("button", { name: `More options for ${POT_NAME}` }).click()
-  await A.getByRole("menuitem", { name: /Close Pot/ }).click()
+  await potMore(A, POT_NAME, /Close Pot/)
   const sheet = A.getByRole("dialog", { name: `Close ${POT_NAME}?` })
   await expect(sheet).toBeVisible()
   // the RefundTable is preview_close

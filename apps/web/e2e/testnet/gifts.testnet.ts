@@ -17,7 +17,7 @@
 import { skipOnboarding } from "../fixtures/onboarding"
 import type { GiftsView } from "@pot/sdk"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { createPot, typeAmount } from "../fixtures/pot"
+import { addFlow, createPot } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, nearBalance, potBalance, usd, useWallet, walletSignIn } from "./chain"
 
@@ -93,8 +93,7 @@ test("setup: Ana creates one Pot, adds $50, makes an open and a $25 gift link", 
   await A.getByRole("button", { name: "Add money" }).first().click()
   const add = A.getByRole("dialog", { name: `Add money to ${POT_NAME}` })
   for (let i = 0; i < 6; i++) await add.getByRole("button", { name: "delete", exact: true }).click()
-  await typeAmount(A, "50")
-  await add.getByRole("button", { name: "Add $50", exact: true }).click()
+  await addFlow(A, { amount: "50", submit: "Add $50" })
   expect(await eventually(() => potBalance(slug), (b) => b === usd(50), 60_000)).toBe(usd(50))
   expect((await giftsView(slug))?.on, "gifts are on for every Pot").toBe(true)
   openUrl = await makeLink()

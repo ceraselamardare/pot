@@ -16,7 +16,7 @@
 //   scripts/with-testnet-lock.sh pnpm --filter web exec playwright test -c e2e/testnet/playwright.config.ts paylink
 import { skipOnboarding } from "../fixtures/onboarding"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
-import { createPot, spendFlow, typeAmount } from "../fixtures/pot"
+import { addFlow, createPot, spendFlow } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, nearBalance, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
 
@@ -98,8 +98,7 @@ test("setup: Ana creates one Pot (links on) and adds $150", async () => {
   // the sheet prefills "your share" ($150, D-61): clear it first, or the keypad appends ("150150" = $150,150, which the
   // relayer's R1 refuses: one add is at most $10,000)
   for (let i = 0; i < 6; i++) await add.getByRole("button", { name: "delete", exact: true }).click()
-  await typeAmount(A, "150")
-  await add.getByRole("button", { name: "Add $150", exact: true }).click()
+  await addFlow(A, { amount: "150", submit: "Add $150" })
   await expect(hero(A)).toHaveText("$150.00", { timeout: 60_000 })
   expect(await eventually(() => potBalance(slug), (b) => b === usd(150), 60_000)).toBe(usd(150))
 })

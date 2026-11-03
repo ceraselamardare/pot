@@ -16,6 +16,7 @@ import { sendAlert } from "../alerts"
 import { buildPayload, topic, type NotificationType } from "./payload"
 import type { PushSender, PushOptions } from "./webpush"
 import { errText } from "../util/errtext"
+import { addHref } from "@/lib/topups"
 
 export interface NotifyDeps {
   db: Db
@@ -44,6 +45,12 @@ export type NotifyEvent =
   | { type: "link_returned"; pot: string; requestId: number; by: string; requester?: string; amount?: string }
   /** gifts (hub 1.2.0): someone sent the Pot a gift → every active member but the giver (never the giver's note) */
   | { type: "gift_received"; pot: string; ref: string; from: string; amount: string }
+  /** "Ask for a top-up": a member asked everyone for more money → everyone asked but the asker (the reason included) */
+  | { type: "topup_asked"; pot: string; topupId: string; actor: string; amount: string; reason: string | null; recipients: string[] }
+  /** the day before an ask is due → the people asked who haven't added (the asker left out) */
+  | { type: "topup_reminder"; pot: string; topupId: string; actor: string; amount: string; dueAt: number; recipients: string[] }
+  /** a nudge: one member reminds another to add money (`amount` = what's left of their part of the ask) */
+  | { type: "nudge"; pot: string; nudgeId: string; actor: string; to: string; topupId: string | null; amount?: string }
   /** a comment on a request: `requester` audience = the requester; `thread` = earlier commenters (never the author) */
   | {
       type: "comment"
@@ -92,6 +99,12 @@ export function eventKey(ev: NotifyEvent): string {
       return `link_returned:${ev.pot}:${ev.requestId}`
     case "gift_received":
       return `gift:${ev.pot}:${ev.ref}`
+    case "topup_asked":
+      return `topup:${ev.pot}:${ev.topupId}`
+    case "topup_reminder":
+      return `topup_reminder:${ev.pot}:${ev.topupId}`
+    case "nudge":
+      return `nudge:${ev.pot}:${ev.to}:${ev.nudgeId}`
   }
 }
 
@@ -106,6 +119,12 @@ async function recipientAccounts(deps: NotifyDeps, ev: NotifyEvent): Promise<str
     // only people still in the Pot, never the author
     const active = new Set((await deps.hub.getMembers(ev.pot, { fresh: true }).catch(() => [])).filter((m) => m.status === "active").map((m) => m.account_id))
     return ev.recipients.filter((a) => a !== ev.actor && active.has(a))
+  }
+  if (ev.type === "topup_asked" || ev.type === "topup_reminder" || ev.type === "nudge") {
+    // only people still in the Pot, never the one who asked or nudged
+    const active = new Set((await deps.hub.getMembers(ev.pot, { fresh: true }).catch(() => [])).filter((m) => m.status === "active").map((m) => m.account_id))
+    const to = ev.type === "nudge" ? [ev.to] : ev.recipients
+    return to.filter((a) => a !== ev.actor && active.has(a))
   }
   if (ev.type === "request_resolved") return [ev.requester]
   if (ev.type === "trust_up") return [ev.member]
@@ -255,6 +274,37 @@ function render(
         data: { pot: ev.pot, subject: "gift", ref: ev.ref },
       }
     }
+    case "topup_asked": {
+      // to the Pot's members only: the asker's short reason is theirs to read (members-only, like the card)
+      const amount = money(ev.amount)
+      return {
+        title: t("notif.topup.title", { name: name(ev.actor), amount }),
+        body: ev.reason ? t("notif.topup.body", { reason: ev.reason, potName }) : t("notif.topup.body_plain", { potName }),
+        path: `/p/${slug}`,
+        push: { ttl: 3 * DAY, urgency: "normal", topic: topic(ev.pot, `topup:${ev.topupId}`) },
+        data: { pot: ev.pot, subject: "topup", topupId: ev.topupId },
+      }
+    }
+    case "topup_reminder": {
+      const amount = money(ev.amount)
+      return {
+        title: t("notif.topup.reminder.title", { amount, potName }),
+        body: t("notif.topup.reminder.body", { name: name(ev.actor), date: shortDate(ev.dueAt) }),
+        path: addHref(slug, ev.topupId, BigInt(/^[0-9]+$/.test(ev.amount) ? ev.amount : "0")),
+        push: { ttl: DAY, urgency: "normal", topic: topic(ev.pot, `topup:${ev.topupId}`) },
+        data: { pot: ev.pot, subject: "topup", topupId: ev.topupId },
+      }
+    }
+    case "nudge": {
+      const amount = ev.amount && /^[0-9]+$/.test(ev.amount) ? BigInt(ev.amount) : null
+      return {
+        title: t("notif.nudge.title", { name: name(ev.actor) }),
+        body: amount ? t("notif.nudge.body", { suggested: formatUsdShort(amount), potName }) : t("notif.nudge.body_plain", { potName }),
+        path: amount && ev.topupId ? addHref(slug, ev.topupId, amount) : `/p/${slug}?sheet=add`,
+        push: { ttl: DAY, urgency: "normal", topic: topic(ev.pot, `nudge:${ev.to}`) },
+        data: { pot: ev.pot, subject: "nudge", ...(ev.topupId ? { topupId: ev.topupId } : {}) },
+      }
+    }
     case "trust_up":
       return {
         title: t("notif.trust.title", { level: t(`trust.level.${Math.max(0, Math.min(2, ev.level))}` as "trust.level.0"), potName }),
@@ -281,6 +331,14 @@ function render(
       }
   }
 }
+
+/** The payload's `data.type` (the sdk's NotificationType; our finer event kinds map onto it). */
+const payloadType = (ev: NotifyEvent): NotificationType =>
+  ev.type === "topup_asked" || ev.type === "topup_reminder" ? "topup" : (ev.type as NotificationType)
+
+const shortDateFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+/** "Nov 10" (UTC: the server doesn't know the reader's zone). */
+const shortDate = (ms: number) => shortDateFmt.format(ms)
 
 /** Fan one event out to every recipient's push subscriptions. Never throws (logs instead). */
 export async function notify(deps: NotifyDeps, ev: NotifyEvent): Promise<NotifyReport> {
@@ -323,6 +381,7 @@ export async function notify(deps: NotifyDeps, ev: NotifyEvent): Promise<NotifyR
     nameAccounts.add(ev.requester)
   }
   if (ev.type === "link_claimed") nameAccounts.add(ev.claimer)
+  if (ev.type === "topup_asked" || ev.type === "topup_reminder" || ev.type === "nudge") nameAccounts.add(ev.actor)
   if (ev.type === "link_returned") nameAccounts.add(ev.by)
   // gifts: only a gift our server started (its ref, Pot and sender match) is named; a raw ref is "Someone"
   if (ev.type === "gift_received") {
@@ -369,7 +428,7 @@ export async function notify(deps: NotifyDeps, ev: NotifyEvent): Promise<NotifyR
       continue
     }
     const badge = ev.type === "approval_needed" || ev.type === "request_resolved" ? await openApprovals(db, u.id) : undefined
-    const { json } = buildPayload({ type: ev.type as NotificationType, title: r.title, body: r.body, navigate, tag: r.push.topic, badge, data: r.data })
+    const { json } = buildPayload({ type: payloadType(ev), title: r.title, body: r.body, navigate, tag: r.push.topic, badge, data: r.data })
     jobs.push(async () => {
       let ok = 0
       let lastStatus = 0
@@ -558,6 +617,51 @@ export async function notifyFromEvents(deps: NotifyDeps, events: RawEvent[], txH
       out.push(await notify(deps, ev))
     } catch (e) {
       console.error(JSON.stringify({ level: "error", where: "notify", event: ev.type, err: errText(e, 200) }))
+    }
+  }
+  return out
+}
+
+/** "Ask for a top-up": push the members asked (not the asker). Never throws. */
+export async function notifyTopupAsked(
+  deps: NotifyDeps,
+  a: { pot: string; id: string; actor: string; amount: string; reason: string | null; recipients: string[] },
+): Promise<NotifyReport | null> {
+  if (!deps.sender || a.recipients.length === 0) return null
+  try {
+    return await notify(deps, { type: "topup_asked", pot: a.pot, topupId: a.id, actor: a.actor, amount: a.amount, reason: a.reason, recipients: a.recipients })
+  } catch (e) {
+    console.error(JSON.stringify({ level: "error", where: "notify", event: "topup_asked", err: errText(e, 200) }))
+    return null
+  }
+}
+
+/** The day before an ask is due: the people who haven't added. Never throws. */
+export async function notifyTopupReminder(
+  deps: NotifyDeps,
+  r: { pot: string; id: string; actor: string; amount: string; dueAt: number; recipients: string[] },
+): Promise<NotifyReport | null> {
+  if (!deps.sender || r.recipients.length === 0) return null
+  try {
+    return await notify(deps, { type: "topup_reminder", pot: r.pot, topupId: r.id, actor: r.actor, amount: r.amount, dueAt: r.dueAt, recipients: r.recipients })
+  } catch (e) {
+    console.error(JSON.stringify({ level: "error", where: "notify", event: "topup_reminder", err: errText(e, 200) }))
+    return null
+  }
+}
+
+/** Nudges: one push to each person nudged. Never throws. */
+export async function notifyNudges(
+  deps: NotifyDeps,
+  n: { pot: string; actor: string; topupId: string | null; nudges: { id: string; to: string; amount?: string }[] },
+): Promise<NotifyReport[]> {
+  if (!deps.sender) return []
+  const out: NotifyReport[] = []
+  for (const x of n.nudges) {
+    try {
+      out.push(await notify(deps, { type: "nudge", pot: n.pot, nudgeId: x.id, actor: n.actor, to: x.to, topupId: n.topupId, ...(x.amount ? { amount: x.amount } : {}) }))
+    } catch (e) {
+      console.error(JSON.stringify({ level: "error", where: "notify", event: "nudge", err: errText(e, 200) }))
     }
   }
   return out

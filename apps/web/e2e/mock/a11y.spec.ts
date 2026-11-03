@@ -45,6 +45,7 @@ const SCREENS_320 = [
   "/p/lisbon-trip?sheet=rules",
   "/p/lisbon-trip?sheet=spend",
   "/p/lisbon-trip?sheet=add",
+  "/p/lisbon-trip?sheet=add&amount=50", // a linked amount opens on step 2 (how to add it)
   "/pots",
   "/pots?sheet=create",
   "/pots?sheet=create&step=rules",
@@ -160,6 +161,29 @@ test.describe("VoiceOver-style order", () => {
 })
 
 test.describe("keyboard only (desktop)", () => {
+  test("Add money with the keyboard: digits → Enter = Next → step 2's heading → pick a source → Add", async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "desktop keyboard path")
+    await asPerson(page, "maya")
+    await page.goto("/p/lisbon-trip?sheet=add")
+    const add = await openedSheet(page, "Add money to Lisbon Trip")
+    await page.keyboard.type("40")
+    await expect(add.locator("[data-amount-display]")).toHaveText("$40")
+    await page.keyboard.press("Enter") // Enter on the keypad = Next
+    await expect(add.getByRole("heading", { name: "How do you want to add it?" })).toBeFocused()
+    await expect(add.locator("[data-step-live]")).toHaveText("How do you want to add it?")
+    await expect(page).toHaveURL(/step=source/)
+    const demo = add.getByRole("radio", { name: /^Demo dollars/ })
+    for (let i = 0; i < 6 && !(await demo.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab")
+    await expect(demo).toBeFocused()
+    await expect(demo).toHaveAttribute("aria-checked", "true")
+    const cta = add.getByRole("button", { name: "Add $40" })
+    for (let i = 0; i < 10 && !(await cta.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab")
+    await expect(cta).toBeFocused()
+    await page.keyboard.press("Enter")
+    await expect(page.getByRole("dialog")).toBeHidden()
+    await expect(page.getByText("Adding $40…")).toBeVisible()
+  })
+
   test("skip link, then approve a request with Tab / Enter, Esc closes and focus returns", async ({ page }, info) => {
     test.skip(info.project.name !== "desktop", "desktop keyboard path")
     await asPerson(page, "maya")

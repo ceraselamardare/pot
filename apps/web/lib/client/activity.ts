@@ -8,7 +8,7 @@
 import { activityKey, type ActivityApiItem, type ActivityApiKind } from "@/lib/activity-api"
 import { t } from "@/i18n/t"
 import { formatUsd, type Micro } from "./money"
-import type { Category, CloseVM, LinkStatusVM, PotVM, RequestVM, RulesChangeVM, Vote } from "./mock/types"
+import type { Category, CloseVM, LinkStatusVM, PotVM, RequestVM, RulesChangeVM, TopupVM, Vote } from "./mock/types"
 
 /** A payment link's status as an activity chip (icon + colour; the word comes from chipWord). */
 const linkChip = (s: LinkStatusVM): ActivityStatus =>
@@ -16,10 +16,11 @@ const linkChip = (s: LinkStatusVM): ActivityStatus =>
 import { coverOf, nameFromAccount } from "./live/vm"
 import { dayLabel } from "./time"
 
-/** + "gift" (hub 1.2.0): a gift I sent a Pot (I'm usually not in it; You → Your activity only) */
-export type ActivityKind = ActivityApiKind | "gift"
+/** + "gift" (hub 1.2.0): a gift I sent a Pot (I'm usually not in it; You → Your activity only)
+ *  + "topup": I asked everyone in a Pot for more money (off-chain; "Ask for a top-up") */
+export type ActivityKind = ActivityApiKind | "gift" | "topup"
 /** The chip on a row (StatusChip statuses); absent = no chip. */
-export type ActivityStatus = "sent" | "approved" | "needs" | "declined" | "expired" | "failed"
+export type ActivityStatus = "sent" | "approved" | "needs" | "declined" | "expired" | "failed" | "cancelled"
 
 export interface ActivityItemVM {
   key: string
@@ -50,6 +51,8 @@ export interface ActivityItemVM {
   link?: LinkStatusVM
   /** asked: receipt details were saved with the spend */
   hasReceipt?: boolean
+  /** topup: the ask's state and each person's part */
+  topup?: { id: string; status: TopupVM["status"]; perPerson: Micro }
 }
 
 const CATEGORIES: readonly string[] = ["groceries", "food", "transport", "stay", "tickets", "other"]
@@ -143,6 +146,9 @@ export function activityOfPerson(pot: PotVM, personId: string): ActivityItemVM[]
         }
         break
       }
+      case "topup":
+        if (f.topup.asker.id === personId) out.push(topupActivity(f.topup, { id: personId, name }))
+        break
       default:
         break
     }
@@ -261,6 +267,8 @@ export function activityText(i: ActivityItemVM, meId: string | null): string {
       return t("activity.refund", { who, amount })
     case "gift":
       return t("activity.gift", { who, amount, potName: i.potName })
+    case "topup":
+      return t("activity.topup", { who, amount: formatUsd(i.topup?.perPerson ?? 0n, "whole") })
     case "rules_asked":
       return t("activity.rules_asked", { who })
     case "rules_changed":
@@ -298,6 +306,8 @@ export function activityTitle(i: ActivityItemVM): string {
       return t("row.activity.refund")
     case "gift":
       return t("row.activity.gift")
+    case "topup":
+      return t("topup.row.title", { amount: formatUsd(i.topup?.perPerson ?? 0n, "whole") })
     case "rules_asked":
       return t("row.activity.rules_asked")
     case "rules_changed":
@@ -321,6 +331,7 @@ export function activityTitle(i: ActivityItemVM): string {
 /** The chip a list row shows (the title already says what a vote, an add or a refund was). */
 export function rowChip(i: ActivityItemVM): { status: ActivityStatus | "instant"; word?: string } | null {
   if (!i.status) return null
+  if (i.kind === "topup" && i.topup) return { status: i.status, word: t(TOPUP_WORD[i.topup.status]) }
   if (i.kind === "added" || i.kind === "refund" || i.kind === "voted" || i.kind === "joined" || i.kind === "created" || i.kind === "gift") return null
   if (i.kind === "asked" && i.link) return { status: i.status, word: t(i.link === "waiting" ? "row.status.waiting_plain" : i.link === "ready" ? "paylink.chip.sent" : (`paylink.chip.${i.link}` as "paylink.chip.ready")) }
   if (i.kind === "asked" && i.status === "approved" && i.path === "instant") return { status: "instant" }
@@ -354,6 +365,26 @@ export function activityHref(i: ActivityItemVM): string {
   if (i.kind === "refund") return `${pot}?sheet=close`
   if (i.kind === "joined" || i.kind === "created") return `${pot}?tab=members`
   return pot
+}
+
+const TOPUP_WORD = { open: "topup.chip.asking", done: "topup.chip.done", ended: "topup.chip.ended", cancelled: "topup.chip.cancelled" } as const
+const TOPUP_STATUS: Record<TopupVM["status"], ActivityStatus> = { open: "needs", done: "approved", ended: "expired", cancelled: "cancelled" }
+
+/** An ask I made ("Ask for a top-up") as a row of my activity: it opens the Pot, where its card or row is. */
+export function topupActivity(v: TopupVM, me: { id: string; name: string }): ActivityItemVM {
+  return {
+    key: `topup:${v.slug}:${v.id}`,
+    kind: "topup",
+    at: v.createdAt,
+    slug: v.slug,
+    potName: v.potName,
+    potEmoji: v.potEmoji,
+    potCover: v.potCover,
+    actorId: me.id,
+    actorName: me.name,
+    status: TOPUP_STATUS[v.status],
+    topup: { id: v.id, status: v.status, perPerson: v.perPerson },
+  }
 }
 
 /** A gift I sent (hub 1.2.0) as a row of my activity. */

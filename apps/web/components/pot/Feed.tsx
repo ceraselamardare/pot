@@ -10,6 +10,7 @@ import { DoorClosed, Flag, Hand, PartyPopper, Scale, Undo2, UserPlus } from "luc
 import { Fragment } from "react"
 import { LinkRow } from "@/components/paylink/LinkRow"
 import { GiftRow } from "@/components/gifts/GiftRow"
+import { TopupRow } from "@/components/topups/TopupRow"
 import { MoneyText } from "@/components/money/MoneyText"
 import {
   chipGround,
@@ -208,6 +209,9 @@ function FeedItem({ item, now, sentKeys, potName }: { item: FeedItemVM; now: num
     case "gift":
       // hub 1.2.0: someone outside (or inside) the Pot sent it a gift
       return <GiftRow gift={item.gift} now={now} />
+    case "topup":
+      // "Ask for a top-up": a member asked everyone for more (members only)
+      return <TopupRow v={item.topup} now={now} />
     case "goal":
       // hub 1.1.0: the goal with a date (reached; the all-or-nothing refund started / done)
       return item.state === "reached" ? (

@@ -23,6 +23,7 @@ const pot = potView(seedWorld(NOW), "lisbon-trip", "maya", NOW)!
 afterEach(() => {
   cleanup()
   addMoney.mockClear()
+  window.history.replaceState(null, "", "/")
 })
 
 function Harness({ prefill }: { prefill: string | null }) {
@@ -44,25 +45,35 @@ describe("Add money: at most $10,000 at a time", () => {
     expect(MAX_ADD).toBe(MAX_CONTRIBUTION)
   })
 
-  it("$10,000 is fine; one more dollar says the limit and the button stays off", () => {
+  it("$10,000 is fine; one more dollar says the limit and Next stays off (step 1)", () => {
     const d = open()
     type(d, "10000")
-    const cta = within(d).getByRole("button", { name: "Add $10,000", exact: true } as never) as HTMLButtonElement
-    expect(cta.disabled).toBe(false)
+    const next = within(d).getByRole("button", { name: "Next", exact: true } as never) as HTMLButtonElement
+    expect(next.disabled).toBe(false)
     expect(d.querySelector("[data-add-max]")).toBeNull()
     key(d, "delete")
     key(d, "1")
-    const over = within(d).getByRole("button", { name: "Add $10,001", exact: true } as never) as HTMLButtonElement
-    expect(over.disabled).toBe(true)
+    expect(next.disabled).toBe(true)
     expect(within(d).getByRole("alert").textContent).toBe("You can add up to $10,000 at a time.")
-    fireEvent.click(over)
+    fireEvent.click(next)
+    fireEvent.keyDown(window, { key: "Enter" })
+    expect(d.querySelector("[data-add-body='1']")).not.toBeNull() // still on step 1
     expect(addMoney).not.toHaveBeenCalled()
   })
 
   it("typing on top of the $150 prefill can't send $150,150", () => {
     const d = open("150")
+    // a linked amount opens on step 2; Change goes back to the keypad with $150 there
+    fireEvent.click(within(d).getByRole("button", { name: "Change the amount" }))
+    expect(d.querySelector("[data-amount-display]")!.textContent).toBe("$150")
     type(d, "150")
-    expect((within(d).getByRole("button", { name: "Add $150,150", exact: true } as never) as HTMLButtonElement).disabled).toBe(true)
+    expect((within(d).getByRole("button", { name: "Next", exact: true } as never) as HTMLButtonElement).disabled).toBe(true)
+    expect(d.querySelector("[data-add-max]")).not.toBeNull()
+  })
+
+  it("a link over the limit opens on step 1 and says so", () => {
+    const d = open("20000")
+    expect(d.querySelector("[data-add-body='1']")).not.toBeNull()
     expect(d.querySelector("[data-add-max]")).not.toBeNull()
   })
 })

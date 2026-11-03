@@ -720,3 +720,71 @@ export const userSurvey = pgTable(
     check("user_survey_app_version_ck", sql`${t.appVersion} is null or char_length(${t.appVersion}) <= 40`),
   ],
 )
+
+/**
+ * "Ask for a top-up" (2026-11-03, lib/topups.ts): a member asks everyone in the Pot to add more money. Off-chain only,
+ * members-only (the reason is the asker's words). `baselines` = the contributed (Micro string) of every active member
+ * when it was asked: who is asked, and where their progress starts (progress = hub get_members.contributed −
+ * baseline), in join order: [{a: account, c: contributed}]. One open ask per Pot (the partial unique index). It ends `done` (everyone added) or `due` (its date
+ * passed), or is cancelled by its asker; `progress` = {account: added (Micro string)} is frozen at that moment.
+ */
+export const topupRequest = pgTable(
+  "topup_request",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    potId: text("pot_id")
+      .notNull()
+      .references(() => pot.daoId),
+    createdBy: text("created_by").notNull(),
+    mode: text("mode").notNull(),
+    perPerson: u128("per_person").notNull(),
+    total: u128("total").notNull(),
+    reason: text("reason"),
+    dueAt: ts("due_at").notNull(),
+    baselines: jsonb("baselines").notNull(),
+    progress: jsonb("progress"),
+    closedAt: ts("closed_at"),
+    closeCause: text("close_cause"),
+    cancelledAt: ts("cancelled_at"),
+    reminderAt: ts("reminder_at"),
+    clientKey: text("client_key"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("topup_request_pot_idx").on(t.potId, t.createdAt),
+    index("topup_request_by_idx").on(t.createdBy, t.createdAt),
+    uniqueIndex("topup_request_open_uq").on(t.potId).where(sql`${t.closedAt} is null and ${t.cancelledAt} is null`),
+    uniqueIndex("topup_request_client_key_uq").on(t.createdBy, t.clientKey).where(sql`${t.clientKey} is not null`),
+    check("topup_request_mode_ck", sql`${t.mode} in ('each', 'total')`),
+    check("topup_request_amount_ck", sql`${t.perPerson} > 0 and ${t.total} >= ${t.perPerson}`),
+    check("topup_request_reason_ck", sql`${t.reason} is null or char_length(${t.reason}) between 1 and 80`),
+    check("topup_request_close_ck", sql`(${t.closedAt} is null) = (${t.closeCause} is null) and (${t.closeCause} is null or ${t.closeCause} in ('done', 'due'))`),
+    check("topup_request_end_ck", sql`${t.closedAt} is null or ${t.cancelledAt} is null`),
+    check("topup_request_baselines_ck", sql`jsonb_typeof(${t.baselines}) = 'array'`),
+    check("topup_request_progress_ck", sql`${t.progress} is null or jsonb_typeof(${t.progress}) = 'object'`),
+  ],
+)
+
+/**
+ * A nudge (POST /api/nudges): one member reminds another to add money, by push. Rate limit: one per (Pot, target) per
+ * rolling 24 h, whoever sends it (checked under an advisory lock per Pot). `topup_id`: the ask it's about.
+ */
+export const nudge = pgTable(
+  "nudge",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    potId: text("pot_id")
+      .notNull()
+      .references(() => pot.daoId),
+    topupId: bigint("topup_id", { mode: "number" }).references(() => topupRequest.id),
+    senderAccount: text("sender_account").notNull(),
+    targetAccount: text("target_account").notNull(),
+    clientKey: text("client_key"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("nudge_target_idx").on(t.potId, t.targetAccount, t.createdAt),
+    uniqueIndex("nudge_client_key_uq").on(t.senderAccount, t.clientKey, t.targetAccount).where(sql`${t.clientKey} is not null`),
+    check("nudge_self_ck", sql`${t.senderAccount} <> ${t.targetAccount}`),
+  ],
+)

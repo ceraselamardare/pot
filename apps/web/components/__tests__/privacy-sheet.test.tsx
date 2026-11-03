@@ -36,6 +36,7 @@ describe("PrivacySheet", () => {
       "Receipts and their items",
       "Who a payment link is for",
       "Your activity",
+      "Asks for more money and why",
       "Notes on gifts (on the gift page only if the giver chose)",
     ])
     // every item has its icon (decorative), every heading too

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import { useMyActivity, useMeInfo } from "@/lib/client/data"
 import { useNow } from "@/lib/client/time"
-import { giftActivity, type ActivityItemVM } from "@/lib/client/activity"
+import { giftActivity, topupActivity, type ActivityItemVM } from "@/lib/client/activity"
+import { useMyTopupAsks } from "@/lib/client/topups/data"
 import { useMyGifts } from "@/lib/client/gifts/data"
 import { mockTxHash } from "@/lib/client/mock/world"
 import { IS_LIVE } from "@/lib/client/config"
@@ -38,15 +39,20 @@ export function YourActivity({ meId }: { meId: string }) {
   const now = useNow()
   // hub 1.2.0: the gifts I sent, merged in by time (on the pages already loaded while older ones are still to come)
   const gifts = useMyGifts()
+  // "Ask for a top-up": the asks I made (the mock's Pot views carry them already; the key keeps them once)
+  const asks = useMyTopupAsks()
   const me = useMeInfo()
   const a = useMemo(() => {
-    if (base.state !== "ready" || !gifts?.length || !me) return base
+    if (base.state !== "ready" || (!gifts?.length && !asks?.length) || !me) return base
     const until = base.hasMore ? (base.items[base.items.length - 1]?.at ?? 0) : 0
-    const extra: ActivityItemVM[] = gifts
-      .filter((g) => g.at >= until)
-      .map((g) => giftActivity({ ...g, txHash: g.txHash ?? (IS_LIVE ? undefined : mockTxHash(`${g.slug}:gift:${g.ref}`)) }, { id: me.id, name: me.name }))
-    return { ...base, items: [...base.items, ...extra].sort((x, y) => y.at - x.at) }
-  }, [base, gifts, me])
+    const extra: ActivityItemVM[] = [
+      ...(gifts ?? []).filter((g) => g.at >= until).map((g) => giftActivity({ ...g, txHash: g.txHash ?? (IS_LIVE ? undefined : mockTxHash(`${g.slug}:gift:${g.ref}`)) }, { id: me.id, name: me.name })),
+      ...(asks ?? []).filter((v) => v.createdAt >= until).map((v) => topupActivity(v, { id: me.id, name: me.name })),
+    ]
+    const byKey = new Map(base.items.map((i) => [i.key, i]))
+    for (const x of extra) byKey.set(x.key, x)
+    return { ...base, items: [...byKey.values()].sort((x, y) => y.at - x.at) }
+  }, [base, gifts, asks, me])
   return (
     <section aria-labelledby="you-activity-h" className="mt-6" data-you-activity={a.state}>
       <h2 id="you-activity-h" className="mb-2 px-1 font-display text-heading text-ink">

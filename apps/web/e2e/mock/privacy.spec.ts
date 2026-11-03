@@ -8,7 +8,7 @@
 // Every screen: axe 0 serious + the brand checks; mobile projects save notes/screens/privacy-*-{day,night}.png.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, brandChecks, openedSheet, PORTO_INVITE_URL } from "../fixtures/pot"
+import { asPerson, axe, brandChecks, openedSheet, potMore, PORTO_INVITE_URL } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -40,14 +40,13 @@ async function expectSheet(page: Page) {
 
 test.use({ reducedMotion: "reduce" })
 
-test("Pot ••• menu → Who can see what; Back closes it", async ({ page }, info) => {
+test("Pot ••• More → Who can see what; Back closes it", async ({ page }, info) => {
   await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
   await expect(page.getByRole("heading", { level: 1, name: "Lisbon Trip" })).toBeVisible()
-  await page.getByRole("button", { name: "More options for Lisbon Trip" }).click()
-  const item = page.getByRole("menuitem", { name: /Who can see what/ })
+  const more = await potMore(page, "Lisbon Trip")
+  const item = more.getByRole("button", { name: /Who can see what/ })
   await expect(item).toContainText("What's private and what's public")
-  await page.waitForTimeout(300) // the menu's 120 ms fade: axe would measure blended colours mid-way
   await axe(page)
   await item.click()
   await expect(page).toHaveURL(/\/p\/lisbon-trip\?sheet=privacy$/)
@@ -58,8 +57,7 @@ test("Pot ••• menu → Who can see what; Back closes it", async ({ page },
   await page.goBack()
   await expect(page.getByRole("dialog")).toBeHidden()
   // and [Got it] closes it too
-  await page.getByRole("button", { name: "More options for Lisbon Trip" }).click()
-  await page.getByRole("menuitem", { name: /Who can see what/ }).click()
+  await potMore(page, "Lisbon Trip", /Who can see what/)
   await (await openedSheet(page, "Who can see what")).getByRole("button", { name: "Got it" }).click()
   await expect(sheet).toBeHidden()
   await expect(page).toHaveURL(/\/p\/lisbon-trip$/)
