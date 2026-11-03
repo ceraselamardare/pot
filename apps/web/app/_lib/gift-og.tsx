@@ -1,11 +1,13 @@
-// The gift pages' link preview (1200×630, the invite / claim previews' look): a marigold ground, the Pot's cover tile,
-// "Send a gift to Lisbon Trip ☕" in Gabarito 800 eggplant (on-brand), how many people are in it, and the glyph +
-// lowercase wordmark bottom left. No balance, no names. Unknown link / page or any error: the static brand image.
+// The pay-in pages' link preview (1200×630, the invite / claim previews' look): a marigold ground, the Pot's cover tile,
+// "Pay Lisbon Trip" (a payment link or page) or "Send a gift to Lisbon Trip ☕" (a gift one) in Gabarito 800 eggplant
+// (on-brand), how many people are in it, and the glyph + lowercase wordmark bottom left. No balance, no names. Unknown
+// link / page or any error: the static brand image.
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { ImageResponse } from "next/og"
 import { t } from "@/i18n/t"
 import type { GiftPotVM } from "@/lib/client/mock/gifts"
+import type { PayInTone } from "@/lib/gifts"
 import { C, COVERS, GLYPH, WORDMARK } from "./og-brand"
 
 export const OG_SIZE = { width: 1200, height: 630 }
@@ -17,17 +19,20 @@ async function staticImage(): Promise<Response> {
   return new Response(new Uint8Array(png), { headers: { "content-type": "image/png", "cache-control": "public, max-age=300" } })
 }
 
-export async function giftOgImage(read: () => Promise<GiftPotVM | null>): Promise<Response> {
+export async function giftOgImage(read: () => Promise<{ pot: GiftPotVM; tone: PayInTone } | null>): Promise<Response> {
   let pot: GiftPotVM | null = null
+  let tone: PayInTone = "payment"
   let fonts: [Buffer, Buffer] | null = null
   try {
-    pot = await read()
+    const r = await read()
+    pot = r?.pot ?? null
+    if (r) tone = r.tone
     if (pot) fonts = await Promise.all([readFile(fontPath("Gabarito-ExtraBold.ttf")), readFile(fontPath("Figtree-SemiBold.ttf"))])
   } catch {
     pot = null
   }
   if (!pot || !fonts) return staticImage()
-  return new ImageResponse(<Card pot={pot} />, {
+  return new ImageResponse(<Card pot={pot} tone={tone} />, {
     ...OG_SIZE,
     emoji: "twemoji",
     fonts: [
@@ -37,9 +42,9 @@ export async function giftOgImage(read: () => Promise<GiftPotVM | null>): Promis
   })
 }
 
-function Card({ pot }: { pot: GiftPotVM }) {
+function Card({ pot, tone }: { pot: GiftPotVM; tone: PayInTone }) {
   const [from, to] = COVERS[((pot.cover % 6) + 6) % 6]!
-  const headline = t("gift.og.title", { potName: pot.name })
+  const headline = tone === "gift" ? t("gift.og.title", { potName: pot.name }) : t("give.og.title.payment", { potName: pot.name })
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", background: C.brand, fontFamily: "Figtree", position: "relative" }}>
       <div

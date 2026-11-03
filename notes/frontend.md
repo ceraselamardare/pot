@@ -1,3 +1,97 @@
+> **2026-11-03: "Pay in": money flows named by direction, one place to make each thing, and a Settings tab.** Approved
+> proposal. **No contract change** (every internal name stays: `gift_link`, `set_gifts`, `gift_received`, the `"gift"`
+> msg key, relay rules, `/g/<slug>/<id>`, `/give/<slug>`, `/c/…`). Server side + migration `0008_payin_tone.sql`:
+> notes/backend.md "Pay in". (`components/payin/*`, `components/pot/{PotActions,SettingsTab,Tabs,PotScreen}.tsx`,
+> `components/gifts/{GiveFlow,GiftRow,GiftDetailsSheet}.tsx`, `components/sheets/{ShareSheet,AddMoneySheet}.tsx`.)
+> - **Names:** **Add money** (unchanged) · **Ask the group** (was "Ask for more money"; behaviour unchanged) · **Ask
+>   anyone** (a **pay-in link** or the **public page**: people outside pay in, they don't join; was "gift link / gift
+>   page") · **Send by link** (Spend → Someone else; was "payment link", a phrase now retired everywhere since it meant
+>   two things). "Gift" survives only as a **tone** picked when making a pay-in link: "What's it for? A payment ·
+>   A gift ☕" (default A payment). The tone changes the presets (payment: They choose/Fixed, $10/$25/$50, fixed prefill
+>   $25; gift: ☕ $5/$10/$20, fixed prefill $10) and the outsider page's words ("Pay Lisbon Trip" [Pay $25] vs "Send
+>   Lisbon Trip a gift" [Send $10 ☕]). The middle preset is picked first ($25 / ☕×2 $10). Stored on `gift_link.tone`,
+>   `gift_page.tone` and snapshotted on each `gift` (mock: `GiftLinkRec.tone`, `giftPage.tone`, `GiftRec.tone`; absent
+>   = gift, so the seeded Leo's Birthday keeps its gift words). Lib: `lib/gifts.ts` `PayInTone`, `toneOf`,
+>   `PAYMENT_PRESETS`.
+> - **Entry points (no duplicates, each ≤ 2 taps):**
+>   - The row's **Ask** (now named "Ask for money") opens a chooser (`?sheet=ask`, `components/payin/AskSheet.tsx`):
+>     "Ask the group · Everyone adds a little more" and "Ask anyone by link · Anyone can pay into {Pot}. They don't
+>     join." Each swaps itself in (same history entry). An open ask / a Pot of one ("Once someone else joins") / closing
+>     disable "Ask the group" with the reason; the row's Ask is off only while closing. Without the gifts flag, Ask opens
+>     the top-up ask directly.
+>   - **Decision: a Pot of one keeps Ask in slot 3** (the "Invite in slot 3" rule is gone). The row no longer reshuffles
+>     when the second person joins, and asking anyone is what a solo organiser needs. Invite stays one tap away: the
+>     creator's empty feed [Invite friends], Members' [Invite friends], and More's first row.
+>   - **Ask anyone** (`?sheet=payin`, `components/payin/PayInSheet.tsx`) is the only place a pay-in link is made: "Ask
+>     anyone to pay in", What's it for?, Amount (They choose / Fixed), More options (a note for them, One payment only),
+>     "Works for 14 days, until …", [Make pay-in link] → "Your pay-in link is ready", QR first, [Share link] (the one
+>     marigold), [Copy link], [Make another link]. Share text "Pay into {Pot}: {link}" / "Chip in to {Pot} ☕: {link}".
+>     Taking money from outside off → one line + [Turn it back on].
+>   - **Add money step 1:** a quiet underlined ink-muted line "Someone else paying? Send them a link" under the chips
+>     (`data-add-someone-else`) → Ask anyone (swapped in, ✕ leaves both). Open Pots with the gifts flag only.
+>   - **Share sheet = invites only** (the Gift link tab and `?kind=gift` are gone). **More:** Invite friends, **Settings**
+>     (closes the sheet onto `?tab=settings` and scrolls to it: `closeSheetThen` in `lib/client/sheet.ts`), Pot record,
+>     Who can see what, Close Pot. "Gifts" and the Ask row are gone. `GiftsSheet.tsx` and `GiftLinkPanel.tsx` deleted.
+> - **Settings tab** (was Rules; `?tab=settings`, and `?tab=rules` still opens it; tabs Activity · Members · Settings,
+>   desktop Activity · Settings; `components/pot/SettingsTab.tsx`). Grouped list; each section header (`h2`, title in
+>   small caps + "· who decides") is a region:
+>   1. **Rules · the group decides:** the rule sentences (open, first; `RulesSection` in Tabs.tsx, id `rules-h` kept),
+>      footnotes, the "Changing the rules" card.
+>   2. **Money from outside · anyone, right away:** "Taking money from outside" switch (`set_gifts`, any member, no vote)
+>      with "Anyone in the Pot can turn this off at once." (ShieldCheck) · **Public page** On/Off › (`?sheet=publicpage`,
+>      `PublicPageSheet`: switch, What's it for?, the one-liner, QR, [Share page]) · **Pay-in links** "N active" ›
+>      (`?sheet=payinlinks`, `PayInLinksSheet`: "$40 paid in, 3 times" or "No pay-ins yet. Share a link to get the first
+>      one.", active links with [Show] (QR + [Share link]) / [Turn off], the privacy line, [Make a pay-in link]) ·
+>      secondary [Make a pay-in link] (→ Ask anyone; hidden while taking is off).
+>   3. **Paying people outside · the group decides:** "Send by link" On/Off › → `?sheet=rules&rule=links`.
+>   4. **People:** "Invite link · Until {date}" › (Share) · "Who can see what" ›.
+>   5. **Record:** "See every spend" › · "On the explorer" ↗ (the Rules tab's old quiet rows).
+>   6. **Close Pot · the group decides:** "Close Pot and share out" › (+ "Waiting for the group" / "See who got what").
+>   Rows: 52 px, ink on `surface`, ink-muted values + chevrons, Lucide stroke 2, accessible name "Label: Value". No
+>   marigold on the tab (the hero's Add money keeps it).
+> - **Outsider page** (`GiveFlow`): cover + name + member count, the line as a quote with "— from the group", the tone's
+>   headline/presets/CTA, optional name/note, "Show my name on this page" (public page only; the hint says the note goes
+>   with it), "Goes to the whole group. Can't be taken back.", thank-you "Thank you! $25 is on its way to {Pot}." +
+>   [Start your own Pot] + [Pay again]/[Send another gift]. Blocked states are tone-neutral ("This link was turned off",
+>   "This page isn't open"…) except off/goal: "{Pot} isn't taking payments right now" / "…gifts…". OG images and page
+>   titles follow the tone ("Pay Lisbon Trip" / "Send a gift to Lisbon Trip ☕").
+> - **Feed / details / activity / record / push:** a payment row "**Alex** · Paid in · by link" (or "· on the page"),
+>   ArrowDownLeft badge, chip **From outside** (icon + word, `data-status="outside"`), name "Alex paid in $25 · by link.
+>   …"; a gift keeps "Sent a gift ☕" + Gift chip. Details "Alex paid in" / "Ana sent a gift", "A pay-in link" / "The public
+>   page", "Money from outside belongs to the whole group…". You → activity "You paid $25 into Lisbon Trip". Record:
+>   "Money from outside", "Paid in by Ana" / "Gift from Ana", CSV word "Paid in" / "Gift". Push "Ana paid $25 into Lisbon
+>   Trip" (gift tone keeps its words). Send by link: "{name} sent $30 by link for {reason}", "Your link to send $30 is
+>   ready", [Share link], "See the link", panel "Send by link", push "Your $30 link was picked up"; rules line "Sending
+>   money by link to people outside: on/off."; the rules switch is "Send by link". Privacy copy follows (PrivacySheet +
+>   the audit table in notes/backend.md).
+> - **Copy:** new `ask.*`, `payin.*`, `payins.*`, `publicpage.*`, `settings.*`, `give.*`, `chip.outside`, `row.payin*`,
+>   `feed.payin*`, `activity.payin`, `record.payin.*`, `notif.payin.*`, `add.someone_else`, `pot.action.ask.name`,
+>   `pot.more.settings*`, `pot.tabs.settings`; removed `gift.link.*`, `gift.sheet.*` (but the line keys), `gift.menu*`,
+>   `share.tabs.*`, `pot.tabs.rules`, `pot.action.invite`, `rules.title`, `rules.more.label`, `gift.from_members`. Lint:
+>   2,270 strings, 0 banned (no "fees", "settle", "deposit").
+> - **Tests:** new `components/__tests__/payin.test.tsx` (12: the chooser, Pot of one, Ask anyone defaults / fixed +
+>   tone / off, payment-tone outsider page + fixed + off, the feed row, Settings sections + rows + the switch, Pay-in
+>   links + Public page sheets, Share invites only); updated `pot-actions` (Ask always; More list + Settings), `gifts`
+>   (gift tone), `rules-change` (SettingsTab), `topups`, `paylink`, `privacy-sheet`, `lib/client/mock/gifts`,
+>   `record`, `activity`; server `gifts.test.ts`. Mock e2e: new `e2e/mock/payin.spec.ts` (4 × 3 projects); rewritten
+>   `gifts.spec` (entry points; gift tone); updated `topup`, `rules-links`, `pay-link`, `privacy`, `activity`, `flows`,
+>   `screens` (tab name). Fixtures: `potAsk(page, "group"|"anyone")`, `settingsTab(page)`. Testnet specs edited, **not
+>   run**: `gifts` (`?sheet=payin`, `?tab=settings&sheet=publicpage|payinlinks`, the Settings switch), `topup` (Ask →
+>   chooser or direct), `paylink` (feed text), and the Settings tab name in `create-rules`, `p2`, `wave4-trust-goal`.
+>   Screens: `notes/screens/payin-{ask,form,ready,page,thanks,feed,gift-page,off,add}-{day,night}.png`,
+>   `settings-{day,night}.png`.
+> - **Gates:** typecheck clean; `pnpm --filter web lint` clean (2,270 strings, 0 banned); full unit **1,567 passed / 17
+>   skipped** (115 files; DB tests on a private `pot_payin`, kept, migrated with drizzle); `NEXT_DIST_DIR=.next-payin
+>   NEXT_PUBLIC_DATA_SOURCE=mock next build` OK; full mock e2e on `next start -p 2132` (private `--output`): **407 passed,
+>   49 skipped, 0 failed** (3 projects). Unrelated regenerated screenshots restored with `git checkout`.
+> - **Open:** (1) The public page's tone and its giver list: a page switched gift → payment keeps old givers' gift rows
+>   (snapshots) while the headline changes; fine? (2) "Chip in to {Pot} ☕" reuses "chip in" (the members' share word
+>   in gifts-plan); approved copy, flagging it. (3) `?sheet=gifts` / `?kind=gift` old deep links now open nothing.
+>   (4) The /demo tour still draws the old hero (unchanged, noted before).
+> - **Supersedes:** "Pot actions" (slot 3 = Invite in a Pot of one; More's Gifts / Ask rows), "Ask for a top-up" (the
+>   ••• item and the Ask button's own disabled state), "Gifts, the app side" (Share sheet tabs, ••• → Gifts, the giver
+>   page's presets/words), "A calm Rules tab footer" (the Rules tab's quiet rows now live in Settings → Record).
+
 > **2026-11-03: A calm Rules tab footer, and pay by link in the rules change.** Owner (Night screenshot of the bottom
 > of Rules): "text, links, buttons here look a bit messy. Also, I can't see in the change rules how I can enable pay by
 > link to external users." (`components/pot/Tabs.tsx`, `components/sheets/RulesSheet.tsx`, `lib/client/wave4-form.ts`,

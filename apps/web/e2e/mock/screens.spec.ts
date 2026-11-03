@@ -46,7 +46,7 @@ test("the Pot: activity, members, rules, and its sheets", async ({ page }, info)
     await expect(page).toHaveURL(/tab=members/)
     await check(page, "one")
   }
-  await page.getByRole("tab", { name: "Rules" }).locator("visible=true").click()
+  await page.getByRole("tab", { name: "Settings" }).locator("visible=true").click()
   await expect(page.getByText("Anyone can spend up to $100 without asking.")).toBeVisible()
   await expect(page.getByText("Bigger spends need 2 of 3 approvals.")).toBeVisible()
   await check(page, "one")

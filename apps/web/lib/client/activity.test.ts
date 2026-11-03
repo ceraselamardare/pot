@@ -87,7 +87,7 @@ describe("activityOfPerson: one Pot's view model → what that person did", () =
     expect(activityOfPerson(pot, "leo").find((i) => i.kind === "rules_asked")).toMatchObject({ status: "approved" })
     const v = activityOfPerson(pot, "maya").find((i) => i.kind === "voted")!
     expect(activityText(v, "maya")).toBe("You approved a rule change")
-    expect(activityHref(v)).toBe("/p/lisbon-trip?tab=rules")
+    expect(activityHref(v)).toBe("/p/lisbon-trip?tab=settings")
 
     let solo = W.createPot(W.seedWorld(T0), "maya", { name: "Solo", emoji: "🎒", cover: 1, goalEachCents: null, invite: { pk: "ed25519:x", secret: "y" } }, T0, "ab12")
     solo = { ...solo, world: W.setRules(solo.world, solo.slug, "maya", { instantCap: 1_000, memberBudget: 2_000, expiryDays: 7 }, T0 + HOUR) }

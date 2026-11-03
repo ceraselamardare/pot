@@ -12,7 +12,7 @@ import { GIFTS_ON } from "@/lib/client/gifts/flag"
 import { landingFromWire, pageFromWire } from "@/lib/client/gifts/wire"
 import { giftLandingOf, giftPageOf, withGiftShowcase, type GiftLandingVM, type GiftPageVM } from "@/lib/client/mock/gifts"
 import { seedWorld } from "@/lib/client/mock/world"
-import { GIFT_LINK_ID_RE } from "@/lib/gifts"
+import { GIFT_LINK_ID_RE, type PayInTone } from "@/lib/gifts"
 import { giftDeps, resolveGiftLanding, resolveGiftPage } from "@/server/features/gifts"
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/
@@ -37,5 +37,9 @@ export async function getGiftPagePreview(slug: string, now: number = Date.now())
   return r ? pageFromWire(r) : null
 }
 
-/** "Send a gift to Lisbon Trip ☕" (the page title and the link preview's). */
-export const giftTitle = (potName: string | null): string => (potName ? t("gift.og.title", { potName }) : t("app.name"))
+/** "Pay Lisbon Trip" / "Send a gift to Lisbon Trip ☕" (the page title and the link preview's). */
+export const giftTitle = (potName: string | null, tone: PayInTone = "payment"): string =>
+  !potName ? t("app.name") : tone === "gift" ? t("gift.og.title", { potName }) : t("give.og.title.payment", { potName })
+
+/** The link preview's line under the title. */
+export const giftDescription = (tone: PayInTone = "payment"): string => (tone === "gift" ? t("gift.og.description") : t("give.og.description.payment"))

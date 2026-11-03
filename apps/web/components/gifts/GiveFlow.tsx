@@ -1,9 +1,11 @@
 "use client"
-// The giver's page (notes/gifts-plan.md "Giver flow (≤ 3 taps)"): /g/<slug>/<id> (a gift link) and /give/<slug> (the
-// public gift page) share this island. Open the link → amount (☕ $5 × 1 / × 2 / × 4, another amount from $1 prefilled
-// $5, or a fixed-amount link's one button) → optional name + 140-character note (+ "show my name and note on this page"
-// on the public page) → [Send $10 ☕] (the one marigold; signs in inline first when needed: the mock signs the guest in
-// as Alex) → demo dollars are claimed and sent behind that one button → "Thank you!" with [Start your own Pot].
+// The page people outside the Pot pay in on (notes/gifts-plan.md "Giver flow (≤ 3 taps)"; "pay in", notes/frontend.md
+// 2026-11-03): /g/<slug>/<id> (a pay-in link) and /give/<slug> (the public page) share this island. Its words follow
+// the link's (or the page's) tone: a payment ("Pay Lisbon Trip", presets $10 / $25 / $50, [Pay $25]) or a gift ("Send
+// Lisbon Trip a gift", ☕ $5 / $10 / $20, [Send $10 ☕]). Open the link → amount (a preset, the middle one picked, or
+// another amount from $1, or a fixed-amount link's one button) → optional name + 140-character note (+ "Show my name
+// on this page" on the public page) → [Pay $25] (the one marigold; signs in inline first when needed: the mock signs
+// the guest in as Alex) → demo dollars are claimed and sent behind that one button → "Thank you!" with [Start your own Pot].
 // "Another app or exchange" is the simulated 1Click path (no real money moves in the test version). A signed-in giver
 // with Pot dollars also gets "Pot dollars" (their own balance, no demo top-up), picked by default when it covers the gift.
 // Everything that can stop a gift has its own calm screen (link turned off / ended / used, gifts off, an all-or-nothing
@@ -31,7 +33,7 @@ import { useGiftLanding, useGiftPage, type GiftLandingVM, type GiftPageVM } from
 import type { GiftPotVM } from "@/lib/client/mock/gifts"
 import { formatUsd, type Micro } from "@/lib/client/money"
 import { formatDate } from "@/lib/client/time"
-import { checkGiftAmount, GIFT_COFFEE, GIFT_NAME_MAX, GIFT_NOTE_MAX, giftTextLength, type GiftTaking } from "@/lib/gifts"
+import { checkGiftAmount, GIFT_NAME_MAX, GIFT_NOTE_MAX, giftTextLength, PAYMENT_PRESETS, type GiftTaking, type PayInTone } from "@/lib/gifts"
 import { newOpKey } from "@pot/sdk"
 import { SwitchRow } from "./Switch"
 
@@ -55,6 +57,35 @@ export function blockedOf(link: GiftLandingVM["link"] | null, taking: GiftTaking
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+/** The presets for a tone: a gift's are coffees (☕ × 1 / × 2 / × 4), a payment's plain amounts ($10 / $25 / $50). */
+function presetsOf(tone: PayInTone): { amount: Micro; cups: number | null }[] {
+  return tone === "gift" ? GIFT_PRESET_AMOUNTS.map((p) => ({ amount: p.amount, cups: p.cups })) : PAYMENT_PRESETS.map((amount) => ({ amount, cups: null }))
+}
+/** The middle preset is picked to start with ($25 / ☕ × 2 $10). */
+const START_PRESET = 1
+
+/** The words that change with the tone (payment / gift). */
+const words = (tone: PayInTone, potName: string, amount: string) =>
+  tone === "gift"
+    ? {
+        title: t("gift.title", { potName }),
+        cta: t("gift.cta", { amount }),
+        fixed: t("gift.fixed", { amount }),
+        signin: t("gift.signin.title", { amount }),
+        sending: t("gift.sending"),
+        again: t("gift.thanks.again"),
+        receipt: t("gift.receipt", { amount, potName }),
+      }
+    : {
+        title: t("give.title.payment", { potName }),
+        cta: t("give.cta.payment", { amount }),
+        fixed: t("give.fixed.payment", { amount }),
+        signin: t("give.signin.payment", { amount }),
+        sending: t("give.sending.payment"),
+        again: t("give.again.payment"),
+        receipt: t("give.receipt.payment", { amount, potName }),
+      }
+
 // ------------------------------------------------------------------------------------------------- pages
 
 export function GiftLinkFlow({ slug, id, initial }: { slug: string; id: string; initial: GiftLandingVM | null }) {
@@ -62,9 +93,7 @@ export function GiftLinkFlow({ slug, id, initial }: { slug: string; id: string; 
   if (v === undefined) return <HeroSkeleton />
   if (v === null) return <Blank kind="not_found" />
   const blocked = blockedOf(v.link, v.taking)
-  return (
-    <GiveScreen pot={v.pot} linkId={v.link.id} fixed={v.link.amount} note={v.link.note} blocked={blocked} page={null} />
-  )
+  return <GiveScreen pot={v.pot} tone={v.link.tone} linkId={v.link.id} fixed={v.link.amount} note={v.link.note} blocked={blocked} page={null} />
 }
 
 export function GiftPageFlow({ slug, initial }: { slug: string; initial: GiftPageVM | null }) {
@@ -72,13 +101,14 @@ export function GiftPageFlow({ slug, initial }: { slug: string; initial: GiftPag
   if (v === undefined) return <HeroSkeleton />
   if (v === null) return <Blank kind="not_found" />
   const blocked = blockedOf(null, v.taking, v.on)
-  return <GiveScreen pot={v.pot} linkId={null} fixed={null} note={v.on ? v.line : null} blocked={blocked} page={v} />
+  return <GiveScreen pot={v.pot} tone={v.tone} linkId={null} fixed={null} note={v.on ? v.line : null} blocked={blocked} page={v} />
 }
 
 // ------------------------------------------------------------------------------------------------- the screen
 
 function GiveScreen({
   pot,
+  tone,
   linkId,
   fixed,
   note: groupNote,
@@ -86,6 +116,7 @@ function GiveScreen({
   page,
 }: {
   pot: GiftPotVM
+  tone: PayInTone
   linkId: string | null
   fixed: Micro | null
   note: string | null
@@ -96,8 +127,9 @@ function GiveScreen({
   const me = useMeInfo()
   const signedIn = !!me
   const [phase, setPhase] = useState<Phase>({ tag: "form" })
-  const [preset, setPreset] = useState<number | "custom">(0)
-  const [custom, setCustom] = useState(dollarsInput(GIFT_COFFEE))
+  const presets = presetsOf(tone)
+  const [preset, setPreset] = useState<number | "custom">(START_PRESET)
+  const [custom, setCustom] = useState(dollarsInput(presets[START_PRESET]!.amount))
   // the name field starts as the signed-in person's name until they edit it (they can clear it)
   const [typedName, setName] = useState<string | null>(null)
   const name = typedName ?? me?.name.slice(0, GIFT_NAME_MAX) ?? ""
@@ -112,7 +144,7 @@ function GiveScreen({
   const key = useRef(newOpKey())
   const doneRef = useRef<HTMLHeadingElement>(null)
 
-  const amount: Micro | null = fixed ?? (preset === "custom" ? parseDollars(custom) : GIFT_PRESET_AMOUNTS[preset]!.amount)
+  const amount: Micro | null = fixed ?? (preset === "custom" ? parseDollars(custom) : presets[preset]!.amount)
   const check = amount === null ? null : checkGiftAmount(amount)
   const amountOk = amount !== null && !!check?.ok
   const noteLen = giftTextLength(note)
@@ -122,6 +154,7 @@ function GiveScreen({
   const isPage = linkId === null
   const source: Source = picked === "own" && !hasOwn ? "demo" : (picked ?? (hasOwn && amount !== null && own >= amount ? "own" : "demo"))
   const ownShort = source === "own" && amount !== null && own < amount
+  const w = words(tone, pot.name, whole)
 
   const send = async () => {
     if (!amountOk || !textOk || amount === null || ownShort) return
@@ -171,8 +204,8 @@ function GiveScreen({
 
   if (blocked && phase.tag !== "done") return (
     <div className="flex flex-col gap-5" data-give={blocked}>
-      <Hero pot={pot} line={null} page={null} />
-      <StateCard kind={blocked} potName={pot.name} />
+      <Hero pot={pot} title={w.title} line={null} page={null} tone={tone} />
+      <StateCard kind={blocked} potName={pot.name} tone={tone} />
       <StartOwn />
     </div>
   )
@@ -180,7 +213,7 @@ function GiveScreen({
   if (phase.tag === "done")
     return (
       <div className="flex flex-col gap-5" data-give="done">
-        <Hero pot={pot} line={null} page={null} compact />
+        <Hero pot={pot} title={w.title} line={null} page={null} tone={tone} compact />
         <section aria-labelledby="give-done-h" className="flex flex-col gap-4 rounded-lg bg-surface p-4 shadow-card" data-give-state="done">
           <div className="flex items-center gap-3">
             <span className="pot-pop grid size-10 shrink-0 place-items-center rounded-pill bg-brand-soft">
@@ -196,7 +229,7 @@ function GiveScreen({
           {(phase.noted || phase.shown) && (
             <p className="text-body-sm text-ink-muted">{[phase.noted && t("gift.thanks.note"), phase.shown && t("gift.thanks.public")].filter(Boolean).join(" ")}</p>
           )}
-          <ReceiptLink txHash={phase.txHash} what={t("gift.receipt", { amount: formatUsd(phase.amount, "whole"), potName: pot.name })} className="self-start" />
+          <ReceiptLink txHash={phase.txHash} what={words(tone, pot.name, formatUsd(phase.amount, "whole")).receipt} className="self-start" />
           <Button variant="primary" className="w-full" render={<Link href="/" />} data-give-start>
             {t("gift.thanks.cta")}
           </Button>
@@ -209,7 +242,7 @@ function GiveScreen({
               setPhase({ tag: "form" })
             }}
           >
-            {t("gift.thanks.again")}
+            {w.again}
           </Button>
         </section>
       </div>
@@ -218,12 +251,12 @@ function GiveScreen({
   const busy = phase.tag === "sending"
   return (
     <div className="flex flex-col gap-5" data-give="form">
-      <Hero pot={pot} line={groupNote} page={page} />
+      <Hero pot={pot} title={w.title} line={groupNote} page={page} tone={tone} />
 
       {phase.tag === "signin" ? (
         <section aria-labelledby="give-signin-h" className="flex flex-col gap-3 rounded-lg bg-surface p-4 shadow-card" data-give-state="signin">
           <h2 id="give-signin-h" className="font-display text-heading text-ink">
-            {t("gift.signin.title", { amount: whole })}
+            {w.signin}
           </h2>
           <p className="text-body-sm text-ink-muted">{t("gift.signin.body")}</p>
           {IS_LIVE ? (
@@ -253,17 +286,25 @@ function GiveScreen({
           {fixed !== null ? (
             <p className="flex flex-col items-center gap-1 text-center" data-give-fixed>
               <MoneyText micro={fixed} variant="hero" style={fixed % 1_000_000n === 0n ? "whole" : "fixed"} className="text-ink" />
-              <span className="text-body text-ink-muted">{t("gift.fixed", { amount: whole })}</span>
+              <span className="text-body text-ink-muted">{w.fixed}</span>
             </p>
           ) : (
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 text-label text-ink">{t("gift.amount")}</legend>
               <div role="radiogroup" aria-label={t("gift.amount")} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {GIFT_PRESET_AMOUNTS.map((p, i) => (
-                  <AmountOption key={p.cups} selected={preset === i} onSelect={() => setPreset(i)} label={t("gift.preset.a11y", { amount: formatUsd(p.amount, "whole"), n: p.cups })} data-give-preset={p.cups}>
-                    <span aria-hidden className="text-body-sm leading-none">
-                      {p.cups === 1 ? "☕" : `☕×${p.cups}`}
-                    </span>
+                {presets.map((p, i) => (
+                  <AmountOption
+                    key={i}
+                    selected={preset === i}
+                    onSelect={() => setPreset(i)}
+                    label={p.cups === null ? formatUsd(p.amount, "whole") : t("gift.preset.a11y", { amount: formatUsd(p.amount, "whole"), n: p.cups })}
+                    data-give-preset={p.cups ?? formatUsd(p.amount, "whole")}
+                  >
+                    {p.cups !== null && (
+                      <span aria-hidden className="text-body-sm leading-none">
+                        {p.cups === 1 ? "☕" : `☕×${p.cups}`}
+                      </span>
+                    )}
                     <MoneyText micro={p.amount} style="whole" className="text-ink" />
                   </AmountOption>
                 ))}
@@ -376,13 +417,13 @@ function GiveScreen({
             <div role="status" className="flex min-h-13 items-center justify-center gap-3 rounded-md bg-surface-sunken px-4" data-give-state="sending">
               <TypingDots className="text-ink" />
               <span className="text-label text-ink">
-                {phase.step === "xc_wait" ? t("gift.xc.waiting") : phase.step === "xc_arrived" ? t("gift.xc.arrived") : t("gift.sending")}
+                {phase.step === "xc_wait" ? t("gift.xc.waiting") : phase.step === "xc_arrived" ? t("gift.xc.arrived") : w.sending}
               </span>
             </div>
           ) : (
             <Button type="submit" variant="primary" className="w-full" disabled={!amountOk || !textOk || ownShort} data-give-send>
-              <Gift aria-hidden strokeWidth={2.25} />
-              {t("gift.cta", { amount: whole })}
+              {tone === "gift" && <Gift aria-hidden strokeWidth={2.25} />}
+              {w.cta}
             </Button>
           )}
           {me && <p className="-mt-2 text-center text-body-sm text-ink-muted">{t("gift.signed_in_as", { name: me.name })}</p>}
@@ -418,35 +459,41 @@ function AmountOption({ selected, onSelect, label, children, ...data }: { select
 
 // ------------------------------------------------------------------------------------------------- parts
 
-function Hero({ pot, line, page, compact }: { pot: GiftPotVM; line: string | null; page: GiftPageVM | null; compact?: boolean }) {
+function Hero({ pot, title, line, page, tone, compact }: { pot: GiftPotVM; title: string; line: string | null; page: GiftPageVM | null; tone: PayInTone; compact?: boolean }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
       <CoverTile emoji={pot.emoji} cover={pot.cover} size={compact ? "lg" : "xl"} />
-      <h1 className="font-display text-title text-balance text-ink">{t("gift.title", { potName: pot.name })}</h1>
+      <h1 className="font-display text-title text-balance text-ink">{title}</h1>
       <p className="text-body-sm text-ink-muted" data-give-members>
         {t("gift.members", { n: pot.members })}
       </p>
       {line && (
         <figure className="flex w-full flex-col gap-1 rounded-md bg-surface p-3 text-left shadow-card" data-give-line>
-          <figcaption className="flex items-center gap-1.5 text-body-sm text-ink-muted">
-            <Quote aria-hidden className="size-4" strokeWidth={2} />
-            {t("gift.from_members")}
-          </figcaption>
-          <blockquote className="text-body text-ink [overflow-wrap:anywhere]">{line}</blockquote>
+          <blockquote className="flex items-start gap-2 text-body text-ink [overflow-wrap:anywhere]">
+            <Quote aria-hidden className="mt-1 size-4 shrink-0 text-ink-muted" strokeWidth={2} />
+            <span>{line}</span>
+          </blockquote>
+          <figcaption className="text-body-sm text-ink-muted">{t("give.line.by")}</figcaption>
         </figure>
       )}
-      {page?.on && <PageGivers page={page} />}
+      {page?.on && <PageGivers page={page} tone={tone} />}
     </div>
   )
 }
 
-function PageGivers({ page }: { page: GiftPageVM }) {
+function PageGivers({ page, tone }: { page: GiftPageVM; tone: PayInTone }) {
   const total = page.total ?? 0n
   const count = page.count ?? 0
   return (
     <section aria-labelledby="give-givers-h" className="flex w-full flex-col gap-2 text-left" data-give-givers>
       <p className="text-center text-body text-ink tabular-nums" data-give-totals>
-        {count > 0 ? t("gift.page.totals", { amount: formatUsd(total, "whole"), n: count }) : t("gift.page.none")}
+        {tone === "gift"
+          ? count > 0
+            ? t("gift.page.totals", { amount: formatUsd(total, "whole"), n: count })
+            : t("gift.page.none")
+          : count > 0
+            ? t("give.page.totals.payment", { amount: formatUsd(total, "whole"), n: count })
+            : t("give.page.none.payment")}
       </p>
       {page.givers && page.givers.length > 0 && (
         <>
@@ -482,8 +529,10 @@ const STATE: Record<Blocked, [MessageKey, MessageKey]> = {
   page_off: ["gift.state.page_off.title", "gift.state.page_off.body"],
 }
 
-function StateCard({ kind, potName }: { kind: Blocked; potName: string }) {
-  const [title, body] = STATE[kind]
+function StateCard({ kind, potName, tone }: { kind: Blocked; potName: string; tone: PayInTone }) {
+  const [giftTitle, body] = STATE[kind]
+  // a payment page says "payments" where a gift page says "gifts"
+  const title: MessageKey = tone === "payment" && kind === "off" ? "give.state.off.payment" : tone === "payment" && kind === "goal" ? "give.state.goal.payment" : giftTitle
   return (
     <section aria-labelledby="give-state-h" className="flex items-start gap-3 rounded-lg bg-surface p-4 shadow-card" data-give-state={kind}>
       <X aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-muted" strokeWidth={2.5} />

@@ -478,7 +478,7 @@ function ResultCard({
   const request = useRequest(pot.slug, outcome?.id ?? null)
   const amountWhole = formatUsd(amount, "whole")
   const sentLine = link
-    ? t("paylink.ready.title")
+    ? t("paylink.ready.title", { amount: amountWhole })
     : receiverName
       ? t("spend.sent.member", { amount: amountWhole, name: receiverName })
       : t("spend.sent", { amount: amountWhole })

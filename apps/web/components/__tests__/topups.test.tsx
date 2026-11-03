@@ -6,6 +6,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { AskSheet } from "@/components/payin/AskSheet"
 import { PotActions } from "@/components/pot/PotActions"
 import { AddMoneySheet } from "@/components/sheets/AddMoneySheet"
 import { TopupCard } from "@/components/topups/TopupCard"
@@ -47,7 +48,7 @@ describe("the ask sheet", () => {
   it("defaults first: the Pot's $150 each, a week; total splits equally; the reason counts; one marigold", async () => {
     const user = userEvent.setup()
     render(<TopupSheet pot={pot()} open onClose={() => {}} />)
-    const d = screen.getByRole("dialog", { name: "Ask for more money" })
+    const d = screen.getByRole("dialog", { name: "Ask the group" })
     const amount = within(d).getByRole("textbox", { name: "How much from each person?" }) as HTMLInputElement
     expect(amount.value).toBe("150")
     expect(d.querySelector("[data-topup-split]")!.textContent).toBe("$450 in total from 3 people")
@@ -187,18 +188,23 @@ describe("the row, the hero's Ask, the Add sheet", () => {
     }
   })
 
-  it("the hero's [Ask]: 'Ask for more money' opens the sheet; with an open ask it's off and says whose", async () => {
+  it("the hero's [Ask] → 'Ask the group' opens the sheet; with an open ask that row is off and says whose", async () => {
     const user = userEvent.setup()
     const { unmount } = render(<PotActions pot={pot()} />)
-    await user.click(screen.getByRole("button", { name: "Ask for more money" }))
-    expect(window.location.search).toBe("?sheet=topup")
+    await user.click(screen.getByRole("button", { name: "Ask for money" }))
+    expect(window.location.search).toBe("?sheet=ask")
     unmount()
+    window.history.replaceState({ potSheet: 1 }, "", "/?sheet=ask")
+    const chooser = render(<AskSheet pot={pot()} open onClose={() => {}} />)
+    await user.click(screen.getByRole("button", { name: /^Ask the group/ }))
+    expect(window.location.search).toBe("?sheet=topup")
+    chooser.unmount()
     window.history.replaceState(null, "", "/")
     await asked()
-    render(<PotActions pot={pot("sam")} />)
-    const off = screen.getByRole("button", { name: "Ask for more money" })
+    render(<AskSheet pot={pot("sam")} open onClose={() => {}} />)
+    const off = screen.getByRole("button", { name: /^Ask the group/ })
     expect(off.getAttribute("aria-disabled")).toBe("true")
-    expect(document.getElementById(off.getAttribute("aria-describedby")!)!.textContent).toBe("Maya's ask is still open")
+    expect(off.textContent).toContain("Maya's ask is still open")
     await user.click(off)
     expect(window.location.search).toBe("")
   })

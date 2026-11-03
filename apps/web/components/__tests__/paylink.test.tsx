@@ -56,11 +56,11 @@ describe("the Share card", () => {
     expect(screen.getByText("For Surf school")).toBeTruthy()
     expect(screen.getByText(/Anyone who has this link can take the money/)).toBeTruthy()
     expect(screen.getByText(/saved only on this device/)).toBeTruthy()
-    expect(screen.getByRole("img", { name: "QR code for the $30 payment link" })).toBeTruthy()
+    expect(screen.getByRole("img", { name: "QR code for the link to send $30" })).toBeTruthy()
     expect((link as HTMLElement).hidden).toBe(true)
     expect(screen.queryByRole("button", { name: /QR code/ })).toBeNull()
     // Share is the marigold, Copy is secondary
-    expect(screen.getByRole("button", { name: "Share payment link" }).getAttribute("data-variant")).toBe("primary")
+    expect(screen.getByRole("button", { name: "Share link" }).getAttribute("data-variant")).toBe("primary")
     await user.click(screen.getByRole("button", { name: "Copy link" }))
     expect(writeText).toHaveBeenCalledWith(link.getAttribute("data-paylink-url"))
     expect(await screen.findByRole("button", { name: "Link copied" })).toBeTruthy()
@@ -79,7 +79,7 @@ describe("feed rows", () => {
     const rows = screen.getAllByRole("listitem")
     // the row's name says it all; the row shows the short form ("Maya · Tickets" + "Link sent")
     const [open, claimed, returned] = screen.getAllByRole("button")
-    expect(open!.getAttribute("aria-label")).toMatch(/^Maya sent Surf school a \$30 payment link for Surf lessons\. Link sent · waiting to be claimed/)
+    expect(open!.getAttribute("aria-label")).toMatch(/^Maya sent Surf school \$30 by link for Surf lessons\. Link sent · waiting to be claimed/)
     expect(rows[0]!.querySelector("[data-row-title]")!.textContent).toBe("Maya · Tickets")
     expect(rows[0]!.querySelector("[data-status='link-ready']")!.textContent).toBe("Link sent")
     expect(rows[0]!.querySelector("[data-status='link-ready'] svg")).not.toBeNull()
@@ -102,7 +102,7 @@ describe("the Spend sheet's link fields", () => {
     unmount()
     const lisbon = W.potView(world(), "lisbon-trip", "maya", NOW)!
     render(<PayLinkFields pot={lisbon} label="" onLabel={() => {}} />)
-    expect(screen.getByText(/Paying people outside the Pot is off here/)).toBeTruthy()
+    expect(screen.getByText(/Sending money by link is off here/)).toBeTruthy()
   })
 })
 

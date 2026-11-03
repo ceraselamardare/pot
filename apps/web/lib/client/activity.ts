@@ -7,6 +7,7 @@
 // Keys come from lib/activity-api.ts, so both sources name the same action the same way.
 import { activityKey, type ActivityApiItem, type ActivityApiKind } from "@/lib/activity-api"
 import { t } from "@/i18n/t"
+import type { PayInTone } from "@/lib/gifts"
 import { formatUsd, type Micro } from "./money"
 import type { Category, CloseVM, LinkStatusVM, PotVM, RequestVM, RulesChangeVM, TopupVM, Vote } from "./mock/types"
 
@@ -53,6 +54,8 @@ export interface ActivityItemVM {
   hasReceipt?: boolean
   /** topup: the ask's state and each person's part */
   topup?: { id: string; status: TopupVM["status"]; perPerson: Micro }
+  /** gift: paid in as a plain payment, or sent as a gift (the link's or page's tone) */
+  tone?: PayInTone
 }
 
 const CATEGORIES: readonly string[] = ["groceries", "food", "transport", "stay", "tickets", "other"]
@@ -266,7 +269,7 @@ export function activityText(i: ActivityItemVM, meId: string | null): string {
     case "refund":
       return t("activity.refund", { who, amount })
     case "gift":
-      return t("activity.gift", { who, amount, potName: i.potName })
+      return i.tone === "gift" ? t("activity.gift", { who, amount, potName: i.potName }) : t("activity.payin", { who, amount, potName: i.potName })
     case "topup":
       return t("activity.topup", { who, amount: formatUsd(i.topup?.perPerson ?? 0n, "whole") })
     case "rules_asked":
@@ -305,7 +308,7 @@ export function activityTitle(i: ActivityItemVM): string {
     case "refund":
       return t("row.activity.refund")
     case "gift":
-      return t("row.activity.gift")
+      return i.tone === "gift" ? t("row.activity.gift") : t("row.activity.payin")
     case "topup":
       return t("topup.row.title", { amount: formatUsd(i.topup?.perPerson ?? 0n, "whole") })
     case "rules_asked":
@@ -360,7 +363,7 @@ export function activityHref(i: ActivityItemVM): string {
   if (i.kind === "gift") return `/give/${encodeURIComponent(i.slug)}`
   // every spend opens its details (instant ones too: how it was approved, its receipt, the comments)
   if (i.kind === "asked" || (i.kind === "voted" && i.about?.type === "spend")) return i.requestId !== undefined ? `${pot}?r=${i.requestId}` : pot
-  if (i.kind === "rules_asked" || i.kind === "rules_changed" || (i.kind === "voted" && i.about?.type === "rules")) return `${pot}?tab=rules`
+  if (i.kind === "rules_asked" || i.kind === "rules_changed" || (i.kind === "voted" && i.about?.type === "rules")) return `${pot}?tab=settings`
   // the refund: the closed Pot's summary (who got what); a close request (maybe declined) is on the Pot itself
   if (i.kind === "refund") return `${pot}?sheet=close`
   if (i.kind === "joined" || i.kind === "created") return `${pot}?tab=members`
@@ -388,6 +391,9 @@ export function topupActivity(v: TopupVM, me: { id: string; name: string }): Act
 }
 
 /** A gift I sent (hub 1.2.0) as a row of my activity. */
-export function giftActivity(g: { ref: string; slug: string; potName: string; potEmoji: string; potCover: number; amount: Micro; at: number; txHash?: string }, me: { id: string; name: string }): ActivityItemVM {
-  return { key: `gift:${g.ref}`, kind: "gift", at: g.at, slug: g.slug, potName: g.potName, potEmoji: g.potEmoji, potCover: g.potCover, actorId: me.id, actorName: me.name, amount: g.amount, status: "sent", ...(g.txHash ? { txHash: g.txHash } : {}) }
+export function giftActivity(
+  g: { ref: string; slug: string; potName: string; potEmoji: string; potCover: number; amount: Micro; at: number; tone: PayInTone; txHash?: string },
+  me: { id: string; name: string },
+): ActivityItemVM {
+  return { key: `gift:${g.ref}`, kind: "gift", at: g.at, slug: g.slug, potName: g.potName, potEmoji: g.potEmoji, potCover: g.potCover, actorId: me.id, actorName: me.name, amount: g.amount, status: "sent", tone: g.tone, ...(g.txHash ? { txHash: g.txHash } : {}) }
 }

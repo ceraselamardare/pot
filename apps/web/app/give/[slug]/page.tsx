@@ -8,8 +8,7 @@ import { Suspense } from "react"
 import { Lockup } from "@/components/brand/Lockup"
 import { LiveRegion } from "@/components/app-shell/Shell"
 import { Blank, GiftPageFlow } from "@/components/gifts/GiveFlow"
-import { t } from "@/i18n/t"
-import { getGiftPagePreview, giftTitle, parseGiftSlug } from "@/app/_lib/gift-preview"
+import { getGiftPagePreview, giftDescription, giftTitle, parseGiftSlug } from "@/app/_lib/gift-preview"
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -18,8 +17,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   await connection()
   const ok = parseGiftSlug(slug)
   const p = ok ? await getGiftPagePreview(ok).catch(() => null) : null
-  const title = giftTitle(p?.on ? p.pot.name : null)
-  const description = t("gift.og.description")
+  const title = giftTitle(p?.on ? p.pot.name : null, p?.tone)
+  const description = giftDescription(p?.tone)
   return { title: { absolute: title }, description, robots: { index: false, follow: false }, openGraph: { title, description } }
 }
 

@@ -15,8 +15,10 @@ import {
   GIFT_NOTE_MAX,
   giftLinkStatus,
   optionalGiftText,
+  toneOf,
   type GiftLinkStatus,
   type GiftTaking,
+  type PayInTone,
 } from "@/lib/gifts"
 import { cents, type Micro } from "../money"
 import { DAY, HOUR, MIN } from "./fixtures"
@@ -78,6 +80,8 @@ export interface GiftLinkInput {
   note?: string | null
   /** default true */
   reusable?: boolean
+  /** "What's it for?" (default: a payment) */
+  tone?: PayInTone
 }
 
 export function createGiftLink(w: World, slug: string, who: string, input: GiftLinkInput, now: number, id: string): { world: World; link: GiftLinkRec } {
@@ -95,6 +99,7 @@ export function createGiftLink(w: World, slug: string, who: string, input: GiftL
     createdBy: who,
     amount: input.amount,
     note: note.ok ? note.value : null,
+    tone: input.tone ?? "payment",
     reusable: input.reusable ?? true,
     uses: 0,
     expiresAt: now + GIFT_LINK_TTL_MS,
@@ -134,8 +139,8 @@ export function setGiftsOn(w: World, slug: string, who: string, on: boolean): Wo
   return world
 }
 
-/** ••• → Gifts → the public gift page and its one-liner (our server's gift_page; any member). `line` undefined = keep. */
-export function setGiftPage(w: World, slug: string, who: string, input: { on: boolean; line?: string | null }): World {
+/** Settings → Public page: on/off, its one-liner and its tone (our server's gift_page; any member). Undefined = keep. */
+export function setGiftPage(w: World, slug: string, who: string, input: { on: boolean; line?: string | null; tone?: PayInTone }): World {
   const [world, pot] = clone(w, slug)
   if (!isMember(pot, who)) fail("not_member")
   let line = pot.giftPage?.line ?? null
@@ -144,7 +149,9 @@ export function setGiftPage(w: World, slug: string, who: string, input: { on: bo
     if (!c.ok) fail("invalid")
     line = c.ok ? c.value : null
   }
-  pot.giftPage = { on: input.on, line }
+  // a page that never existed starts as a payment page; one from before the tone keeps reading as a gift page
+  const tone = input.tone ?? (pot.giftPage ? toneOf(pot.giftPage.tone) : "payment")
+  pot.giftPage = { on: input.on, line, tone }
   return world
 }
 
@@ -194,6 +201,8 @@ export function giveGift(w: World, input: GiveInput, now: number, ref: string): 
     at: now,
     linkId: input.linkId,
     ...(input.source === "pot_dollars" ? { source: "pot_dollars" as const } : {}),
+    // a snapshot: what the link (or the page) said when this came in
+    tone: toneOf(link ? link.tone : pot.giftPage?.tone),
   }
   pot.balance += input.amount
   return {
@@ -235,7 +244,7 @@ export function giverOf(g: GiftRec, nameOf: (id: string) => string, initialsOf: 
 }
 
 export function giftVM(g: GiftRec, from: PersonVM, txHash?: string): GiftVM {
-  return { ref: g.ref, from, note: g.note ?? null, showPublic: g.showPublic, amount: cents(g.amount), at: g.at, linkId: g.linkId, ...(txHash ? { txHash } : {}) }
+  return { ref: g.ref, from, note: g.note ?? null, showPublic: g.showPublic, amount: cents(g.amount), at: g.at, linkId: g.linkId, tone: toneOf(g.tone), ...(txHash ? { txHash } : {}) }
 }
 
 /** The Pot's gifts for its members (notes included). */
@@ -243,7 +252,7 @@ export function giftsVM(w: World, pot: PotRec, person: (g: GiftRec) => PersonVM,
   const list = giftsOf(w, pot.slug)
   return {
     on: !pot.giftsOff,
-    page: { on: !!pot.giftPage?.on, line: pot.giftPage?.line ?? null },
+    page: { on: !!pot.giftPage?.on, line: pot.giftPage?.line ?? null, tone: pot.giftPage ? toneOf(pot.giftPage.tone) : "payment" },
     total: cents(list.reduce((s, g) => s + g.amount, 0)),
     count: list.length,
     items: [...list].sort((a, b) => b.at - a.at).map((g) => giftVM(g, person(g), txHash(g))),
@@ -264,10 +273,10 @@ export interface GiftPotVM {
 
 export const giftPotOf = (pot: PotRec): GiftPotVM => ({ slug: pot.slug, name: pot.name, emoji: pot.emoji, cover: pot.cover, members: pot.members.length, status: pot.status })
 
-/** /g/<slug>/<id>: the link (its amount and note, written for givers), the Pot, and whether it takes gifts now. */
+/** /g/<slug>/<id>: the link (its amount, note and tone, written for payers), the Pot, and whether it takes money now. */
 export interface GiftLandingVM {
   pot: GiftPotVM
-  link: { id: string; amount: Micro | null; note: string | null; status: GiftLinkStatus; expiresAt: number }
+  link: { id: string; amount: Micro | null; note: string | null; status: GiftLinkStatus; expiresAt: number; tone: PayInTone }
   taking: GiftTaking
 }
 
@@ -277,7 +286,7 @@ export function giftLandingOf(w: World, slug: string, id: string, now: number): 
   if (!pot || !l) return null
   return {
     pot: giftPotOf(pot),
-    link: { id: l.id, amount: l.amount === null ? null : cents(l.amount), note: l.note ?? null, status: linkStatusAt(l, now), expiresAt: l.expiresAt },
+    link: { id: l.id, amount: l.amount === null ? null : cents(l.amount), note: l.note ?? null, status: linkStatusAt(l, now), expiresAt: l.expiresAt, tone: toneOf(l.tone) },
     taking: giftTakingOf(pot),
   }
 }
@@ -296,6 +305,8 @@ export interface GiftPageVM {
   pot: GiftPotVM
   on: boolean
   line: string | null
+  /** the page's words: a payment page or a gift page */
+  tone: PayInTone
   taking?: GiftTaking
   total?: Micro
   count?: number
@@ -306,12 +317,13 @@ export function giftPageOf(w: World, slug: string): GiftPageVM | null {
   const pot = w.pots[slug]
   if (!pot) return null
   const page = pot.giftPage
-  if (!page?.on) return { pot: giftPotOf(pot), on: false, line: null }
+  if (!page?.on) return { pot: giftPotOf(pot), on: false, line: null, tone: page ? toneOf(page.tone) : "payment" }
   const list = giftsOf(w, slug)
   return {
     pot: giftPotOf(pot),
     on: true,
     line: page.line,
+    tone: toneOf(page.tone),
     taking: giftTakingOf(pot),
     total: cents(list.reduce((s, g) => s + g.amount, 0)),
     count: list.length,
@@ -333,6 +345,7 @@ export interface MyGiftVM {
   amount: Micro
   note: string | null
   at: number
+  tone: PayInTone
   /** the gift's receipt (testnet) */
   txHash?: string
 }
@@ -343,7 +356,7 @@ export function myGiftsOf(w: World, who: string): MyGiftVM[] {
     .sort((a, b) => b.at - a.at)
     .map((g) => {
       const p = w.pots[g.pot]!
-      return { ref: g.ref, slug: g.pot, potName: p.name, potEmoji: p.emoji, potCover: p.cover, amount: cents(g.amount), note: g.note ?? null, at: g.at }
+      return { ref: g.ref, slug: g.pot, potName: p.name, potEmoji: p.emoji, potCover: p.cover, amount: cents(g.amount), note: g.note ?? null, at: g.at, tone: toneOf(g.tone) }
     })
 }
 

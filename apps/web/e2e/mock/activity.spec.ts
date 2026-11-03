@@ -1,7 +1,7 @@
 // You → "Your Pot dollars" + "Your activity", a member's activity sheet (Members tab), the Add sheet's own Pot
 // dollars (Max / none), and the quiet "Receipt ↗" links (money-in feed rows, history rows that open no details,
 // result screens; a spend's is in its details sheet) and the Pot's
-// "View on explorer ↗". Day, Night and desktop; axe 0 serious and the brand checks on each screen.
+// "On the explorer ↗". Day, Night and desktop; axe 0 serious and the brand checks on each screen.
 // The mobile projects save notes/screens/you-{day,night}.png (balance + activity).
 import { fileURLToPath } from "node:url"
 import { expect, test, type Locator, type Page } from "@playwright/test"
@@ -125,11 +125,11 @@ test("Feed and Rules: quiet receipt links and the Pot on the explorer", async ({
   expect(look.color).not.toBe("rgb(255, 179, 32)")
   // never the raw hash in the UI
   expect(await page.locator("main").innerText()).not.toMatch(/[1-9A-HJ-NP-Za-km-z]{43,44}/)
-  await page.getByRole("tab", { name: "Rules" }).locator("visible=true").click()
+  await page.getByRole("tab", { name: "Settings" }).locator("visible=true").click()
   const ex = page.getByRole("link", { name: "View Lisbon Trip on the explorer, opens in a new tab" })
   await expect(ex).toHaveAttribute("href", /^https:\/\/testnet\.nearblocks\.io\/address\/lisbon-trip\./)
   await expect(ex).toHaveAttribute("target", "_blank")
-  await expect(ex).toHaveText("View on explorer")
+  await expect(ex).toHaveText("On the explorer")
   await axe(page)
 })
 

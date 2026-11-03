@@ -78,7 +78,7 @@ test("custom rules: $25 at a time, $60 per person, members only → on chain; $3
 
   // the Rules tab reads the Pot's own rules back as sentences
   await A.getByRole("dialog").getByRole("button", { name: "Close" }).click()
-  await A.getByRole("tab", { name: "Rules" }).locator("visible=true").click()
+  await A.getByRole("tab", { name: "Settings" }).locator("visible=true").click()
   const list = A.locator("[data-rules-list]")
   await expect(list).toContainText("Anyone can spend up to $25 without asking.", { timeout: 30_000 })
   await expect(list).toContainText("Each person can spend up to $60 in total without asking.")

@@ -108,12 +108,17 @@ describe("gift links (members)", () => {
     const k = key()
     const a = await mkLink(maya, { note: "  Thanks  for   the   coffee ", idempotencyKey: k })
     expect(a.status).toBe(201)
-    expect(a.link).toMatchObject({ pot: DAO, slug: "lisbon-trip", createdBy: MAYA, amount: null, note: "Thanks for the coffee", reusable: true, uses: 0, status: "active", revokedAt: null })
+    expect(a.link).toMatchObject({ pot: DAO, slug: "lisbon-trip", createdBy: MAYA, amount: null, note: "Thanks for the coffee", tone: "payment", reusable: true, uses: 0, status: "active", revokedAt: null })
     expect(a.link.id).toMatch(GIFT_LINK_ID_RE)
     expect(new Date(a.link.expiresAt).getTime()).toBe(clock + GIFT_LINK_TTL_MS)
     const b = await mkLink(maya, { note: "Thanks for the coffee", idempotencyKey: k })
     expect(b).toMatchObject({ status: 200, replayed: true, link: { id: a.link.id } })
     await expect(mkLink(maya, { note: "other", idempotencyKey: k })).rejects.toMatchObject({ reason: "idempotency_conflict" })
+    // "pay in": the tone is part of the request (a retry with another tone is a conflict)
+    await expect(mkLink(maya, { note: "Thanks for the coffee", tone: "gift", idempotencyKey: k })).rejects.toMatchObject({ reason: "idempotency_conflict" })
+    const gifty = await mkLink(maya, { tone: "gift" })
+    expect(gifty.link.tone).toBe("gift")
+    await revokeGiftLink(deps(), maya, "lisbon-trip", gifty.link.id)
     const fixed = await mkLink(maya, { amount: $(25), reusable: false })
     expect(fixed.link).toMatchObject({ amount: $(25), reusable: false })
     expect((await listGiftLinks(deps(), await sessionFor(SAM), DAO)).links.map((l) => l.id)).toEqual([fixed.link.id, a.link.id])
@@ -188,12 +193,15 @@ describe("gift links (members)", () => {
 describe("the gift page switch", () => {
   it("off by default; on with a line; absent line keeps it; null removes it; too long → bad_request", async () => {
     const maya = await sessionFor(MAYA)
-    expect((await listPotGifts(deps(), maya, "lisbon-trip")).page).toEqual({ on: false, line: null })
-    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: true, line: "  Help us   get to Lisbon " })).page).toEqual({ on: true, line: "Help us get to Lisbon" })
-    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: false })).page).toEqual({ on: false, line: "Help us get to Lisbon" })
-    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: true, line: "" })).page).toEqual({ on: true, line: null })
+    expect((await listPotGifts(deps(), maya, "lisbon-trip")).page).toEqual({ on: false, line: null, tone: "payment" })
+    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: true, line: "  Help us   get to Lisbon " })).page).toEqual({ on: true, line: "Help us get to Lisbon", tone: "payment" })
+    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: false })).page).toEqual({ on: false, line: "Help us get to Lisbon", tone: "payment" })
+    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: true, line: "" })).page).toEqual({ on: true, line: null, tone: "payment" })
+    // "pay in": the page's tone (absent = keep)
+    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: true, tone: "gift" })).page).toEqual({ on: true, line: null, tone: "gift" })
+    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: true })).page).toEqual({ on: true, line: null, tone: "gift" })
     await expect(putGiftPage(deps(), maya, "lisbon-trip", { on: true, line: "x".repeat(101) })).rejects.toMatchObject({ reason: "bad_request", detail: { field: "line" } })
-    process.env.QUOTA_GIFTS_USER_PAGE = "3"
+    process.env.QUOTA_GIFTS_USER_PAGE = "5"
     await expect(putGiftPage(deps(), maya, "lisbon-trip", { on: true })).rejects.toMatchObject({ reason: "quota_exceeded" })
   })
 })
@@ -214,6 +222,21 @@ describe("starting a gift", () => {
     const b = await give(eve, { linkId: l.id, amount: $(10), name: "Aunt Eve", note: "For the boat", showPublic: true, idempotencyKey: k })
     expect(b).toMatchObject({ status: 200, replayed: true, gift: { ref: a.gift.ref } })
     await expect(give(eve, { linkId: l.id, amount: $(11), name: "Aunt Eve", note: "For the boat", idempotencyKey: k })).rejects.toMatchObject({ reason: "idempotency_conflict" })
+  })
+
+  it("keeps the words it came with: the link's tone, or the page's (a snapshot on the gift row)", async () => {
+    const eve = await sessionFor(EVE, "Eve")
+    const viaGift = await give(eve, { linkId: (await linkRow({ tone: "gift" })).id })
+    const viaPay = await give(eve, { linkId: (await linkRow()).id })
+    await t.db.insert(giftPage).values({ potId: DAO, on: true, tone: "gift" })
+    const viaPage = await give(eve, { page: true })
+    const toneOf = async (ref: string) => (await t.db.select().from(gift).where(eq(gift.ref, ref)))[0]!.tone
+    expect(await toneOf(viaGift.gift.ref)).toBe("gift")
+    expect(await toneOf(viaPay.gift.ref)).toBe("payment")
+    expect(await toneOf(viaPage.gift.ref)).toBe("gift")
+    // a later change to the page doesn't rewrite it
+    await t.db.update(giftPage).set({ tone: "payment" }).where(eq(giftPage.potId, DAO))
+    expect(await toneOf(viaPage.gift.ref)).toBe("gift")
   })
 
   it("exactly one of linkId / page", async () => {
@@ -416,7 +439,7 @@ describe("onGiftReceived", () => {
     await subscribe([MAYA, "Maya"], [SAM, "Sam"], [LEO, "Leo"])
     const l = await linkRow({ reusable: false })
     // Leo (a member) sends his own Pot a gift: he isn't told about it
-    const g = await giftRow({ linkId: l.id, giverAccount: LEO, displayName: "Uncle Leo", note: "SECRET-NOTE-boat" })
+    const g = await giftRow({ linkId: l.id, giverAccount: LEO, displayName: "Uncle Leo", note: "SECRET-NOTE-boat", tone: "gift" })
     const ev = { pot: DAO, from: LEO, amount: $(5), ref: g.ref, txHash: "TxHash111" }
     const a = await onGiftReceived(rd(), ev)
     expect(a.marked).toBe(true)
@@ -444,21 +467,22 @@ describe("onGiftReceived", () => {
 
   it("no chosen name → the giver's Pot name; a ref we don't know (or someone else's) → 'Someone'", async () => {
     await subscribe([MAYA, "Maya"], [EVE, "Eve Giver"])
+    // "pay in": a payment-tone row (the default) reads as a payment
     const g = await giftRow({ giverAccount: EVE })
     await onGiftReceived(rd(), { pot: DAO, from: EVE, amount: $(10), ref: g.ref })
-    expect(notes()[0]!.title).toBe("Eve Giver sent Lisbon Trip a gift")
-    expect(notes()[0]!.body).toBe("$10 ☕ · Open Pot to see it.")
+    expect(notes()[0]!.title).toBe("Eve Giver paid $10 into Lisbon Trip")
+    expect(notes()[0]!.body).toBe("From outside the Pot · Open Pot to see it.")
     // the event's amount is the truth
     expect((await t.db.select().from(gift).where(eq(gift.ref, g.ref)))[0]!.amount).toBe($(10))
     pushes.length = 0
     const raw = await onGiftReceived(rd(), { pot: DAO, from: EVE, amount: $(3), ref: "my-own-ref" })
     expect(raw.marked).toBe(false)
-    expect(notes().map((x) => x.title)).toEqual(["Someone sent Lisbon Trip a gift"])
+    expect(notes().map((x) => x.title)).toEqual(["Someone paid $3 into Lisbon Trip"])
     pushes.length = 0
     const named = await giftRow({ giverAccount: EVE, displayName: "Eve" })
     const stolen = await onGiftReceived(rd(), { pot: DAO, from: ALEX, amount: $(5), ref: named.ref })
     expect(stolen.marked).toBe(false)
-    expect(notes()[0]!.title).toBe("Someone sent Lisbon Trip a gift")
+    expect(notes()[0]!.title).toBe("Someone paid $5 into Lisbon Trip")
     expect((await t.db.select().from(gift).where(eq(gift.ref, named.ref)))[0]!.status).toBe("pending")
   })
 
@@ -479,7 +503,7 @@ describe("public resolvers", () => {
     const l = await linkRow({ amount: $(25), note: "For the boat trip" })
     const r = await resolveGiftLanding(deps(), l.id)
     expect(r).toEqual({
-      link: { id: l.id, amount: $(25), note: "For the boat trip", status: "active", expiresAt: l.expiresAt.toISOString() },
+      link: { id: l.id, amount: $(25), note: "For the boat trip", status: "active", expiresAt: l.expiresAt.toISOString(), tone: "payment" },
       pot: { pot: DAO, slug: "lisbon-trip", name: "Lisbon Trip", emoji: "🇵🇹", members: 3, status: "open" },
       taking: "yes",
     })
@@ -501,10 +525,10 @@ describe("public resolvers", () => {
   it("the gift page: off → the Pot only; on → totals and only the givers who chose to be shown", async () => {
     expect(await resolveGiftPage(deps(), "lisbon-trip")).toEqual({
       pot: { pot: DAO, slug: "lisbon-trip", name: "Lisbon Trip", emoji: "🇵🇹", members: 3, status: "open" },
-      page: { on: false, line: null },
+      page: { on: false, line: null, tone: "payment" },
     })
     await t.db.insert(giftPage).values({ potId: DAO, on: false, line: "hidden while off" })
-    expect((await resolveGiftPage(deps(), "lisbon-trip"))?.page).toEqual({ on: false, line: null })
+    expect((await resolveGiftPage(deps(), "lisbon-trip"))?.page).toEqual({ on: false, line: null, tone: "payment" })
     await pageOn(true, "Help us get to Lisbon")
     const at = (m: number) => new Date(clock - m * 60_000)
     await giftRow({ status: "received", receivedAt: at(3), showPublic: true, displayName: "Ana", note: "Have fun!", amount: $(10) })

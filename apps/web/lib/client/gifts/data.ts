@@ -16,6 +16,7 @@ import { cents, type Micro } from "../money"
 import { useMe } from "../session"
 import { useNow } from "../time"
 import { GIFTS_ON } from "./flag"
+import { toneOf } from "@/lib/gifts"
 import { readGiftsView } from "./chain"
 
 export type { GiftLandingVM, GiftPageVM, MyGiftVM } from "../mock/gifts"
@@ -81,7 +82,7 @@ function useMockGiftLinks(slug: string): GiftLinkVM[] | null | undefined {
   return useMemo(() => {
     if (!world || me === undefined || !now) return undefined
     const list = activeGiftLinks(world, slug, me, now)
-    return list ? list.map((l) => ({ id: l.id, amount: l.amount === null ? null : cents(l.amount), note: l.note ?? null, reusable: l.reusable, uses: l.uses, expiresAt: l.expiresAt, createdBy: l.createdBy })) : null
+    return list ? list.map((l) => ({ id: l.id, amount: l.amount === null ? null : cents(l.amount), note: l.note ?? null, tone: toneOf(l.tone), reusable: l.reusable, uses: l.uses, expiresAt: l.expiresAt, createdBy: l.createdBy })) : null
   }, [world, me, now, slug])
 }
 

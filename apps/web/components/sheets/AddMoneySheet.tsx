@@ -1,8 +1,9 @@
 "use client"
 // Add money (ux-spec §4.7, design-direction 01 §4). Two steps, like Spend (2026-11-03: "when we send money we have a
 // multi-step modal; adding should behave the same"), so a 390 × 844 phone never scrolls:
-//  1 "How much?": the big amount, the Pot's suggestion chips (Your share · $50 · $100), the $10,000 limit, [Next]
-//    (the one marigold) over the keypad; Enter on the keypad = Next.
+//  1 "How much?": the big amount, the Pot's suggestion chips (Your share · $50 · $100), the $10,000 limit, a quiet
+//    "Someone else paying? Send them a link" (→ Ask anyone, ?sheet=payin; "pay in" 2026-11-03), [Next] (the one
+//    marigold) over the keypad; Enter on the keypad = Next.
 //  2 "How do you want to add it?" (?sheet=add&step=source, its own history entry): the amount (with [Change]), the
 //    top-up line, the source (Demo dollars · Your Pot dollars (Use all) · Another app or exchange), the first-time
 //    note, and pinned over the ask: "Pot will have $X" + "After this, you'd get back $Y", [Add $X] (or [Continue]
@@ -28,7 +29,8 @@ import type { PotVM } from "@/lib/client/mock/types"
 import { cn } from "@/lib/client/cn"
 import { ADD_SOURCE_STEP, type AddSource } from "@/lib/client/machines/add-flow"
 import { refundAfterAdd } from "@/lib/client/refund"
-import { pushSheetStep, replaceSheetParams, sheetStepBack, useSheetParams } from "@/lib/client/sheet"
+import { pushSheetStep, replaceSheetParams, sheetStepBack, swapSheet, useSheetParams } from "@/lib/client/sheet"
+import { GIFTS_ON } from "@/lib/client/gifts/flag"
 
 const NOTE_KEY = "pot.usdcNote.seen"
 
@@ -225,6 +227,17 @@ export function AddMoneySheet({
               </Chip>
             ))}
           </div>
+          {/* "pay in": someone outside the Pot paying → Ask anyone (swapped in: ✕ / Back leave both) */}
+          {GIFTS_ON && pot.status === "open" && (
+            <button
+              type="button"
+              onClick={() => swapSheet("payin")}
+              className="min-h-11 rounded-sm px-1 text-body-sm text-ink-muted underline decoration-line-strong underline-offset-4 hover:text-ink"
+              data-add-someone-else
+            >
+              {t("add.someone_else")}
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-4 pt-1" data-add-body="2">

@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
-// The Rules tab and the rules change sheet over the mock data source (classic seed: Lisbon Trip is a Pot made before
+// Settings → Rules and the rules change sheet over the mock data source (classic seed: Lisbon Trip is a Pot made before
 // hub 1.1.0, so its extras are all off).
-//  - Rules tab: pay by link is said on or off; the footer is one "Changing the rules" card with one secondary button,
-//    the "enforces itself" line is a footnote, and the record + explorer are quiet ink rows (no link gold).
-//  - Change sheet: prefilled from the Pot's real extras (all off, not the new-Pot defaults); turning
-//    "Pay people outside the Pot" on is enough to ask; the payload carries the extras whole; the review strikes
-//    "…by link: off." through above "…by link: on."; once approved, the Spend sheet's "Someone else" works.
+//  - Rules: "Send by link" is said on or off; the section ends with one "Changing the rules" card with one secondary
+//    button and the "enforces itself" footnote; the record + explorer are quiet ink rows in Settings → Record.
+//  - Change sheet: prefilled from the Pot's real extras (all off, not the new-Pot defaults); turning "Send by link"
+//    on is enough to ask; the payload carries the extras whole; the review strikes "…by link to people outside: off."
+//    through above "…: on."; once approved, the Spend sheet's "Someone else" works.
 import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { PayLinkFields } from "@/components/paylink/PayLinkFields"
-import { RulesTab } from "@/components/pot/Tabs"
+import { SettingsTab } from "@/components/pot/SettingsTab"
 import { RulesSheet } from "@/components/sheets/RulesSheet"
 import * as store from "@/lib/client/mock/store"
 import type { PotVM, World } from "@/lib/client/mock/types"
@@ -33,16 +33,16 @@ afterEach(() => {
   window.history.replaceState(null, "", "/")
 })
 
-describe("the Rules tab", () => {
+describe("Settings → Rules", () => {
   it("says pay by link is off for a Pot from before links", () => {
     expect(pot().extras).toBeUndefined()
-    render(<RulesTab pot={pot()} />)
+    render(<SettingsTab pot={pot()} />)
     const list = document.querySelector("[data-rules-list]") as HTMLElement
-    expect(within(list).getByText("Payment links for non-members: off.")).toBeTruthy()
+    expect(within(list).getByText("Sending money by link to people outside: off.")).toBeTruthy()
   })
 
-  it("ends calmly: a footnote, one change card with one button, then quiet rows", () => {
-    render(<RulesTab pot={pot()} />)
+  it("ends calmly: a footnote, one change card with one button; the record rows are quiet and ink", () => {
+    render(<SettingsTab pot={pot()} />)
     const foot = document.querySelector("[data-rules-footnote]")!
     expect(foot.textContent).toBe("The Pot enforces these rules itself. No one, including Maya, can skip them.")
     expect(foot.querySelector("svg")).toBeTruthy()
@@ -51,9 +51,9 @@ describe("the Rules tab", () => {
     const buttons = within(card).getAllByRole("button")
     expect(buttons.map((b) => b.textContent)).toEqual(["Ask the group to change a rule"])
     expect(buttons[0]!.getAttribute("data-variant")).toBe("secondary")
-    const more = screen.getByRole("navigation", { name: "More about this Pot" })
+    const more = screen.getByRole("region", { name: "Record" })
     const links = within(more).getAllByRole("link")
-    expect(links.map((a) => a.textContent)).toEqual(["See every spend", "View on explorer"])
+    expect(links.map((a) => a.textContent)).toEqual(["See every spend", "On the explorer"])
     expect(links[0]!.getAttribute("href")).toBe("/p/lisbon-trip/record")
     expect(links[1]!.getAttribute("aria-label")).toBe("View Lisbon Trip on the explorer, opens in a new tab")
     expect(links[1]!.getAttribute("target")).toBe("_blank")
@@ -67,7 +67,7 @@ describe("the Rules tab", () => {
 
   it("a sole member: the card says changes apply at once", () => {
     const p = pot()
-    render(<RulesTab pot={{ ...p, n: 1, k: 1 }} />)
+    render(<SettingsTab pot={{ ...p, n: 1, k: 1 }} />)
     const card = screen.getByRole("region", { name: "Changing the rules" })
     expect(within(card).getByText("You're the only one here, so changes apply right away.")).toBeTruthy()
     expect(within(card).getByRole("button", { name: "Change rules" })).toBeTruthy()
@@ -80,7 +80,7 @@ describe("turning pay by link on in an old Pot", () => {
     const { unmount } = render(<RulesSheet pot={pot()} open onClose={() => {}} />)
     const dialog = await screen.findByRole("dialog")
     // prefilled from what the Pot has: all off (not trust on / $300 / links on)
-    const links = within(dialog).getByRole("switch", { name: "Pay people outside the Pot" })
+    const links = within(dialog).getByRole("switch", { name: "Send by link" })
     const trust = within(dialog).getByRole("switch", { name: "Trust grows" })
     expect(links.getAttribute("aria-checked")).toBe("false")
     expect(trust.getAttribute("aria-checked")).toBe("false")
@@ -92,7 +92,7 @@ describe("turning pay by link on in an old Pot", () => {
     await user.click(links)
     expect(links.getAttribute("aria-checked")).toBe("true")
     const line = dialog.querySelector('[data-rules-preview="links"]')!
-    expect(line.textContent).toBe("Payment links for non-members: on.")
+    expect(line.textContent).toBe("Sending money by link to people outside: on.")
     expect(line.className).toContain("font-semibold")
     expect(ask.disabled).toBe(false)
     expect(within(dialog).getByText("This needs 2 of 3 approvals.")).toBeTruthy()
@@ -111,8 +111,8 @@ describe("turning pay by link on in an old Pot", () => {
     render(<RulesSheet pot={pot("sam")} open onClose={() => {}} />)
     const review = await screen.findByRole("dialog", { name: "Maya wants to change a rule" })
     const diff = review.querySelector('[data-rules-diff-extra="links"]')!
-    expect(diff.querySelector(".line-through")!.textContent).toBe("Payment links for non-members: off.")
-    expect(diff.textContent).toContain("Payment links for non-members: on.")
+    expect(diff.querySelector(".line-through")!.textContent).toBe("Sending money by link to people outside: off.")
+    expect(diff.textContent).toContain("Sending money by link to people outside: on.")
     // only what changed: the amounts aren't in the diff
     expect(review.querySelectorAll("[data-rules-diff] > div")).toHaveLength(1)
     await user.click(within(review).getByRole("button", { name: "Approve the change" }))
@@ -121,8 +121,8 @@ describe("turning pay by link on in an old Pot", () => {
 
     // applied: the tab says on, and the Spend sheet's "Someone else" offers the link fields
     expect(pot().extras).toEqual({ trust: false, oneOkCap: 0n, links: true })
-    render(<RulesTab pot={pot()} />)
-    expect(screen.getByText("Payment links for non-members: on.")).toBeTruthy()
+    render(<SettingsTab pot={pot()} />)
+    expect(screen.getByText("Sending money by link to people outside: on.")).toBeTruthy()
     cleanup()
     render(<PayLinkFields pot={pot()} label="" onLabel={() => {}} />)
     expect(document.querySelector("[data-paylink-fields]")).toBeTruthy()
@@ -134,7 +134,7 @@ describe("turning pay by link on in an old Pot", () => {
     const p = pot()
     render(<RulesSheet pot={{ ...p, n: 1, k: 1 }} open onClose={() => {}} />)
     const dialog = await screen.findByRole("dialog")
-    await user.click(within(dialog).getByRole("switch", { name: "Pay people outside the Pot" }))
+    await user.click(within(dialog).getByRole("switch", { name: "Send by link" }))
     // the mock hub refuses set_rules in a Pot of 3, so assert the payload through the store's call
     const spy = vi.spyOn(store, "setRules").mockResolvedValue(undefined)
     await user.click(within(dialog).getByRole("button", { name: "Change rules" }))
@@ -150,7 +150,7 @@ describe("the Spend sheet when links are off", () => {
     window.history.replaceState(null, "", "/p/lisbon-trip?sheet=spend&step=details")
     render(<PayLinkFields pot={pot()} label="" onLabel={() => {}} />)
     const off = document.querySelector("[data-paylink-off]") as HTMLElement
-    expect(off.textContent).toContain("Turn on “Pay people outside the Pot” in Rules.")
+    expect(off.textContent).toContain("Turn on “Send by link” in the rules.")
     await user.click(within(off).getByRole("button", { name: "Change the rules" }))
     const url = new URL(window.location.href)
     expect(url.searchParams.get("sheet")).toBe("rules")

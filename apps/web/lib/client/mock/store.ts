@@ -14,7 +14,7 @@ import { refundDue, withShowcase } from "./wave4"
 import { sweepExpiredLinks, withLinkShowcase } from "./links"
 import * as G from "./gifts"
 import * as T_ from "./topups"
-import { newGiftRef } from "@/lib/gifts"
+import { newGiftRef, type PayInTone } from "@/lib/gifts"
 import { withGiftShowcase } from "./gifts"
 import { compactAnswers, type SurveyReq, type SurveyWire } from "@/lib/survey"
 
@@ -488,8 +488,8 @@ export async function setGiftsOn(slug: string, on: boolean): Promise<void> {
   commit(giftCall(() => G.setGiftsOn(ensureWorld(), slug, me(), on)))
 }
 
-/** ••• → Gifts → the public gift page and its one-liner. */
-export async function setGiftPage(slug: string, input: { on: boolean; line?: string | null }): Promise<void> {
+/** Settings → Public page: on/off, its one-liner and its tone. */
+export async function setGiftPage(slug: string, input: { on: boolean; line?: string | null; tone?: PayInTone }): Promise<void> {
   await sleep(LATENCY_GIFT.toggle)
   maybeFail("gifts")
   commit(giftCall(() => G.setGiftPage(ensureWorld(), slug, me(), input)))

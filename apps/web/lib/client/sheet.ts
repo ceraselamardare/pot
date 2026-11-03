@@ -9,11 +9,33 @@
 import { useSearchParams } from "next/navigation"
 import { useCallback } from "react"
 
-// gifts (hub 1.2.0): "gifts" = ••• → Gifts (on/off, the public page); "gift" = one gift's details (&gift=<ref>)
+// "gift": one pay-in's details (&gift=<ref>; the push opens it)
 // "intro": the first-run intro + "Help us make Pot better" (components/onboarding; &then=create ends in Create)
-// "topup": the hero's Ask (the ask form); `&topup=<id>` on ?sheet=add marks an add made for that ask
-// "more": the hero's ••• More (components/pot/PotActions: invite, gifts, the record, who can see what, close)
-export type SheetName = "add" | "spend" | "share" | "create" | "close" | "rules" | "coach" | "push" | "person" | "refund" | "paylink" | "privacy" | "gifts" | "gift" | "intro" | "topup" | "more"
+// "ask": the row's Ask chooser (Ask the group · Ask anyone by link); "topup": Ask the group (the ask form), and
+//   `&topup=<id>` on ?sheet=add marks an add made for that ask; "payin": Ask anyone (makes a pay-in link)
+// "publicpage" / "payinlinks": Settings → Money from outside → Public page / Pay-in links
+// "more": the hero's ••• More (components/pot/PotActions: invite, settings, the record, who can see what, close)
+export type SheetName =
+  | "add"
+  | "spend"
+  | "share"
+  | "create"
+  | "close"
+  | "rules"
+  | "coach"
+  | "push"
+  | "person"
+  | "refund"
+  | "paylink"
+  | "privacy"
+  | "gift"
+  | "intro"
+  | "topup"
+  | "more"
+  | "ask"
+  | "payin"
+  | "publicpage"
+  | "payinlinks"
 
 /** Our keys in history.state (Next.js copies its own internals in beside them). */
 interface SheetEntry {
@@ -72,10 +94,10 @@ export function openRequest(id: number, pot?: string) {
 }
 
 // "link": the payment link sheet's request id (?sheet=paylink&link=<id>; not ?r=, which opens the request sheet)
-// "gift": a gift's ref (?sheet=gift&gift=<ref>); "kind": the share sheet's tab (?sheet=share&kind=gift)
+// "gift": a pay-in's ref (?sheet=gift&gift=<ref>)
 // "then": where the intro goes when it ends (?sheet=intro&then=create)
 // "rule": the rules sheet's switch to bring into view (?sheet=rules&rule=links, from the Spend sheet's links-off line)
-const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link", "gift", "kind", "then", "topup", "rule"]
+const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link", "gift", "then", "topup", "rule"]
 const strip = (p: URLSearchParams) => SHEET_PARAMS.forEach((k) => p.delete(k))
 
 /**
@@ -108,6 +130,20 @@ export function closeSheet() {
     return
   }
   window.history.replaceState(null, "", urlWith(strip))
+}
+
+/**
+ * Close the open sheet, then change the page's params on the entry it lands on (••• More → Settings: close, then
+ * ?tab=settings). Same unwinding as closeSheet.
+ */
+export function closeSheetThen(mutate: (p: URLSearchParams) => void) {
+  const n = sheetDepth()
+  if (n > 0) {
+    window.addEventListener("popstate", () => window.history.replaceState(ours(), "", urlWith((p) => (strip(p), mutate(p)))), { once: true })
+    window.history.go(-n)
+    return
+  }
+  window.history.replaceState(null, "", urlWith((p) => (strip(p), mutate(p))))
 }
 
 /** The next step of the open sheet as its own history entry, so Back (in-sheet or the browser's) returns here. */

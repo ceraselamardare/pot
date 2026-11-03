@@ -1,22 +1,24 @@
-// Gifts (hub 1.2.0; notes/gifts-plan.md) on the mock data source, in every project (mobile Day, mobile Night, desktop):
-//  1. A member makes gift links from the share sheet's "Gift link" tab: the default (giver chooses, reusable, 14 days)
-//     in one tap, QR first + Share + Copy; then a fixed $25 one-time link with a note; both listed.
-//  2. A guest (Alex) opens the open link: presets ☕ $5 / $10 / $20, a note → [Send $10 ☕] → "Thank you!" with
-//     [Start your own Pot]; then the $25 link has one button; the one-time link is used after that.
-//  3. The members' feed row "Alex · Sent a gift ☕" (Gift chip, note mark, + $10.00) opens the details with the note;
-//     the hero's money went up; "push" is server-side (server/features/gifts onGiftReceived, unit-tested).
-//  4. The public page is off by default (/give says so) → a member turns it on in ••• → Gifts with a line → a giver
-//     who chose "show my name and note" is listed, one who didn't isn't; a signed-out visitor sees the same.
-//  5. Turning a link off: the giver sees "This gift link was turned off".
-//  6. Gifts off (••• → Gifts): the giver sees "isn't taking gifts right now".
+// Gifts (hub 1.2.0; notes/gifts-plan.md), since "pay in" (2026-11-03) the gift TONE of a pay-in link or page, on the
+// mock data source, in every project (mobile Day, mobile Night, desktop). The payment tone is e2e/mock/payin.spec.ts.
+//  1. A member makes pay-in links in Ask → Ask anyone with "What's it for? A gift ☕": the default (they choose,
+//     reusable, 14 days) in one tap, QR first + Share + Copy; then a fixed $25 one-time link with a note; Settings →
+//     Pay-in links lists both.
+//  2. A guest (Alex) opens the open link: presets ☕ $5 / $10 / $20 ($10 picked), a note → [Send $10 ☕] → "Thank you!"
+//     with [Start your own Pot]; then the $25 link has one button; the one-time link is used after that.
+//  3. The members' feed row "Alex · Sent a gift ☕" (Gift chip, note mark, + $10.00) opens the details with the note.
+//  4. The public page is off by default (/give says so) → a member turns it on in Settings → Public page as a gift
+//     page with a line → a giver who chose "Show my name on this page" is listed, one who didn't isn't; a signed-out
+//     visitor sees the same.
+//  5. Turning a link off (Settings → Pay-in links): the giver sees "This link was turned off".
+//  6. Taking money from outside off (Settings): the giver sees "isn't taking gifts right now".
 //  7. The giver's own gifts in You → Your activity; a signed-out giver signs in inline (the mock signs in as Alex).
-//  8. 320 px: the giver's page and the Gift link tab reflow without a sideways scroll.
+//  8. 320 px: the giver's page and Ask anyone reflow without a sideways scroll.
 //  9. Pay with "Pot dollars" (a signed-in giver with a balance; picked by default when it covers the gift).
 // 10. The record: members see every gift's name and note, visitors only opted-in givers; the CSV lists the gifts.
 // axe 0 serious + the brand checks on every screen; the mobile projects save notes/screens/gifts-*-{day,night}.png.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet, potMore } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, potAsk, settingsTab } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 const LINK_RE = /\/g\/lisbon-trip\/[A-Za-z0-9_-]{22}$/
@@ -31,64 +33,73 @@ async function shot(page: Page, name: string, project: string, fullPage = false)
 
 const path = (url: string) => url.replace(/^https?:\/\/[^/]+/, "")
 
-/** Pot ••• More → Invite friends → the "Gift link" tab. */
-async function giftTab(page: Page) {
-  await potMore(page, "Lisbon Trip", "Invite friends")
-  const sheet = await openedSheet(page, /Invite friends to Lisbon Trip/)
-  await sheet.getByRole("tab", { name: "Gift link" }).click()
-  return openedSheet(page, "Gift link for Lisbon Trip")
+/** Ask → Ask anyone by link → "What's it for? A gift ☕". */
+async function giftForm(page: Page) {
+  const sheet = await potAsk(page, "anyone")
+  await sheet.getByRole("radio", { name: "A gift ☕" }).click()
+  return sheet
 }
 
-/** Make a gift link in the open tab; returns its address. */
+/** Make a pay-in link in the open Ask anyone sheet; returns its address. */
 async function makeLink(page: Page, opts: { fixed?: string; note?: string; once?: boolean } = {}) {
-  const sheet = page.getByRole("dialog", { name: "Gift link for Lisbon Trip" })
+  const sheet = page.getByRole("dialog", { name: "Ask anyone to pay in" })
   if (opts.fixed) {
-    await sheet.getByRole("radio", { name: "Fixed amount" }).click()
-    const input = sheet.getByRole("textbox", { name: "Gift amount in dollars" })
-    await input.fill(opts.fixed)
+    await sheet.getByRole("radio", { name: "Fixed" }).click()
+    await sheet.getByRole("textbox", { name: "Amount in dollars" }).fill(opts.fixed)
   }
   if (opts.note || opts.once) {
     await sheet.getByRole("button", { name: "More options" }).click()
-    if (opts.note) await sheet.getByRole("textbox", { name: "Note for givers (optional)" }).fill(opts.note)
-    if (opts.once) await sheet.getByRole("switch", { name: "One gift only" }).click()
+    if (opts.note) await sheet.getByRole("textbox", { name: "A note for them (optional)" }).fill(opts.note)
+    if (opts.once) await sheet.getByRole("switch", { name: "One payment only" }).click()
   }
-  await sheet.getByRole("button", { name: "Make gift link" }).click()
-  await expect(sheet.locator("[data-gift-tab='ready']")).toBeVisible()
-  const url = (await sheet.locator("[data-gift-url]").getAttribute("data-gift-url"))!
+  await sheet.getByRole("button", { name: "Make pay-in link" }).click()
+  await expect(sheet.locator("[data-payin='ready']")).toBeVisible()
+  const url = (await sheet.locator("[data-payin-url]").getAttribute("data-payin-url"))!
   expect(url).toMatch(LINK_RE)
   return url
 }
 
-test("members make gift links; a guest gives through them; the feed shows the gift and its note", async ({ page }, info) => {
+/** Settings → Money from outside → one of its rows' sheets ("Public page" | "Pay-in links"). */
+async function outside(page: Page, row: "Public page" | "Pay-in links") {
+  const settings = await settingsTab(page)
+  await settings.getByRole("button", { name: new RegExp(`^${row}`) }).click()
+  return openedSheet(page, row)
+}
+
+test("members make gift-tone pay-in links; a guest gives through them; the feed shows the gift and its note", async ({ page }, info) => {
   const p = info.project.name
   await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
   await expect(page.getByRole("heading", { level: 1, name: "Lisbon Trip" })).toBeVisible()
 
   // 1. the default link in one tap: QR first, Share (the one marigold), Copy
-  const sheet = await giftTab(page)
-  await expect(sheet.getByRole("tab", { name: "Gift link" })).toHaveAttribute("aria-selected", "true")
-  await expect(sheet.getByRole("radio", { name: "Giver chooses" })).toHaveAttribute("aria-checked", "true")
+  const sheet = await giftForm(page)
+  await expect(sheet.getByRole("radio", { name: "A gift ☕" })).toHaveAttribute("aria-checked", "true")
+  await expect(sheet.getByRole("radio", { name: "They choose" })).toHaveAttribute("aria-checked", "true")
   await expect(sheet.getByText(/Works for 14 days, until/)).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
   await shot(page, "link-form", p)
   const open = await makeLink(page)
-  await expect(sheet.getByRole("img", { name: "QR code for Lisbon Trip's gift link" })).toBeVisible()
-  await expect(sheet.getByRole("button", { name: "Share gift link" })).toBeVisible()
+  await expect(sheet.getByRole("img", { name: "QR code for Lisbon Trip's pay-in link" })).toBeVisible()
+  await expect(sheet.getByRole("button", { name: "Share link" })).toBeVisible()
   await expect(sheet.getByRole("button", { name: "Copy link" })).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
   await shot(page, "link-ready", p)
 
-  // a fixed $25 one-time link with a note
+  // a fixed $25 one-time link with a note, as a plain payment this time (the tone is per link)
   await sheet.getByRole("button", { name: "Make another link" }).click()
+  await sheet.getByRole("radio", { name: "A payment" }).click()
   const fixed = await makeLink(page, { fixed: "25", note: "For Leo's surprise dinner", once: true })
-  const list = sheet.locator("[data-gift-links]")
-  await expect(list.locator("[data-gift-link-row]")).toHaveCount(2)
-  await expect(list).toContainText("$25 gift")
-  await expect(list).toContainText("One gift")
-  await expect(list).toContainText("Giver chooses")
+  await page.keyboard.press("Escape")
+  await expect(page.getByRole("dialog")).toBeHidden()
+  // Settings → Pay-in links lists both
+  const links = await outside(page, "Pay-in links")
+  await expect(links.locator("[data-payin-link-row]")).toHaveCount(2)
+  await expect(links.locator("[data-payin-links]")).toContainText("Payment · $25")
+  await expect(links.locator("[data-payin-links]")).toContainText("One payment")
+  await expect(links.locator("[data-payin-links]")).toContainText("Gift ☕ · They choose")
   await axe(page)
   await page.keyboard.press("Escape")
   await expect(page.getByRole("dialog")).toBeHidden()
@@ -98,11 +109,10 @@ test("members make gift links; a guest gives through them; the feed shows the gi
   await page.goto(path(open))
   await expect(page.getByRole("heading", { level: 1, name: "Send Lisbon Trip a gift" })).toBeVisible()
   await expect(page.getByText("3 people are in this Pot")).toBeVisible()
-  await expect(page.getByRole("radio", { name: "$5, 1 coffee" })).toHaveAttribute("aria-checked", "true")
-  await page.getByRole("radio", { name: "$10, 2 coffees" }).click()
+  await expect(page.getByRole("radio", { name: "$10, 2 coffees" })).toHaveAttribute("aria-checked", "true")
   await expect(page.getByRole("textbox", { name: "Your name (optional)" })).toHaveValue("Alex")
   await page.getByRole("textbox", { name: "Note (optional)" }).fill("Have a great trip! ☕")
-  await expect(page.getByText("Giving as Alex")).toBeVisible()
+  await expect(page.getByText("Signed in as Alex")).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
   await shot(page, "landing", p, true)
@@ -118,24 +128,24 @@ test("members make gift links; a guest gives through them; the feed shows the gi
   await axe(page)
   await shot(page, "thanks", p, true)
 
-  // the fixed-amount link: one button; then it's used (one gift only)
+  // the fixed-amount link (made as a payment): one button; then it's used (one payment only)
   await page.goto(path(fixed))
-  await expect(page.getByText("This link is for a $25 gift.")).toBeVisible()
+  await expect(page.getByText("This link is for $25.")).toBeVisible()
   await expect(page.getByText("For Leo's surprise dinner")).toBeVisible()
-  await expect(page.getByRole("radio", { name: /coffee/ })).toHaveCount(0)
+  await expect(page.getByRole("radiogroup", { name: "How much?" })).toHaveCount(0)
   await brandChecks(page, { marigold: "one" })
   await axe(page)
-  await page.getByRole("button", { name: "Send $25 ☕" }).click()
+  await page.getByRole("button", { name: "Pay $25" }).click()
   await expect(page.getByRole("heading", { name: "Thank you!" })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole("heading", { name: "This gift link was already used" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "This link was already used" })).toBeVisible()
   await brandChecks(page, { marigold: "none" })
   await axe(page)
 
-  // 7. the giver's own gifts (You → Your activity)
+  // 7. the giver's own (You → Your activity): the gift and the payment, each in its own words
   await page.goto("/you")
   await expect(page.locator("[data-activity='gift']")).toHaveCount(2)
-  await expect(page.getByRole("group", { name: /^You sent Lisbon Trip a gift of \$25/ })).toBeVisible()
+  await expect(page.getByRole("group", { name: /^You paid \$25 into Lisbon Trip/ })).toBeVisible()
   await expect(page.getByRole("group", { name: /^You sent Lisbon Trip a gift of \$10/ })).toBeVisible()
 
   // 3. the members' feed: the row, then its details with the note
@@ -152,40 +162,40 @@ test("members make gift links; a guest gives through them; the feed shows the gi
   await row.click()
   const details = await openedSheet(page, "Alex sent a gift")
   await expect(details.locator("[data-gift-note]")).toContainText("Have a great trip! ☕")
-  await expect(details).toContainText("A gift link")
+  await expect(details).toContainText("A pay-in link")
   await brandChecks(page, { marigold: "none" })
   await axe(page)
   await shot(page, "details", p)
 })
 
-test("the public gift page: off by default → a member turns it on → visitors see only givers who chose to be shown", async ({ page }, info) => {
+test("the public page: off by default → a member turns it on as a gift page → visitors see only givers who chose to be shown", async ({ page }, info) => {
   const p = info.project.name
   await asPerson(page, "alex")
   await page.goto("/give/lisbon-trip")
-  await expect(page.getByRole("heading", { name: "This gift page isn't open" })).toBeVisible()
-  await expect(page.getByRole("button", { name: /Send/ })).toHaveCount(0)
+  await expect(page.getByRole("heading", { name: "This page isn't open" })).toBeVisible()
+  await expect(page.getByRole("button", { name: /Send|Pay/ })).toHaveCount(0)
   await axe(page)
 
-  // a member turns it on, with a line
+  // a member turns it on (Settings → Public page), as a gift page, with a line
   await becomePerson(page, "maya")
   await page.goto("/p/lisbon-trip")
-  await potMore(page, "Lisbon Trip", /Gifts/)
-  await expect(page).toHaveURL(/\/p\/lisbon-trip\?sheet=gifts$/)
-  const sheet = await openedSheet(page, "Gifts")
-  await expect(sheet.getByText("No gifts yet. Share a gift link to get the first one.")).toBeVisible()
-  await expect(sheet.getByRole("switch", { name: "Taking gifts" })).toHaveAttribute("aria-checked", "true")
-  const pageSwitch = sheet.getByRole("switch", { name: "Public gift page" })
+  const sheet = await outside(page, "Public page")
+  await expect(page).toHaveURL(/\/p\/lisbon-trip\?(tab=settings&)?sheet=publicpage$/)
+  const pageSwitch = sheet.getByRole("switch", { name: "Public page" })
   await expect(pageSwitch).toHaveAttribute("aria-checked", "false")
   await brandChecks(page, { marigold: "none" })
   await axe(page)
   await pageSwitch.click()
   await expect(pageSwitch).toHaveAttribute("aria-checked", "true")
+  await expect(sheet.getByRole("radio", { name: "A payment" })).toHaveAttribute("aria-checked", "true")
+  await sheet.getByRole("radio", { name: "A gift ☕" }).click()
+  await expect(sheet.getByRole("radio", { name: "A gift ☕" })).toHaveAttribute("aria-checked", "true")
   await sheet.getByRole("textbox", { name: "A line for the page (optional)" }).fill("Help us get to Lisbon ☕")
   await sheet.getByRole("button", { name: "Save line" }).click()
   await expect(sheet.getByRole("button", { name: "Line saved" })).toBeVisible()
-  await expect(sheet.getByRole("img", { name: "QR code for Lisbon Trip's gift page" })).toBeVisible()
-  await expect(sheet.locator("[data-gift-page-url]")).toHaveAttribute("data-gift-page-url", /\/give\/lisbon-trip$/)
-  await expect(sheet.getByRole("button", { name: "Share gift page" })).toBeVisible()
+  await expect(sheet.getByRole("img", { name: "QR code for Lisbon Trip's public page" })).toBeVisible()
+  await expect(sheet.locator("[data-page-url]")).toHaveAttribute("data-page-url", /\/give\/lisbon-trip$/)
+  await expect(sheet.getByRole("button", { name: "Share page" })).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
   await shot(page, "sheet", p)
@@ -195,9 +205,11 @@ test("the public gift page: off by default → a member turns it on → visitors
   await page.goto("/give/lisbon-trip")
   await expect(page.getByRole("heading", { level: 1, name: "Send Lisbon Trip a gift" })).toBeVisible()
   await expect(page.getByText("Help us get to Lisbon ☕")).toBeVisible()
+  await expect(page.getByText("— from the group")).toBeVisible()
   await expect(page.getByText("Be the first to send a gift.")).toBeVisible()
+  await page.getByRole("radio", { name: "$5, 1 coffee" }).click()
   await page.getByRole("textbox", { name: "Note (optional)" }).fill("Shown note")
-  await page.getByRole("switch", { name: "Show my name and note on this page" }).click()
+  await page.getByRole("switch", { name: "Show my name on this page" }).click()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
   await page.getByRole("button", { name: "Send $5 ☕" }).click()
@@ -226,8 +238,8 @@ test("the public gift page: off by default → a member turns it on → visitors
   await shot(page, "page", p, true)
 
   // signed out: Send → sign in inline → sent
-  await page.getByRole("button", { name: "Send $5 ☕" }).click()
-  await expect(page.getByRole("heading", { name: "Sign in to send your $5 gift" })).toBeVisible()
+  await page.getByRole("button", { name: "Send $10 ☕" }).click()
+  await expect(page.getByRole("heading", { name: "Sign in to send your $10 gift" })).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
   await shot(page, "signin", p)
@@ -240,44 +252,43 @@ test("the public gift page: off by default → a member turns it on → visitors
   await expect(page.getByRole("button", { name: /^Secret Santa sent a gift of \$20\. Has a note/ })).toBeVisible()
 })
 
-test("turning a link off, and turning gifts off, each stop the giver with a calm screen", async ({ page }, info) => {
+test("turning a link off, and turning money from outside off, each stop the giver with a calm screen", async ({ page }, info) => {
   const p = info.project.name
   await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
   await expect(page.getByRole("heading", { level: 1, name: "Lisbon Trip" })).toBeVisible()
-  await giftTab(page)
+  await giftForm(page)
   const url = await makeLink(page)
-  const sheet = page.getByRole("dialog", { name: "Gift link for Lisbon Trip" })
-  await sheet.getByRole("button", { name: "Turn off the Giver chooses gift link" }).click()
-  await expect(sheet.locator("[data-gift-tab='form']")).toBeVisible()
-  await expect(sheet.locator("[data-gift-links]")).toHaveCount(0)
+  await page.keyboard.press("Escape")
+  const links = await outside(page, "Pay-in links")
+  await links.getByRole("button", { name: "Turn off the Gift ☕ · They choose link" }).click()
+  await expect(links.locator("[data-payin-link-row]")).toHaveCount(0)
+  await expect(links.getByText("No active links right now.")).toBeVisible()
   await page.keyboard.press("Escape")
 
   await becomePerson(page, "alex")
   await page.goto(path(url))
-  await expect(page.getByRole("heading", { name: "This gift link was turned off" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "This link was turned off" })).toBeVisible()
   await expect(page.getByRole("button", { name: /Send/ })).toHaveCount(0)
   await brandChecks(page, { marigold: "none" })
   await axe(page)
   await shot(page, "revoked", p)
 
-  // gifts off: a new link, then ••• → Gifts → Taking gifts off
+  // money from outside off: a new link, then Settings → Taking money from outside off
   await becomePerson(page, "maya")
   await page.goto("/p/lisbon-trip")
-  await giftTab(page)
+  await giftForm(page)
   const url2 = await makeLink(page)
   await page.keyboard.press("Escape")
-  await potMore(page, "Lisbon Trip", /Gifts/)
-  const gifts = await openedSheet(page, "Gifts")
-  const on = gifts.getByRole("switch", { name: "Taking gifts" })
+  const settings = await settingsTab(page)
+  const on = settings.getByRole("switch", { name: "Taking money from outside" })
   await on.click()
   await expect(on).toHaveAttribute("aria-checked", "false")
-  await expect(gifts.getByText(/won't take gifts until someone in the Pot turns this back on/)).toBeVisible()
+  await expect(settings.getByText(/won't take money until someone in the Pot turns this back on/)).toBeVisible()
   await axe(page)
-  await page.keyboard.press("Escape")
-  // the share sheet's gift tab says so too
-  await giftTab(page)
-  await expect(page.getByRole("dialog", { name: "Gift link for Lisbon Trip" }).locator("[data-gift-tab='off']")).toContainText("isn't taking gifts right now")
+  // Ask anyone says so too
+  await potAsk(page, "anyone")
+  await expect(page.getByRole("dialog", { name: "Ask anyone to pay in" }).locator("[data-payin='off']")).toContainText("isn't taking money from outside right now")
   await page.keyboard.press("Escape")
 
   await becomePerson(page, "alex")
@@ -288,12 +299,12 @@ test("turning a link off, and turning gifts off, each stop the giver with a calm
   await shot(page, "off", p)
 })
 
-test("320 px: the giver's page and the Gift link tab reflow without a sideways scroll", async ({ page }, info) => {
+test("320 px: the giver's page and Ask anyone reflow without a sideways scroll", async ({ page }, info) => {
   test.skip(info.project.name !== "mobile-day", "one width check is enough")
   await page.setViewportSize({ width: 320, height: 640 })
   await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
-  await giftTab(page)
+  await giftForm(page)
   const url = await makeLink(page, { fixed: "25" })
   const wide = () => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
   expect(await wide()).toBe(false)
@@ -303,7 +314,7 @@ test("320 px: the giver's page and the Gift link tab reflow without a sideways s
   await expect(page.getByRole("button", { name: "Send $25 ☕" })).toBeVisible()
   expect(await wide()).toBe(false)
   await page.goto(path(url).replace(/\/g\/lisbon-trip\/.+$/, "/give/lisbon-trip"))
-  await expect(page.getByRole("heading", { name: "This gift page isn't open" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "This page isn't open" })).toBeVisible()
   expect(await wide()).toBe(false)
   await axe(page)
 })
@@ -339,10 +350,10 @@ test("Pay with: Pot dollars, the default when they cover the gift; never offered
 
   await page.goto(BDAY_OPEN)
   await expect(page.getByRole("heading", { level: 1, name: "Send Leo's Birthday a gift" })).toBeVisible()
-  // three ways to pay; Pot dollars picked, since they cover $5
+  // three ways to pay; Pot dollars picked, since they cover $10
   await expect(payWith.getByRole("radio")).toHaveCount(3)
   await expect(payWith.getByRole("radio", { name: "Pot dollars" })).toHaveAttribute("aria-checked", "true")
-  await expect(page.locator("[data-give-source-hint='own']")).toHaveText(`You have ${ownText} in Pot dollars. Your gift comes from them.`)
+  await expect(page.locator("[data-give-source-hint='own']")).toHaveText(`You have ${ownText} in Pot dollars. It comes from them.`)
   await brandChecks(page, { marigold: "one" })
   await axe(page)
 
@@ -354,7 +365,7 @@ test("Pay with: Pot dollars, the default when they cover the gift; never offered
 
   // more than they have: not chosen yet → demo dollars; chosen → "not enough", Send waits
   await page.getByRole("radio", { name: "Other amount" }).click()
-  await page.getByRole("textbox", { name: "Gift amount in dollars" }).fill(String(Math.floor(own) + 1))
+  await page.getByRole("textbox", { name: "Amount in dollars" }).fill(String(Math.floor(own) + 1))
   await expect(payWith.getByRole("radio", { name: "Demo dollars" })).toHaveAttribute("aria-checked", "true")
   await payWith.getByRole("radio", { name: "Pot dollars" }).click()
   await expect(page.locator("[data-give-source-hint='own']")).toContainText(`You have ${ownText} in Pot dollars, not enough for`)

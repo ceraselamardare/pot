@@ -562,7 +562,7 @@ failure to read the members fails closed: the reader is treated as not a member,
 | Spend notes (`note` memo) | feed `memos` → the Pot, record, details sheet | members | members |
 | | mock record | **visitors (mock only)** | members (fixed) |
 | Decline reasons (`note` decline_reason) | feed `declineReasons` | members | members |
-| Payment-link labels (`note` link_label) | feed `linkLabels` | members | members (never on `/c`) |
+| "Send by link" labels (`note` link_label; called payment-link labels before 2026-11-03) | feed `linkLabels` | members | members (never on `/c`) |
 | Who claimed a link (display name) | feed `linkClaimers`, `link_claimed` push to the requester | members | members (decision below) |
 | Comments (`request_comment`) | `GET/POST/DELETE …/comments` | members (403 before any read) | members; someone who left can't read, post or remove even their own old comment |
 | | feed `commentCounts` | members | members |
@@ -573,18 +573,18 @@ failure to read the members fails closed: the reader is treated as not a member,
 | Push subscriptions | `POST/DELETE /api/push/subscription` | the owner | the owner |
 | Relay outcomes, 1Click deposits | `GET /api/relay/[id]`, `/api/oneclick/status*` | the owner (`user_id`) | the owner |
 | Invite secret (`#secret`) | never sent to the server; `invite_meta` holds only the public key | – | – |
-| Gift names and notes (`gift.display_name`, `gift.note`; gifts 2026-11-02) | `GET /api/pots/[pot]/gifts` | – (new) | the Pot's active members (403 before any read) |
+| Pay-in names and notes (`gift.display_name`, `gift.note`; gifts 2026-11-02, called "pay in" since 2026-11-03) | `GET /api/pots/[pot]/gifts` | – (new) | the Pot's active members (403 before any read) |
 | | `GET /api/me/gifts`, `PATCH /api/gifts/[ref]` | – (new) | the giver, for their own gifts only (someone else's ref → 404) |
 | | public page `/give/<slug>` (`GET /api/give/[slug]`) | – (new) | anyone, **only** for page gifts the giver marked "show my name" (`show_public`) and received; a gift without a name isn't listed; never a link gift's |
-| | push (`gift_received`) | – (new) | members (minus the giver): the chosen name or "Someone", the amount; **never the note** |
-| Gift links (`gift_link`: amount, the members' note for givers, uses, expiry) | `GET/POST /api/pots/[pot]/gift-links`, `DELETE …/[id]` | – (new) | members (who made it is in `createdBy`, members only) |
-| | landing `/g/<slug>/<id>` (`GET /api/gift-links/[id]`) | – (new) | **whoever holds the link**: the Pot's name, emoji, status and member count (ledger), the link's amount and the link's own note (a member wrote it *for* the givers; shown only while the link works), whether the Pot takes gifts. Never a member's or a giver's name |
-| The public page's one-liner (`gift_page.line`) | `/give/<slug>` | – (new) | anyone **while the page is on** (members wrote it for the public); off → not served |
+| | push (`gift_received`) | – (new) | members (minus the giver): the chosen name or "Someone", the amount ("Ana paid $25 into Lisbon Trip", or the gift wording for a gift-tone link/page); **never the note** |
+| Pay-in links (`gift_link`: amount, the members' note for payers, the tone, uses, expiry) | `GET/POST /api/pots/[pot]/gift-links`, `DELETE …/[id]` | – (new) | members (who made it is in `createdBy`, members only) |
+| | landing `/g/<slug>/<id>` (`GET /api/gift-links/[id]`) | – (new) | **whoever holds the link**: the Pot's name, emoji, status and member count (ledger), the link's amount and the link's own note (a member wrote it *for* the givers; shown only while the link works), whether the Pot takes money from outside, and the link's tone (payment/gift: words only). Never a member's or a giver's name |
+| The public page's one-liner and tone (`gift_page.line`, `gift_page.tone`) | `/give/<slug>` | – (new) | anyone **while the page is on** (members wrote it for the public); off → not served |
 | "Help us make Pot better" answers (`user_survey`: enum ids, version, context, build; onboarding 2026-11-02) | `GET/POST /api/me/survey` | – (new) | **the person, their own row only**; the Pot team through `scripts/run survey-report` (counts only). Never in a Pot response, feed, push or another person's answer; deleted with the person (cascade) |
 | Top-up asks (`topup_request`: amount, the reason, due date, who was asked, progress) and nudges (`nudge`; "Ask for a top-up" 2026-11-03) | `GET/POST /api/pots/[pot]/topups`, `DELETE …/[id]`, `POST /api/nudges` | – (new) | the Pot's active members (403 before any read); cancel: the asker only |
 | | `GET /api/me/topups` | – (new) | the person: asks in Pots they're **still** in (where they're asked and not done, plus their own); names of people in those Pots |
 | | push (`topup_asked` with the reason, `topup_reminder`, `nudge`) | – (new) | active members asked, minus the asker / the nudged person only; amounts and names, the reason in the ask's push (see open question) |
-| Gift amounts and sender accounts | the hub's `gift_received{pot,from,amount,ref}` event, the token transfer | – | **public on the ledger** anyway; the public page shows totals and opted-in givers only, never account ids |
+| Pay-in amounts and sender accounts | the hub's `gift_received{pot,from,amount,ref}` event, the token transfer | – | **public on the ledger** anyway; the public page shows totals and opted-in givers only, never account ids |
 | Goal "$X each" | the creator's device; the landing shows the default $150 | – | – |
 | Error responses | `not_a_member` 403 / `not_signed_in` 401 / `pot_unknown` 404 | – | Pot existence and request ids are public, so a 403 only reveals public facts. **`POST /api/devices` returned the raw internal error text** (now `internal` with no message, logged instead; fixed) |
 | Server logs (`console.error`, `error_log`, 14 days) | `route()`, after(), feed extras, notify, ops, cron | **values of a failed query: drizzle's `DrizzleQueryError` message carries `params:` (comment text, notes, receipt JSON, names, emails)** | SQL + cause only, values dropped (`server/util/errtext.ts` `errText` at every log site; fixed) |
@@ -600,10 +600,10 @@ failure to read the members fails closed: the reader is treated as not a member,
   only). The other members appear as plain seats in their join colours, and the line reads "Maya and 2 others are
   in" (`landing.members.with`). The OG image reads only the ledger (it can't see `?i=`, so anyone with the slug could
   fetch it).
-- **Claim page (`/c/<slug>/<id>`), "shared with people who have the payment link":** the requester's chosen name
+- **Claim page (`/c/<slug>/<id>`), "shared with people who have the link" ("Send by link"; a payment link before 2026-11-03):** the requester's chosen name
   (only while the link is open, `redact`), the amount, and the Pot's name and cover. Never the label, note, receipt
   or claimer.
-- **Claimers and payees:** someone who claims a Pot's payment link (or is paid directly) is shown to that Pot's
+- **Claimers and payees:** someone who picks up a Pot's "Send by link" link (or is paid directly) is shown to that Pot's
   members by their chosen Pot name. They took part in the Pot's money, mirroring the claim page showing them the
   requester's name. This is kept as is; see the open questions.
 
@@ -827,3 +827,28 @@ The frontend side is in notes/frontend.md ("Ask for a top-up"). No contract chan
   plain nudge, daily cap), `/api/me/topups` (incl. a member who left), the cron (reminder once, due, done), the push
   copy and recipients, and route-level gates with privacy markers. Four readers: member, left, never and signed out; the
   reason never reaches the last three.
+
+# "Pay in": the tone of a pay-in link / page (2026-11-03). Apply migration `0008_payin_tone.sql` before deploying.
+
+The UI renamed the money flows by direction (notes/frontend.md "Pay in"): a **pay-in link** / the **public page** is
+how people outside the Pot pay in (internally still `gift_link`, `gift_page`, `gift`, the hub's `{"pot","gift"}`
+message, `set_gifts`, `gift_received`, every route and URL unchanged; the contract ABI is untouched). The member who
+makes a link (or turns the page on) picks its **tone**, `payment` (default) or `gift`, which only changes the words and
+presets people see.
+- **Migration `0008_payin_tone.sql`** (additive, off-chain only): `tone text NOT NULL` + CHECK `in ('payment','gift')` on
+  `gift_link`, `gift_page` and `gift`. Each column is added with `DEFAULT 'gift'` (so **rows from before read as gifts**,
+  the words they had), then the default becomes `'payment'`. Snapshot/journal regenerated with drizzle-kit (`0008`).
+- **Wire** (`lib/gifts-api.ts`): `GiftLinkWire.tone`, `GiftLinkCreateReq.tone?` (default `payment`; part of the
+  idempotency check, a retry with another tone → `idempotency_conflict`), `GiftLandingRes.link.tone`, `GiftPageWire.tone`
+  (no row yet = `payment`), `GiftPagePutReq.tone?` (absent = keep), `GiftWire.tone`, `MyGiftWire.tone`. zod: `tone`
+  is `z.enum(["payment","gift"])` on the link create and the page PUT (strict bodies otherwise unchanged).
+- **A snapshot on the gift:** `startGift` copies the link's (or the page's) tone onto the `gift` row, so a later page
+  change never rewrites old feed rows or pushes.
+- **Push** (`gift_received`): a payment reads "Ana paid $25 into Lisbon Trip" / "From outside the Pot · Open Pot to
+  see it." (`notif.payin.*`); a gift keeps "Ana sent Lisbon Trip a gift" / "$10 ☕ · …". A raw ref we didn't start →
+  "Someone paid $X into …". Never the note (unchanged). `link_claimed` (Send by link) now reads "Your $30 link was
+  picked up".
+- **Privacy:** the audit table above names the tone (words only) as part of what a link holder / the page shows.
+- **Tests:** `server/features/gifts/gifts.test.ts` (+1: the tone snapshot from link and page; tone on create/replay,
+  page PUT keeps/sets the tone; push copy per tone; landing/page shapes). DB tests ran on a private `pot_payin`
+  (migrated with `drizzle-kit migrate`, so `db.test.ts`'s migrator run is idempotent there).

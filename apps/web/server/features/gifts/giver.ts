@@ -71,9 +71,12 @@ export async function startGift(
   // the way in: a link of this Pot that still works, or the Pot's public page while it's on
   let linkId: string | null = null
   let oneTime = false
+  // "pay in": the words this one came with (its link's or the page's tone), kept on the row for the feed and the push
+  let tone: GiftRow["tone"]
   if (viaPage) {
-    const page = (await db.select({ on: giftPage.on }).from(giftPage).where(eq(giftPage.potId, potRow.daoId)).limit(1))[0]
+    const page = (await db.select({ on: giftPage.on, tone: giftPage.tone }).from(giftPage).where(eq(giftPage.potId, potRow.daoId)).limit(1))[0]
     if (!page?.on) throw new ApiError("not_found", { detail: { cause: "page_off" } })
+    tone = page.tone
   } else {
     const link = (await db.select().from(giftLink).where(and(eq(giftLink.id, body.linkId!), eq(giftLink.potId, potRow.daoId))).limit(1))[0]
     if (!link) throw new ApiError("not_found", { detail: { cause: "link_unknown" } })
@@ -83,6 +86,7 @@ export async function startGift(
       throw new ApiError("args_invalid", { detail: { field: "amount", cause: "fixed_amount", amount: link.amount } })
     linkId = link.id
     oneTime = !link.reusable
+    tone = link.tone
   }
 
   const c = checkGiftAmount(amount)
@@ -128,6 +132,7 @@ export async function startGift(
     showPublic,
     amount: amount.toString(),
     clientKey: key,
+    tone,
   }
   // one-time links: the reservation check and the insert under the link's row lock (two givers can't both get it)
   const row = await db.transaction(async (tx) => {

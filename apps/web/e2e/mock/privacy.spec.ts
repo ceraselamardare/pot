@@ -26,7 +26,7 @@ async function showcase(page: Page) {
 }
 
 const PUBLIC = ["Money added and spent, and when", "Which accounts are in the Pot", "The Pot's name and rules", "Who approved or declined each spend"]
-const MEMBERS = ["The names and pictures people chose", "Notes on spends and reasons for a no", "Comments", "Receipts and their items", "Who a payment link is for", "Your activity"]
+const MEMBERS = ["The names and pictures people chose", "Notes on spends and reasons for a no", "Comments", "Receipts and their items", "Who a link to send money is for", "Your activity"]
 
 async function expectSheet(page: Page) {
   const sheet = await openedSheet(page, "Who can see what")
@@ -34,7 +34,7 @@ async function expectSheet(page: Page) {
   const mem = sheet.getByRole("region", { name: "Only people in this Pot can see" })
   for (const x of PUBLIC) await expect(pub.getByText(x, { exact: true })).toBeVisible()
   for (const x of MEMBERS) await expect(mem.getByText(x, { exact: true })).toBeAttached()
-  await expect(sheet.locator("[data-privacy-links]")).toHaveText("Anyone with an invite or payment link sees the Pot's name, who sent it and the amount.")
+  await expect(sheet.locator("[data-privacy-links]")).toHaveText("Anyone with an invite or a link sees the Pot's name. A link to send money also shows who sent it and the amount.")
   return sheet
 }
 

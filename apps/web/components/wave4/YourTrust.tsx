@@ -18,7 +18,7 @@ export function YourTrust() {
       <ul className="flex flex-col gap-2">
         {mine.map((p) => (
           <li key={p.slug} className="list-none">
-            <Link href={`/p/${p.slug}?tab=rules`} className="block rounded-md hover:opacity-90">
+            <Link href={`/p/${p.slug}?tab=settings`} className="block rounded-md hover:opacity-90">
               <MyTrustCard trust={p.myTrust!} potName={p.name} />
             </Link>
           </li>

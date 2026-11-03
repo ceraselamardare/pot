@@ -92,14 +92,33 @@ export async function openedSheet(page: Page, name: string | RegExp) {
 
 /**
  * The Pot's ••• More (the hero's action row, or the header's on a closed Pot) → the "More options" sheet. With
- * `item`, press that row of it (e.g. "Invite friends", /Ask for more money/, /Gifts/, "Pot record", /Who can see
- * what/, /Close Pot/, "See who got what"). Returns the More sheet.
+ * `item`, press that row of it (e.g. "Invite friends", /Settings/, "Pot record", /Who can see what/, /Close Pot/,
+ * "See who got what"). Returns the More sheet.
  */
 export async function potMore(page: Page, potName: string, item?: string | RegExp) {
   await page.getByRole("button", { name: `More options for ${potName}` }).click()
   const sheet = await openedSheet(page, "More options")
   if (item !== undefined) await sheet.getByRole("button", { name: item }).click()
   return sheet
+}
+
+/**
+ * The row's [Ask] → the "Ask for money" chooser. With `item`, press that row: "group" (Ask the group → the top-up
+ * ask, ?sheet=topup) or "anyone" (Ask anyone by link → ?sheet=payin). Returns the chooser (or the sheet it opened).
+ */
+export async function potAsk(page: Page, item?: "group" | "anyone") {
+  await page.locator("[data-pot-actions]").getByRole("button", { name: "Ask for money" }).click()
+  const chooser = await openedSheet(page, "Ask for money")
+  if (!item) return chooser
+  await chooser.getByRole("button", { name: item === "group" ? /^Ask the group/ : /^Ask anyone by link/ }).click()
+  return openedSheet(page, item === "group" ? "Ask the group" : "Ask anyone to pay in")
+}
+
+/** The Pot's Settings tab (it was Rules): the visible tab, on phones and on desktop. */
+export async function settingsTab(page: Page) {
+  await page.getByRole("tab", { name: "Settings" }).locator("visible=true").click()
+  await expect(page.locator("[data-settings]").locator("visible=true")).toBeVisible()
+  return page.locator("[data-settings]").locator("visible=true")
 }
 
 /** Type an amount on the custom keypad inside a sheet. */

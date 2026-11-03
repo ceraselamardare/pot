@@ -87,17 +87,28 @@ test("Ana asks $10 each; Ben adds $10 through the card; his part is done; he nud
   test.skip(!accB, "needs setup")
   await A.goto(`/p/${slug}`)
   await expect(A.getByRole("heading", { level: 1, name: POT_NAME })).toBeVisible({ timeout: 30_000 })
-  // both members show before asking: the row's [Ask] needs 2 people (in a Pot of one, that slot is Invite)
-  const ask = A.locator("[data-pot-actions]").getByRole("button", { name: "Ask for more money" })
+  // both members show before asking: "Ask the group" needs 2 people. With pay-in links (the gifts flag) the row's
+  // [Ask] is a chooser (Ask the group · Ask anyone); without, it opens the ask itself.
+  const ask = A.locator("[data-pot-actions]").getByRole("button", { name: "Ask for money" })
+  const sheet = A.getByRole("dialog", { name: "Ask the group" })
+  const openAskTheGroup = async (): Promise<boolean> => {
+    if ((await ask.count()) !== 1 || (await ask.getAttribute("aria-disabled")) === "true") return false
+    await ask.click()
+    const chooser = A.getByRole("dialog", { name: "Ask for money" })
+    await expect(chooser.or(sheet)).toBeVisible()
+    if (await sheet.isVisible()) return true
+    const group = chooser.getByRole("button", { name: /^Ask the group/ })
+    if ((await group.getAttribute("aria-disabled")) === "true") return false
+    await group.click()
+    return true
+  }
   await expect
     .poll(async () => {
-      const ready = (await ask.count()) === 1 && (await ask.getAttribute("aria-disabled")) !== "true"
+      const ready = await openAskTheGroup()
       if (!ready) await A.reload()
       return ready
     }, { timeout: 60_000, intervals: [3_000] })
     .toBe(true)
-  await ask.click()
-  const sheet = A.getByRole("dialog", { name: "Ask for more money" })
   await expect(sheet).toBeVisible()
   await sheet.getByRole("textbox", { name: "How much from each person?" }).fill("10")
   await expect(sheet.locator("[data-topup-split]")).toHaveText("$20 in total from 2 people")

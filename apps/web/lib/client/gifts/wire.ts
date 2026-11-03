@@ -7,6 +7,7 @@ import type { GiftLandingVM, GiftPageVM, MyGiftVM } from "../mock/gifts"
 import { initialsOf } from "../mock/world"
 import type { GiftsVM, GiftVM } from "../mock/types"
 import type { Micro } from "../money"
+import type { PayInTone } from "@/lib/gifts"
 
 /** A working gift link as the members' share sheet lists it. */
 export interface GiftLinkVM {
@@ -14,6 +15,7 @@ export interface GiftLinkVM {
   /** null = the giver chooses */
   amount: Micro | null
   note: string | null
+  tone: PayInTone
   reusable: boolean
   uses: number
   expiresAt: number
@@ -23,24 +25,26 @@ export interface GiftLinkVM {
 const micro = (s: string | null): Micro | null => (s === null ? null : BigInt(s))
 
 export function linkFromWire(l: GiftLinkWire): GiftLinkVM {
-  return { id: l.id, amount: micro(l.amount), note: l.note, reusable: l.reusable, uses: l.uses, expiresAt: Date.parse(l.expiresAt), createdBy: l.createdBy }
+  return { id: l.id, amount: micro(l.amount), note: l.note, tone: l.tone, reusable: l.reusable, uses: l.uses, expiresAt: Date.parse(l.expiresAt), createdBy: l.createdBy }
 }
 
 export function landingFromWire(r: Omit<GiftLandingRes, "ok" | "requestId">): GiftLandingVM {
   return {
     pot: { slug: r.pot.slug, name: r.pot.name, emoji: r.pot.emoji, cover: coverOf(r.pot.slug), members: r.pot.members, status: r.pot.status },
-    link: { id: r.link.id, amount: micro(r.link.amount), note: r.link.note, status: r.link.status, expiresAt: Date.parse(r.link.expiresAt) },
+    link: { id: r.link.id, amount: micro(r.link.amount), note: r.link.note, status: r.link.status, expiresAt: Date.parse(r.link.expiresAt), tone: r.link.tone },
     taking: r.taking,
   }
 }
 
 export function pageFromWire(r: Omit<GiftPageRes, "ok" | "requestId">): GiftPageVM {
   const pot = { slug: r.pot.slug, name: r.pot.name, emoji: r.pot.emoji, cover: coverOf(r.pot.slug), members: r.pot.members, status: r.pot.status }
-  if (!r.page.on) return { pot, on: false, line: null }
+  const tone = r.page.tone
+  if (!r.page.on) return { pot, on: false, line: null, tone }
   return {
     pot,
     on: true,
     line: r.page.line,
+    tone,
     taking: r.taking,
     total: r.totals ? BigInt(r.totals.amount) : 0n,
     count: r.totals?.count ?? 0,
@@ -63,13 +67,14 @@ export function giftsFromWire(r: Omit<GiftsRes, "ok" | "requestId">, view: { on:
         amount: BigInt(g.amount),
         at: Date.parse(g.at),
         linkId: g.linkId,
+        tone: g.tone,
         ...(g.txHash ? { txHash: g.txHash } : {}),
       }
     })
     .sort((a, b) => b.at - a.at)
   return {
     on: view?.on ?? true,
-    page: r.page,
+    page: { on: r.page.on, line: r.page.line, tone: r.page.tone },
     total: view?.total ?? BigInt(r.totals.amount),
     count: view?.count ?? r.totals.count,
     items,
@@ -77,6 +82,6 @@ export function giftsFromWire(r: Omit<GiftsRes, "ok" | "requestId">, view: { on:
 }
 
 export function myGiftFromWire(g: MyGiftWire): MyGiftVM {
-  return { ref: g.ref, slug: g.slug, potName: g.potName, potEmoji: g.potEmoji, potCover: coverOf(g.slug), amount: BigInt(g.amount), note: g.note, at: Date.parse(g.at), ...(g.txHash ? { txHash: g.txHash } : {}) }
+  return { ref: g.ref, slug: g.slug, potName: g.potName, potEmoji: g.potEmoji, potCover: coverOf(g.slug), amount: BigInt(g.amount), note: g.note, at: Date.parse(g.at), tone: g.tone, ...(g.txHash ? { txHash: g.txHash } : {}) }
 }
 

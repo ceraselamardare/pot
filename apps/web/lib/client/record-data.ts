@@ -21,6 +21,7 @@ import type { PersonVM } from "./mock/types"
 import type { Micro } from "./money"
 import { cents } from "./money"
 import { GIFTS_ON } from "./gifts/flag"
+import { toneOf, type PayInTone } from "@/lib/gifts"
 import * as W from "./mock/world"
 import { rowsFromEntries, rowsFromRequests, visitorRow, type RecordRow } from "./record"
 import { useMe } from "./session"
@@ -55,6 +56,8 @@ export interface RecordGiftRow {
   note: string | null
   /** the name the giver chose to show publicly (the CSV uses only this one, whoever downloads it) */
   publicName: string | null
+  /** paid in as a payment, or sent as a gift */
+  tone: PayInTone
   txHash?: string
 }
 
@@ -85,6 +88,7 @@ function useMockRecord(slug: string): RecordState {
               name: member ? (vm?.from.name ?? g.name) : publicName,
               note: member ? (g.note ?? null) : g.showPublic ? (g.note ?? null) : null,
               publicName,
+              tone: toneOf(g.tone),
               txHash: W.mockTxHash(`${slug}:gift:${g.ref}`),
             }
           })
@@ -141,7 +145,7 @@ interface LiveRecord {
   entries: RecordEntry[]
   feed: Api.FeedRes | null
   /** hub 1.2.0: the members' gift list (403 for anyone else), else the public page's opted-in givers */
-  gifts: { members: GiftWire[] } | { page: PublicGiftWire[] } | null
+  gifts: { members: GiftWire[] } | { page: PublicGiftWire[]; tone: PayInTone } | null
 }
 
 async function getJson<T>(path: string): Promise<T | null> {
@@ -159,7 +163,7 @@ export async function fetchRecordGifts(slug: string): Promise<LiveRecord["gifts"
   const mine = await getJson<GiftsRes>(`/api/pots/${encodeURIComponent(slug)}/gifts`)
   if (mine) return { members: mine.gifts.filter((g) => g.status === "received") }
   const page = await getJson<GiftPageRes>(`/api/give/${encodeURIComponent(slug)}`)
-  return page?.page.on && page.givers ? { page: page.givers } : null
+  return page?.page.on && page.givers ? { page: page.givers, tone: page.page.tone } : null
 }
 
 /** The live record's gift rows, newest first (members: every name and note; visitors: opted-in givers only). */
@@ -174,9 +178,10 @@ export function liveGiftRows(g: LiveRecord["gifts"], nameOf: (account: string) =
           name: x.name ?? nameOf(x.from),
           note: x.note,
           publicName: x.showPublic ? x.name : null,
+          tone: x.tone,
           ...(x.txHash ? { txHash: x.txHash } : {}),
         }))
-      : g.page.map((x, i) => ({ key: `page:${i}:${x.at}`, at: Date.parse(x.at), amount: BigInt(x.amount), name: x.name, note: x.note, publicName: x.name }))
+      : g.page.map((x, i) => ({ key: `page:${i}:${x.at}`, at: Date.parse(x.at), amount: BigInt(x.amount), name: x.name, note: x.note, publicName: x.name, tone: g.tone }))
   return rows.sort((a, b) => b.at - a.at)
 }
 

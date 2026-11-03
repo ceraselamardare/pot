@@ -9,6 +9,7 @@ import type { RecordEntry } from "@pot/sdk"
 import { t } from "@/i18n/t"
 import { isTxHash } from "./explorer"
 import type { Category, PersonVM, RequestVM } from "./mock/types"
+import type { PayInTone } from "@/lib/gifts"
 import { formatUsd, toCents, type Micro } from "./money"
 
 export type RecordStatus = "paid" | "pending" | "processing" | "declined" | "expired" | "withdrawn" | "failed" | "returned" | "held" | "cancelled"
@@ -170,6 +171,8 @@ export interface CsvGift {
   amount: Micro
   /** the giver's name only when they chose to be shown on the public gift page (never a members-only name) */
   publicName: string | null
+  /** "Paid in" or "Gift" (absent: a gift, as before the tone) */
+  tone?: PayInTone
   txHash?: string
 }
 
@@ -184,14 +187,14 @@ export function recordCsv(rows: readonly RecordRow[], potName: string, receiptUr
   rows.forEach((r, i) =>
     lines.push({ at: r.at, order: i, cells: [isoDate(r.at), potName, r.person.name, csvAmount(r.amount), r.reason, approvedWords(r), statusWord(r.status), urlOf(r.txHash)] }),
   )
-  const gift = t("record.gifts.word")
-  gifts.forEach((g, i) =>
+  gifts.forEach((g, i) => {
+    const word = g.tone === "payment" ? t("record.payin.word") : t("record.gifts.word")
     lines.push({
       at: g.at,
       order: rows.length + i,
-      cells: [isoDate(g.at), potName, g.publicName ?? gift, csvAmount(g.amount), gift, t("record.csv.none"), t("record.csv.gift_status"), urlOf(g.txHash)],
-    }),
-  )
+      cells: [isoDate(g.at), potName, g.publicName ?? word, csvAmount(g.amount), word, t("record.csv.none"), t("record.csv.gift_status"), urlOf(g.txHash)],
+    })
+  })
   lines.sort((a, b) => a.at - b.at || a.order - b.order)
   return `\ufeff${[header, ...lines.map((l) => l.cells)].map((c) => c.map(csvCell).join(",")).join("\r\n")}\r\n`
 }

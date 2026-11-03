@@ -147,7 +147,8 @@ export async function totalsOf(deps: Pick<GiftDeps, "db" | "chain">, potId: stri
 
 export async function pageOf(db: Db, potId: string): Promise<GiftPageWire> {
   const row = (await db.select().from(giftPage).where(eq(giftPage.potId, potId)).limit(1))[0]
-  return { on: !!row?.on, line: row?.line ?? null }
+  // no row yet: a new page is a payment page (the column's default)
+  return { on: !!row?.on, line: row?.line ?? null, tone: row?.tone ?? "payment" }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -166,6 +167,7 @@ export const linkShape = (r: LinkRow, slug: string, now: number): GiftLinkWire =
   createdBy: r.createdBy,
   amount: r.amount,
   note: r.note,
+  tone: r.tone,
   reusable: r.reusable,
   uses: r.uses,
   expiresAt: r.expiresAt.toISOString(),
@@ -187,6 +189,7 @@ export const giftShape = (r: GiftRow): GiftWire => ({
   status: r.status,
   txHash: r.txHash,
   linkId: r.linkId,
+  tone: r.tone,
 })
 
 export const myGiftShape = (r: GiftRow, p: { slug: string; name: string; emoji: string | null }): MyGiftWire => ({
@@ -202,4 +205,5 @@ export const myGiftShape = (r: GiftRow, p: { slug: string; name: string; emoji: 
   status: r.status,
   at: giftAt(r),
   txHash: r.txHash,
+  tone: r.tone,
 })

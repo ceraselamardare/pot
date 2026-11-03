@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 // The Pot's action row (components/pot/PotActions): four round buttons with a label under each. Add money is the one
-// marigold (neutral while an arrived deposit holds it); Spend, Ask (Invite in a Pot of one), More. An action that
-// can't run says why (aria-disabled + description + a tap toasts it): closing, the goal lock, an open ask. More opens
-// ?sheet=more, a list that swaps itself for the sheet picked. A closed Pot has no row; its header's ••• opens the list.
+// marigold (neutral while an arrived deposit holds it); Spend, Ask (the chooser: Ask the group · Ask anyone, also in a
+// Pot of one), More. An action that can't run says why (aria-disabled + description + a tap toasts it): closing, the
+// goal lock. More opens ?sheet=more (Invite friends, Settings, Pot record, Who can see what, Close Pot), a list that
+// swaps itself for the sheet picked. A closed Pot has no row; its header's ••• opens the list.
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { toast } from "sonner"
@@ -44,7 +45,7 @@ afterEach(() => {
 describe("the row", () => {
   it("Add money · Spend · Ask · More; Add money alone is marigold (eggplant icon), labels under circles", () => {
     render(<PotActions pot={pot()} />)
-    expect(names()).toEqual(["Add money", "Spend", "Ask for more money", "More options for Lisbon Trip"])
+    expect(names()).toEqual(["Add money", "Spend", "Ask for money", "More options for Lisbon Trip"])
     const circles = [...row().querySelectorAll("[data-circle]")]
     expect(circles.map((c) => c.className.includes("bg-brand"))).toEqual([true, false, false, false])
     expect(circles[0]!.className).toContain("text-on-brand")
@@ -63,7 +64,7 @@ describe("the row", () => {
     for (const [name, sheet] of [
       ["Add money", "add"],
       ["Spend", "spend"],
-      ["Ask for more money", "topup"],
+      ["Ask for money", "ask"],
       ["More options for Lisbon Trip", "more"],
     ] as const) {
       await user.click(screen.getByRole("button", { name }))
@@ -77,19 +78,16 @@ describe("the row", () => {
     expect(row().querySelectorAll("[data-circle].bg-brand")).toHaveLength(0)
   })
 
-  it("a Pot of one: slot 3 is Invite (opens Share), and More holds Ask, off with its reason", async () => {
+  it("a Pot of one: slot 3 is still Ask (the row never reshuffles); Invite friends is More's first row", async () => {
     const user = userEvent.setup()
     render(<PotActions pot={alone()} />)
-    expect(names()).toEqual(["Add money", "Spend", "Invite friends", "More options for Lisbon Trip"])
-    await user.click(screen.getByRole("button", { name: "Invite friends" }))
-    expect(window.location.search).toBe("?sheet=share")
+    expect(names()).toEqual(["Add money", "Spend", "Ask for money", "More options for Lisbon Trip"])
+    await user.click(screen.getByRole("button", { name: "Ask for money" }))
+    expect(window.location.search).toBe("?sheet=ask")
     cleanup()
     render(<PotMoreSheet pot={alone()} open onClose={() => {}} />)
     const sheet = screen.getByRole("dialog", { name: "More options" })
-    expect(within(sheet).queryByRole("button", { name: /Invite friends/ })).toBeNull()
-    const ask = within(sheet).getByRole("button", { name: /Ask for more money/ })
-    expect(ask.getAttribute("aria-disabled")).toBe("true")
-    expect(ask.textContent).toContain("Once someone else joins")
+    expect(sheet.querySelector("[data-more]")!.getAttribute("data-more")).toBe("invite")
   })
 
   it("the goal lock: Spend is off, says why and toasts it; nothing opens", async () => {
@@ -109,7 +107,7 @@ describe("the row", () => {
   it("closing: Add money, Spend and Ask are off with the closing line; More still opens", async () => {
     const user = userEvent.setup()
     render(<PotActions pot={{ ...pot(), status: "closing" }} />)
-    for (const name of ["Add money", "Spend", "Ask for more money"]) {
+    for (const name of ["Add money", "Spend", "Ask for money"]) {
       const b = screen.getByRole("button", { name })
       expect(b.getAttribute("aria-disabled")).toBe("true")
       expect(why(b)).toBe("This Pot is closing. Adding money and spending are paused.")
@@ -135,15 +133,23 @@ describe("the row", () => {
 })
 
 describe("More", () => {
-  it("the list: Invite friends, Gifts, Pot record, Who can see what, Close Pot; no marigold", () => {
+  it("the list: Invite friends, Settings, Pot record, Who can see what, Close Pot; no marigold, no Gifts, no Ask", () => {
     render(<PotMoreSheet pot={pot()} open onClose={() => {}} />)
     const sheet = screen.getByRole("dialog", { name: "More options" })
     const items = [...sheet.querySelectorAll("[data-more]")].map((b) => b.getAttribute("data-more"))
-    expect(items.filter((i) => i !== "gifts")).toEqual(["invite", "record", "privacy", "close"])
+    expect(items).toEqual(["invite", "settings", "record", "privacy", "close"])
     expect(within(sheet).getByRole("button", { name: /Close Pot/ }).textContent).toContain("Ask the group to end it and share out what's left")
+    expect(within(sheet).getByRole("button", { name: /Settings/ }).textContent).toContain("Rules, money from outside, people")
     expect(sheet.querySelector(".bg-brand")).toBeNull()
-    // Ask is in the row, so not here
-    expect(within(sheet).queryByRole("button", { name: /Ask for more money/ })).toBeNull()
+    expect(within(sheet).queryByRole("button", { name: /^(Gifts|Ask)/ })).toBeNull()
+  })
+
+  it("Settings closes the sheet onto the Settings tab (no sheet left in the address)", async () => {
+    const user = userEvent.setup()
+    window.history.replaceState(null, "", "/p/lisbon-trip?sheet=more")
+    render(<PotMoreSheet pot={pot()} open onClose={() => {}} />)
+    await user.click(screen.getByRole("button", { name: /Settings/ }))
+    expect(window.location.search).toBe("?tab=settings")
   })
 
   it("picking a sheet swaps it in the same history entry; the record replaces it", async () => {

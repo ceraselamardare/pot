@@ -1,4 +1,4 @@
-// Pay anyone by link (hub 1.1.0) on the mock data source, in the "Surf Camp" showcase Pot (Maya + Sam, links on; the
+// Send by link (paying someone outside the Pot; hub 1.1.0) on the mock data source, in the "Surf Camp" showcase Pot (Maya + Sam, links on; the
 // spec opts in with localStorage['pot.mock.seed'] = 'showcase'):
 //  1. Maya pays "Someone else" $50 by link → approved by the rules → the Share card (Share / Copy / QR replaces the
 //     card) → a guest (Alex) opens /c/surf-camp/<id>#<secret> → [Get $50] → "$50 is yours" with their Pot dollars and a
@@ -65,20 +65,20 @@ test("Maya pays someone else $50 by link; a guest claims it; the feed says who",
   // approved by the rules → the link holds the money → the Share card
   const ready = sheet.locator("[data-paylink-ready]")
   await expect(ready).toBeVisible({ timeout: 10_000 })
-  await expect(ready.getByText("Your payment link is ready")).toBeFocused()
+  await expect(ready.getByText("Your link to send $50 is ready")).toBeFocused()
   await expect(ready).toContainText("Send it to Casa Lisboa host. Whoever opens it gets $50.")
   await expect(ready).toContainText("Anyone who has this link can take the money")
   await expect(ready).toContainText("saved only on this device")
   const url = (await ready.locator("[data-paylink-url]").getAttribute("data-paylink-url"))!
   expect(url).toMatch(LINK_RE)
-  await expect(sheet.getByRole("button", { name: "Share payment link" })).toBeVisible()
+  await expect(sheet.getByRole("button", { name: "Share link" })).toBeVisible()
   await brandChecks(page, { marigold: "one" }) // Share is the one marigold; Done is quiet
   await axe(page)
   const s2 = shot(info, "share")
   if (s2) await page.screenshot({ path: s2 })
   // QR first: the card always shows the QR (dark on a white plate in Night too); the raw link is never shown
   await expect(sheet.locator("[data-qr-view]")).toBeVisible()
-  await expect(sheet.getByRole("img", { name: "QR code for the $50 payment link" })).toBeVisible()
+  await expect(sheet.getByRole("img", { name: "QR code for the link to send $50" })).toBeVisible()
   await expect(sheet.locator("[data-paylink-url]")).toBeHidden()
   await expect(sheet.getByRole("button", { name: /QR code/ })).toHaveCount(0)
   await sheet.getByRole("button", { name: "Done" }).click()
@@ -86,7 +86,7 @@ test("Maya pays someone else $50 by link; a guest claims it; the feed says who",
 
   // the feed: a link waiting to be claimed (money out of the Pot)
   // the compact row says "Link sent"; its name has the whole story
-  const row = page.getByRole("button", { name: /^Maya sent Casa Lisboa host a \$50 payment link/ }).first()
+  const row = page.getByRole("button", { name: /^Maya sent Casa Lisboa host \$50 by link/ }).first()
   await expect(row).toHaveAccessibleName(/Link sent · waiting to be claimed/)
   await expect(row.locator("[data-status='link-ready']")).toHaveText("Link sent")
   await expect(page.locator("[data-balance-hero], main").first()).toContainText("$460")
@@ -123,7 +123,7 @@ test("Maya pays someone else $50 by link; a guest claims it; the feed says who",
   // Maya's feed: claimed by Alex
   await becomePerson(page, "maya")
   await page.goto("/p/surf-camp")
-  const claimed = page.getByRole("button", { name: /^Maya sent Casa Lisboa host a \$50 payment link/ }).first()
+  const claimed = page.getByRole("button", { name: /^Maya sent Casa Lisboa host \$50 by link/ }).first()
   await expect(claimed).toHaveAccessibleName(/Claimed by Alex/)
   await expect(claimed.locator("[data-status='link-claimed']")).toHaveText("Claimed")
   // the request sheet tells the same story; no share or cancel any more
@@ -190,9 +190,9 @@ test("the group's path: waiting for the OK (updates by itself) → approved → 
   await becomePerson(page, "maya")
   await page.goto(`/p/surf-camp?r=${id}`)
   const mine = await openedSheet(page, /Maya asked for \$350/)
-  await expect(mine.getByRole("button", { name: "See payment link" })).toBeVisible()
-  await mine.getByRole("button", { name: "See payment link" }).click()
-  const share = await openedSheet(page, "Payment link · $350")
+  await expect(mine.getByRole("button", { name: "See the link" })).toBeVisible()
+  await mine.getByRole("button", { name: "See the link" }).click()
+  const share = await openedSheet(page, "Link to send $350")
   await expect(share.locator("[data-paylink-url]")).toHaveAttribute("data-paylink-url", new RegExp(`/c/surf-camp/${id}#${secret}$`))
   await brandChecks(page, { marigold: "one" })
   await axe(page)
@@ -201,7 +201,7 @@ test("the group's path: waiting for the OK (updates by itself) → approved → 
   await share.getByRole("button", { name: "Yes, cancel it" }).click()
   await expect(page.getByText("Link cancelled. $350 is back in Surf Camp.").first()).toBeVisible()
   await expect(page.getByRole("dialog")).toBeHidden()
-  const back = page.locator("[data-feed]").getByRole("button", { name: /payment link.*\$350|\$350 payment link/ }).first()
+  const back = page.locator("[data-feed]").getByRole("button", { name: /\$350 by link|\$350 link/ }).first()
   await expect(back).toHaveAccessibleName(/Returned to the Pot/)
   await expect(back.locator("[data-status='link-returned']")).toHaveText("Returned")
   // the secret is forgotten on Maya's device

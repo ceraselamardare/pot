@@ -26,7 +26,7 @@ export async function resolveGiftLanding(deps: GiftDeps, id: string): Promise<Om
   const taking = await takingOf(deps.chain, row.potId, info.status)
   return {
     // a link that no longer works shows why, without the members' note
-    link: { id: row.id, amount: row.amount, note: status === "active" ? row.note : null, status, expiresAt: row.expiresAt.toISOString() },
+    link: { id: row.id, amount: row.amount, note: status === "active" ? row.note : null, status, expiresAt: row.expiresAt.toISOString(), tone: row.tone },
     pot: info,
     taking,
   }
@@ -45,7 +45,7 @@ export async function resolveGiftPage(deps: GiftDeps, slug: string): Promise<Omi
   const info = await potInfo(deps, potId)
   if (!info) return null
   const page = await pageOf(deps.db, potId)
-  if (!page.on) return { pot: info, page: { on: false, line: null } }
+  if (!page.on) return { pot: info, page: { on: false, line: null, tone: page.tone } }
   const [taking, totals, rows] = await Promise.all([
     takingOf(deps.chain, potId, info.status),
     totalsOf(deps, potId),

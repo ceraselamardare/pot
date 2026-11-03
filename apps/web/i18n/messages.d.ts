@@ -23,6 +23,7 @@ export interface Messages {
   "activity.joined": { who: string | number }
   "activity.path.instant": undefined
   "activity.path.vote": undefined
+  "activity.payin": { who: string | number; amount: string | number; potName: string | number }
   "activity.person.done": undefined
   "activity.person.empty": undefined
   "activity.person.title": { name: string | number }
@@ -67,6 +68,7 @@ export interface Messages {
   "add.range": { max: string | number }
   "add.refund_after": { refund: string | number }
   "add.sending": { amount: string | number }
+  "add.someone_else": undefined
   "add.source.demo": undefined
   "add.source.label": undefined
   "add.source.max": { available: string | number }
@@ -190,6 +192,9 @@ export interface Messages {
   "approve.withdraw": undefined
   "approve.withdraw.confirm": undefined
   "approve.withdrawn": undefined
+  "ask.anyone": undefined
+  "ask.anyone.sub": { potName: string | number }
+  "ask.title": undefined
   "auth.callback.working": undefined
   "auth.continue_in_window": undefined
   "auth.failed": undefined
@@ -214,6 +219,7 @@ export interface Messages {
   "chip.instant": undefined
   "chip.needs": undefined
   "chip.not_sent": undefined
+  "chip.outside": undefined
   "chip.sending": undefined
   "chip.sent": undefined
   "claim.busy": undefined
@@ -930,6 +936,8 @@ export interface Messages {
   "feed.instant.rule": { instantLimit: string | number }
   "feed.instant.sub": undefined
   "feed.joined": { name: string | number }
+  "feed.payin": { name: string | number; amount: string | number }
+  "feed.payin.page": { name: string | number; amount: string | number }
   "feed.pending": { name: string | number; amount: string | number; reason: string | number }
   "feed.pending.one_ok": undefined
   "feed.pending.sub": { k: string | number; count: string | number }
@@ -968,46 +976,7 @@ export interface Messages {
   "gift.error.retry": undefined
   "gift.error.signin": undefined
   "gift.fixed": { amount: string | number }
-  "gift.from_members": undefined
-  "gift.link.active": undefined
-  "gift.link.amount": undefined
-  "gift.link.amount.fixed": undefined
-  "gift.link.amount.label": undefined
-  "gift.link.amount.open": undefined
-  "gift.link.another": undefined
-  "gift.link.copied": undefined
-  "gift.link.copy": undefined
-  "gift.link.create": undefined
-  "gift.link.error": undefined
-  "gift.link.expiry": { date: string | number }
-  "gift.link.goal": { potName: string | number }
-  "gift.link.intro": { potName: string | number }
-  "gift.link.message": { potName: string | number; link: string | number }
-  "gift.link.more": undefined
-  "gift.link.note": undefined
-  "gift.link.note.hint": undefined
-  "gift.link.off": { potName: string | number }
-  "gift.link.once": undefined
-  "gift.link.once.hint": undefined
-  "gift.link.qr.alt": { potName: string | number }
-  "gift.link.qr.hint": { potName: string | number }
-  "gift.link.ready": undefined
-  "gift.link.revoke": undefined
-  "gift.link.revoke.a11y": { what: string | number }
-  "gift.link.revoke.error": undefined
-  "gift.link.revoked": undefined
-  "gift.link.row.fixed": { amount: string | number }
-  "gift.link.row.once": undefined
-  "gift.link.row.open": undefined
-  "gift.link.row.show": undefined
-  "gift.link.row.show.a11y": { what: string | number }
-  "gift.link.row.until": { date: string | number }
-  "gift.link.row.uses": { n: number }
-  "gift.link.share": undefined
-  "gift.link.title": { potName: string | number }
   "gift.members": { n: number }
-  "gift.menu": undefined
-  "gift.menu.sub": undefined
   "gift.name": undefined
   "gift.name.hint": undefined
   "gift.note": undefined
@@ -1018,11 +987,7 @@ export interface Messages {
   "gift.og.description": undefined
   "gift.og.title": { potName: string | number }
   "gift.page.givers": undefined
-  "gift.page.message": { potName: string | number; link: string | number }
   "gift.page.none": undefined
-  "gift.page.qr.alt": { potName: string | number }
-  "gift.page.qr.hint": undefined
-  "gift.page.share": undefined
   "gift.page.totals": { amount: string | number; n: number }
   "gift.preset.a11y": { amount: string | number; n: number }
   "gift.public": undefined
@@ -1030,19 +995,9 @@ export interface Messages {
   "gift.receipt": { amount: string | number; potName: string | number }
   "gift.sending": undefined
   "gift.sheet.done": undefined
-  "gift.sheet.error": undefined
   "gift.sheet.line": undefined
   "gift.sheet.line.save": undefined
   "gift.sheet.line.saved": undefined
-  "gift.sheet.links": undefined
-  "gift.sheet.none": undefined
-  "gift.sheet.off.hint": undefined
-  "gift.sheet.on": undefined
-  "gift.sheet.on.hint": undefined
-  "gift.sheet.page": undefined
-  "gift.sheet.page.hint": undefined
-  "gift.sheet.title": undefined
-  "gift.sheet.totals": { amount: string | number; n: number }
   "gift.signed_in_as": { name: string | number }
   "gift.signin.back": undefined
   "gift.signin.body": undefined
@@ -1081,6 +1036,20 @@ export interface Messages {
   "gift.trust": undefined
   "gift.xc.arrived": undefined
   "gift.xc.waiting": undefined
+  "give.again.payment": undefined
+  "give.cta.payment": { amount: string | number }
+  "give.fixed.payment": { amount: string | number }
+  "give.line.by": undefined
+  "give.og.description.payment": undefined
+  "give.og.title.payment": { potName: string | number }
+  "give.page.none.payment": undefined
+  "give.page.totals.payment": { amount: string | number; n: number }
+  "give.receipt.payment": { amount: string | number; potName: string | number }
+  "give.sending.payment": undefined
+  "give.signin.payment": { amount: string | number }
+  "give.state.goal.payment": { potName: string | number }
+  "give.state.off.payment": { potName: string | number }
+  "give.title.payment": { potName: string | number }
   "goal.add.missed": undefined
   "goal.aon.note": { goal: string | number; date: string | number }
   "goal.left.days": { n: number }
@@ -1349,6 +1318,8 @@ export interface Messages {
   "notif.ok_approved.body": { name: string | number; reason: string | number }
   "notif.one_ok.body": { amount: string | number; reason: string | number; potName: string | number }
   "notif.one_ok.title": { name: string | number }
+  "notif.payin.body": undefined
+  "notif.payin.title": { name: string | number; amount: string | number; potName: string | number }
   "notif.topup.body": { reason: string | number; potName: string | number }
   "notif.topup.body_plain": { potName: string | number }
   "notif.topup.reminder.body": { name: string | number; date: string | number }
@@ -1384,6 +1355,57 @@ export interface Messages {
   "onboarding.skip.a11y": undefined
   "onboarding.title": undefined
   "online.restored": undefined
+  "payin.amount": undefined
+  "payin.amount.fixed": undefined
+  "payin.amount.label": undefined
+  "payin.amount.open": undefined
+  "payin.another": undefined
+  "payin.copied": undefined
+  "payin.copy": undefined
+  "payin.create": undefined
+  "payin.details.title": { name: string | number }
+  "payin.error": undefined
+  "payin.error.toggle": undefined
+  "payin.expiry": { date: string | number }
+  "payin.goal": { potName: string | number }
+  "payin.intro": { potName: string | number }
+  "payin.kind.gift": undefined
+  "payin.kind.payment": undefined
+  "payin.message.gift": { potName: string | number; link: string | number }
+  "payin.message.payment": { potName: string | number; link: string | number }
+  "payin.more": undefined
+  "payin.note": undefined
+  "payin.note.hint": undefined
+  "payin.off": { potName: string | number }
+  "payin.off.cta": undefined
+  "payin.once": undefined
+  "payin.once.hint": undefined
+  "payin.qr.alt": { potName: string | number }
+  "payin.qr.hint": { potName: string | number }
+  "payin.ready": undefined
+  "payin.revoke": undefined
+  "payin.revoke.a11y": { what: string | number }
+  "payin.revoke.error": undefined
+  "payin.revoked": undefined
+  "payin.row.once": undefined
+  "payin.row.show": undefined
+  "payin.row.show.a11y": { what: string | number }
+  "payin.row.until": { date: string | number }
+  "payin.row.uses": { n: number }
+  "payin.share": undefined
+  "payin.title": undefined
+  "payin.tone.gift": undefined
+  "payin.tone.label": undefined
+  "payin.tone.payment": undefined
+  "payin.what.fixed": { amount: string | number }
+  "payin.what.open": undefined
+  "payins.active": undefined
+  "payins.active.none": undefined
+  "payins.done": undefined
+  "payins.make": undefined
+  "payins.none": undefined
+  "payins.title": undefined
+  "payins.totals": { amount: string | number; n: number }
   "paylink.cancel.confirm": { amount: string | number; potName: string | number }
   "paylink.cancel.cta": undefined
   "paylink.cancel.done": { amount: string | number; potName: string | number }
@@ -1416,7 +1438,7 @@ export interface Messages {
   "paylink.panel.for": { who: string | number }
   "paylink.panel.title": undefined
   "paylink.ready.body": { who: string | number; amount: string | number }
-  "paylink.ready.title": undefined
+  "paylink.ready.title": { amount: string | number }
   "paylink.ready.who": undefined
   "paylink.share.copied": undefined
   "paylink.share.copy": undefined
@@ -1453,7 +1475,7 @@ export interface Messages {
   "paylink.who.member": undefined
   "person.fallback": undefined
   "pot.action.ask": undefined
-  "pot.action.invite": undefined
+  "pot.action.ask.name": undefined
   "pot.action.more": undefined
   "pot.actions.label": undefined
   "pot.back": undefined
@@ -1479,6 +1501,8 @@ export interface Messages {
   "pot.menu.record.sub": undefined
   "pot.mine.header": undefined
   "pot.more.invite.sub": undefined
+  "pot.more.settings": undefined
+  "pot.more.settings.sub": undefined
   "pot.more.title": undefined
   "pot.not_found.body": undefined
   "pot.not_found.cta": undefined
@@ -1487,7 +1511,7 @@ export interface Messages {
   "pot.not_member.title": undefined
   "pot.tabs.activity": undefined
   "pot.tabs.members": undefined
-  "pot.tabs.rules": undefined
+  "pot.tabs.settings": undefined
   "pot.waiting.header": undefined
   "pots.card.a11y": { potName: string | number; balance: string | number; share: string | number }
   "pots.card.balance": { balance: string | number }
@@ -1546,6 +1570,13 @@ export interface Messages {
   "privacy.record_link": undefined
   "privacy.survey": undefined
   "privacy.title": undefined
+  "publicpage.qr.alt": { potName: string | number }
+  "publicpage.qr.hint": undefined
+  "publicpage.share": undefined
+  "publicpage.switch": undefined
+  "publicpage.switch.hint": undefined
+  "publicpage.taking_off": undefined
+  "publicpage.title": undefined
   "push.denied": undefined
   "push.error": undefined
   "push.example.app": undefined
@@ -1605,6 +1636,9 @@ export interface Messages {
   "record.names_note": undefined
   "record.not_found": undefined
   "record.open_pot": { potName: string | number }
+  "record.payin.anon": undefined
+  "record.payin.from": { name: string | number }
+  "record.payin.word": undefined
   "record.receipt.attached": undefined
   "record.receipt.details": undefined
   "record.receipt.details.label": { what: string | number }
@@ -1656,6 +1690,7 @@ export interface Messages {
   "row.activity.created": undefined
   "row.activity.gift": undefined
   "row.activity.joined": undefined
+  "row.activity.payin": undefined
   "row.activity.refund": undefined
   "row.activity.rules_asked": undefined
   "row.activity.rules_changed": undefined
@@ -1670,6 +1705,8 @@ export interface Messages {
   "row.added": undefined
   "row.gift": undefined
   "row.gift.note": undefined
+  "row.payin": undefined
+  "row.payin.page": undefined
   "row.reason.food": undefined
   "row.reason.groceries": undefined
   "row.reason.other": undefined
@@ -1730,7 +1767,6 @@ export interface Messages {
   "rules.leftovers": undefined
   "rules.links.off": undefined
   "rules.links.on": undefined
-  "rules.more.label": undefined
   "rules.new_member": undefined
   "rules.one_ok": { oneOk: string | number }
   "rules.recipients": undefined
@@ -1738,9 +1774,34 @@ export interface Messages {
   "rules.record": undefined
   "rules.size": { max: string | number }
   "rules.threshold": { k: string | number; n: string | number }
-  "rules.title": { potName: string | number }
   "rules.trust": { step: string | number; instantLimit: string | number; max: string | number }
   "session.expired": undefined
+  "settings.close": undefined
+  "settings.close.h": undefined
+  "settings.explorer": undefined
+  "settings.invite": undefined
+  "settings.invite.missing": undefined
+  "settings.invite.until": { date: string | number }
+  "settings.off": undefined
+  "settings.on": undefined
+  "settings.outside.h": undefined
+  "settings.page": undefined
+  "settings.payins": undefined
+  "settings.payins.make": undefined
+  "settings.payins.n": { n: number }
+  "settings.payins.none": undefined
+  "settings.people.h": undefined
+  "settings.record.h": undefined
+  "settings.row.a11y": { label: string | number; value: string | number }
+  "settings.rules.h": undefined
+  "settings.sending": undefined
+  "settings.sending.h": undefined
+  "settings.taking": undefined
+  "settings.taking.off": undefined
+  "settings.taking.on": undefined
+  "settings.taking.safety": undefined
+  "settings.who.anyone": undefined
+  "settings.who.group": undefined
   "setup.error.join": { potName: string | number }
   "setup.error.relayer": undefined
   "setup.error.retry": undefined
@@ -1778,9 +1839,6 @@ export interface Messages {
   "share.rotate.confirm": undefined
   "share.rotate.confirm.cancel": undefined
   "share.rotate.confirm.cta": undefined
-  "share.tabs.gift": undefined
-  "share.tabs.invite": undefined
-  "share.tabs.label": undefined
   "share.title": { potName: string | number }
   "sheet.back": undefined
   "signin.body": undefined

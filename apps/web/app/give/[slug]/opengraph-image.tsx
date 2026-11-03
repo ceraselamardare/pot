@@ -1,5 +1,5 @@
-// The public gift page's preview: "Send a gift to Lisbon Trip ☕" (app/_lib/gift-og.tsx); the brand image while the
-// page is off.
+// The public page's preview: "Pay Lisbon Trip" or, for a gift page, "Send a gift to Lisbon Trip ☕"
+// (app/_lib/gift-og.tsx); the brand image while the page is off.
 import { giftOgImage, OG_SIZE } from "@/app/_lib/gift-og"
 import { getGiftPagePreview, parseGiftSlug } from "@/app/_lib/gift-preview"
 
@@ -12,6 +12,6 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     const { slug } = await params
     const ok = parseGiftSlug(slug)
     const p = ok ? await getGiftPagePreview(ok) : null
-    return p?.on ? p.pot : null
+    return p?.on ? { pot: p.pot, tone: p.tone } : null
   })
 }

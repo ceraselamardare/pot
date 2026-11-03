@@ -12,10 +12,26 @@ import type { Micro } from "@pot/sdk"
 export const GIFT_MIN: Micro = 1_000_000n
 /** The largest gift we let a person send at once ($10,000, the relayer's MAX_CONTRIBUTION and the Add sheet's MAX_ADD). */
 export const GIFT_MAX: Micro = 10_000_000_000n
-/** ☕ one coffee: the preset unit and the custom amount's prefill. */
+/** ☕ one coffee: the gift tone's preset unit. */
 export const GIFT_COFFEE: Micro = 5_000_000n
-/** The presets: ☕ × 1 / × 2 / × 4 ($5 / $10 / $20). */
+/** The gift tone's presets: ☕ × 1 / × 2 / × 4 ($5 / $10 / $20). */
 export const GIFT_PRESETS = [1, 2, 4] as const
+/** The payment tone's presets ($10 / $25 / $50). */
+export const PAYMENT_PRESETS: readonly Micro[] = [10_000_000n, 25_000_000n, 50_000_000n]
+
+/**
+ * "Pay in" (2026-11-03, notes/frontend.md): money from people outside the Pot comes through a pay-in link or the public
+ * page. The member who makes one picks its tone ("What's it for?"): a plain **payment** (the default: "Pay Lisbon
+ * Trip", [Pay $25], presets $10/$25/$50) or a **gift** ("Send Lisbon Trip a gift", [Send $10 ☕], presets ☕ $5/$10/$20).
+ * The tone only changes words and presets; on chain both are the hub's gift message. Stored off chain on gift_link,
+ * gift_page and each gift (a snapshot, so a later page change doesn't rewrite old rows). Rows from before the tone
+ * existed are gifts.
+ */
+export type PayInTone = "payment" | "gift"
+export const PAYIN_TONES: readonly PayInTone[] = ["payment", "gift"]
+export const isPayInTone = (v: unknown): v is PayInTone => v === "payment" || v === "gift"
+/** A record from before the tone existed reads as a gift (that's what it said then). */
+export const toneOf = (v: PayInTone | null | undefined): PayInTone => v ?? "gift"
 /** The giver's note (members see it; the public page only if the giver chose to show it). */
 export const GIFT_NOTE_MAX = 140
 /** The giver's name as they want the Pot to see it. */

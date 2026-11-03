@@ -1,7 +1,7 @@
 // "Ask for a top-up" on the mock data source, in every project (mobile Day, mobile Night, desktop):
-//  1. Maya: [Ask] → Ask for more money → "$50 each" (defaults first: the Pot's $150, a week) + "Hotel went up", 3 days →
+//  1. Maya: [Ask] → Ask the group → "$50 each" (defaults first: the Pot's $150, a week) + "Hotel went up", 3 days →
 //     the card on the Pot ("You asked for $50 each · 0 of 3 added") and the push stub (Sam and Leo get
-//     "Maya asks everyone for $50 more · Hotel went up · Lisbon Trip"); the menu says her ask is open.
+//     "Maya asks everyone for $50 more · Hotel went up · Lisbon Trip"); the chooser says her ask is open.
 //  2. Sam: Requests → the card (with the Pot's name) → [Add $50] → the Add sheet, prefilled and marked "For Maya's
 //     ask" → Add → the card says "1 of 3 added" and "You added $50"; [Nudge] → Maya and Leo get a nudge
 //     push, then "Nudged today"; the feed row "Maya · Asked for $50 each" (Asking, 1 of 3 added).
@@ -12,7 +12,7 @@
 // axe 0 serious + the brand checks on every screen; the mobile projects save notes/screens/topup-*-{day,night}.png.
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, openedSheet } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, openedSheet, potAsk } from "../fixtures/pot"
 
 const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
 
@@ -32,14 +32,8 @@ async function pushes(page: Page): Promise<{ to: string; title: string; body: st
 const card = (page: Page) => page.locator("[data-topup-card]").locator("visible=true").first()
 const row = (page: Page) => page.locator("[data-topup-row]").locator("visible=true").first().getByRole("group")
 
-/** The hero's round [Ask] ("Ask for more money"). */
-const askButton = (page: Page) => page.locator("[data-pot-actions]").getByRole("button", { name: "Ask for more money" })
-
-/** The hero's [Ask] → the sheet. */
-async function askSheet(page: Page) {
-  await askButton(page).click()
-  return openedSheet(page, "Ask for more money")
-}
+/** The hero's [Ask] → Ask the group → the sheet. */
+const askSheet = (page: Page) => potAsk(page, "group")
 
 /** On the Pot: the card's [Add $X] → the Add sheet → Add. */
 async function addViaCard(page: Page, amount: string, asker: string | null) {
@@ -103,12 +97,15 @@ test("ask $50 each → the card and the push → Sam adds through the card → n
   // the push stub: Sam and Leo, with the reason (members only)
   const asked = (await pushes(page)).filter((x) => x.title.startsWith("Maya asks"))
   expect(asked.map((x) => [x.to, x.title, x.body, x.url])).toEqual(["sam", "leo"].map((to) => [to, "Maya asks everyone for $50 more", "Hotel went up · Lisbon Trip", "/p/lisbon-trip"]))
-  // one open ask at a time: [Ask] is off and says why (its description, and a tap)
-  const item = askButton(page)
+  // one open ask at a time: Ask → "Ask the group" is off and says why; "Ask anyone by link" still works
+  const chooser = await potAsk(page)
+  const item = chooser.getByRole("button", { name: /^Ask the group/ })
   await expect(item).toHaveAttribute("aria-disabled", "true")
-  await expect(item).toHaveAccessibleDescription("Your ask is still open")
-  await item.click({ force: true }) // aria-disabled still takes the tap, to say why
-  await expect(page.locator("[data-sonner-toast]").getByText("Your ask is still open")).toBeVisible()
+  await expect(item).toContainText("Your ask is still open")
+  await item.click({ force: true })
+  await expect(page.getByRole("dialog", { name: "Ask the group" })).toHaveCount(0)
+  await expect(chooser.getByRole("button", { name: /^Ask anyone by link/ })).not.toHaveAttribute("aria-disabled", "true")
+  await page.keyboard.press("Escape")
   await expect(page.getByRole("dialog")).toHaveCount(0)
 
   // 2. Sam: Requests → the card → Add $50 (prefilled, marked) → progress
@@ -171,7 +168,8 @@ test("ask $50 each → the card and the push → Sam adds through the card → n
   await expect(row(page).locator("[data-status]")).toHaveText("Cancelled")
   await expect(row(page)).toContainText("1 of 3 added")
   // and a new ask can be made
-  await expect(askButton(page)).not.toHaveAttribute("aria-disabled", "true")
+  const again = await potAsk(page)
+  await expect(again.getByRole("button", { name: /^Ask the group/ })).not.toHaveAttribute("aria-disabled", "true")
 })
 
 test("$90 in total → $30 each → everyone adds through the card → Done; it's in Your activity", async ({ page }, info) => {

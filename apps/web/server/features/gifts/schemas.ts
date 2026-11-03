@@ -9,11 +9,15 @@ export const giftClientKey = z.string().regex(/^[A-Za-z0-9_-]{16,64}$/)
 
 const text = (max: number) => z.string().max(max).nullable().optional()
 
+/** "What's it for?" on a pay-in link / the public page (lib/gifts.ts PayInTone) */
+const payInTone = z.enum(["payment", "gift"])
+
 /** POST /api/pots/[pot]/gift-links (GiftLinkCreateReq) */
 export const giftLinkCreateReq = z.strictObject({
   amount: micro.nullable().optional(),
   note: text(1000),
   reusable: z.boolean().optional(),
+  tone: payInTone.optional(),
   idempotencyKey: giftClientKey.optional(),
 })
 
@@ -21,6 +25,7 @@ export const giftLinkCreateReq = z.strictObject({
 export const giftPagePutReq = z.strictObject({
   on: z.boolean(),
   line: text(1000),
+  tone: payInTone.optional(),
 })
 
 /** POST /api/gifts (GiftStartReq) */

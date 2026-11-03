@@ -8,8 +8,7 @@ import { Suspense } from "react"
 import { Lockup } from "@/components/brand/Lockup"
 import { LiveRegion } from "@/components/app-shell/Shell"
 import { Blank, GiftLinkFlow } from "@/components/gifts/GiveFlow"
-import { t } from "@/i18n/t"
-import { getGiftLandingPreview, giftTitle, parseGiftLinkParams } from "@/app/_lib/gift-preview"
+import { getGiftLandingPreview, giftDescription, giftTitle, parseGiftLinkParams } from "@/app/_lib/gift-preview"
 
 // (typed by hand: the generated PageProps needs `next typegen` in the default dist dir)
 type Props = { params: Promise<{ slug: string; id: string }> }
@@ -19,8 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   await connection()
   const ok = parseGiftLinkParams(slug, id)
   const p = ok ? await getGiftLandingPreview(ok.slug, ok.id).catch(() => null) : null
-  const title = giftTitle(p?.pot.name ?? null)
-  const description = t("gift.og.description")
+  const title = giftTitle(p?.pot.name ?? null, p?.link.tone)
+  const description = giftDescription(p?.link.tone)
   return { title: { absolute: title }, description, robots: { index: false, follow: false }, openGraph: { title, description } }
 }
 

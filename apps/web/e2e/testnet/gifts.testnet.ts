@@ -64,17 +64,19 @@ test.afterAll(async () => {
   await accounts?.release()
 })
 
+/** Ask anyone (?sheet=payin, "pay in" 2026-11-03) with "What's it for? A gift ☕": a gift-tone pay-in link. */
 async function makeLink(fixed?: string): Promise<string> {
-  await A.goto(`/p/${slug}?sheet=share&kind=gift`)
-  const sheet = A.getByRole("dialog", { name: `Gift link for ${POT_NAME}` })
+  await A.goto(`/p/${slug}?sheet=payin`)
+  const sheet = A.getByRole("dialog", { name: "Ask anyone to pay in" })
   await expect(sheet).toBeVisible({ timeout: 30_000 })
+  await sheet.getByRole("radio", { name: "A gift ☕" }).click()
   if (fixed) {
-    await sheet.getByRole("radio", { name: "Fixed amount" }).click()
-    await sheet.getByRole("textbox", { name: "Gift amount in dollars" }).fill(fixed)
+    await sheet.getByRole("radio", { name: "Fixed" }).click()
+    await sheet.getByRole("textbox", { name: "Amount in dollars" }).fill(fixed)
   }
-  await sheet.getByRole("button", { name: "Make gift link" }).click()
-  await expect(sheet.locator("[data-gift-tab='ready']")).toBeVisible({ timeout: 30_000 })
-  const url = (await sheet.locator("[data-gift-url]").getAttribute("data-gift-url"))!
+  await sheet.getByRole("button", { name: "Make pay-in link" }).click()
+  await expect(sheet.locator("[data-payin='ready']")).toBeVisible({ timeout: 30_000 })
+  const url = (await sheet.locator("[data-payin-url]").getAttribute("data-payin-url"))!
   expect(url).toMatch(LINK_RE)
   await A.keyboard.press("Escape")
   return url
@@ -139,13 +141,17 @@ test("the $25 link has one button", async () => {
 test("the public page: off → Ana turns it on → Cleo is listed only because she chose to be", async () => {
   test.skip(!slug, "needs setup")
   await C.goto(`/give/${slug}`)
-  await expect(C.getByRole("heading", { name: "This gift page isn't open" })).toBeVisible({ timeout: 30_000 })
-  await A.goto(`/p/${slug}?sheet=gifts`)
-  const sheet = A.getByRole("dialog", { name: "Gifts" })
-  await sheet.getByRole("switch", { name: "Public gift page" }).click()
-  await expect(sheet.getByRole("switch", { name: "Public gift page" })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 })
+  await expect(C.getByRole("heading", { name: "This page isn't open" })).toBeVisible({ timeout: 30_000 })
+  // Settings → Money from outside → Public page: on, as a gift page
+  await A.goto(`/p/${slug}?tab=settings&sheet=publicpage`)
+  const sheet = A.getByRole("dialog", { name: "Public page" })
+  await sheet.getByRole("switch", { name: "Public page" }).click()
+  await expect(sheet.getByRole("switch", { name: "Public page" })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 })
+  await sheet.getByRole("radio", { name: "A gift ☕" }).click()
+  await expect(sheet.getByRole("radio", { name: "A gift ☕" })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 })
   await C.goto(`/give/${slug}`)
-  await C.getByRole("switch", { name: "Show my name and note on this page" }).click()
+  await C.getByRole("radio", { name: "$5, 1 coffee" }).click()
+  await C.getByRole("switch", { name: "Show my name on this page" }).click()
   await C.getByRole("textbox", { name: "Note (optional)" }).fill("Public thanks")
   await C.getByRole("button", { name: "Send $5 ☕" }).click()
   await expect(C.getByRole("heading", { name: "Thank you!" })).toBeVisible({ timeout: 90_000 })
@@ -155,17 +161,18 @@ test("the public page: off → Ana turns it on → Cleo is listed only because s
 
 test("turning the open link off, then gifts off, stop the giver", async () => {
   test.skip(!openUrl, "needs setup")
-  await A.goto(`/p/${slug}?sheet=share&kind=gift`)
-  const sheet = A.getByRole("dialog", { name: `Gift link for ${POT_NAME}` })
-  await sheet.getByRole("button", { name: "Turn off the Giver chooses gift link" }).click()
+  // Settings → Money from outside → Pay-in links
+  await A.goto(`/p/${slug}?tab=settings&sheet=payinlinks`)
+  const sheet = A.getByRole("dialog", { name: "Pay-in links" })
+  await sheet.getByRole("button", { name: "Turn off the Gift ☕ · They choose link" }).click()
   // wait for the server to confirm before leaving (closing the sheet early could race the request)
-  await expect(sheet.getByRole("button", { name: "Turn off the Giver chooses gift link" })).toHaveCount(0, { timeout: 30_000 })
+  await expect(sheet.getByRole("button", { name: "Turn off the Gift ☕ · They choose link" })).toHaveCount(0, { timeout: 30_000 })
   await A.keyboard.press("Escape")
   await C.goto(path(openUrl))
-  await expect(C.getByRole("heading", { name: "This gift link was turned off" })).toBeVisible({ timeout: 30_000 })
-  await A.goto(`/p/${slug}?sheet=gifts`)
-  const gifts = A.getByRole("dialog", { name: "Gifts" })
-  await gifts.getByRole("switch", { name: "Taking gifts" }).click()
+  await expect(C.getByRole("heading", { name: "This link was turned off" })).toBeVisible({ timeout: 30_000 })
+  // Settings → "Taking money from outside" off (any member, at once: set_gifts)
+  await A.goto(`/p/${slug}?tab=settings`)
+  await A.locator("[data-settings]").locator("visible=true").getByRole("switch", { name: "Taking money from outside" }).click()
   expect(await eventually(() => giftsView(slug), (g) => g?.on === false, 60_000)).toMatchObject({ on: false, accepting: false, refusal: "gifts_off" })
   await C.goto(path(fixedUrl))
   await expect(C.getByRole("heading", { name: `${POT_NAME} isn't taking gifts right now` })).toBeVisible({ timeout: 30_000 })

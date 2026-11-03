@@ -336,6 +336,10 @@ export const giftLink = pgTable(
     createdBy: text("created_by").notNull(),
     amount: u128("amount"),
     note: text("note"),
+    /** "pay in" (migration 0008): the words and presets on its page, "payment" or "gift"; rows from before = "gift" */
+    tone: text("tone", { enum: ["payment", "gift"] })
+      .notNull()
+      .default("payment"),
     reusable: boolean("reusable").notNull().default(true),
     uses: integer("uses").notNull().default(0),
     expiresAt: ts("expires_at").notNull(),
@@ -351,6 +355,7 @@ export const giftLink = pgTable(
     check("gift_link_note_ck", sql`${t.note} is null or char_length(${t.note}) between 1 and 140`),
     check("gift_link_amount_ck", sql`${t.amount} is null or ${t.amount} > 0`),
     check("gift_link_uses_ck", sql`${t.uses} >= 0`),
+    check("gift_link_tone_ck", sql`${t.tone} in ('payment', 'gift')`),
   ],
 )
 
@@ -380,6 +385,10 @@ export const gift = pgTable(
       .default("pending"),
     txHash: text("tx_hash"),
     clientKey: text("client_key"),
+    /** its link's (or the page's) tone when it was started (migration 0008; rows from before = "gift") */
+    tone: text("tone", { enum: ["payment", "gift"] })
+      .notNull()
+      .default("payment"),
     createdAt: createdAt(),
     receivedAt: ts("received_at"),
   },
@@ -393,6 +402,7 @@ export const gift = pgTable(
     check("gift_name_ck", sql`${t.displayName} is null or char_length(${t.displayName}) between 1 and 40`),
     check("gift_note_ck", sql`${t.note} is null or char_length(${t.note}) between 1 and 140`),
     check("gift_amount_ck", sql`${t.amount} > 0`),
+    check("gift_tone_ck", sql`${t.tone} in ('payment', 'gift')`),
   ],
 )
 
@@ -405,10 +415,17 @@ export const giftPage = pgTable(
       .references(() => pot.daoId),
     on: boolean("on").notNull().default(false),
     line: text("line"),
+    /** the page's words, "payment" or "gift" (migration 0008; rows from before = "gift") */
+    tone: text("tone", { enum: ["payment", "gift"] })
+      .notNull()
+      .default("payment"),
     updatedBy: text("updated_by"),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
-  (t) => [check("gift_page_line_ck", sql`${t.line} is null or char_length(${t.line}) between 1 and 100`)],
+  (t) => [
+    check("gift_page_line_ck", sql`${t.line} is null or char_length(${t.line}) between 1 and 100`),
+    check("gift_page_tone_ck", sql`${t.tone} in ('payment', 'gift')`),
+  ],
 )
 
 // ---------------------------------------------------------------------------------------------

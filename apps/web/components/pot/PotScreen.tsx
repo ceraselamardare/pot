@@ -1,10 +1,11 @@
 "use client"
 // The Pot screen (ux-spec §4.4, design-direction 02 §2, frontend-architecture §2.1-2.2). Answers "how much is in
-// the Pot, and what's needed from me?". Phones: header, hero, Activity · Members · Rules, "Waiting on you"
-// pinned above the feed. From bp-lg (1024 px): two columns, the Pot on the left (Activity · Rules) and
+// the Pot, and what's needed from me?". Phones: header, hero, Activity · Members · Settings, "Waiting on you"
+// pinned above the feed. From bp-lg (1024 px): two columns, the Pot on the left (Activity · Settings) and
 // Waiting on you, your requests and Members on the right (sticky).
 // Under the balance, the action row (PotActions): Add money · Spend · Ask (Invite in a Pot of one) · More.
-// Sheets are URL state: ?sheet=add|spend|share|close|rules|refund|topup|more and ?r=<id> (PotSheetHost). A push opens
+// Sheets are URL state: ?sheet=add|spend|share|close|rules|refund|ask|topup|payin|publicpage|payinlinks|more and ?r=<id>.
+// ?tab=settings (the Rules tab until 2026-11-03; ?tab=rules still opens it). A push opens
 // ?pid=<proposal id> (the SW maps the notification's proposal to it); it resolves here to the request, the close
 // or the rules change behind that proposal.
 import { Check, Clock } from "lucide-react"
@@ -18,7 +19,12 @@ import { ActivityFeed, RequestRow } from "@/components/pot/Feed"
 import { PotHeader } from "@/components/pot/PotParts"
 import { PotActions, PotMoreSheet } from "@/components/pot/PotActions"
 import { RequestCard } from "@/components/pot/RequestCard"
-import { MembersTab, RulesTab } from "@/components/pot/Tabs"
+import { MembersTab } from "@/components/pot/Tabs"
+import { SettingsTab } from "@/components/pot/SettingsTab"
+import { AskSheet } from "@/components/payin/AskSheet"
+import { PayInSheet } from "@/components/payin/PayInSheet"
+import { PayInLinksSheet } from "@/components/payin/PayInLinksSheet"
+import { PublicPageSheet } from "@/components/payin/PublicPageSheet"
 import { TabList } from "@/components/pot/Controls"
 import { AddFlow } from "@/components/sheets/AddFlow"
 import { ApproveSheet } from "@/components/sheets/ApproveSheet"
@@ -40,7 +46,6 @@ import { pendingIn, useOps } from "@/lib/client/ops/store"
 import { closeSheet, openSheet, resolveProposalParam, useSheetParams, useTabParam } from "@/lib/client/sheet"
 import { formatUsd } from "@/lib/client/money"
 import { useNow } from "@/lib/client/time"
-import { GiftsSheet } from "@/components/gifts/GiftsSheet"
 import { GiftDetailsSheet } from "@/components/gifts/GiftDetailsSheet"
 import { GIFTS_ON } from "@/lib/client/gifts/flag"
 import { collectedOf, useWithGifts } from "@/lib/client/gifts/data"
@@ -48,10 +53,11 @@ import { TopupCard } from "@/components/topups/TopupCard"
 import { TopupSheet } from "@/components/topups/TopupSheet"
 import { useWithTopups } from "@/lib/client/topups/data"
 
-const TABS = ["activity", "members", "rules"] as const
+// "rules" = the old name of Settings (links from before 2026-11-03, YourTrust, activity rows): shown as Settings
+const TABS = ["activity", "members", "settings", "rules"] as const
 /** ?sheet=paylink&link=<request id> */
 const linkParam = (v: string | null): number | null => (v && /^\d{1,10}$/.test(v) ? Number(v) : null)
-type Tab = (typeof TABS)[number]
+type Tab = Exclude<(typeof TABS)[number], "rules">
 
 export function PotScreen() {
   const { slug } = useParams<{ slug: string }>()
@@ -90,8 +96,11 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
   const now = useNow()
   const ops = useOps()
   const potOps = ops.filter((o) => o.pot === pot.slug)
-  const [tab, setTab] = useTabParam<Tab>(TABS, "activity")
-  const { sheet, requestId } = useSheetParams()
+  const [rawTab, setTab] = useTabParam<(typeof TABS)[number]>(TABS, "activity")
+  const { sheet, requestId, params: sheetParams } = useSheetParams()
+  // old links (before "pay in", 2026-11-03): ?sheet=gifts / ?kind=gift land on Settings → Money from outside
+  const legacyGifts = sheetParams.get("sheet") === "gifts" || sheetParams.get("kind") === "gift"
+  const tab: Tab = legacyGifts || rawTab === "rules" ? "settings" : rawTab
   const me = pot.me!
   const meId = me.person.id
   const title = pageTitle(pot.name)
@@ -178,7 +187,7 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
             }
           />
           <div className="mt-6">
-            {/* phones: three tabs; desktop: Activity · Rules (Members live in the right column) */}
+            {/* phones: three tabs; desktop: Activity · Settings (Members live in the right column) */}
             <TabList<Tab>
               idBase="pot"
               label={pot.name}
@@ -188,7 +197,7 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
               tabs={[
                 { value: "activity", label: t("pot.tabs.activity") },
                 { value: "members", label: t("pot.tabs.members") },
-                { value: "rules", label: t("pot.tabs.rules") },
+                { value: "settings", label: t("pot.tabs.settings") },
               ]}
             />
             <TabList<Tab>
@@ -200,14 +209,14 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
               className="hidden lg:flex lg:max-w-80"
               tabs={[
                 { value: "activity", label: t("pot.tabs.activity") },
-                { value: "rules", label: t("pot.tabs.rules") },
+                { value: "settings", label: t("pot.tabs.settings") },
               ]}
             />
           </div>
           <div className="mt-4">
-            {tab === "rules" ? (
-              <div role="tabpanel" id="pot-panel-rules" aria-labelledby="pot-tab-rules">
-                <RulesTab pot={pot} />
+            {tab === "settings" ? (
+              <div role="tabpanel" id="pot-panel-settings" aria-labelledby="pot-tab-settings">
+                <SettingsTab pot={pot} />
               </div>
             ) : tab === "members" ? (
               <>
@@ -265,13 +274,16 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
       <CloseSheet pot={pot} open={sheet === "close"} onClose={closeSheet} />
       <RulesSheet pot={pot} open={sheet === "rules"} onClose={closeSheet} />
       <RefundSheet pot={pot} open={sheet === "refund"} onClose={closeSheet} />
+      <AskSheet pot={pot} open={sheet === "ask"} onClose={closeSheet} />
       <TopupSheet pot={pot} open={sheet === "topup"} onClose={closeSheet} />
       <PotMoreSheet pot={pot} open={sheet === "more"} onClose={closeSheet} />
       <PersonActivitySheet pot={pot} who={params.get("who")} open={sheet === "person" && !!params.get("who")} onClose={closeSheet} />
       <PayLinkSheet pot={pot} id={linkParam(params.get("link"))} open={sheet === "paylink" && linkParam(params.get("link")) !== null} onClose={closeSheet} />
       {GIFTS_ON && (
         <>
-          <GiftsSheet pot={pot} open={sheet === "gifts"} onClose={closeSheet} />
+          <PayInSheet pot={pot} open={sheet === "payin"} onClose={closeSheet} />
+          <PublicPageSheet pot={pot} open={sheet === "publicpage"} onClose={closeSheet} />
+          <PayInLinksSheet pot={pot} open={sheet === "payinlinks"} onClose={closeSheet} />
           <GiftDetailsSheet pot={pot} giftRef={params.get("gift")} open={sheet === "gift" && !!params.get("gift")} onClose={closeSheet} />
         </>
       )}

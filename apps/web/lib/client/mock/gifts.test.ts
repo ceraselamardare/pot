@@ -102,8 +102,16 @@ describe("giving", () => {
     expect(p.givers!.map((g) => [g.name, g.note])).toEqual([["Alex", "Shown"]])
     expect(JSON.stringify(p, (_k, v) => (typeof v === "bigint" ? v.toString() : v))).not.toContain("Private")
     // the line can be kept (undefined) or removed (null)
-    expect(G.setGiftPage(w, "lisbon-trip", "sam", { on: false }).pots["lisbon-trip"]!.giftPage).toEqual({ on: false, line: "Thanks for helping ☕" })
-    expect(G.setGiftPage(w, "lisbon-trip", "sam", { on: true, line: null }).pots["lisbon-trip"]!.giftPage).toEqual({ on: true, line: null })
+    expect(G.setGiftPage(w, "lisbon-trip", "sam", { on: false }).pots["lisbon-trip"]!.giftPage).toEqual({ on: false, line: "Thanks for helping ☕", tone: "payment" })
+    expect(G.setGiftPage(w, "lisbon-trip", "sam", { on: true, line: null }).pots["lisbon-trip"]!.giftPage).toEqual({ on: true, line: null, tone: "payment" })
+    // "pay in": a new page is a payment page; its tone can change (absent = keep); each pay-in keeps the tone it came with
+    expect(p.tone).toBe("payment")
+    expect(G.giftsVM(w, w.pots["lisbon-trip"]!, () => ({ id: "alex", name: "Alex", initials: "A", joinIndex: null, avatar: null }), () => "h").items.map((g) => g.tone)).toEqual(["payment", "payment"])
+    const gw = G.setGiftPage(w, "lisbon-trip", "sam", { on: true, tone: "gift" })
+    expect(G.giftPageOf(gw, "lisbon-trip")!.tone).toBe("gift")
+    expect(G.setGiftPage(gw, "lisbon-trip", "sam", { on: true }).pots["lisbon-trip"]!.giftPage!.tone).toBe("gift")
+    const after = G.giveGift(gw, { slug: "lisbon-trip", linkId: null, who: "alex", amount: 300 }, NOW + 3, "g".padEnd(24, "7")).world
+    expect(after.gifts!.filter((g) => g.pot === "lisbon-trip").map((g) => g.tone)).toEqual(["payment", "payment", "gift"])
   })
 
   it("show my name only on the public page; the giver edits their own gift only", () => {

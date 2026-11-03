@@ -131,13 +131,15 @@ describe("the CSV", () => {
     expect(lines[4]).toBe("2026-11-04,Lisbon Trip,Ana,25.50,Gift,—,Received,")
     // no spends, only gifts: still a file
     expect(recordCsv([], "Leo's Birthday", URL, [{ at: NOW, amount: 5_000_000n, publicName: null }]).slice(1).split("\r\n")[1]).toBe("2026-11-01,Leo's Birthday,Gift,5.00,Gift,—,Received,")
+    // "pay in": a payment reads "Paid in"
+    expect(recordCsv([], "Lisbon Trip", URL, [{ at: NOW, amount: 25_000_000n, publicName: null, tone: "payment" }]).slice(1).split("\r\n")[1]).toBe("2026-11-01,Lisbon Trip,Paid in,25.00,Paid in,—,Received,")
   })
 })
 
 const DAYMS = 86_400_000
 
 describe("the live record's gifts (hub 1.2.0)", () => {
-  const wire = (o: Partial<GiftWire>): GiftWire => ({ ref: "g1", from: "eve.testnet", name: null, note: null, showPublic: false, amount: "10000000", at: "2026-11-02T10:00:00.000Z", status: "received", txHash: null, linkId: "l1", ...o })
+  const wire = (o: Partial<GiftWire>): GiftWire => ({ ref: "g1", from: "eve.testnet", name: null, note: null, showPublic: false, amount: "10000000", at: "2026-11-02T10:00:00.000Z", status: "received", txHash: null, linkId: "l1", tone: "gift", ...o })
   it("members: every gift's name (else the account's) and note; the CSV name only when shown publicly", () => {
     const rows = liveGiftRows(
       {
@@ -157,8 +159,8 @@ describe("the live record's gifts (hub 1.2.0)", () => {
     expect(rows[2]!.txHash).toBe(HASH)
   })
   it("visitors: only the public page's opted-in givers; nothing when there's no answer", () => {
-    const rows = liveGiftRows({ page: [{ name: "Ana", note: "Hi", amount: "5000000", at: "2026-11-02T10:00:00.000Z" }] }, () => "?")
-    expect(rows).toEqual([{ key: "page:0:2026-11-02T10:00:00.000Z", at: Date.parse("2026-11-02T10:00:00.000Z"), amount: 5_000_000n, name: "Ana", note: "Hi", publicName: "Ana" }])
+    const rows = liveGiftRows({ page: [{ name: "Ana", note: "Hi", amount: "5000000", at: "2026-11-02T10:00:00.000Z" }], tone: "payment" }, () => "?")
+    expect(rows).toEqual([{ key: "page:0:2026-11-02T10:00:00.000Z", at: Date.parse("2026-11-02T10:00:00.000Z"), amount: 5_000_000n, name: "Ana", note: "Hi", publicName: "Ana", tone: "payment" }])
     expect(liveGiftRows(null, () => "?")).toEqual([])
   })
 })

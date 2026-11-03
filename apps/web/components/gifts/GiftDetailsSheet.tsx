@@ -1,9 +1,9 @@
 "use client"
-// One gift's details for the Pot's members (?sheet=gift&gift=<ref>, opened from its feed row and from the push):
-// who sent it (the name they chose), how much, when, how (a gift link or the public page), their note (members only;
-// "Shown on the gift page" when the giver chose that), the receipt, and the one rule that matters: gifts belong to the
-// whole group. No marigold: [Done] is secondary.
-import { Gift, Quote } from "lucide-react"
+// One pay-in's details for the Pot's members (?sheet=gift&gift=<ref>, opened from its feed row and from the push):
+// who sent it (the name they chose), how much, when, how (a pay-in link or the public page), their note (members only;
+// "Shown on the public page" when they chose that), the receipt, and the one rule that matters: money from outside
+// belongs to the whole group. Titled "Alex paid in" (a payment) or "Ana sent a gift" (a gift). No marigold.
+import { ShieldCheck, Quote } from "lucide-react"
 import { Avatar } from "@/components/pot/Avatar"
 import { MoneyText } from "@/components/money/MoneyText"
 import { ReceiptLink } from "@/components/receipt/ReceiptLink"
@@ -13,11 +13,11 @@ import { t } from "@/i18n/t"
 import type { PotVM } from "@/lib/client/mock/types"
 import { formatUsd } from "@/lib/client/money"
 import { formatDate, formatTime } from "@/lib/client/time"
-import { GiftChip } from "./GiftRow"
+import { PayInChip } from "./GiftRow"
 
 export function GiftDetailsSheet({ pot, giftRef, open, onClose }: { pot: PotVM; giftRef: string | null; open: boolean; onClose: () => void }) {
   const gift = giftRef ? pot.gifts?.items.find((g) => g.ref === giftRef) : undefined
-  const title = gift ? t("gift.details.title", { name: gift.from.name }) : t("gift.sheet.title")
+  const title = !gift ? t("chip.outside") : gift.tone === "gift" ? t("gift.details.title", { name: gift.from.name }) : t("payin.details.title", { name: gift.from.name })
   const when = gift ? [formatDate(gift.at), formatTime(gift.at)].join(", ") : ""
   return (
     <Sheet
@@ -39,7 +39,7 @@ export function GiftDetailsSheet({ pot, giftRef, open, onClose }: { pot: PotVM; 
           <div className="flex items-center gap-3">
             <Avatar person={gift.from} size="md" />
             <MoneyText micro={gift.amount} sign="in" variant="title" className="text-approved" />
-            <GiftChip size="md" className="ml-auto" />
+            <PayInChip gift={gift} size="md" className="ml-auto" />
           </div>
           <dl className="flex flex-col divide-y divide-line rounded-md border border-line">
             <div className="flex min-h-12 items-center justify-between gap-3 px-3">
@@ -66,10 +66,14 @@ export function GiftDetailsSheet({ pot, giftRef, open, onClose }: { pot: PotVM; 
             </section>
           )}
           <p className="flex items-start gap-3 text-body-sm text-ink-muted">
-            <Gift aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={2} />
+            <ShieldCheck aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={2} />
             {t("gift.details.shared")}
           </p>
-          <ReceiptLink txHash={gift.txHash} what={t("gift.receipt", { amount: formatUsd(gift.amount, "whole"), potName: pot.name })} className="self-start" />
+          <ReceiptLink
+            txHash={gift.txHash}
+            what={gift.tone === "gift" ? t("gift.receipt", { amount: formatUsd(gift.amount, "whole"), potName: pot.name }) : t("give.receipt.payment", { amount: formatUsd(gift.amount, "whole"), potName: pot.name })}
+            className="self-start"
+          />
         </div>
       )}
     </Sheet>

@@ -26,7 +26,7 @@ describe("PrivacySheet", () => {
       "Who approved or declined each spend",
       "That a spend has a receipt",
       // gifts (hub 1.2.0, on in the mock build)
-      "Gifts: how much, and which account sent each one",
+      "Money paid in from outside: how much, and which account sent it",
     ])
     expect(within(pub).getByText("It's on a public ledger that anyone can read.")).toBeTruthy()
     expect(items(mem)).toEqual([
@@ -34,17 +34,17 @@ describe("PrivacySheet", () => {
       "Notes on spends and reasons for a no",
       "Comments",
       "Receipts and their items",
-      "Who a payment link is for",
+      "Who a link to send money is for",
       "Your activity",
       "Asks for more money and why",
-      "Notes on gifts (on the gift page only if the giver chose)",
+      "Notes on money paid in (on the public page only if they chose)",
     ])
     // every item has its icon (decorative), every heading too
     for (const li of d.querySelectorAll("li")) expect(li.querySelector("svg[aria-hidden='true']")).toBeTruthy()
     for (const h of d.querySelectorAll("h3")) expect(h.querySelector("svg[aria-hidden='true']")).toBeTruthy()
-    expect(d.querySelector("[data-privacy-links]")!.textContent).toBe("Anyone with an invite or payment link sees the Pot's name, who sent it and the amount.")
+    expect(d.querySelector("[data-privacy-links]")!.textContent).toBe("Anyone with an invite or a link sees the Pot's name. A link to send money also shows who sent it and the amount.")
     expect(d.querySelector("[data-privacy-gifts]")!.textContent).toBe(
-      "Gifts: amounts and who sent them are public. Notes are seen by members, and on the public gift page only if the giver chose.",
+      "Money from outside: amounts and who sent it are public. Notes are seen by members, and on the public page only if the sender chose.",
     )
     // the optional first-run survey: the Pot team only (onboarding 2026-11-02)
     expect(d.querySelector("[data-privacy-survey]")!.textContent).toBe("Your answers to \u201cHelp us make Pot better\u201d are seen only by the Pot team, never by your groups.")

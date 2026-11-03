@@ -1,23 +1,21 @@
 // @vitest-environment jsdom
 // Gifts (hub 1.2.0) over the mock data source (the showcase seed: Leo's Birthday has three gifts, its public page on,
-// an open and a $25 gift link): the members' feed row and details, the giver's pages (presets, the fixed amount, the
-// note, inline sign-in, thank-you), the public page's opted-in givers, every blocked state, ••• → Gifts and the share
-// sheet's Gift link tab.
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react"
+// an open and a $25 gift link, all from before the "pay in" tone, so they read as gifts): the members' feed row and
+// details, the giver's pages in the gift tone (presets, the fixed amount, the note, inline sign-in, thank-you), the
+// public page's opted-in givers and every blocked state. The payment tone, Ask, Ask anyone and the Settings tab's
+// "Money from outside" are in payin.test.tsx.
+import { act, cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { GiftDetailsSheet } from "@/components/gifts/GiftDetailsSheet"
 import { GiftRow } from "@/components/gifts/GiftRow"
-import { GiftsSheet } from "@/components/gifts/GiftsSheet"
 import { GiftLinkFlow, GiftPageFlow, blockedOf } from "@/components/gifts/GiveFlow"
-import { ShareSheet } from "@/components/sheets/ShareSheet"
 import { findBanned } from "@/i18n/banned.mjs"
 import { BIRTHDAY_LINKS } from "@/lib/client/mock/gifts"
 import * as store from "@/lib/client/mock/store"
 import type { GiftVM, World } from "@/lib/client/mock/types"
 import * as W from "@/lib/client/mock/world"
 
-// the share sheet reads its tab from the address (?kind=gift)
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ push: () => {} }) }))
 
 const world = (): World => JSON.parse(localStorage.getItem("pot.mock.world.v1")!) as World
@@ -37,7 +35,7 @@ afterEach(() => {
 
 describe("the members' side", () => {
   it("a feed row: the giver, 'Sent a gift ☕', a Gift chip (icon + word), a note mark, + $10.00; its name says it all", () => {
-    const g: GiftVM = { ref: "g1", from: { id: "ana", name: "Ana", initials: "A", joinIndex: null }, note: "Happy birthday", showPublic: true, amount: 10_000_000n, at: Date.now() - 60_000, linkId: null }
+    const g: GiftVM = { ref: "g1", from: { id: "ana", name: "Ana", initials: "A", joinIndex: null }, note: "Happy birthday", showPublic: true, amount: 10_000_000n, at: Date.now() - 60_000, linkId: null, tone: "gift" }
     render(
       <ul>
         <GiftRow gift={g} now={Date.now()} />
@@ -52,59 +50,23 @@ describe("the members' side", () => {
     expect(row.querySelector("[data-gift-note-mark]")).toBeTruthy()
   })
 
-  it("the details: who, when, how, the note (members), 'Shown on the gift page', the group rule; no marigold", () => {
+  it("the details: who, when, how, the note (members), 'Shown on the public page', the group rule; no marigold", () => {
     const v = pot("leos-birthday")
     const ana = v.gifts!.items.find((g) => g.from.name === "Ana")!
     render(<GiftDetailsSheet pot={v} giftRef={ana.ref} open onClose={() => {}} />)
     const d = screen.getByRole("dialog", { name: "Ana sent a gift" })
     expect(within(d).getByText("Happy birthday Leo! Coffee's on me ☕")).toBeTruthy()
-    expect(within(d).getByText("Shown on the gift page")).toBeTruthy()
-    expect(within(d).getByText("The public gift page")).toBeTruthy()
-    expect(within(d).getByText(/Gifts belong to the whole group/)).toBeTruthy()
+    expect(within(d).getByText("Shown on the public page")).toBeTruthy()
+    expect(within(d).getByText("The public page")).toBeTruthy()
+    expect(within(d).getByText(/Money from outside belongs to the whole group/)).toBeTruthy()
+    expect(d.querySelector("[data-status='gift']")!.textContent).toBe("Gift")
     expect(d.querySelector(".bg-brand")).toBeNull()
     expect(findBanned(d.textContent ?? "")).toBeNull()
   })
 
   it("an unknown gift says it isn't here", () => {
     render(<GiftDetailsSheet pot={pot("leos-birthday")} giftRef="gnope" open onClose={() => {}} />)
-    expect(screen.getByText("This gift isn't here any more.")).toBeTruthy()
-  })
-
-  it("••• → Gifts: totals, 'Taking gifts' on, the page on with its line and Share; turning gifts off reaches the world", async () => {
-    store.setSession("maya")
-    const user = userEvent.setup()
-    const { rerender } = render(<GiftsSheet pot={pot("leos-birthday")} open onClose={() => {}} />)
-    expect(screen.getByText("$40 from 3 gifts")).toBeTruthy()
-    const on = screen.getByRole("switch", { name: "Taking gifts" })
-    expect(on.getAttribute("aria-checked")).toBe("true")
-    expect(screen.getByRole("switch", { name: "Public gift page" }).getAttribute("aria-checked")).toBe("true")
-    expect((screen.getByRole("textbox", { name: "A line for the page (optional)" }) as HTMLInputElement).value).toBe("Help us throw Leo the best birthday ☕")
-    expect(screen.getByRole("button", { name: "Share gift page" })).toBeTruthy()
-    await user.click(on)
-    await waitFor(() => expect(world().pots["leos-birthday"]!.giftsOff).toBe(true), { timeout: 3_000 })
-    rerender(<GiftsSheet pot={pot("leos-birthday")} open onClose={() => {}} />)
-    expect(screen.getByRole("switch", { name: "Taking gifts" }).getAttribute("aria-checked")).toBe("false")
-    expect(screen.getByText(/won't take gifts until someone in the Pot turns this back on/)).toBeTruthy()
-  })
-
-  it("the share sheet's Gift link tab: one tap makes a link (QR + Share); it's listed; Turn off ends it", async () => {
-    store.setSession("maya")
-    const user = userEvent.setup()
-    window.history.replaceState(null, "", "/p/lisbon-trip?sheet=share&kind=gift")
-    render(<ShareSheet pot={pot("lisbon-trip")} open onClose={() => {}} />)
-    const d = screen.getByRole("dialog", { name: "Gift link for Lisbon Trip" })
-    expect(within(d).getByRole("tab", { name: "Gift link" }).getAttribute("aria-selected")).toBe("true")
-    expect(within(d).getByRole("radio", { name: "Giver chooses" }).getAttribute("aria-checked")).toBe("true")
-    await user.click(within(d).getByRole("button", { name: "Make gift link" }))
-    await waitFor(() => expect(d.querySelector("[data-gift-tab='ready']")).toBeTruthy(), { timeout: 3_000 })
-    const url = d.querySelector("[data-gift-url]")!.getAttribute("data-gift-url")!
-    expect(url).toMatch(/\/g\/lisbon-trip\/[A-Za-z0-9_-]{22}$/)
-    expect(within(d).getByRole("button", { name: "Share gift link" })).toBeTruthy()
-    const links = world().giftLinks!.filter((l) => l.pot === "lisbon-trip")
-    expect(links).toHaveLength(1)
-    expect(links[0]).toMatchObject({ amount: null, reusable: true })
-    await user.click(await within(d).findByRole("button", { name: "Turn off the Giver chooses gift link" }))
-    await waitFor(() => expect(world().giftLinks!.find((l) => l.pot === "lisbon-trip")!.revokedAt).not.toBeNull(), { timeout: 3_000 })
+    expect(screen.getByText("This isn't here any more.")).toBeTruthy()
   })
 })
 
@@ -115,11 +77,13 @@ describe("the giver's page", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Send Leo's Birthday a gift" })).toBeTruthy()
     expect(screen.getByText("2 people are in this Pot")).toBeTruthy()
     expect(screen.getByText("Leo turns 30 on Saturday 🎉")).toBeTruthy()
-    expect(screen.getByRole("radio", { name: "$5, 1 coffee" }).getAttribute("aria-checked")).toBe("true")
+    // the middle preset is picked to start with
+    expect(screen.getByRole("radio", { name: "$10, 2 coffees" }).getAttribute("aria-checked")).toBe("true")
+    await user.click(screen.getByRole("radio", { name: "$5, 1 coffee" }))
     await user.click(screen.getByRole("radio", { name: "$10, 2 coffees" }))
     expect((screen.getByRole("textbox", { name: "Your name (optional)" }) as HTMLInputElement).value).toBe("Alex")
     await user.type(screen.getByRole("textbox", { name: "Note (optional)" }), "Cake money!")
-    expect(screen.getByText("Giving as Alex")).toBeTruthy()
+    expect(screen.getByText("Signed in as Alex")).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Send $10 ☕" }))
     expect(await screen.findByRole("heading", { name: "Thank you!" }, { timeout: 3_000 })).toBeTruthy()
     expect(screen.getByText("$10 is on its way to Leo's Birthday.")).toBeTruthy()
@@ -129,16 +93,16 @@ describe("the giver's page", () => {
     expect(g).toMatchObject({ pot: "leos-birthday", from: "alex", name: "Alex", note: "Cake money!", amount: 1_000, linkId: BIRTHDAY_LINKS.open, showPublic: false })
   })
 
-  it("another amount: prefilled $5, at least $1", async () => {
+  it("another amount: prefilled with the middle preset ($10), at least $1", async () => {
     const user = userEvent.setup()
     render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />)
     await user.click(await screen.findByRole("radio", { name: "Other amount" }))
-    const input = screen.getByRole("textbox", { name: "Gift amount in dollars" }) as HTMLInputElement
-    expect(input.value).toBe("5")
+    const input = screen.getByRole("textbox", { name: "Amount in dollars" }) as HTMLInputElement
+    expect(input.value).toBe("10")
     await user.clear(input)
     await user.type(input, "0.5")
     expect((screen.getByRole("button", { name: /Send/ }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText("The smallest gift is $1.")).toBeTruthy()
+    expect(screen.getByText("The smallest amount is $1.")).toBeTruthy()
     await user.clear(input)
     await user.type(input, "7.50")
     expect((screen.getByRole("button", { name: "Send $7.50 ☕" }) as HTMLButtonElement).disabled).toBe(false)
@@ -155,14 +119,14 @@ describe("the giver's page", () => {
     store.setSession(null)
     const user = userEvent.setup()
     render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />)
-    await user.click(await screen.findByRole("button", { name: "Send $5 ☕" }))
-    expect(screen.getByRole("heading", { name: "Sign in to send your $5 gift" })).toBeTruthy()
+    await user.click(await screen.findByRole("button", { name: "Send $10 ☕" }))
+    expect(screen.getByRole("heading", { name: "Sign in to send your $10 gift" })).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Continue with Google" }))
     expect(await screen.findByRole("heading", { name: "Thank you!" }, { timeout: 6_000 })).toBeTruthy()
-    expect(world().gifts!.at(-1)).toMatchObject({ from: "alex", amount: 500 })
+    expect(world().gifts!.at(-1)).toMatchObject({ from: "alex", amount: 1_000, tone: "gift" })
   }, 10_000)
 
-  it("the public page: totals and only the givers who chose to be shown; 'show my name and note' is offered", async () => {
+  it("the public page: totals and only the givers who chose to be shown; 'Show my name on this page' is offered", async () => {
     render(<GiftPageFlow slug="leos-birthday" initial={null} />)
     expect(await screen.findByText("$40 from 3 gifts so far")).toBeTruthy()
     expect(screen.getByText("Help us throw Leo the best birthday ☕")).toBeTruthy()
@@ -170,13 +134,14 @@ describe("the giver's page", () => {
     expect(within(givers).getAllByRole("listitem").map((li) => li.getAttribute("data-give-giver"))).toEqual(["Ana"])
     expect(document.body.textContent).not.toContain("Tomás")
     expect(document.body.textContent).not.toContain("For the cake")
-    expect(screen.getByRole("switch", { name: "Show my name and note on this page" }).getAttribute("aria-checked")).toBe("false")
+    expect(screen.getByText("— from the group")).toBeTruthy()
+    expect(screen.getByRole("switch", { name: "Show my name on this page" }).getAttribute("aria-checked")).toBe("false")
   })
 
   it("every state that stops a gift has its own screen", async () => {
     // the public page is off until a member turns it on
     const { unmount } = render(<GiftPageFlow slug="lisbon-trip" initial={null} />)
-    expect(await screen.findByRole("heading", { name: "This gift page isn't open" })).toBeTruthy()
+    expect(await screen.findByRole("heading", { name: "This page isn't open" })).toBeTruthy()
     unmount()
     // gifts off
     store.setSession("maya")
@@ -188,9 +153,9 @@ describe("the giver's page", () => {
     r2.unmount()
     // an unknown link
     render(<GiftLinkFlow slug="leos-birthday" id={"z".repeat(22)} initial={null} />)
-    expect(await screen.findByRole("heading", { name: "This gift link doesn't exist" })).toBeTruthy()
+    expect(await screen.findByRole("heading", { name: "This link doesn't exist" })).toBeTruthy()
     // the pure rule
-    expect(blockedOf({ id: "x", amount: null, note: null, status: "revoked", expiresAt: 0 }, "yes")).toBe("revoked")
+    expect(blockedOf({ id: "x", amount: null, note: null, status: "revoked", expiresAt: 0, tone: "gift" }, "yes")).toBe("revoked")
     expect(blockedOf(null, "goal", true)).toBe("goal")
     expect(blockedOf(null, "yes", false)).toBe("page_off")
     expect(blockedOf(null, "yes", true)).toBeNull()

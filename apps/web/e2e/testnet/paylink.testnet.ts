@@ -115,7 +115,7 @@ test("Ana pays someone else $40 by link: the hub's escrow holds it", async () =>
   expect(link).toMatchObject({ requester: accA, amount: usd(40), status: "funded", claimable: true })
   expect(await potBalance(slug)).toBe(usd(110))
   // the secret never reached a server: the claim page's server render can't know it
-  await expect(A.locator("[data-feed] li", { hasText: "payment link" }).first()).toContainText("Link sent · waiting to be claimed", { timeout: 30_000 })
+  await expect(A.locator("[data-feed] li", { hasText: "by link" }).first()).toContainText("Link sent · waiting to be claimed", { timeout: 30_000 })
 })
 
 test("Cleo (0 NEAR, not in the Pot) claims it with her wallet: '$40 is yours'", async () => {
@@ -148,7 +148,7 @@ test("Cleo (0 NEAR, not in the Pot) claims it with her wallet: '$40 is yours'", 
 
   // Ana's feed: claimed
   await A.goto(`/p/${slug}`)
-  await expect(A.locator("[data-feed] li", { hasText: "payment link" }).first()).toContainText(/Claimed by /, { timeout: 60_000 })
+  await expect(A.locator("[data-feed] li", { hasText: "by link" }).first()).toContainText(/Claimed by /, { timeout: 60_000 })
 })
 
 test("Ana cancels a $25 link: the money is back in the Pot; the claim page says so", async () => {

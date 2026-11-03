@@ -3,13 +3,12 @@
 // Members: words, not signs ("Gets back $150.00"); no red or green for people, because nobody owes anybody.
 //   "Gets back" is exactly what a close would pay now: hub preview_close at the live balance (testnet), the sdk
 //   prorata twin (mock). "How it's worked out" explains the math in words.
-// Rules: GoHenry's "value + meaning" rows; the per-person meter is ink on surface-sunken (never marigold,
-// which would read as a goal bar). [Ask the group to change a rule] (secondary: the hero's Add money stays the
-// one marigold) opens the change sheet; while a change waits (≤ 1 per Pot, ERR_RULES_PENDING) a waiting card with
-// [Review] replaces it. A sole member changes the rules directly (set_rules).
+// Rules (the first section of the Settings tab, components/pot/SettingsTab.tsx): GoHenry's "value + meaning" rows; the
+// per-person meter is ink on surface-sunken (never marigold, which would read as a goal bar). [Ask the group to change
+// a rule] (secondary: the hero's Add money stays the one marigold) opens the change sheet; while a change waits (≤ 1 per
+// Pot, ERR_RULES_PENDING) a waiting card with [Review] replaces it. A sole member changes the rules directly (set_rules).
 import { HUB_LIMITS } from "@pot/sdk"
-import { ArrowUpRight, ChevronRight, Clock, Flag, Globe, Hand, Hourglass, Link2, ListChecks, ShieldCheck, Sprout, Undo2, UserCheck, UserRound, Users, UsersRound, Zap } from "lucide-react"
-import Link from "next/link"
+import { Clock, Flag, Hand, Hourglass, Link2, ShieldCheck, Sprout, Undo2, UserCheck, UserRound, Users, UsersRound, Zap } from "lucide-react"
 import { MyTrustCard, TrustBadge, trustWord } from "@/components/wave4/Trust"
 import { formatDate } from "@/lib/client/time"
 import { useState, type ReactNode } from "react"
@@ -18,8 +17,6 @@ import { MoneyText } from "@/components/money/MoneyText"
 import { inWords } from "@/components/pot/Feed"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { Sheet } from "@/components/sheets/Sheet"
-import { daoOf } from "@/lib/client/config"
-import { explorerAccountUrl } from "@/lib/client/explorer"
 import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
 import { formatUsd } from "@/lib/client/money"
@@ -170,7 +167,8 @@ export function extrasSentences(pot: Pick<PotVM, "rules" | "extras" | "goalDetai
   }
 }
 
-export function RulesTab({ pot }: { pot: PotVM }) {
+/** The Pot's rules as sentences, the footnotes and "Changing the rules" (Settings → Rules · the group decides). */
+export function RulesSection({ pot }: { pot: PotVM }) {
   const used = pot.me?.spentInstant ?? 0n
   const budget = pot.rules.memberBudget
   const pct = budget > 0n ? Math.min(100, Number((used * 100n) / budget)) : 0
@@ -194,10 +192,7 @@ export function RulesTab({ pot }: { pot: PotVM }) {
     { icon: Link2, text: extra.links },
   ]
   return (
-    <section aria-labelledby="rules-h" className="flex flex-col gap-4">
-      <h2 id="rules-h" className="font-display text-heading text-ink">
-        {t("rules.title", { potName: pot.name })}
-      </h2>
+    <div className="flex flex-col gap-4">
       {/* hub 1.1.0: what I can spend without asking, and how it grows */}
       {pot.me?.trust?.enabled && <MyTrustCard trust={pot.me.trust} />}
       <ul className="flex flex-col gap-2" data-rules-list>
@@ -234,38 +229,9 @@ export function RulesTab({ pot }: { pot: PotVM }) {
         </p>
       </div>
       <RulesChange pot={pot} />
-      {/* quiet rows, one look: the public record of every spend (hub 1.1.0; also in ••• More) and the Pot's own
-          account on the explorer. Ink, never the link gold or marigold. */}
-      <nav aria-label={t("rules.more.label")}>
-        <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-md bg-surface" data-rules-more>
-          <li>
-            <Link href={`/p/${pot.slug}/record`} className={MORE_ROW} data-record-link>
-              <ListChecks aria-hidden className="size-5 shrink-0" strokeWidth={2} />
-              <span className="min-w-0 flex-1">{t("rules.record")}</span>
-              <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" strokeWidth={2} />
-            </Link>
-          </li>
-          <li>
-            <a
-              href={explorerAccountUrl(daoOf(pot.slug))}
-              target="_blank"
-              rel="noopener"
-              aria-label={t("pot.explorer.label", { potName: pot.name })}
-              className={MORE_ROW}
-              data-explorer-account
-            >
-              <Globe aria-hidden className="size-5 shrink-0" strokeWidth={2} />
-              <span className="min-w-0 flex-1">{t("pot.explorer")}</span>
-              <ArrowUpRight aria-hidden className="size-5 shrink-0 text-ink-muted" strokeWidth={2} />
-            </a>
-          </li>
-        </ul>
-      </nav>
-    </section>
+    </div>
   )
 }
-
-const MORE_ROW = "flex min-h-13 items-center gap-3 px-4 py-3 text-body text-ink transition-colors duration-120 hover:bg-surface-sunken"
 
 /** One card: "Changing the rules", what it takes, and the one way in (or the change that's waiting). */
 function RulesChange({ pot }: { pot: PotVM }) {

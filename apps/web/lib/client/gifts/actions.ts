@@ -7,6 +7,7 @@
 import { newOpKey, type Micro } from "@pot/sdk"
 import type { MessageKey } from "@/i18n/t"
 import type { GiftLinkWire, GiftStartWire, GiftPageWire } from "@/lib/gifts-api"
+import type { PayInTone } from "@/lib/gifts"
 import { daoOf, IS_LIVE } from "../config"
 import { ActionError, isTransportError } from "../errors"
 import { api } from "../live/api"
@@ -29,15 +30,19 @@ export interface GiftLinkInput {
   note?: string | null
   /** default true */
   reusable?: boolean
+  /** "What's it for?" (default: a payment) */
+  tone?: PayInTone
 }
 
-/** A member makes a gift link; resolves with its id. */
+/** A member makes a pay-in link (internally a gift link); resolves with its id. */
 export async function createGiftLink(slug: string, input: GiftLinkInput): Promise<string> {
-  if (!IS_LIVE) return store.createGiftLink(slug, { amount: input.amount === null ? null : toCents(input.amount), note: input.note ?? null, reusable: input.reusable ?? true })
+  const tone = input.tone ?? "payment"
+  if (!IS_LIVE) return store.createGiftLink(slug, { amount: input.amount === null ? null : toCents(input.amount), note: input.note ?? null, reusable: input.reusable ?? true, tone })
   const r = await api<{ link: GiftLinkWire }>("POST", `/api/pots/${slug}/gift-links`, {
     amount: input.amount === null ? null : input.amount.toString(),
     note: input.note ?? null,
     reusable: input.reusable ?? true,
+    tone,
     idempotencyKey: newOpKey(),
   })
   refresh(giftKeys.links(slug))
@@ -50,15 +55,15 @@ export async function revokeGiftLink(slug: string, id: string): Promise<void> {
   refresh(giftKeys.links(slug))
 }
 
-/** ••• → Gifts → on/off (any member; the hub's set_gifts). */
+/** Settings → "Taking money from outside" on/off (any member, right away; the hub's set_gifts). */
 export async function setGiftsOn(slug: string, on: boolean): Promise<void> {
   if (!IS_LIVE) return store.setGiftsOn(slug, on)
   await setGiftsOnChain(daoOf(slug), on)
   refresh(giftKeys.pot(slug))
 }
 
-/** ••• → Gifts → the public gift page (on/off) and the members' one-liner (`line` undefined = keep). */
-export async function setGiftPage(slug: string, input: { on: boolean; line?: string | null }): Promise<void> {
+/** Settings → Public page: on/off, the members' one-liner and the page's tone (undefined = keep). */
+export async function setGiftPage(slug: string, input: { on: boolean; line?: string | null; tone?: PayInTone }): Promise<void> {
   if (!IS_LIVE) return store.setGiftPage(slug, input)
   await api<{ page: GiftPageWire }>("PUT", `/api/pots/${slug}/gift-page`, input)
   refresh(giftKeys.pot(slug))

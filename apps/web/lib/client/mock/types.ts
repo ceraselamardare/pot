@@ -4,6 +4,7 @@ import type { Micro } from "../money"
 import type { Rules } from "../rules"
 import type { AvatarId } from "@/lib/avatars"
 import type { SavedReceipt } from "@/lib/receipt-saved"
+import type { PayInTone } from "@/lib/gifts"
 
 export type Category = "groceries" | "food" | "transport" | "stay" | "tickets" | "other"
 export type Vote = "Approve" | "Reject"
@@ -163,7 +164,7 @@ export interface PotRec {
   /** gifts (hub 1.2.0 `set_gifts`): a member turned them off; absent/false = taking gifts (on for every Pot) */
   giftsOff?: boolean
   /** the public gift page (/give/<slug>; our server's gift_page): off until a member turns it on */
-  giftPage?: { on: boolean; line: string | null }
+  giftPage?: { on: boolean; line: string | null; /** absent = from before the tone (a gift) */ tone?: PayInTone }
 }
 
 /** A gift someone sent the Pot (the hub's gift_received + our `gift` row: the giver's name and note). */
@@ -186,6 +187,8 @@ export interface GiftRec {
   linkId: string | null
   /** where the giver's money came from ("pot_dollars" = their own Pot dollars; absent = demo dollars) */
   source?: "pot_dollars"
+  /** the pay-in's tone when it was sent (its link's or the page's); absent = from before the tone (a gift) */
+  tone?: PayInTone
 }
 
 /** A gift link (our server's gift_link): a QR / link a member shares so people outside the Pot can send a gift. */
@@ -197,6 +200,8 @@ export interface GiftLinkRec {
   /** cents; null = the giver chooses */
   amount: number | null
   note?: string | null
+  /** "What's it for?": a payment (default) or a gift; absent = from before the tone (a gift) */
+  tone?: PayInTone
   reusable: boolean
   uses: number
   expiresAt: number
@@ -439,13 +444,15 @@ export interface GiftVM {
   at: number
   /** the gift link it came through (null = the public page) */
   linkId: string | null
+  /** a plain payment in, or a gift (its words in the feed) */
+  tone: PayInTone
   txHash?: string
 }
 
 /** A Pot's gifts: on/off, the public page, what came in. */
 export interface GiftsVM {
   on: boolean
-  page: { on: boolean; line: string | null }
+  page: { on: boolean; line: string | null; tone: PayInTone }
   total: Micro
   count: number
   /** members only: every gift, newest first */

@@ -59,6 +59,7 @@ export async function createGiftLink(
   const amount = linkAmount(body.amount)
   const note = textOrBad("note", body.note, GIFT_NOTE_MAX)
   const reusable = body.reusable ?? true
+  const tone = body.tone ?? "payment"
   const me = s.user.nearAccount
   const key = body.idempotencyKey ?? null
   const now = nowOf(deps)
@@ -66,7 +67,7 @@ export async function createGiftLink(
   const byKey = async () =>
     key ? (await db.select().from(giftLink).where(and(eq(giftLink.createdBy, me), eq(giftLink.clientKey, key))).limit(1))[0] : undefined
   const replay = (r: typeof giftLink.$inferSelect) => {
-    if (r.potId !== potRow.daoId || r.amount !== amount || r.note !== note || r.reusable !== reusable) throw new ApiError("idempotency_conflict")
+    if (r.potId !== potRow.daoId || r.amount !== amount || r.note !== note || r.reusable !== reusable || r.tone !== tone) throw new ApiError("idempotency_conflict")
     return { link: linkShape(r, potRow.slug, now), replayed: true as const, status: 200 }
   }
   const prior = await byKey()
@@ -82,7 +83,7 @@ export async function createGiftLink(
   ])
   const [row] = await db
     .insert(giftLink)
-    .values({ id: newGiftLinkId(), potId: potRow.daoId, createdBy: me, amount, note, reusable, expiresAt: new Date(now + GIFT_LINK_TTL_MS), clientKey: key })
+    .values({ id: newGiftLinkId(), potId: potRow.daoId, createdBy: me, amount, note, tone, reusable, expiresAt: new Date(now + GIFT_LINK_TTL_MS), clientKey: key })
     .onConflictDoNothing()
     .returning()
   if (!row) {
@@ -147,7 +148,7 @@ export async function listPotGifts(deps: GiftDeps, s: SessionCtx, potParam: stri
   return { gifts: rows.map(giftShape), totals, page }
 }
 
-/** Turn the public page on/off; `line` absent = keep, null/"" = remove, else cleaned (≤ 100). */
+/** Turn the public page on/off; `line` absent = keep, null/"" = remove, else cleaned (≤ 100); `tone` absent = keep. */
 export async function putGiftPage(deps: GiftDeps, s: SessionCtx, potParam: string, body: GiftPagePutBody): Promise<{ page: GiftPageWire }> {
   const potRow = await memberPot(deps, s, potParam)
   const line = body.line === undefined ? undefined : textOrBad("line", body.line, GIFT_LINE_MAX)
@@ -156,7 +157,7 @@ export async function putGiftPage(deps: GiftDeps, s: SessionCtx, potParam: strin
     if (info && info.status !== "open") throw new ApiError("pot_closed")
   }
   await chargeGiftQuotas(deps.db, [{ subject: `user:${s.user.id}`, action: "gift_page", amount: 1n, limit: giftLimit("gifts_user_page", deps.cfg) }])
-  const set = { on: body.on, ...(line !== undefined ? { line } : {}), updatedBy: s.user.nearAccount, updatedAt: new Date(nowOf(deps)) }
+  const set = { on: body.on, ...(line !== undefined ? { line } : {}), ...(body.tone ? { tone: body.tone } : {}), updatedBy: s.user.nearAccount, updatedAt: new Date(nowOf(deps)) }
   await deps.db
     .insert(giftPage)
     .values({ potId: potRow.daoId, line: line ?? null, ...set })

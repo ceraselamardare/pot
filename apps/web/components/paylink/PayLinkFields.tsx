@@ -1,8 +1,8 @@
 "use client"
-// The Spend sheet's "Someone else" choice (pay by link, hub 1.1.0): how it works in one line, and an optional "Who's it
-// for?" label that only the Pot's members see (kept off-chain with the request, like a note). When the Pot's rules
-// don't allow links yet, one calm line says so and [Change the rules] swaps to the rules sheet with the
-// "Pay people outside the Pot" switch in view (?sheet=rules&rule=links).
+// The Spend sheet's "Someone else" choice ("Send by link", hub 1.1.0): how it works in one line, and an optional "Who's
+// it for?" label that only the Pot's members see (kept off-chain with the request, like a note). When the Pot's rules
+// don't allow it yet, one calm line says so and [Change the rules] swaps to the rules sheet with the "Send by link"
+// switch in view (?sheet=rules&rule=links).
 import { Link2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
@@ -60,13 +60,13 @@ export function PayLinkFields({ pot, label, onLabel }: { pot: PotVM; label: stri
   )
 }
 
-/** The Spend sheet's result once the link holds the money: "Your payment link is ready" + the Share card. */
+/** The Spend sheet's result once the link holds the money: "Your link to send $30 is ready" + the Share card. */
 export function LinkReady({ s, statusRef }: { s: LinkShareState; statusRef?: React.Ref<HTMLParagraphElement> }) {
   const who = s.label ?? t("paylink.ready.who")
   return (
     <div className="flex flex-col gap-3" data-paylink-ready>
       <p ref={statusRef} tabIndex={-1} className="font-display text-heading text-ink outline-none">
-        {t("paylink.ready.title")}
+        {t("paylink.ready.title", { amount: formatUsd(s.amount, "whole") })}
       </p>
       <p className="-mt-2 text-body-sm text-ink-muted">{t("paylink.ready.body", { who, amount: formatUsd(s.amount, "whole") })}</p>
       <LinkShareBody s={s} />

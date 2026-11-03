@@ -166,7 +166,7 @@ function render(
   names: Map<string, string>,
   potName: string,
   slug: string,
-  extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string; giftName?: string },
+  extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string; giftName?: string; giftTone?: "payment" | "gift" },
 ): Rendered {
   const name = (a: string) => names.get(a) ?? t("person.fallback")
   switch (ev.type) {
@@ -265,10 +265,12 @@ function render(
     }
     case "gift_received": {
       // lock-screen safe: the giver's chosen name (else their Pot name, else "Someone") and the amount; never the note
+      // "pay in": a payment ("Ana paid $25 into Lisbon Trip") unless its link or page was a gift (a raw ref: a payment)
       const who = extra.giftName ?? names.get(ev.from) ?? t("notif.gift.someone")
+      const gift = extra.giftTone === "gift"
       return {
-        title: t("notif.gift.title", { name: who, potName }),
-        body: t("notif.gift.body", { amount: money(ev.amount) }),
+        title: gift ? t("notif.gift.title", { name: who, potName }) : t("notif.payin.title", { name: who, amount: money(ev.amount), potName }),
+        body: gift ? t("notif.gift.body", { amount: money(ev.amount) }) : t("notif.payin.body"),
         path: `/p/${slug}?sheet=gift&gift=${encodeURIComponent(ev.ref)}`,
         push: { ttl: DAY, urgency: "normal", topic: topic(ev.pot, `gift:${ev.ref}`) },
         data: { pot: ev.pot, subject: "gift", ref: ev.ref },
@@ -366,7 +368,7 @@ export async function notify(deps: NotifyDeps, ev: NotifyEvent): Promise<NotifyR
   const pv = potRow ? null : await hub.getPot(ev.pot).catch(() => null)
   const slug = potRow?.slug ?? pv?.slug ?? ev.pot.split(".")[0]!
   const potName = potRow?.name ?? pv?.name ?? slug
-  const extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string; giftName?: string } = {}
+  const extra: { approvers?: string[]; expiresInSec?: number; trustCap?: string; goal?: string; giftName?: string; giftTone?: "payment" | "gift" } = {}
   // hub 1.1.0: the new instant limit = the Pot's instant limit × (1 + level)
   if (ev.type === "trust_up") {
     const cap = (pv ?? (await hub.getPot(ev.pot).catch(() => null)))?.rules?.instant_cap
@@ -385,8 +387,9 @@ export async function notify(deps: NotifyDeps, ev: NotifyEvent): Promise<NotifyR
   if (ev.type === "link_returned") nameAccounts.add(ev.by)
   // gifts: only a gift our server started (its ref, Pot and sender match) is named; a raw ref is "Someone"
   if (ev.type === "gift_received") {
-    const g = (await db.select({ n: gift.displayName, a: gift.giverAccount }).from(gift).where(and(eq(gift.ref, ev.ref), eq(gift.potId, ev.pot))).limit(1))[0]
+    const g = (await db.select({ n: gift.displayName, a: gift.giverAccount, tone: gift.tone }).from(gift).where(and(eq(gift.ref, ev.ref), eq(gift.potId, ev.pot))).limit(1))[0]
     if (g && g.a === ev.from) {
+      extra.giftTone = g.tone
       if (g.n) extra.giftName = g.n
       else nameAccounts.add(ev.from)
     }

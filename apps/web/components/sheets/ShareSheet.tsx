@@ -5,8 +5,8 @@
 // body (the raw link is never shown: Copy and Share carry it), so it never needs a scroll on a phone. It stays dark on
 // a white plate in Night too, because scanners fail on inverted codes. "Link copied" swaps in place (that swap is the
 // announcement; no extra toast).
-// Gifts (hub 1.2.0, behind the gifts flag): two tabs, Invite | Gift link (components/gifts/GiftLinkPanel.tsx);
-// `?sheet=share&kind=gift` opens on the gift tab (••• → Gifts → Make a gift link).
+// Invites only ("pay in", 2026-11-03): pay-in links for people outside the Pot are made in Ask anyone
+// (components/payin/PayInSheet.tsx), never here.
 import { Check, Clock, Copy, Share2 } from "lucide-react"
 import { useState, useSyncExternalStore } from "react"
 import { toast } from "sonner"
@@ -18,12 +18,6 @@ import { generateInvite, inviteLink } from "@/lib/client/invite"
 import { rotateInvite } from "@/lib/client/actions"
 import type { PotVM } from "@/lib/client/mock/types"
 import { formatDate } from "@/lib/client/time"
-import { TabList } from "@/components/pot/Controls"
-import { useGiftLinkTab } from "@/components/gifts/GiftLinkPanel"
-import { GIFTS_ON } from "@/lib/client/gifts/flag"
-import { useSheetParams } from "@/lib/client/sheet"
-
-type ShareTab = "invite" | "gift"
 
 const subscribeNoop = () => () => {}
 function useOrigin() {
@@ -38,16 +32,6 @@ export function ShareSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
   const invite = pot.invite
   const link = origin && invite ? inviteLink(origin, pot.slug, invite) : ""
   const message = t("share.message", { potName: pot.name, link })
-  const { params } = useSheetParams()
-  const [tab, setTab] = useState<ShareTab>("invite")
-  // each opening starts on the tab the link asks for (default: Invite): adjusted while rendering, not in an effect
-  const [wasOpen, setWasOpen] = useState(false)
-  if (open !== wasOpen) {
-    setWasOpen(open)
-    if (open) setTab(GIFTS_ON && params.get("kind") === "gift" ? "gift" : "invite")
-  }
-  const gift = useGiftLinkTab(pot, open && GIFTS_ON)
-  const onGift = GIFTS_ON && tab === "gift"
 
   const copy = async () => {
     try {
@@ -89,11 +73,8 @@ export function ShareSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
     <Sheet
       open={open}
       onClose={close}
-      title={onGift ? t("gift.link.title", { potName: pot.name }) : t("share.title", { potName: pot.name })}
+      title={t("share.title", { potName: pot.name })}
       footer={
-        onGift ? (
-          gift.footer
-        ) : (
         <div className="flex flex-col gap-2">
           <Button variant="primary" className="w-full" onClick={share} disabled={!link}>
             <Share2 aria-hidden strokeWidth={2.25} />
@@ -104,28 +85,9 @@ export function ShareSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
             {copied ? t("share.copied") : t("share.cta.copy")}
           </Button>
         </div>
-        )
       }
     >
-      {GIFTS_ON && (
-        <TabList<ShareTab>
-          idBase="share"
-          label={t("share.tabs.label")}
-          value={tab}
-          onChange={setTab}
-          className="mb-4"
-          tabs={[
-            { value: "invite", label: t("share.tabs.invite") },
-            { value: "gift", label: t("share.tabs.gift") },
-          ]}
-        />
-      )}
-      {onGift ? (
-        <div role="tabpanel" id="share-panel-gift" aria-labelledby="share-tab-gift">
-          {gift.body}
-        </div>
-      ) : (
-      <div className="flex flex-col items-center gap-3 pt-1 text-center" data-qr-view {...(GIFTS_ON ? { role: "tabpanel", id: "share-panel-invite", "aria-labelledby": "share-tab-invite" } : {})}>
+      <div className="flex flex-col items-center gap-3 pt-1 text-center" data-qr-view>
         {link ? <QrPlate link={link} alt={t("share.qr.alt", { potName: pot.name })} hint={t("share.qr.hint")} dataAttr="data-invite-link" /> : null}
         {invite ? (
           <p className="flex items-start gap-2 text-left text-body-sm text-ink-muted">
@@ -164,7 +126,6 @@ export function ShareSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
           </button>
         )}
       </div>
-      )}
     </Sheet>
   )
 }

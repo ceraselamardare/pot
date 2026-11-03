@@ -7,7 +7,7 @@
 // opens its details); on a member's sheet a row about a spend is a button that opens the spend's details. Rows
 // with no details sheet (money in, a refund, a join) keep their quiet "Receipt ↗" when a real transaction is
 // behind them: inline when the row isn't a control, else beside the row's link over space the row keeps for it.
-import { DoorClosed, Gift, Hand, HandCoins, PartyPopper, Scale, Undo2, UserPlus, X, Check, type LucideIcon } from "lucide-react"
+import { ArrowDownLeft, DoorClosed, Gift, Hand, HandCoins, PartyPopper, Scale, Undo2, UserPlus, X, Check, type LucideIcon } from "lucide-react"
 import { Fragment } from "react"
 import { MoneyText } from "@/components/money/MoneyText"
 import { CompactRow, LeadTile, PlusIcon, REASON_ICON, ReceiptMark, rowLabel, rowWhen, RowTitle, chipGround, type RowGround } from "@/components/pot/CompactRow"
@@ -40,7 +40,7 @@ function kindIcon(i: ActivityItemVM): LucideIcon {
     case "voted":
       return i.vote === "Reject" ? X : Check
     case "gift":
-      return Gift
+      return i.tone === "gift" ? Gift : ArrowDownLeft
     case "topup":
       return HandCoins
   }

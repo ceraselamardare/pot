@@ -15,7 +15,7 @@
 //     POST   /api/gifts                            GiftStartReq → 201 { gift: GiftStartWire }   (replay 200)
 //     PATCH  /api/gifts/[ref]                      GiftPatchReq → { gift: MyGiftWire }
 //     GET    /api/me/gifts                         → { gifts: MyGiftWire[] }
-import type { GiftLinkStatus, GiftTaking } from "./gifts"
+import type { GiftLinkStatus, GiftTaking, PayInTone } from "./gifts"
 
 export interface GiftLinkWire {
   id: string
@@ -26,6 +26,8 @@ export interface GiftLinkWire {
   /** null = the giver chooses */
   amount: string | null
   note: string | null
+  /** "What's it for?": "payment" (default) or "gift" (the words and presets on the page) */
+  tone: PayInTone
   /** true (default) = many people can use it; false = one gift, then it's used */
   reusable: boolean
   uses: number
@@ -41,6 +43,8 @@ export interface GiftLinkCreateReq {
   note?: string | null
   /** default true */
   reusable?: boolean
+  /** default "payment" */
+  tone?: PayInTone
   /** a retried create returns the same link */
   idempotencyKey?: string
 }
@@ -59,7 +63,7 @@ export interface GiftPotWire {
 export interface GiftLandingRes {
   ok: true
   requestId?: string
-  link: { id: string; amount: string | null; note: string | null; status: GiftLinkStatus; expiresAt: string }
+  link: { id: string; amount: string | null; note: string | null; status: GiftLinkStatus; expiresAt: string; tone: PayInTone }
   pot: GiftPotWire
   taking: GiftTaking
 }
@@ -68,12 +72,16 @@ export interface GiftPageWire {
   on: boolean
   /** the members' optional one-liner shown on the page */
   line: string | null
+  /** the page's words: "payment" (default for a new page) or "gift" */
+  tone: PayInTone
 }
 
 export interface GiftPagePutReq {
   on: boolean
   /** absent = keep; null or "" = remove */
   line?: string | null
+  /** absent = keep */
+  tone?: PayInTone
 }
 
 /** A gift on the public page: only givers who chose to be shown (their name, and their note if they wrote one). */
@@ -116,6 +124,8 @@ export interface GiftWire {
   txHash: string | null
   /** the gift link it came through (null = the public page) */
   linkId: string | null
+  /** its link's (or the page's) tone when it was sent */
+  tone: PayInTone
 }
 
 export interface GiftsRes {
@@ -169,6 +179,7 @@ export interface MyGiftWire {
   status: "pending" | "received" | "failed"
   at: string
   txHash: string | null
+  tone: PayInTone
 }
 
 /**
