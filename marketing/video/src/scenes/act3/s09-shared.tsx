@@ -40,23 +40,21 @@ const r = (x: number, y: number, w: number, h: number): R => ({ x, y, w, h });
 export const mid = (q: R) => ({ x: q.x + q.w / 2, y: q.y + q.h / 2 });
 
 export const UI = {
-  // PotScreen (no demo banner, scrollY 0)
-  potHero: r(16, 122, 358, 250.38),
+  // PotScreen (app of Nov 3: round actions, compact feed, tab bar with your Pot dollars), scrollY 0
+  potHero: r(16, 122, 358, 302.38),
   potBalance: r(32, 158, 156.16, 54),
-  potSpendBtn: r(199, 304.38, 159, 52),
-  /** First feed row under "Today" (the boat row: pending and approved have the same rect). */
-  feedTopRow: r(16, 484.38, 358, 130),
-  /** The status chip inside that row ("1 of 2 approvals" / "✓ Approved"): same left edge and y. */
-  feedTopChipApproved: r(72, 574.38, 100.84, 28),
-  feedTopChipPending: r(72, 574.38, 140.81, 28),
-  // SpendSheet, form (amount / vote steps)
-  formAmount: r(146.84, 229, 96.28, 48),
-  formPreview: r(16, 293, 358, 66),
-  formChipGroceries: r(16, 403, 141.91, 48),
-  /** Tickets chip once the chip row is scrolled to it (chipsScrollX 236). */
-  formChipTickets: r(223.91, 403, 124.72, 48),
-  formNote: r(12, 471, 166, 44),
-  formCta: r(16, 486, 358, 52),
+  /** The round Spend action (56 px circle); its label sits under it. */
+  potActionSpend: r(125.75, 326.38, 56, 56),
+  /** The first compact row under "Today" (feedAfterGroceries: the groceries row; feedAfterBoat: the boat row). */
+  feedFirstRow: r(16, 536.38, 358, 70.97),
+  /** The status chip in that row: "✓ One OK" (feedAfterBoat). */
+  feedFirstChipOneOk: r(80, 572.69, 81.94, 24),
+  /** The tab bar's third tab ("$84.00", your Pot dollars). */
+  tabBalance: r(260, 754, 130, 56),
+  // SpendSheet step "howMuch": amount, decision line (✓ / ✋ + ⓘ), [Next], keypad
+  howAmount: r(146.84, 280, 96.28, 48),
+  howDecision: r(16, 404, 358, 52),
+  howNext: r(16, 486, 358, 52),
   key: {
     "1": r(16, 550, 114, 56),
     "2": r(138, 550, 114, 56),
@@ -69,25 +67,36 @@ export const UI = {
     "9": r(260, 678, 114, 56),
     "0": r(138, 742, 114, 56),
   } as Record<string, R>,
+  // SpendSheet step "details" (decision closed): chips, Who gets paid, the note, footer (decision, ask, Back)
+  detTitle: r(16, 274, 314, 24),
+  detChipGroceries: r(16, 388, 141.91, 48),
+  /** Tickets once the chip row is scrolled to it (chipsScrollX 245). */
+  detChipTickets: r(214.91, 388, 124.72, 48),
+  detPayeeMe: r(20, 488, 116.66, 44),
+  detNote: r(12, 552, 166, 44),
+  detDecision: r(16, 626, 358, 52),
+  detCta: r(16, 690, 358, 52),
+  /** The same with the decision's ⓘ panel open (the sheet grows 98 px upward). */
+  detOpenTitle: r(16, 176, 314, 24),
+  detOpenDecision: r(16, 528, 358, 150),
   // SpendSheet results
   checkingResult: r(16, 663.63, 358, 164.38),
   approvedCapsule: r(16, 764, 358, 64),
   /** The typing dots inside the checking capsule (3 × 8 px, 4 px gaps, after 16 px padding). */
   checkingDots: r(32, 792, 32, 8),
-  sentCapsule: r(16, 604, 358, 64),
-  sentResult: r(16, 503.63, 358, 212.38),
-  sentRow: r(20, 688, 350, 28),
+  sentCapsule: r(16, 560, 358, 64),
+  sentResult: r(16, 459.63, 358, 256.38),
+  sentRow: r(20, 644, 350, 28),
   sentDone: r(16, 746, 358, 52),
-  voteSentTimeline: r(16, 588, 358, 128),
-  voteSentBox: r(16, 482, 358, 86),
-  voteSentAmount: r(116.91, 389.63, 156.16, 48.38),
-  // LockScreen (stackTop 330)
-  lockNotif: r(8, 330, 374, 82),
-  // ApproveSheet (Leo)
-  approveTimelineReady: r(16, 400, 358, 128),
-  approveBtn: r(16, 682, 358, 52),
-  approveTimelineDone: r(16, 438, 358, 128),
-  approveFinal: r(16, 658, 358, 46),
+  oneOkSentResult: r(16, 485.63, 358, 230.38),
+  oneOkSentStatus: r(16, 586, 358, 86),
+  // LockScreen (stackTop 330): the one-OK push (two body lines)
+  lockPush: r(8, 330, 374, 102),
+  // ApproveSheet (Leo, one OK)
+  approveOneOk: r(16, 385.38, 358, 84),
+  approveCta: r(16, 690, 358, 52),
+  approveDoneOneOk: r(16, 410, 358, 84),
+  approveDoneStatus: r(16, 670, 358, 46),
 } as const;
 
 // ─── Projection (CSS 3D chain of the shared world) ──────────────────────────────
@@ -303,22 +312,29 @@ export const RiseIn: React.FC<{ at: number; exitAt?: number; rise?: number; chil
 };
 
 // ─── Blur-matched camera moves ──────────────────────────────────────────────────
-/** Directional smear (σx, σy in px) for the whole stage during a fast camera move: the screen velocity of a world
- *  point under the scene's camera keys (no drift), ×k, above a floor, capped. Zero outside `windows`. Wrap the
- *  <WorldStage> in <DirectionalBlur x y> (the scene's ground colour sits behind it). */
+/** Directional smear (σx, σy in px) for the whole stage during a fast camera move: the screen velocity of world
+ *  points under the scene's camera keys (no drift), ×k, above a floor, capped; with several points the fastest wins
+ *  (pass points away from the zoom centre for push/pull moves). Zero outside `windows`. Wrap the <WorldStage> in
+ *  <DirectionalBlur x y> (the scene's ground colour sits behind it). */
 export const smearAt = (
   f: number,
   keys: readonly CameraKey[],
-  point: V3,
+  point: V3 | readonly V3[],
   windows: readonly [number, number][],
   { k = 0.45, max = 48, floor = 6 }: { k?: number; max?: number; floor?: number } = {},
 ) => {
   if (!windows.some(([a, b]) => f >= a && f <= b)) return { x: 0, y: 0 };
   const cam = (n: number) => cameraAt(n, keys, { rest: CAM.maya, drift: false });
-  const p0 = project(point, cam(f - 1));
-  const p1 = project(point, cam(f + 1));
-  const vx = Math.abs(p1.x - p0.x) / 2;
-  const vy = Math.abs(p1.y - p0.y) / 2;
+  const c0 = cam(f - 1);
+  const c1 = cam(f + 1);
+  let vx = 0;
+  let vy = 0;
+  for (const p of Array.isArray(point) ? (point as readonly V3[]) : [point as V3]) {
+    const p0 = project(p, c0);
+    const p1 = project(p, c1);
+    vx = Math.max(vx, Math.abs(p1.x - p0.x) / 2);
+    vy = Math.max(vy, Math.abs(p1.y - p0.y) / 2);
+  }
   const sig = (v: number) => (v > floor ? Math.min(max, (v - floor) * k) : 0);
   return { x: sig(vx), y: sig(vy) };
 };

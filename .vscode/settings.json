@@ -1,0 +1,53 @@
+{
+  // Hide build output from extension file scans (workspace.findFiles honors files.exclude
+  // even when it ignores .gitignore) and from the file tree.
+  "files.exclude": {
+    "**/target": true,
+    "**/.next": true,
+    "**/.next-*": true,
+    "**/out": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.turbo": true,
+    "**/.vercel": true,
+    "**/coverage": true,
+    "**/test-results": true,
+    "**/playwright-report": true,
+    "**/blob-report": true,
+    "**/.pnpm-store": true,
+    "**/*.tsbuildinfo": true
+  },
+  // Keep Cmd+Shift+F searches out of dependencies and build output.
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/target": true,
+    "**/.next": true,
+    "**/.next-*": true,
+    "**/out": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.turbo": true,
+    "**/.vercel": true,
+    "**/coverage": true,
+    "**/test-results": true,
+    "**/playwright-report": true,
+    "**/.pnpm-store": true
+  },
+  "search.followSymlinks": false,
+  // Don't watch build output for changes (cargo/next rewrite thousands of files per build).
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/target/**": true,
+    "**/.next/**": true,
+    "**/.next-*/**": true,
+    "**/out/**": true,
+    "**/dist/**": true,
+    "**/.turbo/**": true,
+    "**/.vercel/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true
+  },
+  // Stop rust-analyzer from indexing the cargo build dir.
+  "rust-analyzer.files.excludeDirs": ["contracts/target"],
+  "typescript.tsserver.maxTsServerMemory": 4096
+}

@@ -7,7 +7,7 @@
 import { act, cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { GiftDetailsSheet } from "@/components/gifts/GiftDetailsSheet"
+import { DepositDetailsSheet } from "@/components/deposits/DepositDetailsSheet"
 import { GiftRow } from "@/components/gifts/GiftRow"
 import { GiftLinkFlow, GiftPageFlow, blockedOf } from "@/components/gifts/GiveFlow"
 import { findBanned } from "@/i18n/banned.mjs"
@@ -50,23 +50,26 @@ describe("the members' side", () => {
     expect(row.querySelector("[data-gift-note-mark]")).toBeTruthy()
   })
 
-  it("the details: who, when, how, the note (members), 'Shown on the public page', the group rule; no marigold", () => {
+  it("the details (the money-in sheet): who, how much, the page, the note (members), 'Shown on the public page', the group rule; no marigold", () => {
+    store.setSession("maya")
     const v = pot("leos-birthday")
     const ana = v.gifts!.items.find((g) => g.from.name === "Ana")!
-    render(<GiftDetailsSheet pot={v} giftRef={ana.ref} open onClose={() => {}} />)
-    const d = screen.getByRole("dialog", { name: "Ana sent a gift" })
+    render(<DepositDetailsSheet pot={v} depositKey={ana.ref} meId="maya" open onClose={() => {}} />)
+    const d = screen.getByRole("dialog", { name: "Ana sent a $10 gift" })
     expect(within(d).getByText("Happy birthday Leo! Coffee's on me ☕")).toBeTruthy()
     expect(within(d).getByText("Shown on the public page")).toBeTruthy()
-    expect(within(d).getByText("The public page")).toBeTruthy()
+    expect(within(d).getByText("A gift from outside")).toBeTruthy()
+    expect(within(d).getByText("On the public page")).toBeTruthy()
     expect(within(d).getByText(/Money from outside belongs to the whole group/)).toBeTruthy()
-    expect(d.querySelector("[data-status='gift']")!.textContent).toBe("Gift")
+    expect(d.querySelector("[data-deposit-status='added'] [data-status]")!.textContent).toBe("Added")
     expect(d.querySelector(".bg-brand")).toBeNull()
     expect(findBanned(d.textContent ?? "")).toBeNull()
   })
 
   it("an unknown gift says it isn't here", () => {
-    render(<GiftDetailsSheet pot={pot("leos-birthday")} giftRef="gnope" open onClose={() => {}} />)
-    expect(screen.getByText("This isn't here any more.")).toBeTruthy()
+    store.setSession("maya")
+    render(<DepositDetailsSheet pot={pot("leos-birthday")} depositKey="g00000000000000000000nope" meId="maya" open onClose={() => {}} />)
+    expect(screen.getByText("We can't show this one. It may not be here any more.")).toBeTruthy()
   })
 })
 

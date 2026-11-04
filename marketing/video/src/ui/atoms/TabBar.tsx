@@ -1,19 +1,15 @@
-// TabBar (apps/web/components/app-shell/Shell.tsx): Pots · Requests · You, 56 px + the bottom safe area, surface
-// with a `line` top border. Active = ink + semibold label; others ink-muted. The Requests badge counts what waits
-// on you: `ink` pill with `surface` numerals (as the app ships it).
+// TabBar (apps/web/components/app-shell/Shell.tsx): Pots · Requests · <your Pot dollars>, 56 px + the bottom safe
+// area, surface with a `line` top border. The third tab is You, labelled with the person's own Pot dollars ("$0.00",
+// tabular) since 2026-11-01. Active = ink + semibold; others ink-muted. The Requests badge counts what waits on you:
+// an `ink` pill with `surface` numerals (as the app ships it).
 import { House, Inbox, UserRound } from "lucide-react";
 import React from "react";
 import { copy } from "../copy";
+import { formatUsd } from "../format";
 import { useUi } from "../theme";
 import { T } from "../type";
 
 export type TabName = "pots" | "requests" | "you";
-
-const NAV = [
-  { key: "pots" as const, label: copy["pots.title"], Icon: House },
-  { key: "requests" as const, label: copy["requests.title"], Icon: Inbox },
-  { key: "you" as const, label: copy["you.title"], Icon: UserRound },
-];
 
 export const TabBar: React.FC<{
   active?: TabName;
@@ -21,15 +17,23 @@ export const TabBar: React.FC<{
   badge?: number;
   /** 0..1 pop-in of the badge. */
   badgeAppear?: number;
+  /** The person's own Pot dollars on the third tab (dollars; interpolate for a roll). null = the plain "You" label. */
+  balance?: number | null;
   /** Bottom safe area (defaults to the phone's). */
   safeBottom?: number;
   style?: React.CSSProperties;
-}> = ({ active = "pots", badge = 0, badgeAppear = 1, safeBottom, style }) => {
+}> = ({ active = "pots", badge = 0, badgeAppear = 1, balance = 0, safeBottom, style }) => {
   const ui = useUi();
   const { c } = ui;
   const pb = safeBottom ?? ui.safeBottom;
+  const nav = [
+    { key: "pots" as const, label: copy["pots.title"], Icon: House },
+    { key: "requests" as const, label: copy["requests.title"], Icon: Inbox },
+    { key: "you" as const, label: balance === null ? copy["you.title"] : formatUsd(balance), Icon: UserRound },
+  ];
   return (
     <div
+      data-ui="tab-bar"
       style={{
         position: "absolute",
         left: 0,
@@ -43,7 +47,7 @@ export const TabBar: React.FC<{
       }}
     >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", height: 56 }}>
-        {NAV.map(({ key, label, Icon }) => {
+        {nav.map(({ key, label, Icon }) => {
           const on = key === active;
           return (
             <div
@@ -57,6 +61,7 @@ export const TabBar: React.FC<{
                 color: on ? c.ink : c.inkMuted,
                 ...T.bodySm,
                 fontWeight: on ? 600 : 400,
+                fontVariantNumeric: "tabular-nums",
               }}
             >
               <span style={{ position: "relative", display: "block" }}>

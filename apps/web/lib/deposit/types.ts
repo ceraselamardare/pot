@@ -102,7 +102,7 @@ export interface DepositView {
   correlationId?: string
   scenario?: SimScenario
   /** simulator: whether anything was "sent", and how much in total (detected or still on its way), base units */
-  simulated?: { sent: boolean; sentAmount?: string }
+  simulated?: { sent: boolean; sentAmount?: string; /** when the first send went out (ISO) */ sentAt?: string }
   deadline: string
   updatedAt: string
   processingSince?: string

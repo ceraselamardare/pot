@@ -104,9 +104,10 @@ export const REVEAL_CLEAR = { from: 1060, to: 1080 } as const;
 /** Ramp length (frames) at each edge of JOKE_DIP, inside the window (the dip is fully down between the ramps). */
 export const DIP_RAMP_FRAMES = 3;
 
-/** Director: the music clears for the "Approved by Pot rules" hit (s09, global frame 2662, measured by builder D):
- *  a 15 f fade down to `db` before the hit, then back to normal on the hit frame, so success + burst land clean. */
-export const APPROVED_CLEAR = { from: 2647, to: 2662, db: -10 } as const;
+/** Director: the music clears for the "Approved by Pot rules" hit (s09, global frame 2602 in timeline v2, measured by
+ *  builder D; it was 2662 in v1): a 15 f fade down to `db` before the hit, then back to normal on the hit frame, so
+ *  success + burst land clean. */
+export const APPROVED_CLEAR = { from: 2587, to: 2602, db: -10 } as const;
 
 /** dB offset of the approved clear-out at an absolute frame. */
 export const approvedClearDbAt = (frame: number) => {

@@ -1,5 +1,6 @@
 // Builder D measuring tool (dev only): logs the screen-relative rects (390 × 844 phone screen, safe areas 50 / 34)
-// of the elements s09/s10 press, lift or aim at, so the scenes' constants (s09-layout.ts) match the UI kit exactly.
+// of the elements s09/s10 press, lift or aim at, so the scenes' constants (s09-shared.tsx `UI`) match the UI kit.
+// v2 (2026-11-03): the app of Nov 3 (round actions, two-step Spend, one OK).
 //   node src/scenes/act3/preview-d/measure.mjs
 import React, { useLayoutEffect, useRef } from "react";
 import { AbsoluteFill, continueRender, delayRender } from "remotion";
@@ -15,14 +16,13 @@ import {
   SpendSheet,
   UiTheme,
   feedAfterGroceries,
-  feedBoatPending,
   feedAfterBoat,
+  feedBoatPending,
   DISPLAY,
   SANS,
-  MAYA,
 } from "../../../ui";
 
-type Probe = { key: string; text?: string; ui?: string; up?: number };
+type Probe = { key: string; text?: string; ui?: string; up?: number; nth?: number };
 
 const Screen: React.FC<{ name: string; probes: Probe[]; children: React.ReactNode }> = ({ name, probes, children }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -42,11 +42,14 @@ const Screen: React.FC<{ name: string; probes: Probe[]; children: React.ReactNod
           const all = Array.from(root.querySelectorAll<HTMLElement>("*"));
           for (const p of probes) {
             let el: HTMLElement | null = null;
-            if (p.ui) el = root.querySelector<HTMLElement>(`[data-ui="${p.ui}"]`);
+            if (p.ui) {
+              const hits = Array.from(root.querySelectorAll<HTMLElement>(`[data-ui="${p.ui}"]`));
+              el = hits[p.nth ?? 0] ?? null;
+            }
             if (p.text) {
-              // the smallest element whose whole text is the probe text
+              // the smallest element whose whole text is the probe text (last = deepest), or the nth match
               const hits = all.filter((e) => (e.textContent ?? "").trim() === p.text);
-              el = hits.length ? hits[hits.length - 1] : null;
+              el = hits.length ? (p.nth !== undefined ? (hits[p.nth] ?? null) : hits[hits.length - 1]) : null;
             }
             for (let i = 0; i < (p.up ?? 0) && el; i++) el = el.parentElement;
             if (!el) {
@@ -73,99 +76,113 @@ const Screen: React.FC<{ name: string; probes: Probe[]; children: React.ReactNod
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"].map((d) => ({ key: `key${d}`, text: d }));
 
-const WORDS = [
-  "Small spends",
-  "approve themselves.",
-  "approve",
-  "themselves.",
-  "Bigger spends",
-  "go to the group.",
-  "go to the",
-  "the group.",
-  "2 of 3",
-  "approvals",
-  "Leo approves,",
-  "right from a",
-  "notification.",
-  "right from a notification.",
-  "$450.00",
-  "$366.00",
-  "needs",
-];
-
-/** Widths (px) of the big-type strings in Gabarito 800 at 100 px, tracking -0.025em. */
-const TextWidths: React.FC = () => {
-  useLayoutEffect(() => {
-    const handle = delayRender("measure text");
-    document.fonts.load(`800 100px ${DISPLAY}`).then(() => {
-      const c = document.createElement("canvas").getContext("2d")!;
-      c.font = `800 100px ${DISPLAY}`;
-      (c as unknown as { letterSpacing: string }).letterSpacing = "-2.5px";
-      const out: Record<string, number> = {};
-      for (const w of WORDS) out[w] = Math.round(c.measureText(w).width);
-      // eslint-disable-next-line no-console
-      console.log(`DMEASURE text100 ${JSON.stringify(out)}`);
-      continueRender(handle);
-    });
-  }, []);
-  return null;
-};
-
 export const DMeasure: React.FC = () => (
   <AbsoluteFill style={{ flexDirection: "row", flexWrap: "wrap" }}>
-    <TextWidths />
     <Screen
       name="pot"
       probes={[
         { key: "hero", ui: "hero" },
-        { key: "spendLabel", text: "Spend" },
-        { key: "spendBtn", text: "Spend", up: 1 },
         { key: "balance", text: "$450.00" },
+        { key: "share", text: "You'd get back $150 · You put in $150", up: 0 },
+        { key: "spendLabel", text: "Spend" },
+        { key: "tab3", text: "$0.00" },
+        { key: "tabBar", ui: "tab-bar" },
       ]}
     >
       <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
     </Screen>
     <Screen
-      name="amount84"
+      name="howMuch84"
       probes={[
         { key: "amount", text: "$84" },
-        { key: "previewTitle", text: "This will be approved instantly" },
-        { key: "previewBox", text: "This will be approved instantly", up: 2 },
-        { key: "chipGroceries", text: "Groceries 🛒" },
-        { key: "cta", text: "Get $84 back", up: 1 },
-        { key: "note", text: "+ Add a note (optional)" },
+        { key: "decision", ui: "decision" },
+        { key: "next", ui: "cta" },
+        { key: "step1", ui: "spend-step1" },
         { key: "title", text: "Spend from Lisbon Trip" },
         ...KEYS,
       ]}
     >
       <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
-      <SpendSheet step="amount" typed="84" category="groceries" />
+      <SpendSheet step="howMuch" typed="84" />
     </Screen>
     <Screen
-      name="vote300"
+      name="details84"
+      probes={[
+        { key: "amount", text: "$84" },
+        { key: "chipGroceries", text: "Groceries 🛒" },
+        { key: "whoLabel", text: "Who gets paid?" },
+        { key: "payeeMe", text: "Me" },
+        { key: "note", text: "+ Add a note (optional)" },
+        { key: "decision", ui: "decision" },
+        { key: "cta", ui: "cta" },
+        { key: "back", text: "Back" },
+        { key: "step2", ui: "spend-step2" },
+        { key: "title", text: "Spend from Lisbon Trip" },
+      ]}
+    >
+      <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
+      <SpendSheet step="details" typed="84" category="groceries" />
+    </Screen>
+    <Screen
+      name="details84open"
+      probes={[
+        { key: "decision", ui: "decision" },
+        { key: "cta", ui: "cta" },
+        { key: "chipGroceries", text: "Groceries 🛒" },
+        { key: "title", text: "Spend from Lisbon Trip" },
+        { key: "body", text: "Anyone can spend up to $100 without asking." },
+      ]}
+    >
+      <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
+      <SpendSheet step="details" typed="84" category="groceries" decisionOpen={1} />
+    </Screen>
+    <Screen name="details84none" probes={[{ key: "chipGroceries", text: "Groceries 🛒" }, { key: "chipTickets", text: "Tickets 🎟️" }, { key: "decision", ui: "decision" }]}>
+      <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
+      <SpendSheet step="details" typed="84" category={null} chipsScrollX={0} />
+    </Screen>
+    <Screen
+      name="howMuch300"
       probes={[
         { key: "amount", text: "$300" },
-        { key: "previewTitle", text: "This needs 2 of 3 approvals" },
-        { key: "previewBox", text: "This needs 2 of 3 approvals", up: 2 },
-        { key: "chipTickets", text: "Tickets 🎟️" },
-        { key: "note", text: "the boat trip" },
-        { key: "cta", text: "Ask the group", up: 1 },
+        { key: "decision", ui: "decision" },
+        { key: "next", ui: "cta" },
         ...KEYS,
       ]}
     >
-      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
-      <SpendSheet step="vote" typed="300" category="tickets" note="the boat trip" />
+      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} tabBar={{ balance: 84 }} />
+      <SpendSheet step="howMuch" typed="300" />
     </Screen>
     <Screen
-      name="voteChipsUnscrolled"
-      probes={[{ key: "chipTickets", text: "Tickets 🎟️" }, { key: "chipGroceries", text: "Groceries 🛒" }, { key: "chipStay", text: "Stay 🏠" }]}
+      name="details300"
+      probes={[
+        { key: "amount", text: "$300" },
+        { key: "chipTickets", text: "Tickets 🎟️" },
+        { key: "note", text: "the boat trip" },
+        { key: "decision", ui: "decision" },
+        { key: "cta", ui: "cta" },
+        { key: "back", text: "Back" },
+        { key: "payeeMe", text: "Me" },
+      ]}
     >
-      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
-      <SpendSheet step="vote" typed="300" category={null} chipsScrollX={0} />
+      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} tabBar={{ balance: 84 }} />
+      <SpendSheet step="details" typed="300" category="tickets" note="the boat trip" />
     </Screen>
-    <Screen name="vote300scrolled" probes={[{ key: "note", text: "the boat trip" }, { key: "amount", text: "$300" }, { key: "previewBox", text: "This needs 2 of 3 approvals", up: 2 }, { key: "chipTickets", text: "Tickets 🎟️" }, { key: "cta", text: "Ask the group", up: 1 }]}>
-      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
-      <SpendSheet step="vote" typed="300" category="tickets" note="the boat trip" bodyScroll={56} />
+    <Screen
+      name="details300open"
+      probes={[
+        { key: "decision", ui: "decision" },
+        { key: "cta", ui: "cta" },
+        { key: "chipTickets", text: "Tickets 🎟️" },
+        { key: "note", text: "the boat trip" },
+        { key: "title", text: "Spend from Lisbon Trip" },
+      ]}
+    >
+      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} tabBar={{ balance: 84 }} />
+      <SpendSheet step="details" typed="300" category="tickets" note="the boat trip" decisionOpen={1} />
+    </Screen>
+    <Screen name="details300none" probes={[{ key: "chipTickets", text: "Tickets 🎟️" }, { key: "note", text: "+ Add a note (optional)" }]}>
+      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} tabBar={{ balance: 84 }} />
+      <SpendSheet step="details" typed="300" category={null} chipsScrollX={0} />
     </Screen>
     <Screen name="checking" probes={[{ key: "capsule", ui: "capsule" }, { key: "result", ui: "spend-result" }, { key: "checkingText", text: "Checking Pot rules…" }]}>
       <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
@@ -181,80 +198,70 @@ export const DMeasure: React.FC = () => (
         { key: "capsule", ui: "capsule" },
         { key: "result", ui: "spend-result" },
         { key: "sentText", text: "$84 sent to you" },
+        { key: "receipt", text: "Receipt" },
         { key: "done", text: "Done", up: 1 },
       ]}
     >
-      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
+      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} tabBar={{ balance: 84 }} />
       <SpendSheet step="sent" amount={84} category="groceries" />
     </Screen>
     <Screen
-      name="voteSent"
+      name="oneOkSent"
       probes={[
-        { key: "timeline", ui: "timeline" },
-        { key: "sentBox", text: "Sent to the group", up: 2 },
-        { key: "done", text: "Done", up: 1 },
+        { key: "result", ui: "spend-one-ok-sent" },
+        { key: "status", ui: "spend-sent-status" },
         { key: "amount", text: "$300.00" },
+        { key: "done", text: "Done", up: 1 },
       ]}
     >
-      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
-      <SpendSheet step="voteSent" amount={300} category="tickets" />
+      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedBoatPending()} tabBar={{ balance: 84 }} />
+      <SpendSheet step="oneOkSent" amount={300} category="tickets" />
     </Screen>
-    <Screen name="lock" probes={[{ key: "notifTitle", text: "Maya needs your OK" }, { key: "notif", text: "Maya needs your OK", up: 2 }]}>
+    <Screen name="lock" probes={[{ key: "push", ui: "push" }, { key: "title", text: "Maya needs one OK" }]}>
       <LockScreen notifications={[{ id: "n", progress: 1 }]} />
     </Screen>
     <Screen
       name="approveReady"
       probes={[
-        { key: "timeline", ui: "timeline" },
-        { key: "approve", text: "Approve $300", up: 1 },
+        { key: "oneOk", ui: "one-ok" },
+        { key: "facts", ui: "spend-facts" },
+        { key: "cta", ui: "cta" },
         { key: "decline", text: "Decline", up: 1 },
         { key: "title", text: "Maya asks for $300" },
+        { key: "why", text: "Needs one OK from anyone in the group. It's over Maya's instant limit." },
       ]}
     >
       <PotScreen balance={366} yourShare={122} putIn={150} feed={feedBoatPending()} />
       <ApproveSheet state="ready" />
     </Screen>
     <Screen
-      name="approveApproved"
+      name="approveDone"
       probes={[
-        { key: "timeline", ui: "timeline" },
-        { key: "final", text: "Approved! $300 is on its way to Maya.", up: 1 },
+        { key: "oneOk", ui: "one-ok" },
+        { key: "facts", ui: "spend-facts" },
+        { key: "status", ui: "approve-status" },
         { key: "done", text: "Done", up: 1 },
         { key: "title", text: "Maya asks for $300" },
+        { key: "gaveOk", text: "You · gave the OK" },
       ]}
     >
       <PotScreen balance={366} yourShare={122} putIn={150} feed={feedBoatPending()} />
       <ApproveSheet state="approved" />
     </Screen>
     <Screen
-      name="potBoatPending"
-      probes={[
-        { key: "rowMain", text: "Maya asks for $300 for the boat trip" },
-        { key: "chipText", text: "1 of 2 approvals" },
-        { key: "chip", text: "1 of 2 approvals", up: 1 },
-        { key: "row", text: "Maya asks for $300 for the boat trip", up: 2 },
-        { key: "today", text: "Today" },
-        { key: "groceriesRow", text: "Maya got $84 back for groceries", up: 2 },
-      ]}
-    >
-      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedBoatPending()} demoPerson={MAYA} />
-    </Screen>
-    <Screen
       name="potAfterBoat"
       probes={[
-        { key: "hero", ui: "hero" },
         { key: "balance", text: "$66.00" },
-        { key: "rowMain", text: "$300 sent to Maya for the boat trip" },
-        { key: "chipText", text: "Approved" },
-        { key: "chip", text: "Approved", up: 1 },
-        { key: "row", text: "$300 sent to Maya for the boat trip", up: 2 },
-        { key: "groceriesRow", text: "Maya got $84 back for groceries", up: 2 },
+        { key: "firstRow", ui: "compact-row" },
+        { key: "chipOneOk", text: "One OK", up: 1 },
+        { key: "chipOneOkText", text: "One OK" },
+        { key: "tab3", text: "$384.00" },
       ]}
     >
-      <PotScreen balance={66} yourShare={22} putIn={150} feed={feedAfterBoat()} demoPerson={MAYA} />
+      <PotScreen balance={66} yourShare={22} putIn={150} feed={feedAfterBoat()} tabBar={{ balance: 384 }} />
     </Screen>
-    <Screen name="potAfterGroceries" probes={[{ key: "today", text: "Today" }, { key: "groceriesRow", text: "Maya got $84 back for groceries", up: 2 }, { key: "yesterday", text: "Yesterday" }]}>
-      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
+    <Screen name="potAfterGroceries" probes={[{ key: "firstRow", ui: "compact-row" }, { key: "instant", text: "Instant" }, { key: "tab3", text: "$84.00" }]}>
+      <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} tabBar={{ balance: 84 }} />
     </Screen>
   </AbsoluteFill>
 );

@@ -113,13 +113,18 @@ describe("a spend row", () => {
 })
 
 describe("the feed", () => {
-  it("money in: a group named by its sentence, with its explorer receipt kept on the row", () => {
+  it("money in: a button named by its sentence, its source and 'Details' (the receipt moved to the details sheet)", () => {
     const pot = W.potView(world(), "ski-chalet", "leo", NOW)!
     render(<ActivityFeed items={pot.feed} ops={[]} me={pot.me!.person} now={NOW} potName={pot.name} />)
-    const added = screen.getAllByRole("group", { name: /^Leo added \$300/ })[0]!
+    // the showcase's Leo added $300 from another app (ETH on Base)
+    const added = screen.getByRole("button", { name: /^Leo added \$300\. From another app, ETH on Base\..*Details$/ })
     expect(added.querySelector("[data-row-title]")!.textContent).toBe("Leo · Added money")
     expect(added.querySelector("[data-money]")!.textContent).toBe("+ $300.00")
-    expect(added.querySelector("[data-receipt]")).not.toBeNull()
+    expect(added.querySelector("[data-row-source='xc']")!.textContent).toBe("ETH on Base")
+    expect(added.querySelector("[data-receipt]")).toBeNull()
+    // Sam's add: demo dollars
+    const sam = screen.getByRole("button", { name: /^Sam added \$300\. Demo dollars\..*Details$/ })
+    expect(sam.querySelector("[data-row-source='demo'] svg")!.getAttribute("stroke-width")).toBe("2")
     // system events stay quiet centred lines
     expect(screen.getByText("Leo joined")).toBeTruthy()
   })

@@ -1,14 +1,69 @@
 # Audio notes (audio agent)
 
-Status 2026-10-22: done and verified in Remotion renders.
+Status 2026-10-22: done and verified in Remotion renders. **Update v2 on 2026-11-03:** s10 replaced and s10b added (next section).
 - The VO (13 lines) and the SFX library (24 names).
 - The music bed `pot-theme.mp3`, 84.000 s at 120 BPM, on locked timeline v1.
 - `src/audio/Soundtrack.tsx`, with `musicVolumeAt()`.
 - The post-render master script.
 
+## Update v2 (2026-11-03): two new VO lines (brief/06-update-v2.md §4)
+Same voice (Dior), `eleven_v4`, same settings (stability 0.45, similarity 0.75, seeds 7/2026) and the same post-processing as the original 13 lines. previous/next text came from the line order: s09 → **s10** → **s10b** → s11.
+
+**Finalized (main text for both):**
+
+| Line | Take | Duration | Words/s | F0 median / SD | LUFS / dBTP | Pauses inside the line (after word @ s, length) |
+|---|---|---|---|---|---|---|
+| **s10-group** "Bigger spends need one OK. Leo taps it, right from a notification." | main t1 | **4.985 s** | 2.51 | 151 Hz / 4.72 st | −16.1 / −2.1 | "OK." @2.05 (0.60); "it," @3.34 (0.33) |
+| **s10b-more** "Plus: trust that grows, all-or-nothing goals, and links to pay in, or pay out." | main t2 | **4.893 s** | 2.99 | 154 Hz / 4.41 st | −16.2 / −2.2 | "Plus" @0.50 (0.22); "grows" @1.71 (0.26); "goals" @2.94 (0.15) |
+
+- **Neighbour match:** s09 is 153 Hz / 4.80 st and s11 is 154 Hz / 4.58 st.
+- **s10b t2** keeps the director's words but was spoken from tighter punctuation: "Plus, trust that grows, all-or-nothing goals and links to pay in or pay out." That cut about 0.43 s to meet ≤ 4.9 s, with the same pitch.
+- **"OK" is heard as "okay"** in every s10 take:
+  - Scribe writes "okay." with logprob −0.02 to −0.04;
+  - the ElevenLabs alignment gives "OK" 0.32-0.40 s, and the final word lasts 0.52 s, i.e. two syllables, "oh-kay".
+- **QA:**
+  - All 8 takes are word-perfect by Scribe.
+  - Both chosen takes give identical transcripts on 2 more seeded runs.
+  - Word starts sit within 0-3 ms of onsets re-measured on the final MP3s.
+  - The limiter touches only isolated transients: over 1 dB on 2.1-2.2% of speech blocks.
+
+**All 8 takes**, as durations after the same trim (50 ms lead, about 150 ms tail):
+
+| Take | Duration | Words/s | F0 median | Scribe | Pauses (after word @ s, length) |
+|---|---|---|---|---|---|
+| s10 main t1 ✔ | 4.985 | 2.51 | 151 Hz | "Bigger spends need one okay. Leo taps it right from a notification" | OK @2.05 (0.60); it @3.34 (0.33) |
+| s10 main t2 | 4.826 | 2.60 | 161 Hz | same | OK @1.93 (0.56); it @3.17 (0.32) |
+| s10 fallback t1 | 5.187 | 3.01 | 171 Hz | "…one okay from the group. Leo taps it…" | group @2.28 (0.63); it @3.59 (0.32) |
+| s10 fallback t2 | 5.240 | 2.98 | 160 Hz | same | group @2.35 (0.54); it @3.57 (0.33) |
+| s10b main t1 | 5.327 | 2.74 | 155 Hz | "Plus trust that grows all or nothing goals and links to pay in or pay out" | Plus @0.48 (0.34); grows @1.83 (0.30); goals @3.16 (0.18); in @4.45 (0.15) |
+| s10b main t2 ✔ | 4.893 | 2.99 | 154 Hz | same | Plus @0.50 (0.22); grows @1.71 (0.26); goals @2.94 (0.15) |
+| s10b fallback t1 | 4.372 | 2.16 | 161 Hz | "Plus trust that grows, all or nothing goals and payment links" | Plus @0.48 (0.35); grows @1.83 (0.31); goals @3.17 (0.18) |
+| s10b fallback t2 | 4.348 | 2.15 | 159 Hz | same | Plus @0.47 (0.41); grows @1.85 (0.29); goals @3.19 (0.18) |
+
+**Why s10 is main t1 and not t2.** t2 is 0.16 s shorter and paced at 2.60 words/s, but it sits 0.9 st above the neighbouring lines. t1 matches their pitch within 0.2 st and still lands under 5.2 s. If you prefer t2's pace, it is one command to finalize instead.
+
+**Key sync words** (seconds/frames from the clip start):
+
+| Line | Words |
+|---|---|
+| s10 | Bigger 0.05/f3 · spends 0.43/f26 · need 0.87/f52 · one 1.25/f75 · **OK 1.53/f92** · **Leo 2.65/f159** · taps 2.91/f175 · it 3.21/f193 · right 3.67/f220 · notification 4.07/f244 |
+| s10b | Plus 0.05/f3 · **trust 0.72/f43** · grows 1.21/f73 · **all-or-nothing 1.97/f118** · goals 2.55/f153 · **links 3.25/f195** · pay 3.67/f220 · in 3.91/f235 · **or 4.19/f251** · pay 4.35/f261 · out 4.57/f274 |
+
+**Notes for the director and scene builders:**
+- **The v1 s10 is archived** as `public/audio/vo/_takes/s10-group-v1-2of3.mp3` with `s10-group-v1-2of3.json` next to it (its `file` points at the archive).
+  - Old s10 anchors ("group", "two", "three-hundred-dollar", "approves") no longer exist.
+  - `voWord()` falls back to its default frame for them, so scene D must re-key s10.
+- **s10b's second "pay"** is `voWord("s10b-more", "pay", fb, 1)`.
+- **Onset fix:** the onset detector now needs 25 ms of continuous speech. A mouth click 60-100 ms before "trust" had been read as the onset. Re-checking the 12 unchanged lines with the new rule moves no word by more than 15 ms.
+- **Registry and line list:**
+  - `src/data/vo-data.ts` has the new `s10b-more` import and key.
+  - `scripts/audio-lines.json` is at v3, with `fallback` fields; the old s10 text is kept as `v1_text`.
+  - The finalize report now merges per line instead of overwriting.
+- **Credits: 140** (8 TTS takes 128, STT 12), against a cap of 600. The account has 26,619 left.
+
 ## TL;DR for the director
 - **Voice: Dior** (`4XLp6ou1JHGgf9xXbHCM`), `eleven_v4`. Emma was ruled out on pace (§1).
-- **VO total: 63.97 s** over 13 clips (177 words). Every line is word-perfect by Scribe v2 speech-to-text, and every chosen take passed 2 more seeded transcriptions.
+- **VO total: 66.18 s** over 14 clips (182 words) after update v2 (63.97 s over 13 clips before). Every line is word-perfect by Scribe v2 speech-to-text, and every chosen take passed 2 more seeded transcriptions.
 - **Word timings are measured, not ElevenLabs'.** The JSON start times are real speech onsets (0-17 ms on 41 anchor words). ElevenLabs' own alignment runs up to 400 ms late after pauses (§2.3).
 - **Music:** `public/audio/music/pot-theme.mp3`.
   - 120.005 BPM; bar lines on multiples of 2.000 s (±4 ms); grid drift −3.4 ms at 84 s.
@@ -28,7 +83,7 @@ Status 2026-10-22: done and verified in Remotion renders.
   3. Two clips are shorter than when you locked timeline v1, because I trimmed a trailing breath: **s04 is 4.881 s (was 5.318)** and **s08 is 7.235 s (was 7.470)**. Word starts are unchanged, and both still fit.
   4. Put an **`impact` cue at frame 1080** (the reveal). The music's 0:18 change is a strong spectral onset (about 13× the median onset strength), not a level jump. A low `impact` (about 0.4) at 4680 helps the end-card hit the same way.
   5. After the final render, run `scripts/audio-master.py`.
-- **Credits: 1,796 of the 7,000 cap.** Voice test 85, VO 267, SFX 262, music 1,182 (≤ 2,000). The account had 20,714 left at 10:05 UTC.
+- **Credits: 1,796 of the 7,000 cap in the first round, plus 140 for update v2 (cap 600).** Voice test 85, VO 267, SFX 262, music 1,182 (≤ 2,000). The account had 20,714 left at 10:05 UTC.
 
 ## 1. Voice choice (Task 1)
 I generated the test line s09-instant (18 words, with "?" and "…" pauses) with all three voices.
@@ -93,11 +148,12 @@ Pauses are "after word @ end of that word (pause length)", in seconds from the c
 | s07-create | t2 | 3.903 | 13 | 3.52 | 3.52 | 4.76 | −16.2 / −2.1 | "trip" @1.30 (0.55) |
 | s08-join | t1 | **7.235** | 22 | 3.13 | 3.42 | 4.22 | −16.1 / −2.2 | "chat" @1.07 (0.60); "Google" @2.63 (0.16); "share" @3.83 (0.50); "wallet" @4.92 (0.28); "phrase" @6.15 (0.18) |
 | s09-instant | t1 | 8.158 | 18 | 2.26 | 3.40 | 4.80 | −16.2 / −2.1 | "themselves" @1.98 (0.42); "dollars" @2.81 (0.34); "groceries?" @3.90 (0.39); "rules…" @5.28 (0.40); "approved," @6.17 (0.34) |
-| s10-group | t1 | 7.669 | 21 | 2.82 | 4.29 | 4.73 | −16.2 / −2.1 | "group" @1.59 (0.55); "three…" @4.57 (0.38); "approves" @6.07 (0.23) |
+| s10-group (v2) | main t1 | 4.985 | 12 | 2.51 | 3.98 | 4.72 | −16.1 / −2.1 | "OK." @2.05 (0.60); "it," @3.34 (0.33) |
+| s10b-more (v2) | main t2 | 4.893 | 14 | 2.99 | 3.63 | 4.41 | −16.2 / −2.2 | "Plus" @0.50 (0.22); "grows" @1.71 (0.26); "goals" @2.94 (0.15) |
 | s11-close | t1 | 4.327 | 13 | 3.19 | 3.92 | 4.58 | −16.1 / −2.1 | "over" @0.99 (0.27); "Pot" @1.94 (0.58) |
 | s12-tech | t1 | 11.323 | 32 | 2.88 | 4.05 | 4.77 | −16.1 / −2.1 | "hood" @0.71 (0.32); "NEAR" @3.52 (0.49); "on-chain" @5.78 (0.22); "person" @6.89 (0.59); "gasless" @9.03 (0.38) |
 | s13-end | t1 | 2.548 | 5 | 2.15 | 3.01 | 3.45 | −16.2 / −2.2 | "Pot." @0.43 (0.46) |
-| **Total** | | **63.971** | 177 | | | | | |
+| **Total** | | **66.180** | 182 | | | | | |
 
 Every clip starts its first word at 0.050 s and ends 0.15-0.21 s after its last word.
 
@@ -114,7 +170,8 @@ Every clip starts its first word at 0.050 s and ends 0.15-0.21 s after its last 
 | s07 | Start 0.05/f3 · trip 0.95/f57 · rules 2.31/f139 · words 3.23/f194 |
 | s08 | Drop 0.05/f3 · Friends 1.67/f100 · Google 2.35/f141 · share 3.46/f207 · No 4.33/f260 · No 5.20/f312 · No 6.33/f380 · gas 6.54/f392 |
 | s09 | Small 0.05/f3 · approve 0.91/f54 · Eighty-four 2.39/f144 · groceries 3.29/f197 · Pot 4.29/f258 · rules 4.88/f293 · **approved 5.68/f341** · seconds 7.49/f449 |
-| s10 | Bigger 0.05/f3 · group 1.20/f72 · three-hundred-dollar 2.19/f132 · two 3.83/f230 · Leo 5.25/f315 · approves 5.47/f328 · notification 6.71/f403 |
+| s10 (v2) | Bigger 0.05/f3 · one 1.25/f75 · OK 1.53/f92 · Leo 2.65/f159 · taps 2.91/f175 · right 3.67/f220 · notification 4.07/f244 |
+| s10b (v2) | Plus 0.05/f3 · trust 0.72/f43 · grows 1.21/f73 · all-or-nothing 1.97/f118 · goals 2.55/f153 · links 3.25/f195 · in 3.91/f235 · or 4.19/f251 · out 4.57/f274 |
 | s11 | close 1.26/f76 · Pot 1.70/f102 · Everyone 2.52/f151 · fair 3.36/f202 · back 3.82/f229 |
 | s12 | hood 0.37/f22 · Sputnik 2.07/f124 · DAO 2.41/f145 · NEAR 3.19/f191 · enforced 4.69/f281 · person 6.45/f387 · gasless 8.39/f503 · alone 10.75/f645 |
 | s13 | Pot 0.05/f3 · Built 0.89/f53 · Hackathon 1.73/f104 |
@@ -307,7 +364,8 @@ Measured from the per-request `character-cost` headers, plus `GET /v1/usage/char
 | 3 · SFX | 58 generations (3-11 each) | 262 |
 | 4 · Soundtrack | none | 0 |
 | 5 · Music | 2 × music_v2_5 at 84 s (577 each) + 2 STT vocal checks (14 each) | 1,182 |
-| **Total** | | **1,796** (cap 7,000; music cap 2,000) |
+| Update v2 · s10 + s10b | 8 TTS takes + 12 STT checks | 140 |
+| **Total** | | **1,936** (cap 7,000; music cap 2,000; update cap 600) |
 
 The account read used 8,642 at 09:08 UTC and 12,543 at 10:05; others spent in parallel during Tasks 1-3. **20,714 credits remain**, and the monthly counter resets at 11:11 UTC.
 

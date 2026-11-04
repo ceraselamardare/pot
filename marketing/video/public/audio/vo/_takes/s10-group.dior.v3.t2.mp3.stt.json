@@ -1,0 +1,191 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s10-group.dior.v3.t2.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "1",
+      "fiat-cost-before-overages": "0.000364"
+    },
+    "latency_ms": 569
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "Bigger spends need one okay. Leo taps it right from a notification",
+    "words": [
+      {
+        "text": "Bigger",
+        "start": 0.1,
+        "end": 0.3,
+        "type": "word",
+        "logprob": -0.000034230674221665445
+      },
+      {
+        "text": " ",
+        "start": 0.3,
+        "end": 0.44,
+        "type": "spacing",
+        "logprob": -0.00014733182615600526
+      },
+      {
+        "text": "spends",
+        "start": 0.44,
+        "end": 0.8,
+        "type": "word",
+        "logprob": -0.00014733182615600526
+      },
+      {
+        "text": " ",
+        "start": 0.8,
+        "end": 0.84,
+        "type": "spacing",
+        "logprob": -0.000007867782187531702
+      },
+      {
+        "text": "need",
+        "start": 0.84,
+        "end": 1.12,
+        "type": "word",
+        "logprob": -0.000007867782187531702
+      },
+      {
+        "text": " ",
+        "start": 1.12,
+        "end": 1.16,
+        "type": "spacing",
+        "logprob": -0.000013589766240329482
+      },
+      {
+        "text": "one",
+        "start": 1.16,
+        "end": 1.38,
+        "type": "word",
+        "logprob": -0.000013589766240329482
+      },
+      {
+        "text": " ",
+        "start": 1.38,
+        "end": 1.46,
+        "type": "spacing",
+        "logprob": -0.05496637150645256
+      },
+      {
+        "text": "okay.",
+        "start": 1.48,
+        "end": 1.86,
+        "type": "word",
+        "logprob": -0.043999083142261954
+      },
+      {
+        "text": " ",
+        "start": 1.86,
+        "end": 1.86,
+        "type": "spacing",
+        "logprob": -0.00012754580529872328
+      },
+      {
+        "text": "Leo",
+        "start": 2.5,
+        "end": 2.72,
+        "type": "word",
+        "logprob": -0.00012754580529872328
+      },
+      {
+        "text": " ",
+        "start": 2.72,
+        "end": 2.78,
+        "type": "spacing",
+        "logprob": -0.000030040289857424796
+      },
+      {
+        "text": "taps",
+        "start": 2.78,
+        "end": 3.02,
+        "type": "word",
+        "logprob": -0.000030040289857424796
+      },
+      {
+        "text": " ",
+        "start": 3.02,
+        "end": 3.08,
+        "type": "spacing",
+        "logprob": -9.536738616588991e-7
+      },
+      {
+        "text": "it",
+        "start": 3.08,
+        "end": 3.2,
+        "type": "word",
+        "logprob": -9.536738616588991e-7
+      },
+      {
+        "text": " ",
+        "start": 3.2,
+        "end": 3.54,
+        "type": "spacing",
+        "logprob": -0.004082203842699528
+      },
+      {
+        "text": "right",
+        "start": 3.54,
+        "end": 3.72,
+        "type": "word",
+        "logprob": -0.004082203842699528
+      },
+      {
+        "text": " ",
+        "start": 3.72,
+        "end": 3.74,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "from",
+        "start": 3.74,
+        "end": 3.84,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": " ",
+        "start": 3.84,
+        "end": 3.88,
+        "type": "spacing",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": "a",
+        "start": 3.88,
+        "end": 3.9,
+        "type": "word",
+        "logprob": -3.576278118089249e-7
+      },
+      {
+        "text": " ",
+        "start": 3.9,
+        "end": 3.94,
+        "type": "spacing",
+        "logprob": -1.1920928244535389e-7
+      },
+      {
+        "text": "notification",
+        "start": 3.94,
+        "end": 4.6,
+        "type": "word",
+        "logprob": -1.1920928244535389e-7
+      }
+    ],
+    "transcription_id": "xR017GDlPpTYkWdhi0wU",
+    "audio_duration_secs": 5.12
+  },
+  "created_at": "2026-11-03T20:16:13.967Z"
+}

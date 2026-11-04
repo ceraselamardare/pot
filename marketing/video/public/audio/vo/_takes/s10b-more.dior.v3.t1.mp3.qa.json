@@ -1,0 +1,185 @@
+{
+  "take": "s10b-more.dior.v3.t1.mp3",
+  "line": "s10b-more",
+  "voice": "dior",
+  "n": 1,
+  "variant": "main",
+  "tag": "v3",
+  "tts_text": "Plus: trust that grows, all-or-nothing goals, and links to pay in, or pay out.",
+  "duration": 5.68,
+  "speech_start": 0.022,
+  "speech_end": 5.148,
+  "speech_span": 5.105,
+  "words": 14,
+  "syllables": 17,
+  "wps_span": 2.74,
+  "sps_span": 3.33,
+  "wps_articulation": 3.39,
+  "pauses": [
+    {
+      "after": "Plus",
+      "k": 0,
+      "sec": 0.339
+    },
+    {
+      "after": "grows",
+      "k": 3,
+      "sec": 0.302
+    },
+    {
+      "after": "goals",
+      "k": 5,
+      "sec": 0.179
+    },
+    {
+      "after": "in",
+      "k": 10,
+      "sec": 0.154
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.022,
+    "anchors": [
+      {
+        "word": "Plus",
+        "k": 0,
+        "onset": 0.022,
+        "breath": false,
+        "stt_minus_onset": 0.018,
+        "align_minus_onset": -0.022
+      },
+      {
+        "word": "trust",
+        "k": 1,
+        "onset": 0.794,
+        "breath": true,
+        "stt_minus_onset": 0.086,
+        "align_minus_onset": 0.166
+      },
+      {
+        "word": "all-or-nothing",
+        "k": 4,
+        "onset": 2.104,
+        "breath": true,
+        "stt_minus_onset": 0.076,
+        "align_minus_onset": 0.056
+      },
+      {
+        "word": "and",
+        "k": 6,
+        "onset": 3.313,
+        "breath": true,
+        "stt_minus_onset": 0.007,
+        "align_minus_onset": 0.047
+      },
+      {
+        "word": "or",
+        "k": 11,
+        "onset": 4.578,
+        "breath": false,
+        "stt_minus_onset": 0.022,
+        "align_minus_onset": 0.089
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.042
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Plus trust that grows all or nothing goals and links to pay in or pay out"
+  },
+  "f0": {
+    "f0_median_hz": 154.8,
+    "st_sd": 4.83,
+    "st_p5_p95": 15.07,
+    "st_p10_p90": 13.11,
+    "st_motion_per_s": 32.2,
+    "voiced_s": 1.97
+  },
+  "loudness": {
+    "I": -25.4,
+    "LRA": 4.3,
+    "TP": -2.9
+  },
+  "threshold_db": -57.3,
+  "times": [
+    [
+      "Plus",
+      0.022,
+      0.455
+    ],
+    [
+      "trust",
+      0.794,
+      1.098
+    ],
+    [
+      "that",
+      1.118,
+      1.278
+    ],
+    [
+      "grows",
+      1.318,
+      1.802
+    ],
+    [
+      "all-or-nothing",
+      2.104,
+      2.638
+    ],
+    [
+      "goals",
+      2.718,
+      3.134
+    ],
+    [
+      "and",
+      3.313,
+      3.418
+    ],
+    [
+      "links",
+      3.478,
+      3.718
+    ],
+    [
+      "to",
+      3.758,
+      3.858
+    ],
+    [
+      "pay",
+      3.898,
+      4.098
+    ],
+    [
+      "in",
+      4.178,
+      4.424
+    ],
+    [
+      "or",
+      4.578,
+      4.718
+    ],
+    [
+      "pay",
+      4.758,
+      4.918
+    ],
+    [
+      "out",
+      4.998,
+      5.127
+    ]
+  ]
+}

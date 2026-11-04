@@ -1,0 +1,31 @@
+{
+  "tool": "eleven.tts",
+  "endpoint": "POST /v1/text-to-speech/{voice_id}/with-timestamps",
+  "model_id": "eleven_v4",
+  "voice_id": "4XLp6ou1JHGgf9xXbHCM",
+  "request": {
+    "text": "Plus: trust that grows, all-or-nothing goals, and payment links.",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.45,
+      "similarity_boost": 0.75
+    },
+    "previous_text": "Bigger spends need one OK. Leo taps it, right from a notification.",
+    "next_text": "When the trip's over, close the Pot. Everyone gets their fair share back.",
+    "seed": 2026,
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": "v0VNnwkIH4jmqT60y98Z",
+    "headers": {
+      "character-cost": "14",
+      "history-item-id": "iTyus2WFLjgxMz1pdvnp",
+      "request-id": "v0VNnwkIH4jmqT60y98Z"
+    },
+    "latency_ms": 1408,
+    "bytes": 70260,
+    "duration_sec": 4.32,
+    "has_alignment": true
+  },
+  "created_at": "2026-11-03T20:16:18.132Z"
+}

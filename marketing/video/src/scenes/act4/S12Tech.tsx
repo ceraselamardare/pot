@@ -32,11 +32,11 @@ import {
 import { night } from "../../brand/tokens";
 import { DISPLAY, SANS } from "../../brand/fonts";
 import type { SceneId } from "../../data/timeline";
-import { Avatar, copy, LEO, MAYA, names, UiTheme } from "../../ui";
+import { Avatar, copy, LEO, MAYA, names, SAM, UiTheme } from "../../ui";
 import { CAM } from "../shared";
 import { cameraMatrix, chain, layerMatrix, toScreen, translate, type Mat4 } from "./xray-math";
 import { STACK, XR_PERSPECTIVE, xrayCamera, xrayLayerPose, xrayStackPose, XrayScene, type StackExtra } from "./xray";
-import { anchorLocal, Plate, PLATES, plateZ, PULSE_LOCAL, SPEND300_PATH, SPEND84_PATH } from "./s12-plates";
+import { anchorLocal, CLOSE_PATH, Plate, PLATES, plateZ, PULSE_LOCAL, SPEND300_PATH, SPEND84_PATH } from "./s12-plates";
 import { FOCUS, S12 } from "./s12-timing";
 
 export const S12_SCENES: SceneId[] = ["s12-tech"];
@@ -52,9 +52,12 @@ const CALLOUT_H = 82;
 const QUOTE_LINES = copy["rules.footer"]("Maya").split(/(?<=\.)\s+/); // ["The Pot enforces these rules itself.", "No one, including Maya, can skip them."]
 /** The trust sentence's second half, the product's own words (landing.trust). */
 const TRUST_SUB = copy["landing.trust"].split(/(?<=\.)\s+/).slice(1).join(" "); // "Small spends follow the Pot's rules; bigger ones need the group."
-/** Story pulses' result lines (real copy): spend.approved, feed.approved.sub. */
+/** Story pulses' result lines (real copy): spend.approved, approve.decided.ok, feed.approved.sub. */
 const APPROVED_BY_RULES = "Approved by Pot rules";
-const APPROVED_BY_GROUP = copy["feed.approved.sub"](names([MAYA.name, LEO.name])); // "Approved by Maya and Leo"
+const APPROVED_BY_OK = copy["approve.decided.ok"](LEO.name, "$300", MAYA.name)[0]; // "Approved by Leo's OK"
+const APPROVED_BY_GROUP = copy["feed.approved.sub"](names([MAYA.name, SAM.name])); // "Approved by Maya and Sam"
+/** The close request's pill: the majority it needs (closing is a 2-of-3 call, as in s11). */
+const CLOSE_TAG = "Close · 2 of 3";
 
 const HEADLINE: TimedWord[] = [
   { text: "Under", startFrame: voLanding(S12.wUnder) },
@@ -101,16 +104,21 @@ const passFrame = (i: number, leave: number, arrive: number, n: number) => {
 
 const P84 = S12.spend84;
 const P300 = S12.spend300;
-/** Every moment a pulse touches a layer: [layer, frame]. The overview pulse, then $84 and $300. */
+const PC = S12.close;
+/** Every moment a pulse touches a layer: [layer, frame]. The overview pulse, then $84, $300 and the close. The
+ *  close is the group's call: it is relayed (Gasless relay flashes) and lands at Your Pot, but Pot rules don't
+ *  decide it, so it passes that slab's edge without lighting it. */
 const TOUCHES: [number, number][] = [
   ...S12.pulseArrive.map((at, k) => [k, at] as [number, number]),
   [0, P84.leave],
   [1, passFrame(1, P84.leave, P84.arrive, 2)],
   [2, P84.arrive],
   [0, P300.leave],
-  [1, passFrame(1, P300.leave, P300.arrive, 3)],
-  [2, passFrame(2, P300.leave, P300.arrive, 3)],
-  [3, P300.arrive],
+  [1, passFrame(1, P300.leave, P300.arrive, 2)],
+  [2, P300.arrive],
+  [0, PC.leave],
+  [1, passFrame(1, PC.leave, PC.arrive, 3)],
+  [3, PC.arrive],
 ];
 
 /** Border flash when a pulse touches a layer (decays over ~30 f). */
@@ -229,6 +237,7 @@ export const S12Tech: React.FC = () => {
   };
   const s84 = story(SPEND84_PATH, P84);
   const s300 = story(SPEND300_PATH, P300);
+  const sClose = story(CLOSE_PATH, PC);
 
   // ── trust sentence + shield + chips ───────────────────────────────────────────
   const shieldAt = S12.collapse + 22;
@@ -302,7 +311,7 @@ export const S12Tech: React.FC = () => {
             <circle cx={dot.x} cy={dot.y} r={9 * pulseScale} fill={night.brand} />
           </g>
         ) : null}
-        {[s84, s300].map((sp, i) =>
+        {[s84, s300, sClose].map((sp, i) =>
           sp.show > 0.001 ? (
             <g key={i}>
               {sp.tailLen > 1 ? (
@@ -316,15 +325,15 @@ export const S12Tech: React.FC = () => {
                 />
               ) : null}
               <circle cx={sp.pos.x} cy={sp.pos.y} r={18 * sp.show} fill={alpha(night.brand, 0.14)} />
-              {/* the $84 request is approved where it stops: its dot becomes the approved check */}
-              <circle cx={sp.pos.x} cy={sp.pos.y} r={8 * sp.show * (i === 0 ? 1 - sp.arrived : 1)} fill={night.brand} />
+              {/* each request is approved where it stops: its dot becomes the approved check */}
+              <circle cx={sp.pos.x} cy={sp.pos.y} r={8 * sp.show * (1 - sp.arrived)} fill={night.brand} />
             </g>
           ) : null,
         )}
       </svg>
 
-      {/* ── the story pulses' tags (HTML, crisp type). Everything sits LEFT of its dot, over the slabs' label-free
-          left bands and the empty margin: amount pill beside the dot, result chip under it ── */}
+      {/* ── the story pulses' tags (HTML, crisp type). Everything sits LEFT of (or under) its dot, over the slabs'
+          label-free left bands and the empty margin: amount pill beside the dot, result chip under it ── */}
       <AbsoluteFill style={{ pointerEvents: "none" }}>
         {(() => {
           const pill: React.CSSProperties = {
@@ -353,121 +362,121 @@ export const S12Tech: React.FC = () => {
             background: night.surfaceSunken,
             fontWeight: 600,
           };
-          // $84: lands on Pot rules → its dot becomes the approved check, "✓ Approved by Pot rules" pops under the
-          // pill; then pill + chip fold into the check (the $300 is about to come down this band)
+          /** The approved check a request becomes where it stops (status colour + icon; the chip carries the word). */
+          const check = (pos: { x: number; y: number }, scale: number, key: string) => (
+            <div
+              key={key}
+              style={{
+                position: "absolute",
+                left: pos.x - 16,
+                top: pos.y - 16,
+                width: 32,
+                height: 32,
+                borderRadius: 999,
+                background: night.approved,
+                color: night.surface,
+                display: "grid",
+                placeItems: "center",
+                transform: `scale(${scale})`,
+              }}
+            >
+              <Check size={20} strokeWidth={2} style={{ display: "block" }} aria-hidden />
+            </div>
+          );
+          const resultChip = (text: string, right: number, top: number, pop: number, opacity: number, transform?: string) => (
+            <div style={{ ...resultStyle, right: 1920 - right, top, opacity, transformOrigin: "100% 0%", transform: `${transform ?? ""} scale(${pop})` }}>
+              <Check size={22} strokeWidth={2} color={night.approved} style={{ display: "block" }} aria-hidden />
+              {text}
+            </div>
+          );
+          const avatar = (p: typeof MAYA, left: number, top: number, scale: number) => (
+            <div key={p.id} style={{ position: "absolute", left, top, transform: `scale(${scale})` }}>
+              <Avatar person={p} size="sm" ring={night.ground} />
+            </div>
+          );
+          // 1. $84: lands on Pot rules → the check, "✓ Approved by Pot rules" under the pill; then pill + chip fold
+          //    into the check (the $300 lands beside it); the check stays until the close comes down
           const r84 = Math.max(0, springAt(f, P84.arrive + 4, "uiPop"));
-          const fold = ramp(f, P84.fold, P84.fold + 10, exitEase);
-          const foldT = (dx: number, dy: number) => `translate(${(dx * fold).toFixed(1)}px, ${(dy * fold).toFixed(1)}px) scale(${1 - 0.6 * fold})`;
-          // $300: lands on Your Pot → the pill makes room, Maya's and Leo's dots light up beside the request,
-          // "✓ Approved by Maya and Leo" pops under them
+          const fold84 = ramp(f, P84.fold, P84.fold + 10, exitEase);
+          const foldT = (fold: number, dx: number, dy: number) =>
+            fold > 0 ? `translate(${(dx * fold).toFixed(1)}px, ${(dy * fold).toFixed(1)}px) scale(${1 - 0.6 * fold})` : undefined;
+          // 2. $300: also lands on Pot rules → the check + Leo's dot (his one OK), "✓ Approved by Leo's OK"
           const r300 = Math.max(0, springAt(f, P300.arrive + 4, "uiPop"));
-          const slide = 80 * ramp(f, P300.arrive, P300.arrive + 10, land);
+          const leoPop = Math.max(0, springAt(f, P300.arrive + 2, "uiPop"));
+          const fold300 = ramp(f, P300.fold, P300.fold + 10, exitEase);
+          // 3. Close · 2 of 3: lands on Your Pot → the pill makes room, Maya's and Sam's dots light up, the check,
+          //    "✓ Approved by Maya and Sam"
+          const rC = Math.max(0, springAt(f, PC.arrive + 4, "uiPop"));
+          const slide = 80 * ramp(f, PC.arrive, PC.arrive + 10, land);
           return (
-            <>
+            <UiTheme theme="night">
               {s84.show > 0.001 ? (
                 <>
-                  {fold < 1 ? (
+                  {fold84 < 1 ? (
                     <div
                       style={{
                         ...amountStyle,
                         right: 1920 - (s84.pos.x - 20),
                         top: s84.pos.y - 22,
-                        opacity: s84.show * (1 - fold),
+                        opacity: s84.show * (1 - fold84),
                         transformOrigin: "100% 50%",
-                        transform: fold > 0 ? foldT(20, 0) : undefined,
+                        transform: foldT(fold84, 20, 0),
                       }}
                     >
                       $84.00
                     </div>
                   ) : null}
-                  {s84.arrived > 0 ? (
-                    // the approved check where the $84 request stopped (status colour + icon + words)
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: s84.pos.x - 16,
-                        top: s84.pos.y - 16,
-                        width: 32,
-                        height: 32,
-                        borderRadius: 999,
-                        background: night.approved,
-                        color: night.surface,
-                        display: "grid",
-                        placeItems: "center",
-                        transform: `scale(${r84 * s84.show})`,
-                      }}
-                    >
-                      <Check size={20} strokeWidth={2} style={{ display: "block" }} aria-hidden />
-                    </div>
-                  ) : null}
-                  {s84.arrived > 0 && fold < 1 ? (
-                    <div
-                      style={{
-                        ...resultStyle,
-                        right: 1920 - (s84.pos.x - 20),
-                        top: s84.pos.y + 32,
-                        opacity: s84.show * (1 - fold),
-                        transformOrigin: "100% 0%",
-                        transform: `${fold > 0 ? foldT(20, -54) : ""} scale(${r84})`,
-                      }}
-                    >
-                      <Check size={22} strokeWidth={2} color={night.approved} style={{ display: "block" }} aria-hidden />
-                      {APPROVED_BY_RULES}
-                    </div>
-                  ) : null}
+                  {s84.arrived > 0 ? check(s84.pos, r84 * s84.show, "c84") : null}
+                  {s84.arrived > 0 && fold84 < 1
+                    ? resultChip(APPROVED_BY_RULES, s84.pos.x - 20, s84.pos.y + 32, r84, s84.show * (1 - fold84), foldT(fold84, 20, -54))
+                    : null}
                 </>
               ) : null}
               {s300.show > 0.001 ? (
                 <>
+                  {fold300 < 1 ? (
+                    <div
+                      style={{
+                        ...amountStyle,
+                        right: 1920 - (s300.pos.x - 20),
+                        top: s300.pos.y - 22,
+                        opacity: s300.show * (1 - fold300),
+                        transformOrigin: "100% 50%",
+                        transform: foldT(fold300, 20, 0),
+                      }}
+                    >
+                      $300.00
+                    </div>
+                  ) : null}
+                  {s300.arrived > 0 ? check(s300.pos, r300 * s300.show, "c300") : null}
+                  {s300.arrived > 0 ? avatar(LEO, s300.pos.x + 20, s300.pos.y - 16, leoPop * s300.show) : null}
+                  {s300.arrived > 0 && fold300 < 1
+                    ? resultChip(APPROVED_BY_OK, s300.pos.x + 50, s300.pos.y + 34, r300, s300.show * (1 - fold300), foldT(fold300, -30, -56))
+                    : null}
+                </>
+              ) : null}
+              {sClose.show > 0.001 ? (
+                <>
                   <div
                     style={{
                       ...amountStyle,
-                      right: 1920 - (s300.pos.x - 20 - slide),
-                      top: s300.pos.y - 22,
-                      opacity: s300.show,
+                      right: 1920 - (sClose.pos.x - 20 - slide),
+                      top: sClose.pos.y - 22,
+                      opacity: sClose.show,
                     }}
                   >
-                    $300.00
+                    {CLOSE_TAG}
                   </div>
-                  {s300.arrived > 0 ? (
-                    // two member dots light up beside the request: Maya and Leo approve (the group, not one person)
-                    <UiTheme theme="night">
-                      {[MAYA, LEO].map((p, j) => {
-                        const pp = Math.max(0, springAt(f, P300.arrive + 2 + j * 4, "uiPop"));
-                        return (
-                          <div
-                            key={p.id}
-                            style={{
-                              position: "absolute",
-                              left: s300.pos.x - 94 + j * 40,
-                              top: s300.pos.y - 16,
-                              transform: `scale(${pp * s300.show})`,
-                            }}
-                          >
-                            <Avatar person={p} size="sm" ring={night.ground} />
-                          </div>
-                        );
-                      })}
-                    </UiTheme>
-                  ) : null}
-                  {s300.arrived > 0 ? (
-                    <div
-                      style={{
-                        ...resultStyle,
-                        right: 1920 - (s300.pos.x + 40),
-                        top: s300.pos.y + 34,
-                        opacity: s300.show,
-                        transformOrigin: "100% 0%",
-                        transform: `scale(${r300})`,
-                      }}
-                    >
-                      <Check size={22} strokeWidth={2} color={night.approved} style={{ display: "block" }} aria-hidden />
-                      {APPROVED_BY_GROUP}
-                    </div>
-                  ) : null}
+                  {sClose.arrived > 0
+                    ? [MAYA, SAM].map((p, j) =>
+                        avatar(p, sClose.pos.x - 94 + j * 40, sClose.pos.y - 16, Math.max(0, springAt(f, PC.arrive + 2 + j * 4, "uiPop")) * sClose.show),
+                      )
+                    : null}
+                  {sClose.arrived > 0 ? check(sClose.pos, rC * sClose.show, "cC") : null}
+                  {sClose.arrived > 0 ? resultChip(APPROVED_BY_GROUP, sClose.pos.x + 50, sClose.pos.y + 34, rC, sClose.show) : null}
                 </>
               ) : null}
-            </>
+            </UiTheme>
           );
         })()}
       </AbsoluteFill>
@@ -620,9 +629,9 @@ export const S12Tech: React.FC = () => {
 
       <Vignette strength={0.08} theme="night" />
 
-      {/* Sound (sparse): a quiet tick per layer the overview request reaches and where $84 / $300 land; one stamp
-          on the trust sentence */}
-      {[...S12.pulseArrive, P84.arrive, P300.arrive].map((at) => (
+      {/* Sound (sparse): a quiet tick per layer the overview request reaches and where $84, $300 and the close land;
+          one stamp on the trust sentence */}
+      {[...S12.pulseArrive, P84.arrive, P300.arrive, PC.arrive].map((at) => (
         <Sfx key={at} name="tick" at={at} volume={0.13} />
       ))}
       <Sfx name="stamp" at={shieldAt} volume={0.38} />

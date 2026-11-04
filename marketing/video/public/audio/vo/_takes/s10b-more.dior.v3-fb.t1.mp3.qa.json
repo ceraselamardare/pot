@@ -1,0 +1,147 @@
+{
+  "take": "s10b-more.dior.v3-fb.t1.mp3",
+  "line": "s10b-more",
+  "voice": "dior",
+  "n": 1,
+  "variant": "fallback",
+  "tag": "v3-fb",
+  "tts_text": "Plus: trust that grows, all-or-nothing goals, and payment links.",
+  "duration": 4.72,
+  "speech_start": 0.022,
+  "speech_end": 4.193,
+  "speech_span": 4.165,
+  "words": 9,
+  "syllables": 13,
+  "wps_span": 2.16,
+  "sps_span": 3.12,
+  "wps_articulation": 2.71,
+  "pauses": [
+    {
+      "after": "Plus",
+      "k": 0,
+      "sec": 0.351
+    },
+    {
+      "after": "grows",
+      "k": 3,
+      "sec": 0.312
+    },
+    {
+      "after": "goals",
+      "k": 5,
+      "sec": 0.177
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.041,
+    "anchors": [
+      {
+        "word": "Plus",
+        "k": 0,
+        "onset": 0.022,
+        "breath": false,
+        "stt_minus_onset": 0.018,
+        "align_minus_onset": -0.022
+      },
+      {
+        "word": "trust",
+        "k": 1,
+        "onset": 0.804,
+        "breath": true,
+        "stt_minus_onset": 0.076,
+        "align_minus_onset": 0.156
+      },
+      {
+        "word": "all-or-nothing",
+        "k": 4,
+        "onset": 2.116,
+        "breath": true,
+        "stt_minus_onset": 0.064,
+        "align_minus_onset": 0.044
+      },
+      {
+        "word": "and",
+        "k": 6,
+        "onset": 3.318,
+        "breath": false,
+        "stt_minus_onset": 0.002,
+        "align_minus_onset": 0.002
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.041
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Plus trust that grows, all or nothing goals and payment links"
+  },
+  "f0": {
+    "f0_median_hz": 160.6,
+    "st_sd": 4.83,
+    "st_p5_p95": 13.86,
+    "st_p10_p90": 12.62,
+    "st_motion_per_s": 34.7,
+    "voiced_s": 1.44
+  },
+  "loudness": {
+    "I": -24.6,
+    "LRA": 3.1,
+    "TP": -3.0
+  },
+  "threshold_db": -55.4,
+  "times": [
+    [
+      "Plus",
+      0.022,
+      0.453
+    ],
+    [
+      "trust",
+      0.804,
+      1.099
+    ],
+    [
+      "that",
+      1.139,
+      1.279
+    ],
+    [
+      "grows",
+      1.319,
+      1.805
+    ],
+    [
+      "all-or-nothing",
+      2.116,
+      2.619
+    ],
+    [
+      "goals",
+      2.719,
+      3.142
+    ],
+    [
+      "and",
+      3.318,
+      3.359
+    ],
+    [
+      "payment",
+      3.459,
+      3.719
+    ],
+    [
+      "links",
+      3.779,
+      4.187
+    ]
+  ]
+}

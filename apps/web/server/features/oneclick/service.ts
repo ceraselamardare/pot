@@ -62,7 +62,8 @@ export interface OneClickDeps {
   now?: () => number
 }
 
-type Row = typeof depositIntent.$inferSelect
+export type DepositIntentRow = typeof depositIntent.$inferSelect
+type Row = DepositIntentRow
 type Mode = "real" | "simulated"
 
 /** Testnet always simulates. `real` needs mainnet AND ONECLICK_MODE=real (the Phase 2 clip build only). */
@@ -552,7 +553,7 @@ export interface SimulateBody {
   idempotencyKey: string
 }
 
-const simOf = (row: Row): (SimState & { keys?: string[] }) | null => ((row.quote as { __sim?: SimState & { keys?: string[] } }).__sim ?? null)
+export const simOf = (row: Pick<Row, "quote">): (SimState & { keys?: string[] }) | null => ((row.quote as { __sim?: SimState & { keys?: string[] } }).__sim ?? null)
 
 async function ownIntent(db: Db, s: SessionCtx, id: string): Promise<Row> {
   const row = (await db.select().from(depositIntent).where(and(eq(depositIntent.id, id), eq(depositIntent.userId, s.user.id))).limit(1))[0]
@@ -646,7 +647,33 @@ interface Snapshot {
   refundReason?: string | null
   processingSince?: Date | null
   destinationTxHash?: string | null
+  /** real mode: the transactions on the origin network (the deposit first) */
+  originTxHashes?: string[]
   updatedAt: Date
+}
+
+/**
+ * deposit_intent.last_status (jsonb, no migration): the last status and its time, plus a small trail the money-in
+ * details read (server/features/deposits.ts): when each status was first seen (ISO) and the origin transactions.
+ */
+export interface StatusTrail {
+  status: string
+  at: string
+  seen?: Record<string, string>
+  originTx?: string[]
+}
+
+export function trailOf(row: Pick<Row, "lastStatus">): StatusTrail | null {
+  const t = row.lastStatus as StatusTrail | null
+  return t && typeof t === "object" && typeof t.status === "string" ? t : null
+}
+
+/** The next trail: the new status, its first-seen time kept from before, origin transactions once known. */
+export function nextTrail(prev: StatusTrail | null, status: string, at: Date, originTx?: string[]): StatusTrail {
+  const seen = { ...(prev?.seen ?? {}) }
+  if (!seen[status]) seen[status] = at.toISOString()
+  const tx = originTx && originTx.length ? originTx.slice(0, 4) : prev?.originTx
+  return { status, at: at.toISOString(), seen, ...(tx && tx.length ? { originTx: tx } : {}) }
 }
 
 /** Recompute a non-terminal intent (simulator profile or 1Click status), store it and return the row. */
@@ -702,6 +729,7 @@ async function refresh(deps: OneClickDeps, row: Row, now: number): Promise<Row> 
         refundedAmount: d.refundedAmount ?? null,
         refundReason: d.refundReason ?? null,
         destinationTxHash: d.destinationChainTxHashes?.[0]?.hash ?? null,
+        originTxHashes: (d.originChainTxHashes ?? []).map((x) => x?.hash).filter((h): h is string => typeof h === "string" && h.length > 0),
         processingSince: status === "PROCESSING" ? (row.processingSince ?? new Date(now)) : row.processingSince,
         updatedAt: st.updatedAt ? new Date(st.updatedAt) : new Date(now),
       }
@@ -718,7 +746,7 @@ async function refresh(deps: OneClickDeps, row: Row, now: number): Promise<Row> 
       processingSince: snap.processingSince ?? row.processingSince,
       destinationTxHash: snap.destinationTxHash ?? row.destinationTxHash,
       lastPolledAt: new Date(now),
-      lastStatus: { status: snap.status, at: snap.updatedAt.toISOString() },
+      lastStatus: nextTrail(trailOf(row), snap.status, snap.updatedAt, snap.originTxHashes),
       updatedAt: new Date(now),
     })
     .where(and(eq(depositIntent.id, row.id), sql`${depositIntent.status} NOT IN ('SUCCESS','ADDED','REFUNDED','FAILED','EXPIRED','STUCK')`))
@@ -819,7 +847,7 @@ export async function deliver(deps: OneClickDeps, id: string): Promise<void> {
         amountOut: v.amountOut.toString(),
         destinationTxHash: res.txHash,
         processingSince: v.processingSince ? new Date(v.processingSince) : row.processingSince,
-        lastStatus: { status: "SUCCESS", at: new Date(v.updatedAt).toISOString() },
+        lastStatus: nextTrail(trailOf(row), "SUCCESS", new Date(v.updatedAt)),
         updatedAt: new Date(),
       })
       .where(and(eq(depositIntent.id, id), sql`${depositIntent.destinationTxHash} IS NULL`))
@@ -887,7 +915,14 @@ export function statusBody(row: Row, cfg: Config): Record<string, unknown> {
     qrText: row.mode === "simulated" ? SIM_QR_TEXT : row.depositAddress,
     ...(row.correlationId ? { correlationId: row.correlationId } : {}),
     ...(row.simScenario
-      ? { scenario: row.simScenario, simulated: { sent: (simOf(row)?.sends.length ?? 0) > 0, sentAmount: simSent(simOf(row)).toString() } }
+      ? {
+          scenario: row.simScenario,
+          simulated: {
+            sent: (simOf(row)?.sends.length ?? 0) > 0,
+            sentAmount: simSent(simOf(row)).toString(),
+            ...(simOf(row)?.sends[0] ? { sentAt: new Date(simOf(row)!.sends[0]!.at).toISOString() } : {}),
+          },
+        }
       : {}),
     deadline: row.deadline.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

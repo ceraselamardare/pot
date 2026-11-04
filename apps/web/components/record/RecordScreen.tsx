@@ -29,6 +29,7 @@ import { approvedWords, csvFileName, paidOut, recordCsv, rowSentence, type Recor
 import { useRecord, type RecordGiftRow } from "@/lib/client/record-data"
 import { LeadTile } from "@/components/pot/CompactRow"
 import { formatDate } from "@/lib/client/time"
+import { depositKeyKind } from "@/lib/deposits"
 
 const Status = RecordStatusChip
 
@@ -211,7 +212,7 @@ export function RecordScreen() {
           </>
         )}
 
-        {r.gifts && r.gifts.length > 0 && <RecordGifts gifts={r.gifts} potName={potName} />}
+        {r.gifts && r.gifts.length > 0 && <RecordGifts gifts={r.gifts} potName={potName} slug={r.slug} member={r.member} />}
 
         <footer className="mt-8 border-t border-line pt-3 text-center">
           <button
@@ -231,7 +232,7 @@ export function RecordScreen() {
 }
 
 /** Money from outside on the record (hub 1.2.0): the amount and "Paid in" / "Gift"; members see every name and note, visitors only where the sender chose. */
-function RecordGifts({ gifts, potName }: { gifts: RecordGiftRow[]; potName: string }) {
+function RecordGifts({ gifts, potName, slug, member }: { gifts: RecordGiftRow[]; potName: string; slug: string; member: boolean }) {
   return (
     <section aria-labelledby="record-gifts-h" className="mt-8" data-record-gifts>
       <h2 id="record-gifts-h" className="font-display text-heading text-ink">
@@ -253,6 +254,17 @@ function RecordGifts({ gifts, potName }: { gifts: RecordGiftRow[]; potName: stri
                 {g.note && <p className="text-body-sm text-ink-muted [overflow-wrap:anywhere]">{g.note}</p>}
                 <div className="flex flex-wrap items-center gap-x-3 text-body-sm text-ink-muted">
                   <ReceiptLink txHash={g.txHash} what={gift ? t("gift.receipt", { amount, potName }) : t("give.receipt.payment", { amount, potName })} />
+                  {/* a member opens its details on the Pot (the money-in sheet); a visitor keeps the public receipt only */}
+                  {member && depositKeyKind(g.key) === "payin" && (
+                    <Link
+                      href={`/p/${encodeURIComponent(slug)}?sheet=deposit&d=${encodeURIComponent(g.key)}`}
+                      aria-label={t("moneyin.row.see.label", { what: t("record.gifts.a11y", { what, amount, date: formatDate(g.at) }) })}
+                      className="inline-flex min-h-6 items-center rounded-sm text-link underline-offset-4 hover:underline"
+                      data-record-gift-details
+                    >
+                      {t("moneyin.row.see")}
+                    </Link>
+                  )}
                   <span className="ml-auto whitespace-nowrap tabular-nums">{formatDate(g.at)}</span>
                 </div>
               </div>

@@ -11,6 +11,7 @@ import vo_s07_create from "./vo/s07-create.json";
 import vo_s08_join from "./vo/s08-join.json";
 import vo_s09_instant from "./vo/s09-instant.json";
 import vo_s10_group from "./vo/s10-group.json";
+import vo_s10b_more from "./vo/s10b-more.json";
 import vo_s11_close from "./vo/s11-close.json";
 import vo_s12_tech from "./vo/s12-tech.json";
 import vo_s13_end from "./vo/s13-end.json";
@@ -26,6 +27,7 @@ export const VO_DATA: Partial<Record<string, VoClip>> = {
   "s08-join": vo_s08_join,
   "s09-instant": vo_s09_instant,
   "s10-group": vo_s10_group,
+  "s10b-more": vo_s10b_more,
   "s11-close": vo_s11_close,
   "s12-tech": vo_s12_tech,
   "s13-end": vo_s13_end,

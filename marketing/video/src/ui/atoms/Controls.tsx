@@ -2,7 +2,8 @@
 //  - Chip: selectable chip, 48 px, radius-sm (pill for amount chips), selected = brand-soft + brand-deep edge + check
 //    (never marigold);
 //  - Segmented: pill track on surface-sunken, the selected segment is surface with a soft shadow;
-//  - Tabs: the Pot's Activity · Members · Rules tablist (sliding surface indicator, 52 px).
+//  - Tabs: the Pot's Activity · Members · Settings tablist (sliding surface indicator, 52 px). "Settings" was "Rules"
+//    until 2026-11-03; `active="rules"` still selects the third tab.
 import { Check } from "lucide-react";
 import React from "react";
 import { interpolateColors } from "remotion";
@@ -104,20 +105,22 @@ export const Segmented: React.FC<{
   );
 };
 
-export type PotTab = "activity" | "members" | "rules";
-export const POT_TABS: PotTab[] = ["activity", "members", "rules"];
+/** "rules" is the third tab's old name (the Settings tab holds the rules first). */
+export type PotTab = "activity" | "members" | "settings" | "rules";
+export const POT_TABS: PotTab[] = ["activity", "members", "settings"];
+export const tabIndexOf = (t: PotTab) => (t === "rules" ? 2 : Math.max(0, POT_TABS.indexOf(t)));
 
-/** Activity · Members · Rules. `active` or a fractional `index` (0 = Activity … 2 = Rules) to slide. */
+/** Activity · Members · Settings. `active` or a fractional `index` (0 = Activity … 2 = Settings) to slide. */
 export const Tabs: React.FC<{ active?: PotTab; index?: number; labels?: [string, string, string]; style?: React.CSSProperties }> = ({
   active = "activity",
   index,
-  labels = [copy["pot.tabs.activity"], copy["pot.tabs.members"], copy["pot.tabs.rules"]],
+  labels = [copy["pot.tabs.activity"], copy["pot.tabs.members"], copy["pot.tabs.settings"]],
   style,
 }) => {
   const { c } = useUi();
-  const idx = index ?? POT_TABS.indexOf(active);
+  const idx = index ?? tabIndexOf(active);
   return (
-    <div style={{ position: "relative", display: "flex", borderRadius: 999, background: c.surfaceSunken, padding: 4, ...style }}>
+    <div data-ui="tabs" style={{ position: "relative", display: "flex", borderRadius: 999, background: c.surfaceSunken, padding: 4, ...style }}>
       <span
         style={{
           position: "absolute",

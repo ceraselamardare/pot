@@ -8,7 +8,7 @@ import { ActionError, classOfReason } from "../errors"
 import type { AvatarId } from "@/lib/avatars"
 import { PERSONAS, type PersonaId } from "./fixtures"
 import * as L from "./links"
-import type { ExtrasRec, RulesRec, Vote, World } from "./types"
+import type { ExtrasRec, RulesRec, Vote, World, XcAddRecord } from "./types"
 import * as W from "./world"
 import { refundDue, withShowcase } from "./wave4"
 import { sweepExpiredLinks, withLinkShowcase } from "./links"
@@ -217,12 +217,12 @@ export async function getSurvey(): Promise<SurveyWire | null> {
   return read<Record<string, SurveyWire>>(SURVEY_KEY)?.[s.persona] ?? null
 }
 
-export async function addMoney(slug: string, amountCents: number, source: "demo" | "pot_dollars" = "demo"): Promise<void> {
+export async function addMoney(slug: string, amountCents: number, source: "demo" | "pot_dollars" = "demo", xc?: XcAddRecord): Promise<void> {
   await sleep(LATENCY.add)
   maybeFail("add")
   let next: World
   try {
-    next = W.addMoney(ensureWorld(), slug, me(), amountCents, Date.now(), source)
+    next = W.addMoney(ensureWorld(), slug, me(), amountCents, Date.now(), xc ? "xc" : source, xc)
   } catch (e) {
     if (e instanceof Error && e.message === "insufficient_own") throw new MockRelayError("insufficient_balance")
     if (e instanceof W.HubError) throw new ActionError("specific", e.code)

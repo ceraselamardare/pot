@@ -1,0 +1,77 @@
+{
+  "id": "s10b-more",
+  "file": "audio/vo/s10b-more.mp3",
+  "durationSec": 4.893,
+  "words": [
+    {
+      "text": "Plus",
+      "start": 0.05,
+      "end": 0.495
+    },
+    {
+      "text": "trust",
+      "start": 0.719,
+      "end": 0.969
+    },
+    {
+      "text": "that",
+      "start": 1.009,
+      "end": 1.169
+    },
+    {
+      "text": "grows",
+      "start": 1.209,
+      "end": 1.708
+    },
+    {
+      "text": "all-or-nothing",
+      "start": 1.972,
+      "end": 2.469
+    },
+    {
+      "text": "goals",
+      "start": 2.549,
+      "end": 2.94
+    },
+    {
+      "text": "and",
+      "start": 3.087,
+      "end": 3.149
+    },
+    {
+      "text": "links",
+      "start": 3.249,
+      "end": 3.469
+    },
+    {
+      "text": "to",
+      "start": 3.489,
+      "end": 3.609
+    },
+    {
+      "text": "pay",
+      "start": 3.669,
+      "end": 3.849
+    },
+    {
+      "text": "in",
+      "start": 3.909,
+      "end": 4.048
+    },
+    {
+      "text": "or",
+      "start": 4.189,
+      "end": 4.289
+    },
+    {
+      "text": "pay",
+      "start": 4.349,
+      "end": 4.489
+    },
+    {
+      "text": "out",
+      "start": 4.569,
+      "end": 4.731
+    }
+  ]
+}

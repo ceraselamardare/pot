@@ -26,12 +26,26 @@ const SUPPRESS: Partial<Record<SceneId, string[] | "all">> = {
   "s06-reveal": "all",
   // "Drop the link in the chat." sits level with the chat's send button in s08's close-up (review-2): the visual
   // already shows the link landing in the chat, so it is suppressed too.
-  "s08-join": ["Drop the link in the chat.", "No wallet.", "No seed phrase.", "No gas."],
+  // v2: the type column shows "Join with Google." and "Chip in $150." on those words (builder C), so the middle page goes too.
+  "s08-join": [
+    "Drop the link in the chat.",
+    "Friends join with Google and chip in their share.",
+    "No wallet.",
+    "No seed phrase.",
+    "No gas.",
+  ],
   "s09-instant": ["Small spends approve themselves."],
-  "s10-group": ["Bigger spends go to the group.", "so Leo approves, right from a notification."],
+  // v2 (one OK): builder D's type shows every word of s10's line ("Bigger spends / need one OK." then "Leo taps it, /
+  // right from a / notification."), and a pause after "it," splits the caption pages, so the whole scene goes (review-3 P0-1).
+  "s10-group": "all",
   "s11-close": ["When the trip's over,", "close the Pot."],
   "s12-tech": ["And no one can take money out alone."],
   "s13-end": "all",
+};
+// Explicit page breaks for scenes whose automatic paging reads badly: break only AFTER these script tokens, and
+// nowhere else (no comma/pause breaks). v2: s10b's list would otherwise flash four 1 s pages.
+const BREAKS: Partial<Record<SceneId, string[]>> = {
+  "s10b-more": ["goals,"],
 };
 const key = (t: string) => t.toLowerCase().replace(/[^a-z0-9$]/g, "");
 const suppressed = (id: SceneId, text: string) => {
@@ -69,8 +83,11 @@ const buildPages = (): Page[] => {
       const curText = cur.map((x) => x.text).join(" ");
       const len = curText.length + w.text.length + 1;
       const sentenceEnd = prev && /[.?!…]$/.test(prev.text);
-      const commaBreak = prev && /,$/.test(prev.text) && curText.length >= COMMA_BREAK_MIN;
-      const pause = prev && w.start - prev.end > GAP_BREAK_S;
+      const forced = BREAKS[s.id];
+      const commaBreak = forced
+        ? Boolean(prev && forced.includes(prev.text))
+        : prev && /,$/.test(prev.text) && curText.length >= COMMA_BREAK_MIN;
+      const pause = !forced && prev && w.start - prev.end > GAP_BREAK_S;
       if (cur.length && (len > MAX_CHARS || pause || sentenceEnd || commaBreak)) {
         // Overflow break: don't strand a short function word at the end of the page.
         const carry: typeof words = [];

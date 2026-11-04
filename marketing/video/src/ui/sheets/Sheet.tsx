@@ -3,8 +3,12 @@
 // screen, and an optional footer (top `line` border, padded for the home indicator). The scrim is --pot-scrim.
 // `progress` 0..1 = time through the 360 ms enter: the sheet slides up with ease-enter, the scrim fades in with
 // ease-standard. Pass `exiting` while animating 1 → 0 to use the 280 ms ease-exit curve instead.
-import { X } from "lucide-react";
+// `description` is the quiet line under the title (More options · "Lisbon Trip"). SheetBack is a multi-step sheet's
+// [‹ Back] (a ghost button under the step's primary).
+import { ChevronLeft, X } from "lucide-react";
 import React from "react";
+import { copy } from "../copy";
+import { Button } from "../atoms/Button";
 import { clamp01, easeEnter, easeExit, easeStandard } from "../ease";
 import { alpha, useUi } from "../theme";
 import { SCREEN_TEXT, T } from "../type";
@@ -18,6 +22,8 @@ export type SheetProps = {
   titleStyle?: React.CSSProperties;
   /** Replace the whole title block. */
   header?: React.ReactNode;
+  /** A quiet line under the title (body-sm, ink-muted), e.g. the Pot's name. */
+  description?: React.ReactNode;
   showClose?: boolean;
   children?: React.ReactNode;
   footer?: React.ReactNode;
@@ -42,6 +48,7 @@ export const Sheet: React.FC<SheetProps> = ({
   title,
   titleStyle,
   header,
+  description,
   showClose = true,
   children,
   footer,
@@ -66,6 +73,7 @@ export const Sheet: React.FC<SheetProps> = ({
       {scrim ? <div style={{ position: "absolute", inset: 0, background: scrimColor, opacity: scrimA }} /> : null}
       <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "flex-end", justifyContent: "center", pointerEvents: "none" }}>
         <div
+          data-ui="sheet"
           style={{
             position: "relative",
             width: "100%",
@@ -86,6 +94,7 @@ export const Sheet: React.FC<SheetProps> = ({
           <div style={{ display: "flex", flexShrink: 0, alignItems: "flex-start", gap: 8, padding: "8px 16px 0" }}>
             <div style={{ minWidth: 0, flex: 1, paddingTop: 8 }}>
               {header ?? <h2 style={{ margin: 0, ...T.heading, color: c.ink, textWrap: "balance", ...titleStyle }}>{title}</h2>}
+              {description ? <p style={{ margin: "4px 0 0", ...T.bodySm, color: c.inkMuted }}>{description}</p> : null}
             </div>
             {showClose ? (
               <span style={{ marginRight: -8, display: "grid", width: 44, height: 44, flexShrink: 0, placeItems: "center", borderRadius: 999, color: c.ink }}>
@@ -100,6 +109,7 @@ export const Sheet: React.FC<SheetProps> = ({
             <div style={{ flexShrink: 0, display: "grid", gridTemplateRows: `${fA < 1 ? easeStandard(fA) : 1}fr` }}>
               <div style={{ minHeight: 0, overflow: fA < 1 ? "hidden" : undefined }}>
                 <div
+                  data-ui="sheet-footer"
                   style={{
                     borderTop: `1px solid ${c.line}`,
                     background: c.surface,
@@ -120,3 +130,16 @@ export const Sheet: React.FC<SheetProps> = ({
     </div>
   );
 };
+
+/** [‹ Back] in a multi-step sheet (apps/web SheetBack): a full-width ghost button under the step's primary. */
+export const SheetBack: React.FC<{ pressed?: number; style?: React.CSSProperties }> = ({ pressed = 0, style }) => (
+  <Button
+    variant="ghost"
+    fullWidth
+    pressed={pressed}
+    leading={<ChevronLeft size={20} strokeWidth={2} style={{ display: "block", flexShrink: 0 }} aria-hidden />}
+    style={style}
+  >
+    {copy["sheet.back"]}
+  </Button>
+);

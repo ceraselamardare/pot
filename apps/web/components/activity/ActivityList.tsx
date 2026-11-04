@@ -16,7 +16,9 @@ import { CoverTile } from "@/components/pot/CoverTile"
 import { StatusChip } from "@/components/pot/StatusChip"
 import { ReceiptLink, ReceiptSpace } from "@/components/receipt/ReceiptLink"
 import { t } from "@/i18n/t"
-import { activityHref, activityText, activityTitle, chipWord, groupByDay, isSpendItem, rowChip, type ActivityItemVM } from "@/lib/client/activity"
+import { activityHref, activityText, activityTitle, chipWord, groupByDay, isMoneyInItem, isSpendItem, rowChip, type ActivityItemVM } from "@/lib/client/activity"
+import { rowSourceWords } from "@/lib/client/deposits/vm"
+import { SourceMark } from "@/components/pot/Feed"
 import { isTxHash } from "@/lib/client/explorer"
 
 /** The kind's icon (the lead on a member's sheet, the badge on You). */
@@ -69,9 +71,12 @@ export function ActivityRow({
   const chip = rowChip(item)
   const when = rowWhen(item.at, now)
   const spend = isSpendItem(item)
-  const opens = !linked && !!onOpen && spend
-  // a transaction's receipt stays on rows that open no details sheet (a spend's is in its sheet)
-  const receipt = isTxHash(item.txHash) && !spend
+  // money in (a member's add) opens its details too, like a spend
+  const moneyIn = isMoneyInItem(item)
+  const opens = !linked && !!onOpen && (spend || moneyIn)
+  // a transaction's receipt stays on rows that open no details sheet (a spend's and an add's are in their sheets)
+  const receipt = isTxHash(item.txHash) && !spend && !moneyIn
+  const src = item.kind === "added" ? rowSourceWords(item.source) : null
   const receiptBeside = receipt && linked && item.kind !== "gift"
   const struck = item.kind === "asked" && (item.status === "declined" || item.status === "expired") && !item.link
   const money =
@@ -94,9 +99,11 @@ export function ActivityRow({
         text,
         chip?.status === "instant" ? t("row.a11y.instant") : chip && chipWordText,
         struck && t("chip.not_sent"),
+        src?.said,
         showPot && item.potName,
         item.hasReceipt && t("details.receipt.indicator"),
         when.long,
+        moneyIn && (opens || linked) && t("moneyin.row.details"),
       ])}
       lead={
         showPot ? (
@@ -119,6 +126,7 @@ export function ActivityRow({
               </StatusChip>
             )
           )}
+          {item.kind === "added" && <SourceMark source={item.source} />}
           {item.hasReceipt && <ReceiptMark />}
           {receipt && !receiptBeside && <ReceiptLink txHash={item.txHash} what={text} />}
           {receiptBeside && <span className="tabular-nums">{when.short}</span>}

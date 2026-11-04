@@ -32,7 +32,9 @@ export const Button: React.FC<{
   touchDot?: boolean | { x: number; y: number };
   style?: React.CSSProperties;
   labelStyle?: React.CSSProperties;
-}> = ({ variant = "secondary", children, icon: Icon, leading, trailing, pressed = 0, disabled, height, fullWidth, dim, touchDot, style, labelStyle }) => {
+  /** A data-ui marker for measuring (preview/Measure.tsx). */
+  dataUi?: string;
+}> = ({ variant = "secondary", children, icon: Icon, leading, trailing, pressed = 0, disabled, height, fullWidth, dim, touchDot, style, labelStyle, dataUi }) => {
   const { c, brandBorder, secondaryBg } = useUi();
   const p = typeof pressed === "boolean" ? (pressed ? 1 : 0) : Math.max(0, Math.min(1, pressed));
   let bg: string;
@@ -58,6 +60,7 @@ export const Button: React.FC<{
   const h = height ?? (variant === "primary" ? 52 : 48);
   return (
     <span
+      data-ui={dataUi}
       style={{
         position: "relative",
         boxSizing: "border-box",

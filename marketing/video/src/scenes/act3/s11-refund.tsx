@@ -3,10 +3,12 @@
 // needs: each body row can "land" (dip + settle) on its own, and each "Gets back" shows a counting value.
 import React from "react";
 import { punch, type Ease } from "../../motion";
+import { day } from "../../brand/tokens";
 import { Avatar, MoneyText, copy, T, useUi, type RefundRow } from "../../ui";
 
-/** Per-row state: `land` 1 = at rest; < 1 = settling (y offset + opacity); `back` = the value shown. */
-export type RowState = { land: number; back: number };
+/** Per-row state: `land` 1 = at rest; < 1 = settling (y offset + opacity); `back` = the value shown;
+ *  `emph` 0..1 = a brand-soft highlight wiping in left → right behind the "Gets back" amount (text stays ink). */
+export type RowState = { land: number; back: number; emph?: number };
 
 /**
  * Research §3.5 ticker as a value: ~20 distinct values with decaying steps over `duration` frames (ease punch),
@@ -80,7 +82,9 @@ export const S11RefundTable: React.FC<{
                 </span>
               </th>
               <td style={{ ...cell, textAlign: "right" }}>{settle(i, r.putIn !== null ? <MoneyText amount={r.putIn} color={c.inkMuted} /> : null)}</td>
-              <td style={{ ...cell, paddingRight: 8, textAlign: "right" }}>{settle(i, <MoneyText amount={state[i]?.back ?? r.back} color={c.ink} />)}</td>
+              <td style={{ ...cell, paddingRight: 8, textAlign: "right" }}>
+                {settle(i, <Emphasis amount={state[i]?.emph ?? 0}>{<MoneyText amount={state[i]?.back ?? r.back} color={c.ink} />}</Emphasis>)}
+              </td>
             </tr>
           );
         })}
@@ -97,5 +101,30 @@ export const S11RefundTable: React.FC<{
         </tr>
       </tfoot>
     </table>
+  );
+};
+
+/** The brief emphasis on a "Gets back" amount: a brand-soft block wipes in behind it (like the film's highlight
+ *  bars, 10 f on land), the amount itself stays ink. At 0 it renders the amount untouched (same line box). */
+const Emphasis: React.FC<{ amount: number; children: React.ReactNode }> = ({ amount, children }) => {
+  if (amount <= 0.001) return <>{children}</>;
+  const a = Math.min(1, amount);
+  return (
+    <span style={{ position: "relative", display: "inline-block" }}>
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: -6,
+          right: -6,
+          top: -1,
+          bottom: -1,
+          borderRadius: 8,
+          background: day.brandSoft,
+          clipPath: `inset(0 ${((1 - a) * 100).toFixed(2)}% 0 0 round 8px)`,
+        }}
+      />
+      <span style={{ position: "relative" }}>{children}</span>
+    </span>
   );
 };

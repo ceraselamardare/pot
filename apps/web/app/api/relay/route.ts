@@ -8,6 +8,7 @@ import { ApiError } from "@/server/http/errors"
 import { checkCsrf, ipHash, parseWith, readBody, route } from "@/server/http/context"
 import { signedRelayReq } from "@/server/http/schemas"
 import { relay } from "@/server/relay/pipeline"
+import { noteAddSource } from "@/server/features/deposits"
 import { requireSession } from "@/server/session/store"
 import { sha256Hex } from "@/server/util/crypto"
 
@@ -51,5 +52,15 @@ export const POST = route("POST /api/relay", async (ctx) => {
   const gradient = body.context?.meta?.gradient
   if (gradient && result?.type === "create_pot" && result.potId)
     await getDb().update(pot).set({ gradient }).where(eq(pot.daoId, result.potId)).catch(() => undefined)
+  // add_money: where the money came from, kept on the add's feed row for the money-in details (best effort)
+  const added = r.body as { relayId?: string; txHash?: string; result?: { type?: string; recorded?: boolean } | null }
+  if (added.result?.type === "contribution" && added.result.recorded && added.relayId && added.txHash && (body.context?.source || body.context?.depositIntentId))
+    await noteAddSource(getDb(), {
+      userId: s.user.id,
+      relayId: added.relayId,
+      txHash: added.txHash,
+      ...(body.context.source ? { source: body.context.source } : {}),
+      ...(body.context.depositIntentId ? { depositIntentId: body.context.depositIntentId } : {}),
+    }).catch(() => undefined)
   return ctx.raw({ ...r.body, requestId: ctx.requestId }, r.status)
 })

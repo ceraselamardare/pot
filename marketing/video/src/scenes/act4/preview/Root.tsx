@@ -7,6 +7,7 @@ import { FPS } from "../../../motion/time";
 import { scene } from "../../../data/timeline";
 import { S11Close } from "../../act3/e-index";
 import { S12Tech } from "../index";
+import { S11Measure } from "./Measure";
 
 const s11 = scene("s11-close").duration;
 const s12 = scene("s12-tech").duration;
@@ -28,5 +29,6 @@ export const ActFourPreviewRoot: React.FC = () => (
     <Composition id="S11Close" component={S11Close} durationInFrames={s11} fps={FPS} width={1920} height={1080} />
     <Composition id="S12Tech" component={S12Tech} durationInFrames={s12} fps={FPS} width={1920} height={1080} />
     <Composition id="S11toS12" component={S11toS12} durationInFrames={240} fps={FPS} width={1920} height={1080} />
+    <Composition id="S11Measure" component={S11Measure} defaultProps={{ mode: "waiting" as "waiting" | "waiting2" | "closed" | "propose" | "more" }} durationInFrames={1} fps={FPS} width={1920} height={1080} />
   </Folder>
 );

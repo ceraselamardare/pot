@@ -43,7 +43,7 @@ test("(a) invite landing → join → You're in → add $150 → the balance upd
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$450.00", { timeout: 10_000 })
   await expect(page.getByText("Added. Porto Weekend now has $450.00.")).toBeVisible()
   await expect(page.getByText("$450 of $450 collected")).toBeVisible()
-  await expect(page.getByRole("group", { name: /^Leo added \$150/ }).first()).toBeVisible()
+  await expect(page.getByRole("button", { name: /^Leo added \$150\. Demo dollars\..*Details$/ }).first()).toBeVisible()
 })
 
 test("(b) instant spend $84 → Checking Pot rules ≥ 1.2 s → the burst → feed shows Approved by Pot rules", async ({ page }, info) => {

@@ -306,18 +306,24 @@ export const Phone: React.FC<PhoneProps> = ({
 
 /** A bare 390 × 844 screen (no bezel, no status bar, no safe areas): for 1:1 comparisons with the app's
  *  screenshots and for UI pieces that break out of the phone. */
-export const BareScreen: React.FC<{ theme?: ThemeName; children?: React.ReactNode; style?: React.CSSProperties }> = ({ theme = "day", children, style }) => (
+export const BareScreen: React.FC<{
+  theme?: ThemeName;
+  /** A taller page for full-page captures (the screen height the sheets size against too). */
+  height?: number;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}> = ({ theme = "day", height = SCREEN_H, children, style }) => (
   <div
     style={{
       position: "relative",
       width: SCREEN_W,
-      height: SCREEN_H,
+      height,
       overflow: "hidden",
       background: theme === "night" ? night.ground : day.ground,
       ...style,
     }}
   >
-    <UiTheme theme={theme} safeTop={0} safeBottom={0} screenW={SCREEN_W} screenH={SCREEN_H}>
+    <UiTheme theme={theme} safeTop={0} safeBottom={0} screenW={SCREEN_W} screenH={height}>
       {children}
     </UiTheme>
   </div>

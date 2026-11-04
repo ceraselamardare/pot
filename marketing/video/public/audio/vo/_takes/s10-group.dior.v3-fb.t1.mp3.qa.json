@@ -1,0 +1,164 @@
+{
+  "take": "s10-group.dior.v3-fb.t1.mp3",
+  "line": "s10-group",
+  "voice": "dior",
+  "n": 1,
+  "variant": "fallback",
+  "tag": "v3-fb",
+  "tts_text": "Bigger spends need one OK from the group. Leo taps it, right from a notification.",
+  "duration": 5.44,
+  "speech_start": 0.005,
+  "speech_end": 4.991,
+  "speech_span": 4.975,
+  "words": 15,
+  "syllables": 22,
+  "wps_span": 3.01,
+  "sps_span": 4.42,
+  "wps_articulation": 3.72,
+  "pauses": [
+    {
+      "after": "group",
+      "k": 7,
+      "sec": 0.626
+    },
+    {
+      "after": "it",
+      "k": 10,
+      "sec": 0.317
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.063,
+    "anchors": [
+      {
+        "word": "Bigger",
+        "k": 0,
+        "onset": 0.005,
+        "breath": false,
+        "stt_minus_onset": 0.095,
+        "align_minus_onset": -0.005
+      },
+      {
+        "word": "Leo",
+        "k": 8,
+        "onset": 2.862,
+        "breath": true,
+        "stt_minus_onset": 0.038,
+        "align_minus_onset": 0.018
+      },
+      {
+        "word": "right",
+        "k": 11,
+        "onset": 3.857,
+        "breath": false,
+        "stt_minus_onset": 0.063,
+        "align_minus_onset": 0.063
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.053
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Bigger spends need one okay from the group. Leo taps it right from a notification"
+  },
+  "f0": {
+    "f0_median_hz": 170.8,
+    "st_sd": 4.89,
+    "st_p5_p95": 12.96,
+    "st_p10_p90": 12.09,
+    "st_motion_per_s": 28.5,
+    "voiced_s": 2.19
+  },
+  "loudness": {
+    "I": -25.2,
+    "LRA": 0.7,
+    "TP": -1.1
+  },
+  "threshold_db": -57.5,
+  "times": [
+    [
+      "Bigger",
+      0.005,
+      0.237
+    ],
+    [
+      "spends",
+      0.377,
+      0.697
+    ],
+    [
+      "need",
+      0.737,
+      0.997
+    ],
+    [
+      "one",
+      1.057,
+      1.197
+    ],
+    [
+      "OK",
+      1.277,
+      1.617
+    ],
+    [
+      "from",
+      1.637,
+      1.757
+    ],
+    [
+      "the",
+      1.797,
+      1.877
+    ],
+    [
+      "group",
+      1.917,
+      2.236
+    ],
+    [
+      "Leo",
+      2.862,
+      3.057
+    ],
+    [
+      "taps",
+      3.117,
+      3.357
+    ],
+    [
+      "it",
+      3.417,
+      3.541
+    ],
+    [
+      "right",
+      3.857,
+      4.037
+    ],
+    [
+      "from",
+      4.057,
+      4.157
+    ],
+    [
+      "a",
+      4.177,
+      4.217
+    ],
+    [
+      "notification",
+      4.257,
+      4.98
+    ]
+  ]
+}

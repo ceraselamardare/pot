@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { newOpKey } from "@pot/sdk"
 import { addMoney } from "@/lib/client/actions"
 import { IS_LIVE, daoOf } from "@/lib/client/config"
-import type { PotVM } from "@/lib/client/mock/types"
+import type { PotVM, XcAddRecord } from "@/lib/client/mock/types"
 import type { Micro } from "@/lib/client/money"
 import type { OpHandle } from "@/lib/client/ops/store"
 import { queryClient } from "@/lib/client/query"
@@ -92,6 +92,7 @@ export function addArrived(pot: Pick<PotVM, "slug" | "name" | "balance">, d: Dep
   const h = addMoney(pot, amount, actor, {
     source: "pot_dollars",
     context: { depositIntentId: d.id },
+    ...(IS_LIVE ? {} : { xc: xcRecordOf(d, amount) }),
     onRelayed: (r) => {
       relayId = r.relayId
     },
@@ -111,3 +112,27 @@ export function addArrived(pot: Pick<PotVM, "slug" | "name" | "balance">, d: Dep
 }
 
 export const newDepositKey = () => newOpKey()
+
+/** The mock's record of an arrived deposit, kept with the add for the money-in details (the server reads deposit_intent). */
+export function xcRecordOf(d: DepositView, arrived: Micro): XcAddRecord {
+  const c = coinOf(d)
+  const at = (s: string | undefined) => (s ? Date.parse(s) : null)
+  return {
+    id: d.id,
+    mode: d.mode,
+    chain: d.chain,
+    coin: c.coin,
+    decimals: c.decimals,
+    stable: c.stable,
+    sent: d.depositedAmount ?? d.simulated?.sentAmount ?? d.amountIn,
+    usdTarget: usdTargetOf(d).toString(),
+    arrived: arrived.toString(),
+    ...(d.refundedAmount ? { refunded: d.refundedAmount, refundReason: d.refundReason ?? null } : {}),
+    depositAddress: d.depositAddress,
+    addressAt: Date.parse(d.createdAt),
+    sentAt: at(d.simulated?.sentAt),
+    convertingAt: at(d.processingSince),
+    // SUCCESS's time is the status's own time
+    arrivedAt: d.status === "SUCCESS" || d.status === "ADDED" ? at(d.updatedAt) : null,
+  }
+}

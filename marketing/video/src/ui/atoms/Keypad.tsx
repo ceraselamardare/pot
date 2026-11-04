@@ -21,7 +21,7 @@ export const Keypad: React.FC<{
 }> = ({ pressedKey = null, press = 1, keyHeight = 56, style }) => {
   const { c } = useUi();
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, ...style }}>
+    <div data-ui="keypad" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, ...style }}>
       {KEYS.map((k) => {
         const p = k === pressedKey ? Math.max(0, Math.min(1, press)) : 0;
         return (

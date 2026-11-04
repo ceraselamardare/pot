@@ -231,7 +231,8 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
     if (it.type !== "contribution" || !it.amount) continue
     const amount = BigInt(it.amount)
     serverIn.set(it.actor, (serverIn.get(it.actor) ?? 0n) + amount)
-    feed.push({ key: it.key, kind: "contribution", at: Date.parse(it.at), actor: person(it.actor), amount, ...(it.txHash ? { txHash: it.txHash } : {}) })
+    const source = it.txHash ? b.feed?.addSources?.[it.txHash] : undefined
+    feed.push({ key: it.key, kind: "contribution", at: Date.parse(it.at), actor: person(it.actor), amount, ...(it.txHash ? { txHash: it.txHash } : {}), ...(source ? { source } : {}) })
   }
   for (const m of active) {
     // money the chain counts but the feed route never saw (seeded by script, or relayed elsewhere)

@@ -1,5 +1,21 @@
 # Backend notes: wave 1 (B-01…B-09, X-05, X-08, X-09)
 
+> **2026-11-04: Money-in details (`GET /api/pots/[pot]/deposits/[key]`, server/features/deposits.ts).** Members only
+> (`isMember` before any read; stranger / left / unknown key / another Pot's key → the same 404; signed out 401;
+> `private, no-store`). `key` = a contribution's NEAR tx hash or a pay-in ref. An add's source, in order: the
+> `deposit_intent` the relay ADDED (`added_relay_id` → `relay_log.id` whose `outer_tx_hash` is the key), the deposit
+> named in the relay's context (`feed_event.data.depositIntentId`), the Add sheet's `context.source`
+> (`feed_event.data.potSource`), a faucet claim by the same user ≤ 10 min before (older adds = demo dollars), else
+> "balance". **Writes (no migration):** `POST /api/relay` accepts `context.source` ("demo" | "pot_dollars"; sdk
+> `RelayContext.source`) and after a recorded contribution merges `potSource` / `depositIntentId` (only the caller's own
+> deposit for that Pot, only through the caller's own relay row) into the add's `feed_event.data` (`noteAddSource`, best
+> effort). The 1Click poller keeps a trail in `deposit_intent.last_status` (`{status, at, seen: {STATUS: first-seen ISO},
+> originTx: [hash]}`, `nextTrail`) and reads `swapDetails.originChainTxHashes`; `statusBody` adds
+> `simulated.sentAt`. The feed adds members-only `addSources` (tx → kind, + coin/chain for another app). Real-mode
+> receipts: the origin network's explorer (`lib/deposits.ts originTxUrl`, hash-checked) and
+> `explorer.near-intents.org/transactions/<depositAddress>`; simulated rows get neither. Tests:
+> `server/features/deposits.test.ts` (10). Frontend + open questions: notes/frontend.md 2026-11-04 "Money-in details".
+
 > Written 2026-10-22 by the backend agent. Sources: plan/api-spec.md (primary), data-model.md, architecture.md, contracts-spec.md, review-security.md §7, implementation-plan B-01…B-09/X-05/X-08/X-09, kb/meta-tx-relayer.md, kb/accounts-onboarding.md, kb/near-auth.md, kb/backend-infra.md, notes/sdk.md.
 > Reconciled with `@pot/sdk` 0.1.0 (wire types, delegate decoder/verifier, `RELAY_POLICY`, `kindsEqual`, `errorCodeFromText`, `buildCall`, Raw view types). `contracts/abi/pot_hub.json` and `notes/contracts.md` did not exist yet; method names and view JSON follow contracts-spec + `contracts/pot-hub/src` (read 00:30) via the sdk's `Raw*` types.
 
@@ -584,6 +600,8 @@ failure to read the members fails closed: the reader is treated as not a member,
 | Top-up asks (`topup_request`: amount, the reason, due date, who was asked, progress) and nudges (`nudge`; "Ask for a top-up" 2026-11-03) | `GET/POST /api/pots/[pot]/topups`, `DELETE …/[id]`, `POST /api/nudges` | – (new) | the Pot's active members (403 before any read); cancel: the asker only |
 | | `GET /api/me/topups` | – (new) | the person: asks in Pots they're **still** in (where they're asked and not done, plus their own); names of people in those Pots |
 | | push (`topup_asked` with the reason, `topup_reminder`, `nudge`) | – (new) | active members asked, minus the asker / the nudged person only; amounts and names, the reason in the ask's push (see open question) |
+| Money-in details (2026-11-04: an add's source, `feed_event.data.potSource` / `.depositIntentId`; the `deposit_intent` it came from: coin, network, amounts, times, origin tx; a pay-in's name, note, link and its maker; the top-up ask it answered) | `GET /api/pots/[pot]/deposits/[key]` (server/features/deposits.ts) | – (new; a `deposit_intent` was owner-only through `/api/oneclick/status*`) | **the Pot's active members** (`hub.get_members` before any row is read); a stranger, someone who **left**, an unknown key and another Pot's key all get the same **404**; signed out 401; `private, no-store`. Tested route-level in `server/features/deposits.test.ts` |
+| | feed `addSources` (each add's kind, + coin and network for another app) | – (new) | members only (absent for others, like `memos`) |
 | Pay-in amounts and sender accounts | the hub's `gift_received{pot,from,amount,ref}` event, the token transfer | – | **public on the ledger** anyway; the public page shows totals and opted-in givers only, never account ids |
 | Goal "$X each" | the creator's device; the landing shows the default $150 | – | – |
 | Error responses | `not_a_member` 403 / `not_signed_in` 401 / `pot_unknown` 404 | – | Pot existence and request ids are public, so a 403 only reveals public facts. **`POST /api/devices` returned the raw internal error text** (now `internal` with no message, logged instead; fixed) |

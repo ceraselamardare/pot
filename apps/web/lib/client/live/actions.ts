@@ -18,7 +18,7 @@ import {
 import { daoOf, sdkConfig } from "../config"
 import { ActionError } from "../errors"
 import { slugify } from "../mock/world"
-import type { RequestVM } from "../mock/types"
+import type { RequestVM, XcAddRecord } from "../mock/types"
 import { queryClient } from "../query"
 import { api } from "./api"
 import { signingChain as chain } from "./chain"
@@ -55,6 +55,8 @@ export interface AddMoneyOptions {
   context?: Api.RelayContext
   /** integrations (D-50): the relay outcome, e.g. to mark the deposit ADDED */
   onRelayed?: (r: RelayOk) => void
+  /** mock only: the arrived deposit this add came from (the mock world keeps it for the money-in details) */
+  xc?: XcAddRecord
 }
 
 export async function addMoney(slug: string, amount: Micro, opts: AddMoneyOptions = {}): Promise<string> {
@@ -69,7 +71,8 @@ export async function addMoney(slug: string, amount: Micro, opts: AddMoneyOption
       await api("POST", "/api/faucet", { amount: claim.toString(), idempotencyKey: newOpKey() })
     }
   }
-  const r = await send({ type: "add_money", pot: dao as never, amount }, opts.context ? { context: opts.context } : {})
+  // the source rides along so the money-in details can say where it came from (kept on the add's feed row)
+  const r = await send({ type: "add_money", pot: dao as never, amount }, { context: { ...(opts.context ?? {}), source: opts.source ?? "demo" } })
   failIfInner(r)
   opts.onRelayed?.(r)
   if (r.result?.type !== "contribution" || !r.result.recorded) throw new ActionError("failed", "not_recorded", { txHash: r.txHash })

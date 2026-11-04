@@ -72,6 +72,8 @@ export interface StatusResponse {
     refundedAmount?: string | null
     refundReason?: string | null
     destinationChainTxHashes?: { hash: string; explorerUrl?: string }[]
+    /** the deposit (and any refund) transactions on the origin network (kb/intents-1click.md) */
+    originChainTxHashes?: { hash: string; explorerUrl?: string }[]
   }
 }
 

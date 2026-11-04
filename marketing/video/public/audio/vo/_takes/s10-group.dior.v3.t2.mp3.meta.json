@@ -1,0 +1,31 @@
+{
+  "tool": "eleven.tts",
+  "endpoint": "POST /v1/text-to-speech/{voice_id}/with-timestamps",
+  "model_id": "eleven_v4",
+  "voice_id": "4XLp6ou1JHGgf9xXbHCM",
+  "request": {
+    "text": "Bigger spends need one OK. Leo taps it, right from a notification.",
+    "model_id": "eleven_v4",
+    "voice_settings": {
+      "stability": 0.45,
+      "similarity_boost": 0.75
+    },
+    "previous_text": "Small spends approve themselves. Eighty-four dollars for groceries? Pot checks the rules… approved, and paid back in seconds.",
+    "next_text": "Plus: trust that grows, all-or-nothing goals, and links to pay in, or pay out.",
+    "seed": 2026,
+    "output_format": "mp3_44100_128"
+  },
+  "response": {
+    "request_id": "RrbFtTy7hqvpv0Wr4OPB",
+    "headers": {
+      "character-cost": "15",
+      "history-item-id": "3EoOaJcGAbJzsJLeafML",
+      "request-id": "RrbFtTy7hqvpv0Wr4OPB"
+    },
+    "latency_ms": 1866,
+    "bytes": 82798,
+    "duration_sec": 5.12,
+    "has_alignment": true
+  },
+  "created_at": "2026-11-03T20:16:13.397Z"
+}

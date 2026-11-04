@@ -1,5 +1,6 @@
 // The invite link preview image (apps/web/app/j/[slug]/opengraph-image.tsx, notes/screens/p2-day-og-image.png):
-// 1200 × 630 on marigold, the cover tile centred, the Pot name in Gabarito 800 eggplant, initials-only avatars with
+// 1200 × 630 on marigold, the cover tile centred, the Pot name in Gabarito 800 eggplant, plain seats in member colours
+// (no names or initials since the privacy audit of 2026-11-02; `initials` brings back the Oct 22 look) with
 // "3 friends are in", the eggplant glyph + lowercase wordmark bottom left. Laid out in DOM at any `width`
 // (every size scales from the 1200 px design), so it stays crisp in a chat bubble or full screen.
 import React from "react";
@@ -21,9 +22,11 @@ export const OgCard: React.FC<{
   members?: Person[];
   /** "3 friends are in" by default; "Closed" for a closed Pot. */
   line?: string;
+  /** LEGACY: initials in the seats (the app's image shows plain seats now). */
+  initials?: boolean;
   radius?: number;
   style?: React.CSSProperties;
-}> = ({ width = OG_W, potName = LISBON.name, emoji = LISBON.emoji, cover = LISBON.cover, members = CREW, line, radius = 0, style }) => {
+}> = ({ width = OG_W, potName = LISBON.name, emoji = LISBON.emoji, cover = LISBON.cover, members = CREW, line, initials = false, radius = 0, style }) => {
   const k = width / OG_W;
   const shown = members.slice(0, 5);
   const text = line ?? copy["og.members"](members.length);
@@ -95,7 +98,7 @@ export const OgCard: React.FC<{
                   lineHeight: 1,
                 }}
               >
-                {m.initials}
+                {initials ? m.initials : null}
               </div>
             ))}
           </div>

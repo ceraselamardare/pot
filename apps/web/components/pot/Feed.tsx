@@ -6,7 +6,7 @@
 // says it all in words. Instant spends sit on the same surface as every other row: the "Instant" chip says it
 // (no brand-soft tint; 2026-11-02). System events are quiet centred lines.
 // Pending ops render on top with "Sending…"; a failed one fades out (the toast says what happened).
-import { DoorClosed, Flag, Hand, PartyPopper, Scale, Undo2, UserPlus } from "lucide-react"
+import { ArrowLeftRight, CircleDollarSign, DoorClosed, Flag, FlaskConical, Hand, PartyPopper, Scale, Undo2, UserPlus } from "lucide-react"
 import { Fragment } from "react"
 import { LinkRow } from "@/components/paylink/LinkRow"
 import { GiftRow } from "@/components/gifts/GiftRow"
@@ -30,9 +30,10 @@ import { StatusChip, type ChipStatus } from "@/components/pot/StatusChip"
 import { ReceiptLink } from "@/components/receipt/ReceiptLink"
 import { t } from "@/i18n/t"
 import { formatUsd } from "@/lib/client/money"
-import type { Category, FeedItemVM, PersonVM, RequestVM } from "@/lib/client/mock/types"
+import type { AddSourceVM, Category, FeedItemVM, PersonVM, RequestVM } from "@/lib/client/mock/types"
 import type { PendingOp } from "@/lib/client/ops/store"
-import { openRequest } from "@/lib/client/sheet"
+import { openRequest, openSheet } from "@/lib/client/sheet"
+import { networkLabel, rowSourceWords } from "@/lib/client/deposits/vm"
 import { dayLabel, formatDate } from "@/lib/client/time"
 import { isTxHash } from "@/lib/client/explorer"
 
@@ -175,27 +176,8 @@ function FeedItem({ item, now, sentKeys, potName }: { item: FeedItemVM; now: num
       return <SystemLine icon={<PartyPopper strokeWidth={2} />} text={t("feed.created", { name: item.actor.name, potName })} txHash={item.txHash} />
     case "joined":
       return <SystemLine icon={<UserPlus strokeWidth={2} />} text={t("feed.joined", { name: item.actor.name })} txHash={item.txHash} />
-    case "contribution": {
-      const when = rowWhen(item.at, now)
-      const sent = sentKeys.has(item.key)
-      return (
-        <CompactRow
-          label={rowLabel([t("feed.contribution", { name: item.actor.name, amount: formatUsd(item.amount, "whole") }), sent && t("chip.sent"), when.long])}
-          lead={<LeadAvatar person={item.actor} badge={PlusIcon} />}
-          title={<RowTitle who={item.actor.name} what={t("row.added")} />}
-          meta={
-            <>
-              {sent && <StatusChip size="sm" status="sent" />}
-              {/* money in has no details sheet: its proof stays on the row */}
-              {isTxHash(item.txHash) && <ReceiptLink txHash={item.txHash} what={t("feed.contribution", { name: item.actor.name, amount: formatUsd(item.amount, "whole") })} />}
-            </>
-          }
-          aside={when.short}
-          amount={<MoneyText micro={item.amount} sign="in" className="text-approved" />}
-          data-row-status="added"
-        />
-      )
-    }
+    case "contribution":
+      return <ContributionRow item={item} now={now} sent={sentKeys.has(item.key)} />
     case "request":
       return <RequestRow r={item.request} now={now} at={item.at} sentKey={sentKeys.has(item.key)} />
     case "close_requested":
@@ -220,6 +202,49 @@ function FeedItem({ item, now, sentKeys, potName }: { item: FeedItemVM; now: num
         <SystemLine icon={<Undo2 strokeWidth={2} />} text={t(item.state === "refunding" ? "feed.goal.refunding" : "feed.goal.refunded")} txHash={item.txHash} />
       )
   }
+}
+
+/** The small source mark on a money-in row's meta line ("Demo dollars", "ETH on Base"), icon + words. */
+export function SourceMark({ source }: { source: AddSourceVM | undefined }) {
+  const w = rowSourceWords(source, networkLabel)
+  if (!w || !source) return null
+  const Icon = source.kind === "xc" ? ArrowLeftRight : source.kind === "pot_dollars" ? CircleDollarSign : FlaskConical
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1" data-row-source={source.kind}>
+      <Icon aria-hidden className="size-4 shrink-0" strokeWidth={2} />
+      <span className="truncate">{w.short}</span>
+    </span>
+  )
+}
+
+/**
+ * A member's add ("Maya · Added money"): a button that opens its details (?sheet=deposit&d=<tx hash>; the receipt
+ * moved there), with where the money came from on the meta line. Without a transaction (the chain's catch-up row for
+ * money the feed never saw) it opens nothing.
+ */
+function ContributionRow({ item, now, sent }: { item: Extract<FeedItemVM, { kind: "contribution" }>; now: number; sent: boolean }) {
+  const when = rowWhen(item.at, now)
+  const sentence = t("feed.contribution", { name: item.actor.name, amount: formatUsd(item.amount, "whole") })
+  const key = isTxHash(item.txHash) ? item.txHash : null
+  const src = rowSourceWords(item.source, networkLabel)
+  return (
+    <CompactRow
+      onOpen={key ? () => openSheet("deposit", { d: key }) : undefined}
+      label={rowLabel([sentence, src?.said, sent && t("chip.sent"), when.long, key && t("moneyin.row.details")])}
+      lead={<LeadAvatar person={item.actor} badge={PlusIcon} />}
+      title={<RowTitle who={item.actor.name} what={t("row.added")} />}
+      meta={
+        <>
+          {sent && <StatusChip size="sm" status="sent" />}
+          <SourceMark source={item.source} />
+        </>
+      }
+      aside={when.short}
+      amount={<MoneyText micro={item.amount} sign="in" className="text-approved" />}
+      data-row-status="added"
+      data-deposit-row={key ?? undefined}
+    />
+  )
 }
 
 export function OpRow({ op, me }: { op: PendingOp; me: PersonVM }) {

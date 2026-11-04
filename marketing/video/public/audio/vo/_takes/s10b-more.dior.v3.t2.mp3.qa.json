@@ -1,0 +1,172 @@
+{
+  "take": "s10b-more.dior.v3.t2.mp3",
+  "line": "s10b-more",
+  "voice": "dior",
+  "n": 2,
+  "variant": "main",
+  "tag": "v3",
+  "tts_text": "Plus, trust that grows, all-or-nothing goals and links to pay in or pay out.",
+  "duration": 5.2,
+  "speech_start": 0.025,
+  "speech_end": 4.717,
+  "speech_span": 4.681,
+  "words": 14,
+  "syllables": 17,
+  "wps_span": 2.99,
+  "sps_span": 3.63,
+  "wps_articulation": 3.46,
+  "pauses": [
+    {
+      "after": "Plus",
+      "k": 0,
+      "sec": 0.224
+    },
+    {
+      "after": "grows",
+      "k": 3,
+      "sec": 0.264
+    },
+    {
+      "after": "goals",
+      "k": 5,
+      "sec": 0.147
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.036,
+    "anchors": [
+      {
+        "word": "Plus",
+        "k": 0,
+        "onset": 0.025,
+        "breath": false,
+        "stt_minus_onset": 0.015,
+        "align_minus_onset": -0.025
+      },
+      {
+        "word": "trust",
+        "k": 1,
+        "onset": 0.694,
+        "breath": true,
+        "stt_minus_onset": 0.066,
+        "align_minus_onset": 0.026
+      },
+      {
+        "word": "all-or-nothing",
+        "k": 4,
+        "onset": 1.947,
+        "breath": true,
+        "stt_minus_onset": 0.053,
+        "align_minus_onset": 0.053
+      },
+      {
+        "word": "and",
+        "k": 6,
+        "onset": 3.062,
+        "breath": false,
+        "stt_minus_onset": 0.018,
+        "align_minus_onset": 0.058
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.046
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Plus trust that grows all or nothing goals and links to pay in or pay out"
+  },
+  "f0": {
+    "f0_median_hz": 154.0,
+    "st_sd": 4.41,
+    "st_p5_p95": 12.5,
+    "st_p10_p90": 11.4,
+    "st_motion_per_s": 34.8,
+    "voiced_s": 2.09
+  },
+  "loudness": {
+    "I": -25.6,
+    "LRA": 4.1,
+    "TP": -4.4
+  },
+  "threshold_db": -57.0,
+  "times": [
+    [
+      "Plus",
+      0.025,
+      0.47
+    ],
+    [
+      "trust",
+      0.694,
+      0.944
+    ],
+    [
+      "that",
+      0.984,
+      1.144
+    ],
+    [
+      "grows",
+      1.184,
+      1.683
+    ],
+    [
+      "all-or-nothing",
+      1.947,
+      2.444
+    ],
+    [
+      "goals",
+      2.524,
+      2.915
+    ],
+    [
+      "and",
+      3.062,
+      3.124
+    ],
+    [
+      "links",
+      3.224,
+      3.444
+    ],
+    [
+      "to",
+      3.464,
+      3.584
+    ],
+    [
+      "pay",
+      3.644,
+      3.824
+    ],
+    [
+      "in",
+      3.884,
+      4.023
+    ],
+    [
+      "or",
+      4.164,
+      4.264
+    ],
+    [
+      "pay",
+      4.324,
+      4.464
+    ],
+    [
+      "out",
+      4.544,
+      4.706
+    ]
+  ]
+}

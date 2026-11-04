@@ -18,7 +18,7 @@ export const DPreviewRoot: React.FC = () => (
     <Folder name="BuilderD-Tools">
       <Composition id="DZoomTest" component={ZoomTest} defaultProps={{ scale: 2.2, cx: -380, cy: 404 }} durationInFrames={1} fps={FPS} width={1920} height={1080} />
       <Composition id="DRefS08End" component={HandoffRef} defaultProps={{ state: "s08end" as const }} durationInFrames={1} fps={FPS} width={1920} height={1080} />
-      <Composition id="DRefS11Start" component={HandoffRef} defaultProps={{ state: "s11start" as const }} durationInFrames={1} fps={FPS} width={1920} height={1080} />
+      <Composition id="DRefS10bStart" component={HandoffRef} defaultProps={{ state: "s10bstart" as const }} durationInFrames={1} fps={FPS} width={1920} height={1080} />
       <Composition id="DMeasure" component={DMeasure} durationInFrames={1} fps={FPS} width={4680} height={2532} />
     </Folder>
   </>

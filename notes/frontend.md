@@ -1,3 +1,68 @@
+> **2026-11-04: Money-in details: every money-in row opens a details sheet, like spends** (members only). Server side
+> and the privacy rows: notes/backend.md "Privacy audit" (+ "Money-in details" rows). No contract change, no migration.
+> - **Where it opens** (`?sheet=deposit&d=<key>`, `components/deposits/DepositDetailsSheet.tsx`, hosted in `PotLoaded`,
+>   so members only): the feed's "Maya · Added money" (`ContributionRow` in `Feed.tsx`, now a button), pay-in / gift rows
+>   (`GiftRow`, was `?sheet=gift`), a person's activity (`ActivityRow` + `isMoneyInItem`, from `?sheet=person`, Back
+>   returns), You → Your activity (`activityHref` → `/p/<slug>?sheet=deposit&d=<tx>`), and the record's "Money from
+>   outside" ("See details", members only, `data-record-gift-details`). The pay-in push's `?sheet=gift&gift=<ref>` opens
+>   the same sheet; `GiftDetailsSheet.tsx` is gone. **Key** = the row's NEAR transaction hash (a member's add) or the
+>   pay-in's ref (`lib/deposits.ts depositKeyKind`). An add without a settled transaction (the chain's catch-up row)
+>   stays a plain row. Non-members never get the sheet; the record's visitor keeps the public "Receipt ↗" only.
+> - **Rows:** line 2 gains a source mark (icon + words: FlaskConical "Demo dollars", CircleDollarSign "Pot dollars",
+>   ArrowLeftRight "ETH on Base"; `SourceMark`, `data-row-source`); the "Receipt ↗" moved into the sheet. Names:
+>   "Leo added $300. From another app, ETH on Base. 10 min ago. Details" / "…Demo dollars…Details" / pay-ins
+>   "…Has a note. <when>. Details". Source unknown (adds from before) → no mark, no source phrase.
+> - **The sheet** (no marigold, [Done] secondary): title "Maya added $150" / "You added $150" / "Alex paid in $25" /
+>   "Ana sent a $10 gift"; avatar + "+ $150.00" + status chip (icon + word: Added · On its way · Didn't arrive); a
+>   source card (sunken): **Demo dollars** "Test money for trying Pot. No real money moved." · **Pot dollars** "Money a
+>   Pot already paid Sam." · **Their own balance** (older adds, source not recorded) · **Paid in from outside / A gift
+>   from outside** "Through Sam's pay-in link" / "On the public page" + "Set to $25" · **From another app** + the pair
+>   chip "ETH on Base", "Sent 0.1293 ETH", "$300.00 arrived", "About $2,320.18 per ETH" (or "1 USDC = $1"), "Took 58
+>   seconds", a refund line when some went back, and the pill "Testnet demo: simulated transfer" (simulated only).
+>   Another app also gets **How it came in**: five compact lines (Address shown · Sent from Base · Converted to Pot
+>   dollars · Arrived · Added to the Pot) with the time (seconds), "Time not known" when missing. Facts: When; **For**
+>   "Sam's ask · $50 each" / "Your ask · …" when the add answered a top-up ask. Pay-ins: the note ("Shown on the
+>   public page"), the group rule. **Receipts:** "Receipt ↗" (one quiet link) or, for another app, "Receipt · On NEAR
+>   ↗", "Receipt · On Base ↗" and "NEAR Intents ↗" — the last two **only for a real transfer** (a simulated one has no
+>   origin-network transaction and no Intents page). Copy: `moneyin.*` (linted) and `xc.dd.*` (the any-coin flow's
+>   allow-listed prefix: network names, tickers, NEAR). 2,412 strings, 0 banned.
+> - **Data:** `lib/client/deposits/{vm,data}.ts` (`useDepositDetails`: mock world or `GET /api/pots/[pot]/deposits/[key]`
+>   via TanStack; `detailsFromWire`, `rowSourceWords`), `lib/deposits-api.ts` (wire), `lib/client/mock/deposits.ts`
+>   (`mockDepositDetails`, members only). `FeedItemVM` contribution + `ActivityItemVM` gain `source?: AddSourceVM`
+>   (mock: from `EventRec.source`; live: the feed's new members-only `addSources`). The Add sheet now sends
+>   `context.source` (demo / pot_dollars) with every add; an arrived any-coin deposit sends its `depositIntentId` as
+>   before. Mock: `EventRec.source` gains `"xc"` + `xc: XcAddRecord` (coin, network, sent, arrived, the moments), written
+>   by `addArrived` (`xcRecordOf`; `DepositView.simulated.sentAt` added). Top-up rule (`topupFor`): the newest ask open
+>   when the money came in (not cancelled/closed, not past its date) that asked this person — the asks' own progress rule.
+> - **Showcase seed** (`pot.mock.seed=showcase`): Ski Chalet's Leo $300 from another app (ETH on Base, `showcaseXc`),
+>   Sam demo dollars; Leo's Birthday's Sam from Pot dollars; Tomás's pay-in with a note through Sam's $25 link (existing).
+> - **Tests:** unit `lib/deposits.test.ts` (5), `server/features/deposits.test.ts` (10: member / stranger / left / unknown /
+>   other Pot / signed out through the real route; demo + Pot dollars via `noteAddSource` (someone else's relay can't
+>   write), the faucet fallback, "their balance", another app simulated (no origin link, no Intents page, exact
+>   moments) / via the relay context (only the person's own deposit) / real (basescan + Intents links, the trail's
+>   first-seen times, a refund), a pay-in with link + maker, the top-up ask, the feed's `addSources` for members only),
+>   `components/__tests__/deposit-details.test.tsx` (11: mock mapping per kind, members only, the ask; the sheet per kind;
+>   a real transfer mapped from the API; rows → `?sheet=deposit&d=`); updated `gifts`, `compact-rows`, `activity`.
+>   Mock e2e `e2e/mock/deposit-details.spec.ts` (3 × 3 projects: each kind opens with its details + Back/Done/Esc + the
+>   older `?sheet=gift` link; the real Base → ETH flow ends in a row whose details show the coin and five moments; members
+>   only: You, a person's activity, the record's "See details", an outsider gets nothing; axe 0 serious + brandChecks;
+>   320 px no sideways scroll). Updated `activity`, `flows`, `gifts`, `payin` (rows became buttons, receipts moved, new
+>   titles); testnet `activity.testnet.ts` edited, **not run**. Screens: `notes/screens/deposit-details-{xc,demo,pot-dollars,payin}-{day,night}.png`,
+>   `gifts-details-{day,night}.png` regenerated (the new sheet).
+> - **Gates:** `tsc --noEmit` clean; `pnpm --filter web lint` clean; sdk typecheck clean; full unit **1722 passed / 27
+>   skipped** (123 files; DB tests on a private `pot_depdet`); `NEXT_DIST_DIR=.next-depdet NEXT_PUBLIC_DATA_SOURCE=mock next
+>   build` OK; full mock e2e on `next start -p 1947` (private `--output`): **469 passed, 53 skipped, 0 failed**. Unrelated
+>   regenerated screenshots restored with `git checkout`.
+> - **Open:** (1) Adds from before this change have no recorded source: testnet shows "Demo dollars" only when a faucet
+>   claim by the same person landed in the 10 min before, else "Their own balance"; their rows show no source mark.
+>   (2) The live any-coin moments are as good as the polling: "Sent" = first seen as KNOWN_DEPOSIT_TX (else when
+>   converting began); rows from before the status trail (`deposit_intent.last_status.seen`) show "Time not known" for
+>   the arrival. (3) "For Sam's ask" is plain text, not a link (the ask's card lives on Activity). (4) Opening it from a
+>   person's sheet keeps `&who=` in the URL (harmless; Back returns there). (5) Pay-in pages paid "from another app"
+>   still show as a pay-in (no coin/network: that flow is simulated in the browser only).
+> - **Supersedes:** "Compact activity rows" (money in kept "Receipt ↗" and opened nothing), "Gifts, the app side"
+>   (`?sheet=gift` → `GiftDetailsSheet`).
+
 > **2026-11-03: Sign-in dialog: the site's [Start a Pot] signs you in in place** (website update; design-direction 07
 > §1.3, §2). No server change.
 > - **What:** every start CTA on the site (`<SignInLink>`: the landing's header, hero and final card, the tour's end) is

@@ -46,7 +46,7 @@ import { pendingIn, useOps } from "@/lib/client/ops/store"
 import { closeSheet, openSheet, resolveProposalParam, useSheetParams, useTabParam } from "@/lib/client/sheet"
 import { formatUsd } from "@/lib/client/money"
 import { useNow } from "@/lib/client/time"
-import { GiftDetailsSheet } from "@/components/gifts/GiftDetailsSheet"
+import { DepositDetailsSheet } from "@/components/deposits/DepositDetailsSheet"
 import { GIFTS_ON } from "@/lib/client/gifts/flag"
 import { collectedOf, useWithGifts } from "@/lib/client/gifts/data"
 import { TopupCard } from "@/components/topups/TopupCard"
@@ -109,6 +109,8 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
   // integrations (D-50): ?sheet=add&src=xc[&d=<id>] is the any-chain deposit (AddFlow); an arrived one takes the marigold
   const arrived = useArrivedDeposit(pot.slug)
   const pid = params.get("pid")
+  // money in: ?sheet=deposit&d=<key> (the Add flow's own &d= rides on ?sheet=add), or a pay-in's ?sheet=gift&gift=<ref>
+  const depositKey = sheet === "deposit" ? params.get("d") || null : sheet === "gift" ? params.get("gift") || null : null
   // a push deep link: ?pid=<proposal id> → the sheet for whatever that proposal is (frontend-architecture §8.2)
   useEffect(() => {
     if (pid === null || !/^\d+$/.test(pid)) return
@@ -279,12 +281,13 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
       <PotMoreSheet pot={pot} open={sheet === "more"} onClose={closeSheet} />
       <PersonActivitySheet pot={pot} who={params.get("who")} open={sheet === "person" && !!params.get("who")} onClose={closeSheet} />
       <PayLinkSheet pot={pot} id={linkParam(params.get("link"))} open={sheet === "paylink" && linkParam(params.get("link")) !== null} onClose={closeSheet} />
+      {/* money in (a member's add, a pay-in): ?sheet=deposit&d=<key>; the pay-in push's ?sheet=gift&gift=<ref> too */}
+      <DepositDetailsSheet pot={pot} depositKey={depositKey} meId={meId} open={depositKey !== null} onClose={closeSheet} />
       {GIFTS_ON && (
         <>
           <PayInSheet pot={pot} open={sheet === "payin"} onClose={closeSheet} />
           <PublicPageSheet pot={pot} open={sheet === "publicpage"} onClose={closeSheet} />
           <PayInLinksSheet pot={pot} open={sheet === "payinlinks"} onClose={closeSheet} />
-          <GiftDetailsSheet pot={pot} giftRef={params.get("gift")} open={sheet === "gift" && !!params.get("gift")} onClose={closeSheet} />
         </>
       )}
     </>

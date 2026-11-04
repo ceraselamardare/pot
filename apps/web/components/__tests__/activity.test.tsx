@@ -51,9 +51,9 @@ describe("ReceiptLink", () => {
 describe("ActivityList", () => {
   const base = { slug: "lisbon-trip", potName: "Lisbon Trip", potEmoji: "🇵🇹", potCover: 0, actorId: "maya", actorName: "Maya" }
   const now = Date.UTC(2026, 10, 10, 15)
-  it("rows link to the Pot at the item; the receipt sits beside the link, only where a hash exists", () => {
+  it("rows link to the Pot at the item; money in opens its details there (its receipts are in them)", () => {
     const items: ActivityItemVM[] = [
-      { ...base, key: "added:x", kind: "added", at: now - 60_000, amount: 150_000_000n, status: "sent", txHash: HASH },
+      { ...base, key: "added:x", kind: "added", at: now - 60_000, amount: 150_000_000n, status: "sent", txHash: HASH, source: { kind: "pot_dollars" } },
       { ...base, key: "asked:lisbon-trip:4", kind: "asked", at: now - 120_000, amount: 300_000_000n, path: "vote", status: "needs", reason: "Tickets", requestId: 4 },
     ]
     render(<ActivityList items={items} meId="maya" now={now} linked />)
@@ -61,12 +61,12 @@ describe("ActivityList", () => {
     const rows = screen.getAllByRole("listitem")
     expect(rows).toHaveLength(2)
     const added = within(rows[0]!).getAllByRole("link")
-    expect(added.map((l) => l.getAttribute("href"))).toEqual(["/p/lisbon-trip", `https://testnet.nearblocks.io/txns/${HASH}`])
-    expect(added[0]!.contains(added[1]!)).toBe(false)
-    expect(added[1]!.getAttribute("aria-label")).toBe("Receipt for You added $150, opens the explorer")
+    expect(added.map((l) => l.getAttribute("href"))).toEqual([`/p/lisbon-trip?sheet=deposit&d=${HASH}`])
+    expect(rows[0]!.querySelector("[data-receipt]")).toBeNull()
     expect(rows[0]!.textContent).toContain("Added money")
+    expect(rows[0]!.querySelector("[data-row-source='pot_dollars']")!.textContent).toBe("Pot dollars")
     // the row's name is the whole sentence; line 1 is short
-    expect(added[0]!.getAttribute("aria-label")).toBe("You added $150. Lisbon Trip. 1 min ago")
+    expect(added[0]!.getAttribute("aria-label")).toBe("You added $150. Pot dollars. Lisbon Trip. 1 min ago. Details")
     const asked = within(rows[1]!).getAllByRole("link")
     expect(asked.map((l) => l.getAttribute("href"))).toEqual(["/p/lisbon-trip?r=4"])
     expect(asked[0]!.getAttribute("aria-label")).toBe("You asked for $300 for Tickets. Waiting. Lisbon Trip. 2 min ago")

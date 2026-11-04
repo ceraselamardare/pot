@@ -73,8 +73,34 @@ export interface EventRec {
   /** cents */
   amount?: number
   at: number
-  /** contribution: where the money came from ("pot_dollars" = the person's own Pot dollars; absent = demo dollars) */
-  source?: "demo" | "pot_dollars"
+  /** contribution: where the money came from ("pot_dollars" = the person's own Pot dollars; "xc" = another app or
+   *  exchange, its record in `xc`; absent = demo dollars) */
+  source?: "demo" | "pot_dollars" | "xc"
+  /** contribution from another app: the arrived deposit (the money-in details) */
+  xc?: XcAddRecord
+}
+
+/**
+ * An add from another app or exchange as the mock keeps it (the server reads deposit_intent instead): the coin and
+ * network, what was sent (the coin's base units) and what arrived (USD micro), and when each moment happened (ms).
+ */
+export interface XcAddRecord {
+  id: string
+  mode: "real" | "simulated"
+  chain: string
+  coin: string
+  decimals: number
+  stable: boolean
+  sent: string
+  usdTarget: string
+  arrived: string
+  refunded?: string | null
+  refundReason?: string | null
+  depositAddress: string
+  addressAt: number
+  sentAt?: number | null
+  convertingAt?: number | null
+  arrivedAt?: number | null
 }
 
 export interface InviteRec {
@@ -379,6 +405,15 @@ export interface CommentVM {
   mine: boolean
 }
 
+/** Where an add came from, as its row says it (members; the details sheet has the rest). Absent = not known. */
+export interface AddSourceVM {
+  kind: "demo" | "pot_dollars" | "xc"
+  /** xc: "ETH" */
+  coin?: string
+  /** xc: the network's id ("base") */
+  chain?: string
+}
+
 /** `txHash`: the settled transaction behind the item (its receipt); absent when unknown or still pending. */
 export type FeedItemVM =
   | { key: string; kind: "created"; at: number; actor: PersonVM; txHash?: string }
@@ -387,7 +422,7 @@ export type FeedItemVM =
   | { key: string; kind: "close_requested"; at: number; actor: PersonVM; k: number; txHash?: string }
   | { key: string; kind: "closed"; at: number; txHash?: string }
   | { key: string; kind: "joined"; at: number; actor: PersonVM; txHash?: string }
-  | { key: string; kind: "contribution"; at: number; actor: PersonVM; amount: Micro; txHash?: string }
+  | { key: string; kind: "contribution"; at: number; actor: PersonVM; amount: Micro; txHash?: string; source?: AddSourceVM }
   | { key: string; kind: "request"; at: number; request: RequestVM; txHash?: string }
   /** hub 1.1.0: the goal was reached / the all-or-nothing refund started / everyone got their money back */
   | { key: string; kind: "goal"; at: number; state: "reached" | "refunding" | "refunded"; amount: Micro; txHash?: string }

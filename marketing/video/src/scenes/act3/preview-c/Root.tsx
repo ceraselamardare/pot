@@ -8,6 +8,7 @@ import { scene } from "../../../data/timeline";
 import { S07Create } from "../S07Create";
 import { S08Join } from "../S08Join";
 import { CMeasure } from "./Measure";
+import { HandoffRef } from "./HandoffRef";
 
 const W = 1920;
 const H = 1080;
@@ -31,6 +32,7 @@ export const PreviewCRoot: React.FC = () => (
     <Composition id="S07Create" component={S07Create} durationInFrames={D7} fps={FPS} width={W} height={H} />
     <Composition id="S08Join" component={S08Join} durationInFrames={D8} fps={FPS} width={W} height={H} />
     <Composition id="S07S08" component={S07S08} durationInFrames={D7 + D8} fps={FPS} width={W} height={H} />
-    <Composition id="CMeasure" component={CMeasure} durationInFrames={1} fps={FPS} width={3120} height={3376} />
+    <Composition id="S09HandoffRef" component={HandoffRef} durationInFrames={1} fps={FPS} width={W} height={H} />
+    <Composition id="CMeasure" component={CMeasure} durationInFrames={1} fps={FPS} width={3120} height={4220} />
   </Folder>
 );

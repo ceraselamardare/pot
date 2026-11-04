@@ -64,7 +64,13 @@ test("add money → You shows the activity row with a real receipt, and the bala
   const row = A.locator("[data-you-activity] [data-activity='added']").first()
   await expect(row).toContainText("You added $60", { timeout: 60_000 })
   await expect(row).toContainText(POT_NAME)
-  const link = row.getByRole("link", { name: "Receipt for You added $60, opens the explorer" })
+  // money in opens its details on the Pot (2026-11-04): the receipt is there, "Demo dollars" its source
+  const open = row.getByRole("link", { name: /^You added \$60\./ })
+  await expect(open).toHaveAttribute("href", /\?sheet=deposit&d=[1-9A-HJ-NP-Za-km-z]{43,44}$/, { timeout: 60_000 })
+  await open.click()
+  const details = A.getByRole("dialog", { name: "You added $60" })
+  await expect(details.locator("[data-deposit-source='demo']")).toBeVisible({ timeout: 30_000 })
+  const link = details.getByRole("link", { name: "Receipt for You added $60, opens the explorer" })
   await expect(link).toBeVisible({ timeout: 60_000 })
   await expect(link).toHaveAttribute("target", "_blank")
   await expect(link).toHaveAttribute("rel", /noopener/)
@@ -73,6 +79,7 @@ test("add money → You shows the activity row with a real receipt, and the bala
   expect(hash, `receipt href ${href}`).toBeTruthy()
   console.log(`[activity] receipt ${href}`)
 
+  await A.goto("/you")
   const own = await usdcOf(me)
   console.log(`[activity] ft_balance_of(${me}) = ${own} → ${fmt(own)}`)
   await expect(A.locator("[data-you-balance] [data-money]")).toHaveText(fmt(own), { timeout: 30_000 })

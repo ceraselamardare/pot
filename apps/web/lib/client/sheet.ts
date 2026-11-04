@@ -9,7 +9,8 @@
 import { useSearchParams } from "next/navigation"
 import { useCallback } from "react"
 
-// "gift": one pay-in's details (&gift=<ref>; the push opens it)
+// "gift": one pay-in's details (&gift=<ref>; the push opens it): the same sheet as "deposit"
+// "deposit": one money-in row's details (&d=<a contribution's tx hash | a pay-in's ref>; components/deposits)
 // "intro": the first-run intro + "Help us make Pot better" (components/onboarding; &then=create ends in Create)
 // "ask": the row's Ask chooser (Ask the group · Ask anyone by link); "topup": Ask the group (the ask form), and
 //   `&topup=<id>` on ?sheet=add marks an add made for that ask; "payin": Ask anyone (makes a pay-in link)
@@ -29,6 +30,7 @@ export type SheetName =
   | "paylink"
   | "privacy"
   | "gift"
+  | "deposit"
   | "intro"
   | "topup"
   | "more"
@@ -95,6 +97,7 @@ export function openRequest(id: number, pot?: string) {
 
 // "link": the payment link sheet's request id (?sheet=paylink&link=<id>; not ?r=, which opens the request sheet)
 // "gift": a pay-in's ref (?sheet=gift&gift=<ref>)
+// "d": the Add flow's deposit id (?sheet=add&src=xc&d=<id>), or a money-in row's key (?sheet=deposit&d=<key>)
 // "then": where the intro goes when it ends (?sheet=intro&then=create)
 // "net": the Add flow's network once picked (?sheet=add&src=xc&net=<chain>: the coin step)
 // "rule": the rules sheet's switch to bring into view (?sheet=rules&rule=links, from the Spend sheet's links-off line)

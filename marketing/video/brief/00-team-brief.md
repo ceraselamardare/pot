@@ -16,7 +16,8 @@ It ships as the video attached to the team's X post and linked from the README.
 ## What Pot is (one paragraph)
 Pot is a phone web app where a group (a trip, a club, a team) puts dollars into one shared Pot.
 - Small spends inside the group's rules are **approved automatically** by a contract ("Approved by Pot rules").
-- Bigger spends need **most of the group** to approve.
+- Bigger spends need **one OK from anyone else** (up to $300 by default), and the biggest calls (over $300, closing, rule changes) need **most of the group** (v2, 2026-11-03).
+- Trust grows (per-member instant limits on-chain), all-or-nothing goals, pay-in links and send-by-link are the newer features (brief/06-update-v2.md).
 - When the Pot closes, everyone gets back **their share of what's left**, split by what they put in.
 - Login is Google (NEAR Auth). There is no wallet, no seed phrase and no gas: users hold 0 NEAR, and every action is relayed for free as a NEP-366 meta-transaction.
 - Under the hood, **every Pot is a Sputnik DAO** on NEAR. The **Pot Hub** contract holds a 1-of-1 "rulebot" role, so it approves only spends inside the rules (and invite joins). Members approve bigger spends by majority.
@@ -30,16 +31,18 @@ Pot is a phone web app where a group (a trip, a club, a team) puts dollars into 
 - Split-the-bill apps track debts but hold no money, so nobody can actually pay from the group.
 
 ### The demo story (D-61; these numbers are binding everywhere)
-- Pot **"Lisbon Trip" 🇵🇹**, Trip rules:
+- Pot **"Lisbon Trip" 🇵🇹**, the default rules (v2, 2026-11-03):
   - "Anyone can spend up to $100 without asking."
-  - "Bigger spends need 2 of 3 approvals."
+  - "Spends up to $300 need just one OK from anyone else."
+  - "Bigger spends need 2 of 3 approvals." (spends over $300, closing, rule changes)
   - "Each person can spend up to $200 in total without asking."
+  - Trust grows: people who spend well get a bigger instant limit.
 - Members, in join order with their avatar colours: **Maya** (creator, `member-1` #ffd166), **Sam** (`member-2` #9ad7c2), **Leo** (`member-3` #b8c7ff).
 - The story:
   1. Maya and Sam put in $150 each, so the Pot holds **$300 of $450** when Leo opens the invite.
   2. Leo joins and adds $150: **$450 of $450 collected**.
   3. Maya spends **$84 on Groceries 🛒**. Pot shows "Checking Pot rules…", then **"Approved by Pot rules"** (under the $100 instant limit) with the marigold burst, then **"$84 sent to you"**. The Pot now holds **$366.00**.
-  4. Maya asks for **$300 for Tickets 🎟️ / the boat trip**: "This needs 2 of 3 approvals" → **Ask the group** → "Approvals · 1 of 2" (Maya's own approval counts). Leo gets the push "Maya needs your OK" → **Approve $300** → "Approved! $300 is on its way to Maya". The Pot now holds **$66.00**.
+  4. (v2, 2026-11-03: one OK.) Maya asks for **$300 for Tickets 🎟️ / the boat trip**: "This needs one OK from anyone else" → **Ask for one OK**. Leo gets the push "Maya needs one OK" → **OK $300** → "Done. Your OK sent $300 to Maya." The Pot now holds **$66.00**. The majority (2 of 3) is for spends over $300, closing and rule changes.
   5. **Close Pot**: everyone put in $150, so everyone **gets back $22.00**. "Pot closed."
 - Real UI references: `notes/screens/*.png` (day-*, p2-day-*, live-*, night-*) and the components in `apps/web/components/**`. The UI strings are in `apps/web/i18n/en.json`.
 

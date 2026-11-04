@@ -1,0 +1,149 @@
+{
+  "take": "s10-group.dior.v3.t1.mp3",
+  "line": "s10-group",
+  "voice": "dior",
+  "n": 1,
+  "variant": "main",
+  "tag": "v3",
+  "tts_text": "Bigger spends need one OK. Leo taps it, right from a notification.",
+  "duration": 5.28,
+  "speech_start": 0.007,
+  "speech_end": 4.792,
+  "speech_span": 4.773,
+  "words": 12,
+  "syllables": 19,
+  "wps_span": 2.51,
+  "sps_span": 3.98,
+  "wps_articulation": 3.13,
+  "pauses": [
+    {
+      "after": "OK",
+      "k": 4,
+      "sec": 0.601
+    },
+    {
+      "after": "it",
+      "k": 7,
+      "sec": 0.334
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.072,
+    "anchors": [
+      {
+        "word": "Bigger",
+        "k": 0,
+        "onset": 0.007,
+        "breath": false,
+        "stt_minus_onset": 0.093,
+        "align_minus_onset": -0.007
+      },
+      {
+        "word": "Leo",
+        "k": 5,
+        "onset": 2.608,
+        "breath": false,
+        "stt_minus_onset": 0.052,
+        "align_minus_onset": 0.032
+      },
+      {
+        "word": "right",
+        "k": 8,
+        "onset": 3.628,
+        "breath": false,
+        "stt_minus_onset": 0.072,
+        "align_minus_onset": 0.052
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.052
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Bigger spends need one okay. Leo taps it right from a notification"
+  },
+  "f0": {
+    "f0_median_hz": 150.9,
+    "st_sd": 4.72,
+    "st_p5_p95": 13.54,
+    "st_p10_p90": 12.86,
+    "st_motion_per_s": 33.1,
+    "voiced_s": 2.14
+  },
+  "loudness": {
+    "I": -24.7,
+    "LRA": 1.0,
+    "TP": -1.6
+  },
+  "threshold_db": -57.2,
+  "times": [
+    [
+      "Bigger",
+      0.007,
+      0.248
+    ],
+    [
+      "spends",
+      0.388,
+      0.788
+    ],
+    [
+      "need",
+      0.828,
+      1.108
+    ],
+    [
+      "one",
+      1.208,
+      1.408
+    ],
+    [
+      "OK",
+      1.488,
+      2.007
+    ],
+    [
+      "Leo",
+      2.608,
+      2.808
+    ],
+    [
+      "taps",
+      2.868,
+      3.128
+    ],
+    [
+      "it",
+      3.168,
+      3.294
+    ],
+    [
+      "right",
+      3.628,
+      3.788
+    ],
+    [
+      "from",
+      3.828,
+      3.928
+    ],
+    [
+      "a",
+      3.947,
+      3.987
+    ],
+    [
+      "notification",
+      4.028,
+      4.781
+    ]
+  ]
+}

@@ -3,17 +3,17 @@
 //   toward the lens, smeared on the axis of travel) and lands in Leo's lock-screen notification slot. It flies in a
 //   "phone frame" that slides from Maya's world pose to Leo's (same tilt, same scale), so its last frame matches the
 //   in-screen notification exactly.
-// - ApprovedChip: the "✓ Approved" status chip that rides the whip from Leo's approval back to Maya's feed row
-//   (screen space, tracked through the live camera: the constant-size anchor of the whip).
+// - ApprovedChip: the feed's "✓ One OK" status chip (compact, 24 px) that rides the whip from Leo's OK back to Maya's
+//   feed row (screen space, tracked through the live camera: the constant-size anchor of the whip).
 import React from "react";
 import { useCurrentFrame } from "remotion";
 import { DirectionalBlur, Layer, clamp01, inOut, lerp, springAt, type CameraPose } from "../../motion";
-import { PushNotification, StatusChip, UiPiece, easeEnter } from "../../ui";
+import { PushNotification, StatusChip, UiPiece, copy, easeEnter } from "../../ui";
 import { PHONE_HOME, PHONE_SCALE, WORLD } from "../shared/world";
 import { project, screenToLocal, worldOfScreen, type V3 } from "./s09-shared";
 
-/** Phone-local centre of the lock-screen notification (stackTop 330: rect 8, 330, 374 × 82). */
-export const NOTIF_LOCAL = screenToLocal(195, 371);
+/** Phone-local centre of the lock-screen notification (stackTop 330; the one-OK push is two body lines: 374 × 102). */
+export const NOTIF_LOCAL = screenToLocal(195, 381);
 
 /** Two phases: it emerges from Leo's row on the lifted timeline (grows, lifts, readable for a beat), then whooshes
  *  across in an arc on `inOut` and settles into the notification slot. */
@@ -55,9 +55,9 @@ export const RequestFlight: React.FC<{ start: number; end: number; from: V3; cam
   );
 };
 
-/** The "✓ Approved" chip that carries Leo's approval home during the whip (screen-space overlay). It pops out of
- *  Leo's "Approved!" check, then its path weight follows the camera's own whip progress, so it holds a near-constant
- *  screen position while the world whips past (the anchor), and lands on Maya's feed row chip as the camera lands. */
+/** The "✓ One OK" chip that carries Leo's OK home during the whip (screen-space overlay). It pops out beside Leo's
+ *  "Done." line, then its path weight follows the camera's own whip progress, so it holds a near-constant screen
+ *  position while the world whips past (the anchor), and lands on Maya's feed row chip as the camera lands. */
 export const ApprovedChip: React.FC<{
   cam: CameraPose;
   /** The live camera at the whip's first and last frames (incl. drift), for a clean screen-space path. */
@@ -101,8 +101,10 @@ export const ApprovedChip: React.FC<{
         filter: `drop-shadow(0 ${2 + 8 * shadow}px ${4 + 12 * shadow}px rgba(43, 27, 58, ${0.1 + 0.08 * shadow}))`,
       }}
     >
-      <UiPiece theme="day" width={101}>
-        <StatusChip status="approved" />
+      <UiPiece theme="day" width={82}>
+        <StatusChip status="approved" size="sm">
+          {copy["row.status.one_ok"]}
+        </StatusChip>
       </UiPiece>
     </div>
   );

@@ -9,13 +9,14 @@ import { activityKey, type ActivityApiItem, type ActivityApiKind } from "@/lib/a
 import { t } from "@/i18n/t"
 import type { PayInTone } from "@/lib/gifts"
 import { formatUsd, type Micro } from "./money"
-import type { Category, CloseVM, LinkStatusVM, PotVM, RequestVM, RulesChangeVM, TopupVM, Vote } from "./mock/types"
+import type { AddSourceVM, Category, CloseVM, LinkStatusVM, PotVM, RequestVM, RulesChangeVM, TopupVM, Vote } from "./mock/types"
 
 /** A payment link's status as an activity chip (icon + colour; the word comes from chipWord). */
 const linkChip = (s: LinkStatusVM): ActivityStatus =>
   s === "claimed" ? "sent" : s === "ready" || s === "waiting" || s === "busy" ? "needs" : s === "void" ? "declined" : "expired"
 import { coverOf, nameFromAccount } from "./live/vm"
 import { dayLabel } from "./time"
+import { isTxHash } from "./explorer"
 
 /** + "gift" (hub 1.2.0): a gift I sent a Pot (I'm usually not in it; You → Your activity only)
  *  + "topup": I asked everyone in a Pot for more money (off-chain; "Ask for a top-up") */
@@ -56,6 +57,8 @@ export interface ActivityItemVM {
   topup?: { id: string; status: TopupVM["status"]; perPerson: Micro }
   /** gift: paid in as a plain payment, or sent as a gift (the link's or page's tone) */
   tone?: PayInTone
+  /** added: where the money came from (members; the money-in details have the rest) */
+  source?: AddSourceVM
 }
 
 const CATEGORIES: readonly string[] = ["groceries", "food", "transport", "stay", "tickets", "other"]
@@ -108,7 +111,7 @@ export function activityOfPerson(pot: PotVM, personId: string): ActivityItemVM[]
         break
       case "contribution":
         if (f.actor.id === personId)
-          out.push({ ...base, key: f.txHash ? activityKey.added(f.txHash) : `added:${pot.slug}:${f.key}`, kind: "added", at: f.at, amount: f.amount, status: "sent", txHash: f.txHash })
+          out.push({ ...base, key: f.txHash ? activityKey.added(f.txHash) : `added:${pot.slug}:${f.key}`, kind: "added", at: f.at, amount: f.amount, status: "sent", txHash: f.txHash, ...(f.source ? { source: f.source } : {}) })
         break
       case "rules_changed":
         if (f.actor?.id === personId) out.push({ ...base, key: activityKey.rulesChanged(pot.slug, f.txHash ?? f.key), kind: "rules_changed", at: f.at, txHash: f.txHash })
@@ -357,8 +360,13 @@ export function chipWord(i: ActivityItemVM): string | undefined {
 export const isSpendItem = (i: ActivityItemVM): i is ActivityItemVM & { requestId: number } =>
   i.requestId !== undefined && (i.kind === "asked" || (i.kind === "voted" && i.about?.type === "spend"))
 
+/** A member's add with a settled transaction: it opens the money-in details (?sheet=deposit&d=<tx hash>). */
+export const isMoneyInItem = (i: ActivityItemVM): i is ActivityItemVM & { txHash: string } => i.kind === "added" && isTxHash(i.txHash)
+
 export function activityHref(i: ActivityItemVM): string {
   const pot = `/p/${encodeURIComponent(i.slug)}`
+  // money in: its details (where it came from, its receipts)
+  if (isMoneyInItem(i)) return `${pot}?sheet=deposit&d=${encodeURIComponent(i.txHash)}`
   // a gift: the giver isn't in the Pot, so the row isn't a link (ActivityRow); this is only a fallback
   if (i.kind === "gift") return `/give/${encodeURIComponent(i.slug)}`
   // every spend opens its details (instant ones too: how it was approved, its receipt, the comments)

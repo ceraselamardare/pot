@@ -1,5 +1,6 @@
-// Gallery compositions (1920 × 1080, 60 fps): several phones side by side in key story states. A few props are
-// driven by the frame so the galleries double as motion checks (burst, typing dots, caret, presses).
+// Gallery compositions (1920 × 1080, 60 fps): several phones side by side in key story states (the app of
+// 2026-11-03: round actions, compact feed, two-step sheets, one OK). A few props are driven by the frame so the
+// galleries double as motion checks (burst, typing dots, caret, presses).
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { day, night } from "../../brand/tokens";
@@ -8,25 +9,42 @@ import { Phone, PHONE_H, PHONE_W } from "../Phone";
 import type { ThemeName } from "../theme";
 import { PotScreen } from "../screens/PotScreen";
 import { SpendSheet } from "../sheets/SpendSheet";
-import { ApproveSheet } from "../sheets/ApproveSheet";
+import { ApproveSheet, OneOkLine, SpendFacts } from "../sheets/ApproveSheet";
 import { CloseSheet, defaultRefundRows } from "../sheets/CloseSheet";
 import { InviteLanding } from "../screens/InviteLanding";
 import { YoureInSheet } from "../sheets/YoureInSheet";
 import { AddMoneySheet } from "../sheets/AddMoneySheet";
-import { CreatePotSheet } from "../sheets/CreatePotSheet";
+import { CreatePotSheet, CreateRuleCard, CreateSummaryBox } from "../sheets/CreatePotSheet";
+import { AskSheet, MoreSheet } from "../sheets/MenuSheets";
 import { ChatScreen, shareText, type ChatMessage } from "../screens/ChatScreen";
 import { LockScreen, PushNotification } from "../screens/Push";
+import { PayInCard, PayInSheet, SendLinkCard } from "../screens/Links";
 import { Toast } from "../atoms/Toast";
 import { TouchDot, pressAt } from "../atoms/Touch";
 import { copy } from "../copy";
 import { CREW, LEO, LISBON, MAYA, SAM, STORY } from "../data";
 import { formatUsd } from "../format";
-import { FEED_FULL, feedAfterBoat, feedAfterGroceries, feedBoatPending, feedClosed, feedLeoAdding, memberLines } from "../fixtures";
+import {
+  FEED_FULL,
+  feedAfterBoat,
+  feedAfterGroceries,
+  feedBoatPending,
+  feedClosed,
+  feedLeoAdding,
+  feedPayIn,
+  memberLines,
+  payInItem,
+  TRUST_NEW,
+} from "../fixtures";
 import { UiPiece } from "../Standalone";
 import { RulesCapsule } from "../atoms/ResultCards";
-import { ApprovalTimeline, timelineRows } from "../atoms/Approvals";
+import { DecisionLine } from "../atoms/Decision";
 import { RefundTable } from "../atoms/RefundTable";
-import { RuleRow, tripRules } from "../atoms/Rules";
+import { RuleRow, ruleTiers } from "../atoms/Rules";
+import { FeedRow } from "../atoms/Feed";
+import { GoalCard } from "../atoms/Goal";
+import { MyTrustCard, TrustLevelUp, TrustRow } from "../atoms/Trust";
+import { PotActions } from "../atoms/PotActions";
 import { LinkPreviewCard } from "../screens/ChatScreen";
 import { OgCard } from "../screens/OgCard";
 
@@ -51,10 +69,14 @@ const Slot: React.FC<{ label: string; theme?: ThemeName; zoom?: number; children
   </div>
 );
 
-/** Story beats 2-5: Pot $450 · instant approval ($366, burst) · Leo approves $300 · closed ($22.00). */
+const clampRamp = (f: number, a: number, b: number) => interpolate(f, [a, b], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+const waitingBoat = [{ who: MAYA, amount: 300, reason: "the boat trip", approvals: 1, k: 2, expires: copy["time.in_days"](7) }];
+
+/** Story beats: Pot $450 · approved by Pot rules ($366, burst) · Leo gives one OK ($300) · closed ($22.00). */
 export const GalleryStory: React.FC<{ theme?: ThemeName }> = ({ theme = "day" }) => {
   const f = useCurrentFrame();
-  const burst = interpolate(f, [10, 46], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const burst = clampRamp(f, 10, 46);
   const z = 1;
   return (
     <Stage theme={theme}>
@@ -65,7 +87,7 @@ export const GalleryStory: React.FC<{ theme?: ThemeName }> = ({ theme = "day" })
       </Slot>
       <Slot label="Approved by Pot rules · burst" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
-          <PotScreen balance={STORY.afterGroceries} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
+          <PotScreen balance={STORY.afterGroceries} yourShare={122} putIn={150} feed={feedAfterGroceries()} tabBar={{ active: "pots", balance: 84 }} />
           <SpendSheet
             step="approved"
             amount={84}
@@ -73,26 +95,19 @@ export const GalleryStory: React.FC<{ theme?: ThemeName }> = ({ theme = "day" })
             burstVariant="cinematic"
             burstDistance={1.5}
             burstSize={1.5}
-            checkPop={interpolate(f, [8, 28], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })}
+            checkPop={clampRamp(f, 8, 28)}
           />
         </Phone>
       </Slot>
-      <Slot label="Leo approves $300" theme={theme} zoom={z}>
+      <Slot label="Leo gives one OK · $300" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
-          <PotScreen
-            balance={STORY.afterGroceries}
-            yourShare={122}
-            putIn={150}
-            feed={feedBoatPending()}
-            waiting={[{ who: MAYA, amount: 300, reason: "the boat trip", approvals: 1, k: 2, expires: copy["time.in_days"](7) }]}
-            tabBar={{ active: "pots", badge: 1 }}
-          />
+          <PotScreen balance={STORY.afterGroceries} yourShare={122} putIn={150} feed={feedBoatPending()} waiting={waitingBoat} tabBar={{ active: "pots", badge: 1 }} />
           <ApproveSheet state="ready" />
         </Phone>
       </Slot>
       <Slot label="Pot closed · $22.00" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
-          <PotScreen balance={0} yourShare={0} putIn={150} feed={feedClosed()} closed={{ date: "Oct 22", refund: 22 }} />
+          <PotScreen balance={0} yourShare={22} putIn={150} feed={feedClosed()} closed={{ date: "Nov 3", refund: 22 }} tabBar={{ active: "pots", balance: 406 }} />
           <CloseSheet mode="closed" />
         </Phone>
       </Slot>
@@ -100,7 +115,7 @@ export const GalleryStory: React.FC<{ theme?: ThemeName }> = ({ theme = "day" })
   );
 };
 
-/** Story beat 1-2: the invite landing, the join progress, You're in!, Add $150, the Pot at $450 with the toast. */
+/** Joining: the invite landing, the join progress, You're in!, Add $150 (step 2), Added with the toast. */
 export const GalleryJoin: React.FC<{ theme?: ThemeName }> = ({ theme = "day" }) => {
   const f = useCurrentFrame();
   const z = 0.82;
@@ -110,7 +125,7 @@ export const GalleryJoin: React.FC<{ theme?: ThemeName }> = ({ theme = "day" }) 
       <Slot label="Invite landing" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
           <InviteLanding scrollY={300} googlePress={press} />
-          <TouchDot press={press} x={195} y={566} />
+          <TouchDot press={press} x={195} y={570} />
         </Phone>
       </Slot>
       <Slot label="Joining…" theme={theme} zoom={z}>
@@ -124,7 +139,7 @@ export const GalleryJoin: React.FC<{ theme?: ThemeName }> = ({ theme = "day" }) 
           <YoureInSheet />
         </Phone>
       </Slot>
-      <Slot label="Add $150" theme={theme} zoom={z}>
+      <Slot label="Add $150 · step 2" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
           <PotScreen balance={300} yourShare={0} putIn={0} collected={300} feed={FEED_FULL.slice(1)} />
           <AddMoneySheet ctaPress={press} />
@@ -151,12 +166,12 @@ const chatMessages = (f: number): ChatMessage[] => [
     text: shareText(),
     time: "21:05",
     link: { members: [MAYA, SAM] },
-    appear: interpolate(f, [10, 40], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+    appear: clampRamp(f, 10, 40),
   },
-  { id: "5", from: LEO, kind: "typing", appear: interpolate(f, [44, 64], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) },
+  { id: "5", from: LEO, kind: "typing", appear: clampRamp(f, 44, 64) },
 ];
 
-/** The chat (Night + Day), Leo's push on the lock screen, and the Create sheet typing. */
+/** The chat (Night + Day), Leo's one-OK push on the lock screen, and Create (lean, typing) + Pot rules. */
 export const GalleryChat: React.FC = () => {
   const f = useCurrentFrame();
   const z = 0.82;
@@ -168,46 +183,50 @@ export const GalleryChat: React.FC = () => {
           <ChatScreen messages={chatMessages(f)} />
         </Phone>
       </Slot>
-      <Slot label="Push · lock screen" theme="night" zoom={z}>
+      <Slot label="Push · one OK" theme="night" zoom={z}>
         <Phone theme="day" zoom={z} statusBarTone="dark">
-          <LockScreen
-            notifications={[{ id: "ok", progress: interpolate(f, [6, 30], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }]}
-          />
+          <LockScreen notifications={[{ id: "ok", progress: clampRamp(f, 6, 30) }]} />
         </Phone>
       </Slot>
       <Slot label="Group chat · Day" theme="day" zoom={z}>
         <Phone theme="day" zoom={z}>
           <ChatScreen messages={chatMessages(70)} />
-          <PushNotification progress={interpolate(f, [20, 44], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+          <PushNotification progress={clampRamp(f, 20, 44)} />
         </Phone>
       </Slot>
-      <Slot label="Create · typing" theme="day" zoom={z}>
+      <Slot label="Start a Pot · typing" theme="day" zoom={z}>
         <Phone theme="day" zoom={z}>
           <PotScreen balance={0} yourShare={0} putIn={0} collected={0} feed={[]} />
           <CreatePotSheet step={1} typedChars={typed} />
         </Phone>
       </Slot>
-      <Slot label="Create · Trip rules" theme="day" zoom={z}>
+      <Slot label="Pot rules ([Change])" theme="day" zoom={z}>
         <Phone theme="day" zoom={z}>
           <PotScreen balance={0} yourShare={0} putIn={0} collected={0} feed={[]} />
-          <CreatePotSheet step={2} />
+          <CreatePotSheet step={2} bodyScroll={260} highlightRule={f > 30 ? "oneOk" : null} />
         </Phone>
       </Slot>
     </AbsoluteFill>
   );
 };
 
-/** The Spend flow beat by beat: amount (key press), checking, sent, vote, vote sent. */
+/** The Spend flow beat by beat: How much? · What's it for? · checking · sent · $300 needs one OK · sent. */
 export const GallerySpend: React.FC<{ theme?: ThemeName }> = ({ theme = "day" }) => {
   const f = useCurrentFrame();
-  const z = 0.82;
+  const z = 0.72;
   const press = pressAt(f - 10);
   return (
-    <Stage theme={theme} gap={30}>
-      <Slot label="Spend · $84" theme={theme} zoom={z}>
+    <Stage theme={theme} gap={20}>
+      <Slot label="1 · How much? $84" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
           <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
-          <SpendSheet step="amount" typed="84" pressedKey="4" keyPress={press} />
+          <SpendSheet step="howMuch" typed="84" pressedKey="4" keyPress={press} />
+        </Phone>
+      </Slot>
+      <Slot label="2 · Groceries · Me" theme={theme} zoom={z}>
+        <Phone theme={theme} zoom={z}>
+          <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
+          <SpendSheet step="details" typed="84" category="groceries" ctaPress={press} />
         </Phone>
       </Slot>
       <Slot label="Checking Pot rules…" theme={theme} zoom={z}>
@@ -218,113 +237,166 @@ export const GallerySpend: React.FC<{ theme?: ThemeName }> = ({ theme = "day" })
       </Slot>
       <Slot label="$84 sent to you" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
-          <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
+          <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} tabBar={{ active: "pots", balance: 84 }} />
           <SpendSheet step="sent" amount={84} donePress={press} />
         </Phone>
       </Slot>
-      <Slot label="$300 · needs 2 of 3" theme={theme} zoom={z}>
+      <Slot label="$300 · needs one OK" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
           <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
-          <SpendSheet step="vote" note="the boat trip" ctaPress={press} />
+          <SpendSheet step="details" typed="300" category="tickets" note="the boat trip" decisionOpen={clampRamp(f, 30, 50)} />
         </Phone>
       </Slot>
-      <Slot label="Sent to the group" theme={theme} zoom={z}>
+      <Slot label="Sent · one OK" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
           <PotScreen balance={366} yourShare={122} putIn={150} feed={feedBoatPending()} />
-          <SpendSheet step="voteSent" amount={300} />
+          <SpendSheet step="oneOkSent" amount={300} category="tickets" />
         </Phone>
       </Slot>
     </Stage>
   );
 };
 
-/** Approve → approved, close propose / vote, rules tab. */
+/** Leo's OK (ready → sending → done), the Pot at $66, closing (propose, vote in flight). */
 export const GalleryDecide: React.FC<{ theme?: ThemeName }> = ({ theme = "day" }) => {
   const f = useCurrentFrame();
   const z = 0.82;
   return (
     <Stage theme={theme} gap={30}>
-      <Slot label="Approved! (Leo)" theme={theme} zoom={z}>
+      <Slot label="One OK · ready (Leo)" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
-          <PotScreen balance={STORY.afterBoat} yourShare={22} putIn={150} feed={feedAfterBoat()} />
-          <ApproveSheet state="approved" tickPop={interpolate(f, [0, 20], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+          <PotScreen balance={STORY.afterGroceries} yourShare={122} putIn={150} feed={feedBoatPending()} waiting={waitingBoat} />
+          <ApproveSheet state="ready" approvePress={pressAt(f - 20)} />
         </Phone>
       </Slot>
-      <Slot label="Pot · $66.00" theme={theme} zoom={z}>
+      <Slot label="Sending your OK…" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
-          <PotScreen
-            balance={interpolate(f, [10, 40], [STORY.afterGroceries, STORY.afterBoat], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })}
-            yourShare={22}
-            putIn={150}
-            feed={feedAfterBoat(interpolate(f, [0, 30], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }))}
-          />
+          <PotScreen balance={STORY.afterGroceries} yourShare={122} putIn={150} feed={feedBoatPending()} waiting={waitingBoat} />
+          <ApproveSheet state="approving" />
+        </Phone>
+      </Slot>
+      <Slot label="Done. Your OK sent $300" theme={theme} zoom={z}>
+        <Phone theme={theme} zoom={z}>
+          <PotScreen balance={STORY.afterBoat} yourShare={22} putIn={150} feed={feedAfterBoat()} />
+          <ApproveSheet state="approved" tickPop={clampRamp(f, 0, 20)} statusAppear={clampRamp(f, 6, 24)} />
         </Phone>
       </Slot>
       <Slot label="Close Lisbon Trip?" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
-          <PotScreen balance={STORY.afterBoat} yourShare={22} putIn={150} feed={feedAfterBoat()} />
+          <PotScreen balance={STORY.afterBoat} yourShare={22} putIn={150} feed={feedAfterBoat()} tabBar={{ active: "pots", balance: 384 }} />
           <CloseSheet mode="propose" />
         </Phone>
       </Slot>
-      <Slot label="Maya wants to close (Leo)" theme={theme} zoom={z}>
+      <Slot label="Approving… (Leo)" theme={theme} zoom={z}>
         <Phone theme={theme} zoom={z}>
-          <PotScreen balance={STORY.afterBoat} yourShare={22} putIn={150} feed={feedAfterBoat()} />
-          <CloseSheet mode="vote" me={LEO} proposer={MAYA} />
-        </Phone>
-      </Slot>
-      <Slot label="Rules" theme={theme} zoom={z}>
-        <Phone theme={theme} zoom={z}>
-          <PotScreen balance={450} yourShare={150} putIn={150} activeTab="rules" scrollY={250} rules={{ highlight: f > 30 ? "instant" : null }} />
+          <PotScreen balance={STORY.afterBoat} yourShare={22} putIn={150} feed={feedAfterBoat()} closing />
+          <CloseSheet mode="vote" me={LEO} proposer={MAYA} voting votePop={clampRamp(f, 0, 20)} />
         </Phone>
       </Slot>
     </Stage>
   );
 };
 
-/** Standalone breakout pieces at in-phone size, plus a yawed phone with body depth. */
+/** Standalone breakout pieces at in-phone size (358 wide), plus a yawed phone with body depth. */
 export const GalleryPieces: React.FC = () => {
   const f = useCurrentFrame();
-  const burst = interpolate(f, [10, 46], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const rule = tripRules()[0];
+  const burst = clampRamp(f, 10, 46);
+  const tiers = ruleTiers();
   return (
-    <AbsoluteFill style={{ background: day.ground, padding: 60, flexDirection: "row", gap: 50, alignItems: "flex-start" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-        <UiPiece theme="day" style={{ marginTop: 60 }}>
+    <AbsoluteFill style={{ background: day.ground, padding: 50, flexDirection: "row", gap: 44, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <UiPiece theme="day" style={{ marginTop: 40 }}>
           <RulesCapsule state="approved" burstProgress={burst} burstVariant="cinematic" burstDistance={1.6} burstSize={1.6} />
         </UiPiece>
-        <UiPiece theme="day">
-          <RulesCapsule state="checking" />
+        <UiPiece theme="day" card="surface" padding={12}>
+          <DecisionLine path="one_ok" open={clampRamp(f, 20, 40)} details={[copy["spend.refund_after"]("$22")]} />
         </UiPiece>
         <UiPiece theme="day" card="surface" padding={16} shadow>
-          <ApprovalTimeline rows={timelineRows({ asker: MAYA, approved: [MAYA, LEO], waiting: [SAM], me: LEO.id })} k={2} />
+          <OneOkLine okBy={f > 40 ? LEO : null} okPop={clampRamp(f, 40, 58)} />
         </UiPiece>
-        <UiPiece theme="day">
-          <RuleRow icon={rule.icon} text={rule.text} />
+        <UiPiece theme="day" card="surface" padding={16}>
+          <SpendFacts status="waiting" approved={copy["record.approved.none"]} balanceAfter={66} expires="in 7 days" />
         </UiPiece>
         <UiPiece theme="night" card="surface" padding={16}>
           <RulesCapsule state="approved" />
         </UiPiece>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-        <UiPiece theme="day" card="surface" padding={16} shadow>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {tiers.map((t) => (
+          <UiPiece key={t.key} theme="day">
+            <RuleRow icon={t.icon} text={t.text} highlight={t.key === "oneOk" ? clampRamp(f, 20, 36) : 0} />
+          </UiPiece>
+        ))}
+        <UiPiece theme="day" card="surface" padding={16} shadow style={{ marginTop: 10 }}>
           <RefundTable rows={defaultRefundRows()} me={MAYA.id} />
-        </UiPiece>
-        <UiPiece theme="day" width={264}>
-          <LinkPreviewCard link={{ members: CREW }} />
         </UiPiece>
         <UiPiece theme="day" width={374}>
           <PushNotification variant="lock" />
         </UiPiece>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 28, alignItems: "center" }}>
-        <OgCard width={560} />
-        <div style={{ perspective: 2400, marginTop: 10 }}>
-          <div style={{ transformStyle: "preserve-3d", transform: `rotateY(${-28 + Math.sin(f / 30) * 4}deg) rotateX(6deg)`, zoom: 0.62 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 24, alignItems: "center" }}>
+        <UiPiece theme="day" card="surface" padding={16} shadow width={326}>
+          <PotActions press={{ target: "spend", amount: pressAt(f - 20) }} touchDot />
+        </UiPiece>
+        <UiPiece theme="day" width={264}>
+          <LinkPreviewCard link={{ members: CREW }} />
+        </UiPiece>
+        <OgCard width={420} />
+        <div style={{ perspective: 2400, marginTop: 6 }}>
+          <div style={{ transformStyle: "preserve-3d", transform: `rotateY(${-28 + Math.sin(f / 30) * 4}deg) rotateX(6deg)`, zoom: 0.42 }}>
             <Phone theme="day" depth={12}>
               <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
             </Phone>
           </div>
         </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+/** "And more" (builder B): earned trust, the goal with a date, money from outside, paying by link. */
+export const GalleryMore: React.FC = () => {
+  const f = useCurrentFrame();
+  return (
+    <AbsoluteFill style={{ background: day.ground, padding: 50, flexDirection: "row", gap: 40, alignItems: "flex-start", justifyContent: "center" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <UiPiece theme="day">
+          <TrustRow level={f > 30 ? 1 : 0} badgePop={f > 30 ? clampRamp(f, 30, 46) : 1} upTo={interpolate(clampRamp(f, 30, 50), [0, 1], [100, 200])} />
+        </UiPiece>
+        <UiPiece theme="day">
+          <TrustLevelUp appear={clampRamp(f, 40, 58)} />
+        </UiPiece>
+        <UiPiece theme="day">
+          <MyTrustCard level={0} nextIn={1} />
+        </UiPiece>
+        <UiPiece theme="day">
+          <GoalCard collected={300} goal={450} daysLeft={3} progress={clampRamp(f, 0, 30) * (300 / 450)} />
+        </UiPiece>
+        <UiPiece theme="day">
+          <GoalCard state="reached" balance={450} collected={450} goal={450} reachedPop={clampRamp(f, 20, 38)} />
+        </UiPiece>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <UiPiece theme="day">
+          <PayInCard qrReveal={clampRamp(f, 0, 40)} />
+        </UiPiece>
+        <UiPiece theme="day" card="surface" padding={12}>
+          <FeedRow item={payInItem()} />
+        </UiPiece>
+        <UiPiece theme="day" card="surface" padding={12}>
+          <FeedRow item={payInItem(1, "gift", 10)} />
+        </UiPiece>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <UiPiece theme="day">
+          <SendLinkCard who="Casa Lisboa host" claimed={f > 50} claimedPop={clampRamp(f, 50, 66)} qrReveal={clampRamp(f, 0, 40)} />
+        </UiPiece>
+        <UiPiece theme="day">
+          <CreateRuleCard kind="oneOk" highlight={clampRamp(f, 20, 36)} />
+        </UiPiece>
+        <UiPiece theme="day">
+          <CreateSummaryBox />
+        </UiPiece>
       </div>
     </AbsoluteFill>
   );
@@ -341,27 +413,27 @@ export const GalleryNight: React.FC = () => {
           <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
         </Phone>
       </Slot>
-      <Slot label="Checking" theme="night" zoom={z}>
+      <Slot label="How much?" theme="night" zoom={z}>
         <Phone theme="night" zoom={z}>
           <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
-          <SpendSheet step="checking" amount={84} />
+          <SpendSheet step="howMuch" typed="84" />
         </Phone>
       </Slot>
       <Slot label="Approved" theme="night" zoom={z}>
         <Phone theme="night" zoom={z}>
           <PotScreen balance={366} yourShare={122} putIn={150} feed={feedAfterGroceries()} />
-          <SpendSheet step="approved" amount={84} burstProgress={interpolate(f, [10, 46], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+          <SpendSheet step="approved" amount={84} burstProgress={clampRamp(f, 10, 46)} />
         </Phone>
       </Slot>
-      <Slot label="Approve" theme="night" zoom={z}>
+      <Slot label="One OK" theme="night" zoom={z}>
         <Phone theme="night" zoom={z}>
           <PotScreen balance={366} yourShare={122} putIn={150} feed={feedBoatPending()} />
-          <ApproveSheet state="approving" />
+          <ApproveSheet state="ready" />
         </Phone>
       </Slot>
       <Slot label="Closed" theme="night" zoom={z}>
         <Phone theme="night" zoom={z}>
-          <PotScreen balance={0} yourShare={0} putIn={150} feed={feedClosed()} closed={{ date: "Oct 22", refund: 22 }} />
+          <PotScreen balance={0} yourShare={22} putIn={150} feed={feedClosed()} closed={{ date: "Nov 3", refund: 22 }} />
           <CloseSheet mode="closed" />
         </Phone>
       </Slot>
@@ -369,17 +441,17 @@ export const GalleryNight: React.FC = () => {
   );
 };
 
-/** Mid-animation checks: sheet slide + scrim, feed insert + count-up, tab slide, chat pop, push slide. */
+/** Mid-animation checks: sheet slide + scrim, feed insert + count-up, tab slide to Settings, chat pop, push slide. */
 export const GalleryMotion: React.FC = () => {
   const f = useCurrentFrame();
-  const ramp = (a: number, b: number) => interpolate(f, [a, b], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const ramp = (a: number, b: number) => clampRamp(f, a, b);
   const z = 0.82;
   return (
     <Stage theme="day" gap={30}>
       <Slot label="Sheet in (360 ms)" zoom={z}>
         <Phone theme="day" zoom={z}>
-          <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} press={{ target: "spend", amount: pressAt(f) }} />
-          <SpendSheet step="amount" typed="" progress={ramp(10, 32)} />
+          <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} press={{ target: "spend", amount: pressAt(f) }} touchDot />
+          <SpendSheet step="howMuch" typed="" progress={ramp(10, 32)} />
         </Phone>
       </Slot>
       <Slot label="Insert + count-up" zoom={z}>
@@ -394,9 +466,16 @@ export const GalleryMotion: React.FC = () => {
           />
         </Phone>
       </Slot>
-      <Slot label="Tab slide" zoom={z}>
+      <Slot label="Tab slide · Settings" zoom={z}>
         <Phone theme="day" zoom={z}>
-          <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} tabIndex={interpolate(ramp(0, 17), [0, 1], [0, 2])} rules={{ appear: { instant: ramp(10, 30), threshold: ramp(14, 34), budget: ramp(18, 38) } }} />
+          <PotScreen
+            balance={450}
+            yourShare={150}
+            putIn={150}
+            feed={FEED_FULL}
+            tabIndex={interpolate(ramp(0, 17), [0, 1], [0, 2])}
+            settings={{ appear: { instant: ramp(10, 30), trust: ramp(14, 34), oneOk: ramp(18, 38) } }}
+          />
         </Phone>
       </Slot>
       <Slot label="Chat pop" zoom={z}>
@@ -414,38 +493,43 @@ export const GalleryMotion: React.FC = () => {
   );
 };
 
-/** Remaining states: Members tab, close waiting, create step 3, Night toast, empty Spend form. */
+/** Remaining states: Members with trust, More options, Ask, Settings scrolled, pay in, add step 1, creating. */
 export const GalleryMisc: React.FC = () => {
-  const z = 0.82;
+  const z = 0.72;
   return (
-    <Stage theme="day" gap={30}>
-      <Slot label="Members" zoom={z}>
+    <Stage theme="day" gap={20}>
+      <Slot label="Members · trust" zoom={z}>
         <Phone theme="day" zoom={z}>
-          <PotScreen balance={366} yourShare={122} putIn={150} activeTab="members" memberLines={memberLines(366)} memberTotals={{ in: 450, spent: 84, left: 366 }} scrollY={300} />
+          <PotScreen balance={450} yourShare={150} putIn={150} activeTab="members" memberLines={memberLines(450, MAYA.id, TRUST_NEW)} memberTotals={{ in: 450, spent: 0, left: 450 }} scrollY={330} />
         </Phone>
       </Slot>
-      <Slot label="Close · waiting" zoom={z}>
-        <Phone theme="day" zoom={z}>
-          <PotScreen balance={66} yourShare={22} putIn={150} feed={feedAfterBoat()} />
-          <CloseSheet mode="waiting" />
-        </Phone>
-      </Slot>
-      <Slot label="Creating…" zoom={z}>
-        <Phone theme="day" zoom={z}>
-          <PotScreen balance={0} yourShare={0} putIn={0} collected={0} feed={[]} />
-          <CreatePotSheet step={3} />
-        </Phone>
-      </Slot>
-      <Slot label="Toast · Night" zoom={z}>
-        <Phone theme="night" zoom={z}>
-          <PotScreen balance={450} yourShare={150} putIn={150} feed={feedLeoAdding("added")} />
-          <Toast text={copy["add.success"](LISBON.name, formatUsd(450))} />
-        </Phone>
-      </Slot>
-      <Slot label="Spend · empty" zoom={z}>
+      <Slot label="More options" zoom={z}>
         <Phone theme="day" zoom={z}>
           <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
-          <SpendSheet step="amount" typed="" />
+          <MoreSheet />
+        </Phone>
+      </Slot>
+      <Slot label="Ask for money" zoom={z}>
+        <Phone theme="day" zoom={z}>
+          <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
+          <AskSheet />
+        </Phone>
+      </Slot>
+      <Slot label="Settings" zoom={z}>
+        <Phone theme="day" zoom={z}>
+          <PotScreen balance={450} yourShare={150} putIn={150} activeTab="settings" scrollY={420} />
+        </Phone>
+      </Slot>
+      <Slot label="Pay-in link ready" zoom={z}>
+        <Phone theme="day" zoom={z}>
+          <PotScreen balance={475} yourShare={158.33} putIn={150} collected={475} feed={feedPayIn()} />
+          <PayInSheet />
+        </Phone>
+      </Slot>
+      <Slot label="Add · step 1" zoom={z}>
+        <Phone theme="day" zoom={z}>
+          <PotScreen balance={450} yourShare={150} putIn={150} feed={FEED_FULL} />
+          <AddMoneySheet step={1} typed="" balance={450} collected={450} putIn={150} />
         </Phone>
       </Slot>
     </Stage>

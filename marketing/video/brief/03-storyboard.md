@@ -1,5 +1,7 @@
 # Storyboard v2 (shot by shot)
 
+> **Update v2 (2026-11-03): brief/06-update-v2.md overrides s07-s12 below** (one-OK rules, the new s10b "And more" blitz, the new app UI, new frame budgets). Acts 1, 2 and 5 are unchanged.
+
 Owner: the director. v2 (2026-10-22) applies `brief/research-hypermotion.md`; read that doc too, because the numbers below come from it.
 - **Lengths and VO offsets:** `src/data/timeline.ts` (frames at 60 fps; 1 beat = 30 f, an eighth = 15 f, a bar = 120 f).
 - **Word sync:** `voWord(sceneId, "word", fallback)` from `src/data/vo.ts`. Voice-led visuals land **0-4 f before** the spoken word.

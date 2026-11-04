@@ -2,7 +2,8 @@
 // pieces out of the phone as standalone twins at the same size (358 px wide inside a phone):
 //  - RulesCapsule: "Checking Pot rules…" with the typing dots (surface-sunken) → "Approved by Pot rules ·
 //    Under the $100 instant limit" (brand-soft, the check pops, the one marigold burst from its centre);
-//  - SpendResult: the amount + reason, the capsule, and "Sending $84 to you…" / "$84 sent to you" + chip.
+//  - SpendResult: the amount + reason, the capsule, "Sending $84 to you…" / "$84 sent to you" + chip, and (sent) the
+//    quiet centred "Receipt ↗" (2026-11-02).
 import { Check } from "lucide-react";
 import React from "react";
 import { interpolateColors } from "remotion";
@@ -15,6 +16,7 @@ import { Celebration } from "./Celebration";
 import { MoneyText } from "./MoneyText";
 import { StatusChip } from "./StatusChip";
 import { TypingDots } from "./TypingDots";
+import { ReceiptLink } from "./CompactRow";
 
 export type CapsuleState = "checking" | "approved";
 
@@ -109,8 +111,29 @@ export const SpendResult: React.FC<{
   hideCapsule?: boolean;
   /** 0..1 entrance of the sending/sent row. */
   statusAppear?: number;
+  /** "sent": the quiet "Receipt ↗" under the sent row (default true). */
+  receipt?: boolean;
+  /** Paying a member: "Sending $84 to Sam…" / "$84 sent to Sam" (null = to you). */
+  to?: string | null;
   style?: React.CSSProperties;
-}> = ({ state, amount, reasonText, instantLimit = 100, capsuleTint, checkPop, burstProgress, burstVariant, burstDistance, burstSize, dotsFrame, hideCapsule, statusAppear = 1, style }) => {
+}> = ({
+  state,
+  amount,
+  reasonText,
+  instantLimit = 100,
+  capsuleTint,
+  checkPop,
+  burstProgress,
+  burstVariant,
+  burstDistance,
+  burstSize,
+  dotsFrame,
+  hideCapsule,
+  statusAppear = 1,
+  receipt = true,
+  to = null,
+  style,
+}) => {
   const { c } = useUi();
   const whole = formatUsd(amount, "whole");
   return (
@@ -133,10 +156,19 @@ export const SpendResult: React.FC<{
       />
       {state === "sending" || state === "sent" ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "0 4px", opacity: clamp01(statusAppear) }}>
-          <p style={{ margin: 0, ...T.body, color: c.ink }}>{state === "sent" ? copy["spend.sent"](whole) : copy["spend.sending"](whole)}</p>
+          <p style={{ margin: 0, ...T.body, color: c.ink }}>
+            {state === "sent"
+              ? to
+                ? copy["spend.sent.member"](whole, to)
+                : copy["spend.sent"](whole)
+              : to
+                ? copy["spend.sending.member"](whole, to)
+                : copy["spend.sending"](whole)}
+          </p>
           <StatusChip status={state === "sent" ? "sent" : "sending"} />
         </div>
       ) : null}
+      {state === "sent" && receipt ? <ReceiptLink style={{ alignSelf: "center", opacity: clamp01(statusAppear) }} /> : null}
     </div>
   );
 };

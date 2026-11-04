@@ -10,8 +10,8 @@ import { day } from "../../../brand/tokens";
 export type BigLineProps = {
   words: TimedWord[];
   icon?: LucideIcon;
-  /** Word index that gets the HighlightBar, the frame its sweep starts and its length (default 11 f). */
-  highlight?: { index: number; at: number; duration?: number };
+  /** Word index (or indices) that get a HighlightBar: the frame its sweep starts and its length (default 11 f). */
+  highlight?: Highlight | Highlight[];
   fontSize?: number;
   maxWidth?: number;
   lineHeight?: number;
@@ -24,6 +24,8 @@ export type BigLineProps = {
   rise?: number;
   style?: React.CSSProperties;
 };
+
+export type Highlight = { index: number; at: number; duration?: number };
 
 /** Evenly staggered words from a sentence (U+00A0 keeps a phrase together). */
 export const wordsAt = (text: string, start: number, stagger: number): TimedWord[] =>
@@ -45,6 +47,7 @@ export const BigLine: React.FC<BigLineProps> = ({
 }) => {
   const frame = useCurrentFrame();
   const first = words[0]?.startFrame ?? 0;
+  const marks = highlight === undefined ? [] : Array.isArray(highlight) ? highlight : [highlight];
   const iconSize = Math.round(fontSize * 0.74);
   // the icon moves like a word: rise + smear on land, opacity only as a helper; exits with the first word
   const e = ramp(frame, first, first + duration, land);
@@ -76,14 +79,15 @@ export const BigLine: React.FC<BigLineProps> = ({
         exit={exit}
         style={{ fontVariantNumeric: "tabular-nums" }}
         renderWord={
-          highlight
+          marks.length
             ? (text, i) => {
-                if (i !== highlight.index) return text;
+                const mark = marks.find((h) => h.index === i);
+                if (!mark) return text;
                 // trailing punctuation stays off the block (review 1: periods must not sit on the block edge)
                 const m = text.match(/^(.*?)([.,!?…]*)$/);
                 return (
                   <>
-                    <HighlightBar at={highlight.at} duration={highlight.duration ?? 11} padX={0.1}>
+                    <HighlightBar at={mark.at} duration={mark.duration ?? 11} padX={0.1}>
                       {m?.[1] ?? text}
                     </HighlightBar>
                     {m?.[2] ?? ""}

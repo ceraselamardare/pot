@@ -1,180 +1,199 @@
-// ActivityFeed + rows (apps/web/components/pot/Feed.tsx). Day headings in `label` ink-muted; money rows: avatar,
-// a sentence that carries the words, a muted sub-line, and the amount column ("+ $150.00" in `approved`,
-// "− $84.00" in ink). The instant spend row is tinted brand-soft with ink text and only the check in `approved`.
-// System events are quiet centred lines. Every entry can animate in with `appear`.
-import { Check, DoorClosed, Hand, PartyPopper, UserPlus } from "lucide-react";
+// ActivityFeed (apps/web/components/pot/Feed.tsx, compact rows since 2026-11-02). Day headings in `label` ink-muted;
+// every money row is a CompactRow: avatar + badge, "Leo · Added money", a meta line (status chip, "Receipt ↗") and the
+// time, and the amount column ("+ $150.00" in `approved`, "− $84.00" in ink, "$300.00" while asked). Instant spends
+// sit on the same surface as every other row: the "⚡ Instant" chip says it (no brand-soft tint since 2026-11-02).
+// System events are quiet centred lines with their receipt. Every entry can animate in with `appear`.
+import { ArrowDownLeft, CarTaxiFront, DoorClosed, Flag, Gift, Hand, PartyPopper, Plus, ShoppingCart, Tag, Ticket, UserPlus, Utensils, BedDouble, type LucideIcon } from "lucide-react";
 import React from "react";
-import { copy } from "../copy";
-import { formatUsd, names } from "../format";
-import type { Person } from "../data";
+import { copy, reasonTitle, type Category } from "../copy";
+import { LISBON, type Person } from "../data";
+import { formatUsd } from "../format";
 import { useUi } from "../theme";
 import { T } from "../type";
 import { Appear } from "./Appear";
-import { Avatar } from "./Avatar";
+import { CompactRow, LeadAvatar, ReceiptLink, RowTitle, SystemLine } from "./CompactRow";
 import { MoneyText } from "./MoneyText";
 import { StatusChip, type ChipStatus } from "./StatusChip";
 
+export { SystemLine };
+
+export type SpendTier = "one_ok" | "group";
+
 export type FeedEntry =
-  /** "Leo added $150" · "23h ago" · "+ $150.00" (optional chip: "Sent" right after it lands). */
-  | { kind: "contribution"; who: Person; amount: number; when: string; chip?: ChipStatus }
+  /** "Leo · Added money" · Receipt ↗ · "5:23 PM" · "+ $150.00" (chip "sent" right after it lands). */
+  | { kind: "contribution"; who: Person; amount: number; when: string; chip?: ChipStatus; receipt?: boolean }
   /** Pending add (OpRow): "Adding $150…" + "Sending…" chip, amount "+ $150.00" in ink-muted. */
   | { kind: "adding"; who: Person; amount: number }
-  | { kind: "joined"; who: Person }
-  | { kind: "created"; who: Person; potName: string }
-  /** The instant spend, tinted brand-soft: "Maya got $84 back for groceries" · ✓ Approved by Pot rules · Under the $100 instant limit. */
-  | { kind: "instant"; who: Person; amount: number; reason: string; instantLimit: number; chip?: ChipStatus }
-  /** "Maya asks for $300 for the boat trip" · "Expires in 7 days" · [⏱ 1 of 2 approvals]. */
-  | { kind: "pending"; who: Person; amount: number; reason: string; approvals: number; k: number; expires: string }
-  /** "$300 sent to Maya for the boat trip" · "Approved by Maya and Leo" · [✓ Approved]. */
-  | { kind: "approved"; to: Person; amount: number; reason: string; approvedBy: string[]; chip?: ChipStatus }
-  | { kind: "closeRequested"; who: Person; k: number }
-  | { kind: "closed" };
+  | { kind: "joined"; who: Person; receipt?: boolean }
+  | { kind: "created"; who: Person; potName: string; receipt?: boolean }
+  /** The instant spend: "Maya · Groceries" · ⚡ Instant · "just now" · "− $84.00". */
+  | { kind: "instant"; who: Person; amount: number; reason: string; instantLimit: number; chip?: ChipStatus; category?: Category; when?: string }
+  /** Asked: "Maya · Tickets" · ⏱ Needs one OK (one-OK tier) or ⏱ Waiting 1 of 2 (the group) · "$300.00". */
+  | {
+      kind: "pending";
+      who: Person;
+      amount: number;
+      reason: string;
+      approvals: number;
+      k: number;
+      expires: string;
+      tier?: SpendTier;
+      category?: Category;
+      when?: string;
+    }
+  /** Paid after approval: "Maya · Tickets" · ✓ One OK (okBy) or ✓ Approved (the group) · "− $300.00". */
+  | {
+      kind: "approved";
+      to: Person;
+      amount: number;
+      reason: string;
+      approvedBy: string[];
+      chip?: ChipStatus;
+      okBy?: string;
+      category?: Category;
+      when?: string;
+    }
+  /** Money paid in from outside the Pot by link: "Grandma · Paid in · by link" · ↙ From outside (or a gift ☕). */
+  | { kind: "payin"; who: Person; amount: number; tone?: "payment" | "gift"; when: string }
+  | { kind: "goalReached"; amount: number; receipt?: boolean }
+  | { kind: "closeRequested"; who: Person; k: number; receipt?: boolean }
+  | { kind: "closed"; receipt?: boolean };
 
-export type FeedItem = FeedEntry & { id?: string; appear?: number };
+export type FeedItem = FeedEntry & { id?: string; appear?: number; /** 0..1 press on the row */ pressed?: number };
 export type FeedGroup = { label: string; items: FeedItem[]; appear?: number };
 
-const Row: React.FC<{
-  avatar: Person;
-  main: string;
-  sub?: React.ReactNode;
-  amount?: React.ReactNode;
-  tint?: boolean;
-  chip?: React.ReactNode;
-}> = ({ avatar, main, sub, amount, tint, chip }) => {
-  const { c } = useUi();
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 12,
-        borderRadius: 16,
-        padding: 12,
-        background: tint ? c.brandSoft : c.surface,
-        textAlign: "left",
-      }}
-    >
-      <Avatar person={avatar} size="sm" ring={tint ? "brandSoft" : "surface"} style={{ marginTop: 2 }} />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <p style={{ margin: 0, ...T.body, color: c.ink, textWrap: "pretty" }}>{main}</p>
-        {sub ? (
-          <div
-            style={{
-              marginTop: 2,
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              columnGap: 8,
-              rowGap: 4,
-              ...T.bodySm,
-              color: tint ? c.ink : c.inkMuted,
-            }}
-          >
-            {sub}
-          </div>
-        ) : null}
-        {chip ? <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>{chip}</div> : null}
-      </div>
-      {amount ? <div style={{ flexShrink: 0, paddingTop: 2, textAlign: "right" }}>{amount}</div> : null}
-    </div>
-  );
+export const REASON_ICON: Record<Category, LucideIcon> = {
+  groceries: ShoppingCart,
+  food: Utensils,
+  transport: CarTaxiFront,
+  stay: BedDouble,
+  tickets: Ticket,
+  other: Tag,
 };
 
-export const SystemLine: React.FC<{ icon: React.ReactNode; text: string }> = ({ icon, text }) => {
-  const { c } = useUi();
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        padding: "8px 12px",
-        textAlign: "center",
-        ...T.bodySm,
-        color: c.inkMuted,
-      }}
-    >
-      <span style={{ display: "block", flexShrink: 0 }}>{icon}</span>
-      {text}
-    </div>
-  );
-};
+/** A reason word ("groceries", "the boat trip") → its chip category (anything else is "other"). */
+export function categoryOf(reason: string): Category {
+  const r = reason.trim().toLowerCase();
+  if (r === "groceries") return "groceries";
+  if (r === "food") return "food";
+  if (r === "transport") return "transport";
+  if (r === "a place to stay" || r === "stay") return "stay";
+  if (r === "tickets") return "tickets";
+  return "other";
+}
 
-const ico = (I: typeof Check) => <I size={16} strokeWidth={2} style={{ display: "block" }} aria-hidden />;
+/** Line 1's "what": the category's word; "Other" gives way to the note as written ("the boat trip"). */
+const what = (category: Category, reason: string) => (category === "other" ? reason.trim() || reasonTitle("other") : reasonTitle(category));
+
+const ico = (I: LucideIcon) => <I size={16} strokeWidth={2} style={{ display: "block" }} aria-hidden />;
 
 /** One feed entry, as the app renders it. */
-export const FeedRow: React.FC<{ item: FeedEntry }> = ({ item }) => {
+export const FeedRow: React.FC<{ item: FeedEntry; pressed?: number }> = ({ item, pressed = 0 }) => {
   const { c } = useUi();
   switch (item.kind) {
     case "contribution":
       return (
-        <Row
-          avatar={item.who}
-          main={copy["feed.contribution"](item.who.name, formatUsd(item.amount, "whole"))}
-          sub={<span>{item.when}</span>}
-          chip={item.chip ? <StatusChip status={item.chip} /> : undefined}
+        <CompactRow
+          pressed={pressed}
+          lead={<LeadAvatar person={item.who} badge={Plus} />}
+          title={<RowTitle who={item.who.name} what={copy["row.added"]} />}
+          meta={
+            <>
+              {item.chip ? <StatusChip status={item.chip} size="sm" /> : null}
+              {item.receipt !== false && item.chip !== "sending" ? <ReceiptLink /> : null}
+            </>
+          }
+          aside={item.when}
           amount={<MoneyText amount={item.amount} sign="in" color={c.approved} />}
         />
       );
     case "adding":
       return (
-        <Row
-          avatar={item.who}
-          main={copy["add.sending"](formatUsd(item.amount, "whole"))}
-          chip={<StatusChip status="sending" />}
+        <CompactRow
+          pressed={pressed}
+          lead={<LeadAvatar person={item.who} badge={Plus} />}
+          title={copy["add.sending"](formatUsd(item.amount, "whole"))}
+          meta={<StatusChip status="sending" size="sm" />}
           amount={<MoneyText amount={item.amount} sign="in" color={c.inkMuted} />}
         />
       );
     case "joined":
-      return <SystemLine icon={ico(UserPlus)} text={copy["feed.joined"](item.who.name)} />;
+      return <SystemLine icon={ico(UserPlus)} text={copy["feed.joined"](item.who.name)} receipt={item.receipt !== false} />;
     case "created":
-      return <SystemLine icon={ico(PartyPopper)} text={copy["feed.created"](item.who.name, item.potName)} />;
-    case "instant":
+      return <SystemLine icon={ico(PartyPopper)} text={copy["feed.created"](item.who.name, item.potName)} receipt={item.receipt !== false} />;
+    case "instant": {
+      const cat = item.category ?? categoryOf(item.reason);
       return (
-        <Row
-          tint
-          avatar={item.who}
-          main={copy["feed.instant"](item.who.name, formatUsd(item.amount, "whole"), item.reason)}
-          sub={
-            <>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <Check size={16} strokeWidth={2} color={c.approved} style={{ display: "block" }} aria-hidden />
-                {copy["spend.approved"]}
-              </span>
-              <span>{copy["feed.instant.rule"](formatUsd(item.instantLimit, "whole"))}</span>
-            </>
-          }
-          chip={item.chip ? <StatusChip status={item.chip} /> : undefined}
+        <CompactRow
+          pressed={pressed}
+          lead={<LeadAvatar person={item.who} badge={REASON_ICON[cat]} />}
+          title={<RowTitle who={item.who.name} what={what(cat, item.reason)} />}
+          meta={<StatusChip status={item.chip ?? "instant"} size="sm" />}
+          aside={item.when ?? copy["time.just_now"]}
           amount={<MoneyText amount={item.amount} sign="out" color={c.ink} />}
         />
       );
-    case "pending":
+    }
+    case "pending": {
+      const cat = item.category ?? categoryOf(item.reason);
+      const tier: SpendTier = item.tier ?? (item.amount <= LISBON.oneOkCap ? "one_ok" : "group");
       return (
-        <Row
-          avatar={item.who}
-          main={copy["feed.pending"](item.who.name, formatUsd(item.amount, "whole"), item.reason)}
-          sub={<span>{copy["approve.expires"](item.expires)}</span>}
-          chip={<StatusChip status="needs">{copy["approve.progress"](item.approvals, item.k)}</StatusChip>}
+        <CompactRow
+          pressed={pressed}
+          lead={<LeadAvatar person={item.who} badge={REASON_ICON[cat]} />}
+          title={<RowTitle who={item.who.name} what={what(cat, item.reason)} />}
+          meta={
+            <StatusChip status="needs" size="sm">
+              {tier === "one_ok" ? copy["feed.pending.one_ok"] : copy["row.status.waiting"](item.approvals, item.k)}
+            </StatusChip>
+          }
+          aside={item.when ?? copy["time.just_now"]}
           amount={<MoneyText amount={item.amount} color={c.ink} />}
         />
       );
-    case "approved":
+    }
+    case "approved": {
+      const cat = item.category ?? categoryOf(item.reason);
       return (
-        <Row
-          avatar={item.to}
-          main={copy["feed.approved"](formatUsd(item.amount, "whole"), item.to.name, item.reason)}
-          sub={<span>{copy["feed.approved.sub"](names(item.approvedBy))}</span>}
-          chip={<StatusChip status={item.chip ?? "approved"} />}
+        <CompactRow
+          pressed={pressed}
+          lead={<LeadAvatar person={item.to} badge={REASON_ICON[cat]} />}
+          title={<RowTitle who={item.to.name} what={what(cat, item.reason)} />}
+          meta={
+            <StatusChip status={item.chip ?? "approved"} size="sm">
+              {item.chip === "sent" ? undefined : item.okBy ? copy["row.status.one_ok"] : undefined}
+            </StatusChip>
+          }
+          aside={item.when ?? copy["time.just_now"]}
           amount={<MoneyText amount={item.amount} sign="out" color={c.ink} />}
         />
       );
+    }
+    case "payin": {
+      const gift = item.tone === "gift";
+      return (
+        <CompactRow
+          pressed={pressed}
+          lead={<LeadAvatar person={item.who} badge={gift ? Gift : ArrowDownLeft} />}
+          title={<RowTitle who={item.who.name} what={gift ? copy["row.gift"] : copy["row.payin"]} />}
+          meta={<StatusChip status={gift ? "gift" : "outside"} size="sm" />}
+          aside={item.when}
+          amount={<MoneyText amount={item.amount} sign="in" color={c.approved} />}
+        />
+      );
+    }
+    case "goalReached":
+      return <SystemLine icon={ico(Flag)} text={copy["feed.goal.reached"](formatUsd(item.amount, "whole"))} receipt={item.receipt !== false} />;
     case "closeRequested":
       return (
-        <SystemLine icon={ico(Hand)} text={`${copy["feed.close_requested"](item.who.name)} · ${copy["feed.close_requested.sub"](item.k)}`} />
+        <SystemLine
+          icon={ico(Hand)}
+          text={`${copy["feed.close_requested"](item.who.name)} · ${copy["feed.close_requested.sub"](item.k)}`}
+          receipt={item.receipt !== false}
+        />
       );
     case "closed":
-      return <SystemLine icon={ico(DoorClosed)} text={`${copy["feed.closed"]} ${copy["feed.closed.sub"]}`} />;
+      return <SystemLine icon={ico(DoorClosed)} text={`${copy["feed.closed"]} ${copy["feed.closed.sub"]}`} receipt={item.receipt !== false} />;
   }
 };
 
@@ -198,7 +217,7 @@ export const ActivityFeed: React.FC<{ groups: FeedGroup[]; style?: React.CSSProp
     g.items.forEach((it, ii) => {
       out.push(
         <Appear key={it.id ?? `i${gi}-${ii}`} appear={Math.min(gA, it.appear ?? 1)} gap={8}>
-          <FeedRow item={it} />
+          <FeedRow item={it} pressed={it.pressed} />
         </Appear>,
       );
     });

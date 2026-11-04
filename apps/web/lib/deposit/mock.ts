@@ -111,7 +111,12 @@ function view(i: MockIntent): DepositView {
     ...(i.destinationTxHash ? { destinationTxHash: i.destinationTxHash } : {}),
     depositAddress: i.depositAddress,
     qrText: SIM_QR_TEXT,
-    ...(i.sim ? { scenario: i.sim.scenario, simulated: { sent: i.sim.sends.length > 0, sentAmount: simSent(i.sim).toString() } } : {}),
+    ...(i.sim
+      ? {
+          scenario: i.sim.scenario,
+          simulated: { sent: i.sim.sends.length > 0, sentAmount: simSent(i.sim).toString(), ...(i.sim.sends[0] ? { sentAt: new Date(i.sim.sends[0].at).toISOString() } : {}) },
+        }
+      : {}),
     deadline: new Date(i.deadline).toISOString(),
     updatedAt: new Date(i.updatedAt).toISOString(),
     ...(i.processingSince ? { processingSince: new Date(i.processingSince).toISOString() } : {}),

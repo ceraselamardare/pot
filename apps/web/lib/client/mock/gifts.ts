@@ -419,7 +419,8 @@ export function seedBirthday(now: number): { pot: PotRec; gifts: GiftRec[]; link
       { id: "b1", kind: "created", actor: "maya", at: created },
       { id: "b2", kind: "contribution", actor: "maya", amount: 5_000, at: created + 5 * MIN },
       { id: "b3", kind: "joined", actor: "sam", at: created + 2 * HOUR },
-      { id: "b4", kind: "contribution", actor: "sam", amount: 5_000, at: created + 3 * HOUR },
+      // money-in details showcase: Sam added from his own Pot dollars (Maya's add above is demo dollars)
+      { id: "b4", kind: "contribution", actor: "sam", amount: 5_000, at: created + 3 * HOUR, source: "pot_dollars" },
     ],
     invite: { pk: "ed25519:BAypqF3EUDiC7oeXcohUGTY3bvpZdhda4zLcUBA51poY", secret: "BRwzSmF4j6a91OsCGTBHXnWMo7rR6P8WLURbcomgt84", createdBy: "maya", expiresAt: now - DAY, maxUses: 10, uses: 1 },
     lastContributor: "sam",

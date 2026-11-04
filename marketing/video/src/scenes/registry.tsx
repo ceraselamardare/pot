@@ -10,6 +10,7 @@ import { S01Hook, S01_SCENES, S02S03FrontChase, S02S03_SCENES, S04Options, S04_S
 import { S06Reveal, S06_REVEAL_SCENES } from "./act2";
 import { S07Create, S07_SCENES, S08Join, S08_SCENES } from "./act3/c-index";
 import { S09Instant, S09_SCENES, S10Group, S10_SCENES } from "./act3/d-index";
+import { S10bMore, S10B_SCENES } from "./act3/b-index";
 import { S11Close, S11_SCENES } from "./act3/e-index";
 import { S12Tech, S12_SCENES } from "./act4";
 import { S13End, S13_END_SCENES } from "./act5";
@@ -67,6 +68,7 @@ export const REGISTRY: SceneEntry[] = [
   { covers: S08_SCENES, component: S08Join },
   { covers: S09_SCENES, component: S09Instant },
   { covers: S10_SCENES, component: S10Group },
+  { covers: S10B_SCENES, component: S10bMore },
   { covers: S11_SCENES, component: S11Close },
   { covers: S12_SCENES, component: S12Tech },
   { covers: S13_END_SCENES, component: S13EndWithRepo },

@@ -57,13 +57,18 @@ export const S12 = {
   pulseSpawn: wHood - 8,
   pulseArrive: [wHood + 4, wHood + 34, wHood + 64, wSputnik - 4, wNear - 2] as const,
   pulseLeave: [wHood + 8, wHood + 38, wHood + 68, wNear - 16] as const,
-  pulseOut: wNear + 44,
-  /** The story we just watched, on "Its rules are enforced on-chain, not by a person": an "$84.00" request stops
-   *  at Pot rules on "enforced" (✓ Approved by Pot rules, held ≈ 1 s), its pill and chip fold into the check as a
-   *  "$300.00" request leaves the app; the $300 passes the rules and lands at Your Pot on "not by a person", where
-   *  Maya and Leo approve. Both lanes run down the slabs' left bands, so nothing covers an engraved label. */
-  spend84: { spawn: wRules - 10, leave: wRules - 4, arrive: wEnforced - 2, fold: wOnchain + 28, out: wPerson + 20 },
-  spend300: { spawn: wOnchain + 14, leave: wOnchain + 22, arrive: wPerson - 12, out: wPerson + 60 },
+  pulseOut: wNear + 36,
+  /** The story we just watched (v2: the app's one-OK rules), on "Its rules are enforced on-chain, not by a person":
+   *  1. an "$84.00" request stops at Pot rules on "rules" (✓ Approved by Pot rules); its pill and chip fold into the
+   *     check before the next request lands beside it;
+   *  2. a "$300.00" request ALSO stops at Pot rules on "on-chain", with Leo's dot (✓ Approved by Leo's OK: the Pot
+   *     Hub approves it after one member's OK);
+   *  3. "Close · 2 of 3" goes on to Your Pot on "not by a person", where Maya's and Sam's dots light up
+   *     (✓ Approved by Maya and Sam: the majority, as in s11).
+   *  All three lanes run down the slabs' left bands, so nothing covers an engraved label (checked ≥ 38 px). */
+  spend84: { spawn: wRules - 26, leave: wRules - 20, arrive: wRules + 6, fold: wOnchain - 4, out: wPerson - 8 },
+  spend300: { spawn: wOnchain - 22, leave: wOnchain - 16, arrive: wOnchain + 12, fold: wPerson - 8, out: wPerson - 8 },
+  close: { spawn: wPerson - 18, leave: wPerson - 8, arrive: wPerson + 18, out: wPerson + 76 },
   /** The app's own copy ("The Pot enforces these rules itself. No one, including Maya, can skip them.") takes the
    *  headline slot on "on-chain" (the rows below never move); "Under the hood" makes way just before. */
   headlineOut: wOnchain - 26,
@@ -84,9 +89,9 @@ export const FOCUS: FocusWindow[] = [
   { plate: 2, start: S12.pulseArrive[2] - 2, end: S12.pulseArrive[3] - 6 },
   { plate: 3, start: S12.pulseArrive[3] - 6, end: S12.pulseArrive[4] - 2, sweep: wSputnik },
   { plate: 4, start: S12.pulseArrive[4] - 2, end: wNear + 64 },
-  { plate: 2, start: wEnforced - 22, end: wPerson + 68, sweep: wEnforced },
-  // the $300.00 request lands at Your Pot: that row lights with Pot rules while Maya and Leo approve
-  { plate: 3, start: S12.spend300.arrive - 4, end: S12.spend300.out + 8 },
+  { plate: 2, start: wEnforced - 22, end: S12.close.arrive - 2, sweep: wEnforced },
+  // the close lands at Your Pot: that row lights while Maya and Sam approve
+  { plate: 3, start: S12.close.arrive - 4, end: S12.close.out + 8 },
   { plate: 1, start: wPerson + 68, end: wAnd - 27, sweep: wGasless },
 ];
 

@@ -379,6 +379,8 @@ export const RELAY_INTENT_TYPES: readonly IntentType[] = [
 export interface RelayContext {
   /** add_money after a 1Click deposit (marks deposit_intent ADDED) */
   depositIntentId?: string
+  /** add_money: where the money came from, as the person picked it (web: the money-in details) */
+  source?: "demo" | "pot_dollars"
   /** create_pot only; stored off-chain on success (the emoji is a create_pot argument, on chain) */
   meta?: { gradient?: GradientId }
 }
@@ -563,6 +565,8 @@ export interface FeedRes extends Ok {
   /** hub request ids (decimal strings) that have saved receipt details (web: spend_receipt). Everyone gets it: it only
    *  says a receipt is attached (the details are members only, GET /api/pots/[pot]/requests/[id]/receipt). */
   receipts?: string[]
+  /** contribution tx hash → where the money came from (members only; web: the money-in rows and details) */
+  addSources?: Record<string, { kind: "demo" | "pot_dollars" | "xc"; coin?: string; chain?: string }>
   nextCursor?: string
   syncedAt: IsoTime
 }

@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button"
 import { TrustBadge, trustWord } from "@/components/wave4/Trust"
 import { formatUsd } from "@/lib/client/money"
 import { t } from "@/i18n/t"
-import { activityOfPerson } from "@/lib/client/activity"
+import { activityOfPerson, isMoneyInItem } from "@/lib/client/activity"
 import type { PotVM } from "@/lib/client/mock/types"
-import { openRequest } from "@/lib/client/sheet"
+import { openRequest, openSheet } from "@/lib/client/sheet"
 import { useNow } from "@/lib/client/time"
 
 export function PersonActivitySheet({ pot, who, open, onClose }: { pot: PotVM; who: string | null; open: boolean; onClose: () => void }) {
@@ -60,7 +60,7 @@ export function PersonActivitySheet({ pot, who, open, onClose }: { pot: PotVM; w
         {items.length === 0 ? (
           <EmptyState visual="dots" headingLevel={3} title={t("activity.person.empty")} className="rounded-md bg-surface-sunken py-8" />
         ) : (
-          <ActivityList items={items} meId={meId} now={now} linked={false} showPot={false} sunken onOpen={(i) => i.requestId !== undefined && openRequest(i.requestId)} />
+          <ActivityList items={items} meId={meId} now={now} linked={false} showPot={false} sunken onOpen={(i) => (i.requestId !== undefined ? openRequest(i.requestId) : isMoneyInItem(i) && openSheet("deposit", { d: i.txHash }))} />
         )}
       </div>
     </Sheet>

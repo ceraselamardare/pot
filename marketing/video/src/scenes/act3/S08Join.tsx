@@ -133,12 +133,12 @@ const plan = () => {
     chipType: chip - 10,
     chipExit: 254,
     moneyIn: 228,
-    moneyExit: 442,
-    noExit: 446,
-    // out
-    chipIn: 452,
-    chipLand: 494,
-    whipBack: [466, 476, dur - 1] as const,
+    moneyExit: dur - 48,
+    noExit: dur - 46,
+    // out: the chip lifts off Leo's row and anchors the whip back, whose long tail lands on the last frame
+    chipIn: dur - 44,
+    chipLand: dur - 18,
+    whipBack: [dur - 40, dur - 30, dur - 1] as const,
   };
 };
 
@@ -149,7 +149,7 @@ const POS = {
   googleAt160: { x: 195, y: 708.4 },
   addShare: { x: 195, y: 738 },
   addCta: { x: 195, y: 512 },
-  rowAmount: { x: 320.9, y: 510.4 },
+  rowAmount: { x: 320.9, y: 558.69 },
 };
 
 /** TypeZone slots (px from the zone's top-left: the zone is x 900-1840, y 120-960). Nothing below y 860 on screen,
@@ -311,7 +311,7 @@ export const S08Join: React.FC = () => {
 
   // ── the "+ $150.00" chip: from Leo's feed row to Maya's (text-on-text at both ends)
   const chipStart = projectScreenPoint(camAt(P.chipIn), "leo", POS.rowAmount.x, POS.rowAmount.y);
-  const chipTargetAt = (frame: number) => projectScreenPoint(camAt(Math.max(frame, 486)), "maya", POS.rowAmount.x, POS.rowAmount.y);
+  const chipTargetAt = (frame: number) => projectScreenPoint(camAt(Math.max(frame, P.chipLand - 4)), "maya", POS.rowAmount.x, POS.rowAmount.y);
   const chipAt = (frame: number): FlyState => {
     const grow = ramp(frame, P.chipIn, P.chipIn + 14, land);
     const u = ramp(frame, P.chipIn + 8, P.chipLand, linear);

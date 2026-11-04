@@ -1,0 +1,147 @@
+{
+  "take": "s10b-more.dior.v3-fb.t2.mp3",
+  "line": "s10b-more",
+  "voice": "dior",
+  "n": 2,
+  "variant": "fallback",
+  "tag": "v3-fb",
+  "tts_text": "Plus: trust that grows, all-or-nothing goals, and payment links.",
+  "duration": 4.32,
+  "speech_start": 0.022,
+  "speech_end": 4.21,
+  "speech_span": 4.177,
+  "words": 9,
+  "syllables": 13,
+  "wps_span": 2.15,
+  "sps_span": 3.11,
+  "wps_articulation": 2.73,
+  "pauses": [
+    {
+      "after": "Plus",
+      "k": 0,
+      "sec": 0.406
+    },
+    {
+      "after": "grows",
+      "k": 3,
+      "sec": 0.294
+    },
+    {
+      "after": "goals",
+      "k": 5,
+      "sec": 0.182
+    }
+  ],
+  "missing_pauses": [],
+  "timing": {
+    "stt_offset_median": 0.038,
+    "anchors": [
+      {
+        "word": "Plus",
+        "k": 0,
+        "onset": 0.022,
+        "breath": false,
+        "stt_minus_onset": 0.018,
+        "align_minus_onset": -0.022
+      },
+      {
+        "word": "trust",
+        "k": 1,
+        "onset": 0.852,
+        "breath": false,
+        "stt_minus_onset": 0.068,
+        "align_minus_onset": 0.028
+      },
+      {
+        "word": "all-or-nothing",
+        "k": 4,
+        "onset": 2.121,
+        "breath": false,
+        "stt_minus_onset": 0.059,
+        "align_minus_onset": 0.039
+      },
+      {
+        "word": "and",
+        "k": 6,
+        "onset": 3.344,
+        "breath": true,
+        "stt_minus_onset": 0.016,
+        "align_minus_onset": -0.024
+      }
+    ],
+    "align_vs_final_nonanchor_median": 0.018
+  },
+  "accuracy": {
+    "wer": 0.0,
+    "subs": 0,
+    "dels": 0,
+    "ins": 0,
+    "diffs": [],
+    "tokenisation_only": false,
+    "ok": true,
+    "audio_events": [],
+    "low_confidence": [],
+    "transcript": "Plus trust that grows, all or nothing goals and payment links"
+  },
+  "f0": {
+    "f0_median_hz": 158.7,
+    "st_sd": 4.21,
+    "st_p5_p95": 12.72,
+    "st_p10_p90": 11.58,
+    "st_motion_per_s": 38.3,
+    "voiced_s": 1.39
+  },
+  "loudness": {
+    "I": -23.9,
+    "LRA": 2.5,
+    "TP": -2.9
+  },
+  "threshold_db": -54.9,
+  "times": [
+    [
+      "Plus",
+      0.022,
+      0.446
+    ],
+    [
+      "trust",
+      0.852,
+      1.122
+    ],
+    [
+      "that",
+      1.162,
+      1.262
+    ],
+    [
+      "grows",
+      1.342,
+      1.827
+    ],
+    [
+      "all-or-nothing",
+      2.121,
+      2.622
+    ],
+    [
+      "goals",
+      2.722,
+      3.162
+    ],
+    [
+      "and",
+      3.344,
+      3.402
+    ],
+    [
+      "payment",
+      3.482,
+      3.742
+    ],
+    [
+      "links",
+      3.802,
+      4.199
+    ]
+  ]
+}

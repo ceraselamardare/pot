@@ -1,0 +1,112 @@
+{
+  "id": "s10-group",
+  "file": "audio/vo/_takes/s10-group-v1-2of3.mp3",
+  "durationSec": 7.669,
+  "words": [
+    {
+      "text": "Bigger",
+      "start": 0.05,
+      "end": 0.255
+    },
+    {
+      "text": "spends",
+      "start": 0.395,
+      "end": 0.775
+    },
+    {
+      "text": "go",
+      "start": 0.815,
+      "end": 0.955
+    },
+    {
+      "text": "to",
+      "start": 0.995,
+      "end": 1.055
+    },
+    {
+      "text": "the",
+      "start": 1.095,
+      "end": 1.155
+    },
+    {
+      "text": "group",
+      "start": 1.195,
+      "end": 1.588
+    },
+    {
+      "text": "The",
+      "start": 2.134,
+      "end": 2.175
+    },
+    {
+      "text": "three-hundred-dollar",
+      "start": 2.195,
+      "end": 2.855
+    },
+    {
+      "text": "boat",
+      "start": 2.975,
+      "end": 3.135
+    },
+    {
+      "text": "trip",
+      "start": 3.175,
+      "end": 3.435
+    },
+    {
+      "text": "needs",
+      "start": 3.495,
+      "end": 3.755
+    },
+    {
+      "text": "two",
+      "start": 3.835,
+      "end": 3.974
+    },
+    {
+      "text": "of",
+      "start": 4.035,
+      "end": 4.175
+    },
+    {
+      "text": "three",
+      "start": 4.195,
+      "end": 4.569
+    },
+    {
+      "text": "so",
+      "start": 4.948,
+      "end": 5.195
+    },
+    {
+      "text": "Leo",
+      "start": 5.255,
+      "end": 5.435
+    },
+    {
+      "text": "approves",
+      "start": 5.475,
+      "end": 6.073
+    },
+    {
+      "text": "right",
+      "start": 6.3,
+      "end": 6.475
+    },
+    {
+      "text": "from",
+      "start": 6.515,
+      "end": 6.615
+    },
+    {
+      "text": "a",
+      "start": 6.635,
+      "end": 6.675
+    },
+    {
+      "text": "notification",
+      "start": 6.715,
+      "end": 7.51
+    }
+  ]
+}

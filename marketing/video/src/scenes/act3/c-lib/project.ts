@@ -66,3 +66,25 @@ export const projectScreenPoint = (
   const l = screenToLocal(sx, sy);
   return projectPhoneLocal(cam, phoneLayerPose(who, rotation, pose), l.x, l.y, 1);
 };
+
+/** Inverse of projectPhoneLocal for a fixed local z: the phone-local (x, y) that lands on screen point (sx, sy).
+ *  Newton steps on the projective map (it converges in 2-3 for these near-affine poses). */
+export const localForScreen = (cam: CameraPose, layer: LayerPose, sx: number, sy: number, z: number, perspective = 2600) => {
+  let x = 0;
+  let y = 0;
+  for (let i = 0; i < 5; i++) {
+    const p = projectPhoneLocal(cam, layer, x, y, z, perspective);
+    const px = projectPhoneLocal(cam, layer, x + 1, y, z, perspective);
+    const py = projectPhoneLocal(cam, layer, x, y + 1, z, perspective);
+    const a = px.x - p.x;
+    const b = py.x - p.x;
+    const c = px.y - p.y;
+    const d = py.y - p.y;
+    const det = a * d - b * c || 1;
+    const ex = sx - p.x;
+    const ey = sy - p.y;
+    x += (d * ex - b * ey) / det;
+    y += (-c * ex + a * ey) / det;
+  }
+  return { x, y };
+};

@@ -10,8 +10,8 @@ import { ApprovalTimeline, copy, formatUsd, LEO, MAYA, names, SAM, T, timelineRo
 import { day } from "../../brand/tokens";
 import { SANS } from "../../brand/fonts";
 
-/** close.done.self (apps/web/i18n/en.json; not in the kit's copy.ts): "Pot closed. {refund} is in your Pot account." */
-export const closeDoneSelf = (refund: number) => `Pot closed. ${formatUsd(refund)} is in your Pot account.`;
+/** close.done.self: "Pot closed. {refund} is in your Pot account." */
+export const closeDoneSelf = (refund: number) => copy["close.done.self"](formatUsd(refund));
 
 /** The close's approval rows for Maya's phone: before Sam = 1 of 2; after = 2 of 2, Sam's check popping in. */
 export const closeTimeline = (samApproved: boolean, samPop = 1): TimelineRow[] =>

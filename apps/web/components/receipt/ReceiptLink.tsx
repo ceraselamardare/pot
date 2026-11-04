@@ -6,13 +6,14 @@ import { t } from "@/i18n/t"
 import { cn } from "@/lib/client/cn"
 import { explorerAccountUrl, explorerTxUrl } from "@/lib/client/explorer"
 
-const LINK = "inline-flex min-h-6 items-center gap-0.5 rounded-sm text-body-sm whitespace-nowrap text-ink-muted underline-offset-4 hover:underline"
+/** The quiet link style (explorer receipts; the money-in details' other receipts use it too). */
+export const QUIET_LINK = "inline-flex min-h-6 items-center gap-0.5 rounded-sm text-body-sm whitespace-nowrap text-ink-muted underline-offset-4 hover:underline"
 
 export function ReceiptLink({ txHash, what, className }: { txHash: string | null | undefined; what: string; className?: string }) {
   const href = explorerTxUrl(txHash)
   if (!href) return null
   return (
-    <a href={href} target="_blank" rel="noopener" aria-label={t("receipt.link.label", { what })} data-receipt className={cn(LINK, className)}>
+    <a href={href} target="_blank" rel="noopener" aria-label={t("receipt.link.label", { what })} data-receipt className={cn(QUIET_LINK, className)}>
       {t("receipt.link")}
       <ArrowUpRight aria-hidden className="size-3.5" strokeWidth={2} />
     </a>
@@ -22,7 +23,7 @@ export function ReceiptLink({ txHash, what, className }: { txHash: string | null
 /** "View on explorer ↗" for an account (the Pot itself), same quiet style. */
 export function ExplorerAccountLink({ account, label, className }: { account: string; label: string; className?: string }) {
   return (
-    <a href={explorerAccountUrl(account)} target="_blank" rel="noopener" aria-label={label} data-explorer-account className={cn(LINK, className)}>
+    <a href={explorerAccountUrl(account)} target="_blank" rel="noopener" aria-label={label} data-explorer-account className={cn(QUIET_LINK, className)}>
       {t("pot.explorer")}
       <ArrowUpRight aria-hidden className="size-3.5" strokeWidth={2} />
     </a>

@@ -1294,6 +1294,41 @@ export interface Messages {
   "members.totals.left": undefined
   "members.totals.spent": undefined
   "members.you": { name: string | number }
+  "moneyin.done": undefined
+  "moneyin.for": undefined
+  "moneyin.loading": undefined
+  "moneyin.missing": undefined
+  "moneyin.receipts": undefined
+  "moneyin.row.demo": undefined
+  "moneyin.row.details": undefined
+  "moneyin.row.pot_dollars": undefined
+  "moneyin.row.see": undefined
+  "moneyin.row.see.label": { what: string | number }
+  "moneyin.source.balance": undefined
+  "moneyin.source.balance.sub": { name: string | number }
+  "moneyin.source.demo": undefined
+  "moneyin.source.demo.sub": undefined
+  "moneyin.source.gift": undefined
+  "moneyin.source.label": undefined
+  "moneyin.source.payin": undefined
+  "moneyin.source.payin.link": undefined
+  "moneyin.source.payin.link.by": { name: string | number }
+  "moneyin.source.payin.link.fixed": { amount: string | number }
+  "moneyin.source.payin.page": undefined
+  "moneyin.source.pot_dollars": undefined
+  "moneyin.source.pot_dollars.sub": { name: string | number }
+  "moneyin.source.pot_dollars.sub.you": undefined
+  "moneyin.status.added": undefined
+  "moneyin.status.failed": undefined
+  "moneyin.status.pending": undefined
+  "moneyin.title.added": { name: string | number; amount: string | number }
+  "moneyin.title.added.you": { amount: string | number }
+  "moneyin.title.gift": { name: string | number; amount: string | number }
+  "moneyin.title.loading": undefined
+  "moneyin.title.payin": { name: string | number; amount: string | number }
+  "moneyin.topup": { name: string | number; amount: string | number }
+  "moneyin.topup.mine": { amount: string | number }
+  "moneyin.when": undefined
   "nav.balance.a11y": { amount: string | number }
   "notif.approval.body": { amount: string | number; reason: string | number; potName: string | number }
   "notif.approval.title": { name: string | number }
@@ -2206,6 +2241,34 @@ export interface Messages {
   "xc.copy_network": { network: string | number }
   "xc.cta.continue": undefined
   "xc.cta.quote": undefined
+  "xc.dd.arrived": { amount: string | number }
+  "xc.dd.flow": { sent: string | number; arrived: string | number }
+  "xc.dd.pair": { coin: string | number; network: string | number }
+  "xc.dd.rate": { amount: string | number; coin: string | number }
+  "xc.dd.rate.stable": { coin: string | number }
+  "xc.dd.receipt.intents": undefined
+  "xc.dd.receipt.label": { where: string | number; what: string | number }
+  "xc.dd.receipt.near": undefined
+  "xc.dd.receipt.origin": { network: string | number }
+  "xc.dd.refund": { amount: string | number }
+  "xc.dd.row": { coin: string | number; network: string | number }
+  "xc.dd.sent": { amount: string | number }
+  "xc.dd.sim": undefined
+  "xc.dd.sim.short": undefined
+  "xc.dd.step.added": undefined
+  "xc.dd.step.address": undefined
+  "xc.dd.step.arrived": undefined
+  "xc.dd.step.converting": undefined
+  "xc.dd.step.sent": { network: string | number }
+  "xc.dd.step.unknown": undefined
+  "xc.dd.timeline": undefined
+  "xc.dd.title": undefined
+  "xc.dd.took.h": { n: string | number }
+  "xc.dd.took.m": { n: string | number }
+  "xc.dd.took.s": { n: string | number }
+  "xc.dd.took.short.h": { n: string | number }
+  "xc.dd.took.short.m": { n: string | number }
+  "xc.dd.took.short.s": { n: string | number }
   "xc.deadline": { minutes: string | number }
   "xc.deadline.hours": { hours: string | number }
   "xc.details.address": undefined

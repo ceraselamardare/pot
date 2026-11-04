@@ -171,11 +171,30 @@ def levenshtein_align(ref, hyp):
     return pairs[::-1], (S, Dl, Ins)
 
 
-def script_words(line_id):
+TAKE_RE = re.compile(r"(s\d\d[a-z]?-[a-z]+)\.([a-z]+)(?:\.([a-z0-9-]+))?\.t(\d+)\.mp3$")
+
+
+def take_info(path):
+    """<id>.<voice>[.<tag>].t<N>.mp3 -> dict(line, voice, tag, n, variant). A tag ending in 'fb' (e.g. 'v3-fb') marks
+    a take of the line's `fallback` text instead of its main `text`."""
+    m = TAKE_RE.match(os.path.basename(path))
+    if not m:
+        return {"line": None, "voice": None, "tag": None, "n": None, "variant": "main"}
+    tag = m.group(3)
+    return {"line": m.group(1), "voice": m.group(2), "tag": tag, "n": int(m.group(4)),
+            "variant": "fallback" if tag and tag.endswith("fb") else "main"}
+
+
+def line_text(line_id, variant="main"):
+    line = LINE_BY_ID[line_id]
+    return line["fallback"] if variant == "fallback" else line["text"]
+
+
+def script_words(line_id, variant="main"):
     """Display words of the script line: whitespace tokens with at least one letter/digit, edge punctuation
     stripped (internal hyphens/apostrophes kept: Eighty-four, trip's, on-chain)."""
     out = []
-    for tok in LINE_BY_ID[line_id]["text"].split():
+    for tok in line_text(line_id, variant).split():
         if not re.search(r"[A-Za-z0-9]", tok):
             continue
         out.append(re.sub(r"^[^A-Za-z0-9$]+|[^A-Za-z0-9]+$", "", tok))
@@ -368,8 +387,8 @@ def stt_words(stt_json):
     return [w for w in stt_json["transcript"]["words"] if w.get("type") == "word"]
 
 
-def accuracy(line_id, stt_json):
-    ref_words = script_words(line_id)
+def accuracy(line_id, stt_json, variant="main"):
+    ref_words = script_words(line_id, variant)
     hyp_words = [w["text"] for w in stt_words(stt_json)]
     ref = norm_tokens(ref_words)
     hyp = norm_tokens(hyp_words)
@@ -395,12 +414,12 @@ def accuracy(line_id, stt_json):
     }
 
 
-def map_stt_to_script(line_id, stt_json, align_words):
+def map_stt_to_script(line_id, stt_json, align_words, variant="main"):
     """Per script word: (start, end, source). Uses Scribe word timestamps (precise, measured on the audio);
     when Scribe merges several script words into one ("Eighty-four dollars" -> "$84"), its span is split in
     proportion to the ElevenLabs alignment durations; unmatched words fall back to the alignment shifted by the
     median alignment-vs-Scribe offset."""
-    words = script_words(line_id)
+    words = script_words(line_id, variant)
     sw = stt_words(stt_json)
     ref = norm_tokens(words)
     hyp = norm_tokens([w["text"] for w in sw])
@@ -448,10 +467,10 @@ def map_stt_to_script(line_id, stt_json, align_words):
     return words, out
 
 
-def expected_pauses(line_id):
+def expected_pauses(line_id, variant="main"):
     """Boundaries (after script word index k) where the script asks for a pause: '…' or '?' inside the line
     (strong), '.' inside the line (sentence), ',' (light)."""
-    toks = LINE_BY_ID[line_id]["text"].split()
+    toks = line_text(line_id, variant).split()
     exp, k = [], -1
     for i, tok in enumerate(toks):
         has_word = re.search(r"[A-Za-z0-9]", tok)
@@ -482,7 +501,7 @@ def expected_pauses(line_id):
 
 MIN_PAUSE = {"ellipsis": 0.25, "question": 0.18, "sentence": 0.12, "comma": 0.0}
 
-SYL_OVERRIDE = {"every": 2, "everyone": 3, "dao": 3, "leo": 2, "groceries": 3, "hundred": 2, "notification": 5,
+SYL_OVERRIDE = {"ok": 2, "every": 2, "everyone": 3, "dao": 3, "leo": 2, "groceries": 3, "hundred": 2, "notification": 5,
                 "near": 1, "approved": 2, "approves": 2}
 
 
@@ -531,11 +550,14 @@ class Acoustics:
         self.sil = silences(self.t, self.db, self.hop, self.thr)
         self.s0, self.s1 = speech_span(self.t, self.db, self.thr)
 
-    def onset_after(self, t0, max_breath=0.45):
-        """First speech-like frame at/after t0, skipping a breath; returns (onset_s, skipped_breath)."""
+    def onset_after(self, t0, max_breath=0.45, persist=10):
+        """First speech-like frame at/after t0 that starts a run of >= `persist` speech-like frames (10 x 2.5 ms =
+        25 ms; a 1 ms click lights ~4 frames of the 10 ms window), skipping a breath and isolated mouth clicks (one
+        sat 60-100 ms before "trust" in the s10b takes); returns (onset_s, skipped_breath)."""
         i = int(np.searchsorted(self.t, t0))
         j = i
-        while j < len(self.t) and not self.speechlike[j]:
+        n = len(self.t)
+        while j < n and not (self.speechlike[j] and self.speechlike[j:j + persist].all()):
             j += 1
         if j >= len(self.t) or self.t[j] - t0 > max_breath:
             return float(t0), False
@@ -560,7 +582,7 @@ def final_times(line_id, path):
     align = json.load(open(path + ".alignment.json"))
     stt = json.load(open(path + ".stt.json"))
     aw = alignment_words(align)
-    words, base = map_stt_to_script(line_id, stt, aw)
+    words, base = map_stt_to_script(line_id, stt, aw, take_info(path)["variant"])
     x = decode(path)
     ac = Acoustics(x)
     n = len(words)
@@ -619,8 +641,8 @@ def final_times(line_id, path):
 
 def analyze_take(path, verbose=True):
     base = os.path.basename(path)
-    m = re.match(r"(s\d\d-[a-z]+)\.([a-z]+)\.t(\d+)\.mp3$", base)
-    line_id, voice, take = (m.group(1), m.group(2), int(m.group(3))) if m else (None, None, None)
+    ti = take_info(path)
+    line_id, voice, take, variant = ti["line"], ti["voice"], ti["n"], ti["variant"]
     stt = json.load(open(path + ".stt.json"))
     align = json.load(open(path + ".alignment.json"))
     words, times, anchors, diag, ac = final_times(line_id, path)
@@ -636,13 +658,13 @@ def analyze_take(path, verbose=True):
     pause_total = sum(p["sec"] for p in pauses)
     gaps = {k: (times[k + 1][0] - times[k][1]) if (k + 1) in anchors else 0.0 for k in range(n - 1)}
     missing = [{"after": words[k], "kind": kind, "sec": round(gaps.get(k, 0.0), 3)}
-               for k, kind in expected_pauses(line_id).items() if gaps.get(k, 0.0) < MIN_PAUSE[kind]]
+               for k, kind in expected_pauses(line_id, variant).items() if gaps.get(k, 0.0) < MIN_PAUSE[kind]]
     syl = sum(syllables(w) for w in words)
-    acc = accuracy(line_id, stt)
+    acc = accuracy(line_id, stt, variant)
     f0 = f0_stats(path)
     ln = loudness(path)
     res = {
-        "take": base, "line": line_id, "voice": voice, "n": take,
+        "take": base, "line": line_id, "voice": voice, "n": take, "variant": variant, "tag": ti["tag"],
         "tts_text": align.get("text"),
         "duration": round(len(ac.x) / SR, 3),
         "speech_start": round(first_onset, 3), "speech_end": round(ac.s1, 3), "speech_span": round(span, 3),
@@ -728,8 +750,11 @@ def finalize_vo(pairs, lead=0.05, tail=0.15, target_i=-16.0, max_tp=-1.5):
         print(json.dumps({k: report[-1][k] for k in ("id", "take", "duration", "wps_span", "sps_span", "I", "TP",
                                                        "sample_peak_dbfs", "first_word_at", "stt_offset", "dynamics")}))
     write_vo_data()
+    merged = {r["id"]: r for r in (json.load(open(VO_REPORT)) if os.path.exists(VO_REPORT) else [])}
+    merged.update({r["id"]: r for r in report})
+    order = [l["id"] for l in LINES["lines"]]
     with open(VO_REPORT, "w") as fh:
-        json.dump(report, fh, indent=2)
+        json.dump([merged[i] for i in order if i in merged] + [r for i, r in merged.items() if i not in order], fh, indent=2)
     return report
 
 

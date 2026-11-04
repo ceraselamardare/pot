@@ -4,7 +4,7 @@
 import { Check, Circle, X } from "lucide-react";
 import React from "react";
 import { copy } from "../copy";
-import type { Person } from "../data";
+import { LISBON, type Person } from "../data";
 import { formatUsd } from "../format";
 import { clamp01, pop as popAnim } from "../ease";
 import { useUi } from "../theme";
@@ -95,8 +95,10 @@ export const ApprovalTimeline: React.FC<{ rows: TimelineRow[]; k: number; style?
 };
 
 /**
- * The "Waiting on you" card: who asks how much for what, the approvals chip and expiry, and the inline
- * [✓ Approve $300] / [Decline] (both SECONDARY: the Pot screen's one marigold is Add money).
+ * The "Waiting on you" card: who asks how much for what, the chip and expiry, and the inline buttons (both SECONDARY:
+ * the Pot screen's one marigold is Add money). One-OK tier (hub 1.1.0, $100 < amount ≤ $300): "Needs one OK" and
+ * [✓ OK $300]; the group tier: "1 of 2 approvals" and [✓ Approve $300]. `undo` shows the 4 s "✓ Approved · Undo" strip
+ * that replaces the buttons right after a tap (`undoDrain` 0..1 runs the bottom drain line).
  */
 export const RequestCard: React.FC<{
   who: Person;
@@ -105,31 +107,56 @@ export const RequestCard: React.FC<{
   approvals: number;
   k: number;
   expires: string;
+  /** Default: one OK when the amount is within the one-OK ceiling ($300). */
+  tier?: "one_ok" | "group";
   pressed?: "approve" | "decline" | null;
   press?: number;
+  /** After the tap: "✓ Approved · Undo" (queued) → "Sending…" → "Sent". */
+  undo?: "queued" | "sending" | "sent" | null;
+  undoDrain?: number;
   style?: React.CSSProperties;
-}> = ({ who, amount, reason, approvals, k, expires, pressed = null, press = 1, style }) => {
+}> = ({ who, amount, reason, approvals, k, expires, tier, pressed = null, press = 1, undo = null, undoDrain = 0, style }) => {
   const { c, shadowCard } = useUi();
   const whole = formatUsd(amount, "whole");
+  const oneOk = (tier ?? (amount <= LISBON.oneOkCap ? "one_ok" : "group")) === "one_ok";
   return (
-    <article style={{ borderRadius: 16, border: `1px solid ${c.line}`, background: c.surface, padding: 12, boxShadow: shadowCard, ...style }}>
+    <article data-ui="request-card" style={{ borderRadius: 16, border: `1px solid ${c.line}`, background: c.surface, padding: 12, boxShadow: shadowCard, ...style }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <Avatar person={who} size="sm" ring="surface" style={{ marginTop: 2 }} />
         <span style={{ minWidth: 0, flex: 1 }}>
           <span style={{ display: "block", ...T.body, color: c.ink }}>{copy["feed.pending"](who.name, whole, reason)}</span>
           <span style={{ marginTop: 8, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-            <StatusChip status="needs">{copy["approve.progress"](approvals, k)}</StatusChip>
+            <StatusChip status="needs">{oneOk ? copy["feed.pending.one_ok"] : copy["approve.progress"](approvals, k)}</StatusChip>
             <span style={{ ...T.bodySm, color: c.inkMuted }}>{copy["approve.expires"](expires)}</span>
           </span>
         </span>
         <MoneyText amount={amount} style={{ paddingTop: 2 }} />
       </div>
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Button icon={Check} pressed={pressed === "approve" ? press : 0}>
-          {copy["approve.cta.approve"](whole)}
-        </Button>
-        <Button pressed={pressed === "decline" ? press : 0}>{copy["approve.cta.decline"]}</Button>
-      </div>
+      {undo ? (
+        <div style={{ position: "relative", marginTop: 12, overflow: "hidden", borderRadius: 10, background: c.surfaceSunken }}>
+          <div style={{ display: "flex", minHeight: 48, alignItems: "center", gap: 8, padding: "0 4px 0 12px" }}>
+            {undo === "queued" ? (
+              <>
+                <Check size={20} strokeWidth={2} color={c.approved} style={{ display: "block", flexShrink: 0 }} aria-hidden />
+                <span style={{ flex: 1, ...T.label, color: c.ink }}>{copy["approve.undo.label"]}</span>
+                <span style={{ display: "inline-flex", minHeight: 44, alignItems: "center", padding: "0 16px", ...T.label, color: c.link }}>{copy["approve.undo.cta"]}</span>
+              </>
+            ) : (
+              <StatusChip status={undo === "sent" ? "sent" : "sending"} bare />
+            )}
+          </div>
+          {undo === "queued" ? (
+            <span style={{ position: "absolute", bottom: 0, left: 0, height: 2, width: `${(1 - clamp01(undoDrain)) * 100}%`, background: c.approved }} />
+          ) : null}
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <Button icon={Check} pressed={pressed === "approve" ? press : 0}>
+            {oneOk ? copy["approve.cta.ok"](whole) : copy["approve.cta.approve"](whole)}
+          </Button>
+          <Button pressed={pressed === "decline" ? press : 0}>{copy["approve.cta.decline"]}</Button>
+        </div>
+      )}
     </article>
   );
 };

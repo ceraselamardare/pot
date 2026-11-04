@@ -16,8 +16,8 @@ export const PLATES: PlateDef[] = [
   { key: "app", Icon: Smartphone, title: "App", label: "Sign in with Google (NEAR Auth) · no wallet, no seed phrase" },
   { key: "relay", Icon: Zap, title: "Gasless relay", label: "NEP-366 meta-transactions · people hold 0 NEAR" },
   { key: "rules", Icon: ShieldCheck, title: "Pot rules", label: "Pot Hub contract · approves only what the rules allow" },
-  { key: "pot", Icon: Users, title: "Your Pot", label: "a Sputnik DAO · the group approves bigger spends" },
-  { key: "dollars", Icon: Banknote, title: "Dollars", label: "USDC on NEAR" },
+  { key: "pot", Icon: Users, title: "Your Pot", label: "a Sputnik DAO · bigger calls need most of the group" },
+  { key: "dollars", Icon: Banknote, title: "Dollars", label: "USDC on NEAR · testnet today" },
 ];
 
 /** Slab size (inside the phone's rounded outline, so nothing pokes out while they are stacked) and radius. */
@@ -51,11 +51,12 @@ export const PULSE_LOCAL: [number, number, number][] = [
   [-40, 272, 0],
 ];
 
-/** The story pulses' stations (layer index + plate-local point). Both run down the slabs' LEFT bands (plate-local
+/** The story pulses' stations (layer index + plate-local point). All three run down the slabs' LEFT bands (plate-local
  *  x < −69: never covered by the slab above, and clear of every engraved icon and title, which sit on the bottom
- *  band), so their amount pills and result chips (all to the left of the dot) never touch a label:
- *  "$84.00" stops at Pot rules; "$300.00" passes the rules along the band's outer edge (well left of the $84 check)
- *  and stops at Your Pot. Clearance was checked frame by frame against the projected label boxes (≥ 38 px). */
+ *  band), and every pill and chip sits left of (or under) its dot, so nothing ever covers a label:
+ *  "$84.00" stops at Pot rules; "$300.00" stops higher up the same band (beside the $84 check); "Close · 2 of 3"
+ *  runs down the band's outer edge (after both results have cleared) and stops at Your Pot. Clearance was checked
+ *  frame by frame against the projected label boxes (≥ 38 px) and the frame edges (≥ 44 px). */
 export const SPEND84_PATH: { layer: number; at: [number, number, number] }[] = [
   { layer: 0, at: [83.5, -92, 1] },
   { layer: 1, at: [-140, -250, 0] },
@@ -63,9 +64,14 @@ export const SPEND84_PATH: { layer: number; at: [number, number, number] }[] = [
 ];
 export const SPEND300_PATH: { layer: number; at: [number, number, number] }[] = [
   { layer: 0, at: [83.5, -92, 1] },
-  { layer: 1, at: [-178, -300, 0] },
-  { layer: 2, at: [-178, -340, 0] },
-  { layer: 3, at: [-140, -130, 0] },
+  { layer: 1, at: [-150, -330, 0] },
+  { layer: 2, at: [-155, -320, 0] },
+];
+export const CLOSE_PATH: { layer: number; at: [number, number, number] }[] = [
+  { layer: 0, at: [83.5, -92, 1] },
+  { layer: 1, at: [-165, -300, 0] },
+  { layer: 2, at: [-178, -260, 0] },
+  { layer: 3, at: [-145, -150, 0] },
 ];
 
 export type PlateLook = {

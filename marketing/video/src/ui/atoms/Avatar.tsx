@@ -1,5 +1,6 @@
 // Member avatars (apps/web/components/pot/Avatar.tsx): initials on the member colour by join order, eggplant
 // `on-brand` initials in both themes, Figtree 700. Stacks overlap by 8 px with a 2 px ring in the colour they sit on.
+// `hideInitials` draws a plain seat (the invite landing shows only the inviter's initials, privacy audit 2026-11-02).
 import React from "react";
 import { SANS } from "../../brand/fonts";
 import { memberColor, type Person } from "../data";
@@ -23,8 +24,10 @@ export const Avatar: React.FC<{
   /** A 2 px ring in the colour the avatar sits on (stacks, tinted rows). */
   ring?: Ring;
   ringWidth?: number;
+  /** A plain seat in the member colour, no initials (privacy: the invite landing, the link preview). */
+  hideInitials?: boolean;
   style?: React.CSSProperties;
-}> = ({ person, size = "sm", ring = "none", ringWidth = 2, style }) => {
+}> = ({ person, size = "sm", ring = "none", ringWidth = 2, hideInitials, style }) => {
   const { c } = useUi();
   const s = AVATAR[size];
   const invited = person.joinIndex === null;
@@ -50,7 +53,7 @@ export const Avatar: React.FC<{
         ...style,
       }}
     >
-      {person.initials}
+      {hideInitials ? null : person.initials}
     </span>
   );
 };
@@ -64,8 +67,10 @@ export const AvatarStack: React.FC<{
   appear?: number[];
   /** Empty dashed seats after the people (invite landing). */
   emptySeats?: number;
+  /** Show initials only for this person id (the invite landing's inviter); everyone else is a plain seat. */
+  initialsOnly?: string | null;
   style?: React.CSSProperties;
-}> = ({ people, size = "sm", ring = "ground", appear, emptySeats = 0, style }) => {
+}> = ({ people, size = "sm", ring = "ground", appear, emptySeats = 0, initialsOnly, style }) => {
   const box = AVATAR[size].box;
   return (
     <span aria-hidden style={{ display: "flex", alignItems: "center", ...style }}>
@@ -77,6 +82,7 @@ export const AvatarStack: React.FC<{
             person={p}
             size={size}
             ring={ring}
+            hideInitials={initialsOnly !== undefined && initialsOnly !== null && p.id !== initialsOnly}
             style={{
               marginLeft: i > 0 ? -8 : 0,
               transform: a < 1 ? `scale(${0.4 + 0.6 * a})` : undefined,

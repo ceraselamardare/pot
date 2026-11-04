@@ -1,6 +1,11 @@
 // A generic notification (no real OS branding): a frosted token card with the pot-mark app icon, "Pot", "now",
-// the title and body in the app's push copy (en.json notif.approval.*): "Maya needs your OK" /
-// "$300 for the boat trip · Lisbon Trip". `progress` slides it down; `pressed` presses it like a button.
+// the title and body in the app's push copy (en.json notif.*). `copyVariant` picks the message:
+//   "oneOk" (default since hub 1.1.0: the $300 tickets are a one-OK ask): "Maya needs one OK" /
+//            "$300 for the boat trip · Lisbon Trip · Anyone can OK it";
+//   "group": "Maya needs your OK" / "$300 for the boat trip · Lisbon Trip" (a spend over $300);
+//   "trust": "You're now Trusted in Lisbon Trip" / "You can spend up to $200 without asking.";
+//   "goal":  "Lisbon Trip reached its goal" / "$450 collected. Spending is open.".
+// `title` / `body` override any of them. `progress` slides it down; `pressed` presses it like a button.
 // LockScreen: a member-colour wallpaper, the date, a big "9:41" and a notification stack.
 import { Camera, Flashlight, Lock } from "lucide-react";
 import React from "react";
@@ -13,8 +18,30 @@ import { clamp01, easeEnter } from "../ease";
 import { alpha, useUi } from "../theme";
 import { DISPLAY, SANS, SCREEN_TEXT } from "../type";
 
+export type PushCopy = "oneOk" | "group" | "trust" | "goal";
+
+/** The push messages the film uses, as [title, body]. */
+export function pushCopy(v: PushCopy, opts?: { name?: string; amount?: string; reason?: string; potName?: string }): [string, string] {
+  const name = opts?.name ?? MAYA.name;
+  const amount = opts?.amount ?? "$300";
+  const reason = opts?.reason ?? "the boat trip";
+  const potName = opts?.potName ?? LISBON.name;
+  switch (v) {
+    case "oneOk":
+      return [copy["notif.one_ok.title"](name), copy["notif.one_ok.body"](amount, reason, potName)];
+    case "group":
+      return [copy["notif.approval.title"](name), copy["notif.approval.body"](amount, reason, potName)];
+    case "trust":
+      return [copy["notif.trust.title"](copy["trust.level.1"], potName), copy["notif.trust.body"](opts?.amount ?? "$200")];
+    case "goal":
+      return [copy["notif.goal.reached.title"](potName), copy["notif.goal.reached.body"](opts?.amount ?? "$450")];
+  }
+}
+
 export type PushProps = {
   appName?: string;
+  /** Which message (default "oneOk"); `title` / `body` override it. */
+  copyVariant?: PushCopy;
   title?: string;
   body?: string;
   time?: string;
@@ -31,8 +58,9 @@ export type PushProps = {
 
 export const PushNotification: React.FC<PushProps> = ({
   appName = "Pot",
-  title = copy["notif.approval.title"](MAYA.name),
-  body = copy["notif.approval.body"]("$300", "the boat trip", LISBON.name),
+  copyVariant = "oneOk",
+  title: titleProp,
+  body: bodyProp,
   time = "now",
   progress = 1,
   pressed = 0,
@@ -41,6 +69,9 @@ export const PushNotification: React.FC<PushProps> = ({
   style,
 }) => {
   const ui = useUi();
+  const [defTitle, defBody] = pushCopy(copyVariant);
+  const title = titleProp ?? defTitle;
+  const body = bodyProp ?? defBody;
   const t = tone ?? (ui.theme === "night" ? "dark" : "light");
   const ink = t === "dark" ? night.ink : day.ink;
   const muted = t === "dark" ? night.inkMuted : day.inkMuted;
@@ -54,6 +85,7 @@ export const PushNotification: React.FC<PushProps> = ({
     variant === "banner" ? `translateY(${(1 - e) * -130}%)` : `translateY(${(1 - e) * 24}px) scale(${0.94 + 0.06 * e})`;
   return (
     <div
+      data-ui="push"
       style={{
         ...(variant === "banner" ? { position: "absolute", left: 8, right: 8, top: ui.safeTop + 2, zIndex: 80 } : { position: "relative" }),
         boxSizing: "border-box",
@@ -102,7 +134,7 @@ export const LOCK_WALLPAPER = `radial-gradient(120% 70% at 20% 10%, ${day.member
 
 export const LockScreen: React.FC<LockScreenProps> = ({
   time = "9:41",
-  date = "Thursday, October 22",
+  date = "Tuesday, November 3",
   wallpaper = LOCK_WALLPAPER,
   notifications = [],
   stackTop = 330,

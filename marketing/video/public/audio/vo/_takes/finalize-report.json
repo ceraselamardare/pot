@@ -638,90 +638,165 @@
   },
   {
     "id": "s10-group",
-    "take": "s10-group.dior.t1.mp3",
-    "shift": -0.0375,
-    "duration": 7.669,
-    "words": 21,
-    "syllables": 32,
+    "take": "s10-group.dior.v3.t1.mp3",
+    "shift": -0.0425,
+    "duration": 4.985,
+    "words": 12,
+    "syllables": 19,
     "first_word_at": 0.05,
-    "last_word_end": 7.51,
-    "wps_clip": 2.74,
-    "wps_span": 2.82,
-    "sps_span": 4.29,
+    "last_word_end": 4.823,
+    "wps_clip": 2.41,
+    "wps_span": 2.51,
+    "sps_span": 3.98,
     "pauses": [
       {
-        "after": "group",
-        "k": 5,
-        "sec": 0.546
+        "after": "OK",
+        "k": 4,
+        "sec": 0.601
       },
       {
-        "after": "three",
-        "k": 13,
-        "sec": 0.379
-      },
-      {
-        "after": "approves",
-        "k": 16,
-        "sec": 0.227
+        "after": "it",
+        "k": 7,
+        "sec": 0.334
       }
     ],
-    "stt_offset": 0.083,
+    "stt_offset": 0.072,
     "anchors": [
       {
         "word": "Bigger",
         "k": 0,
-        "onset": 0.012,
+        "onset": 0.007,
         "breath": false,
-        "stt_minus_onset": 0.088,
-        "align_minus_onset": -0.012
+        "stt_minus_onset": 0.093,
+        "align_minus_onset": -0.007
       },
       {
-        "word": "The",
-        "k": 6,
-        "onset": 2.096,
-        "breath": true,
-        "stt_minus_onset": -0.016,
-        "align_minus_onset": 0.024
-      },
-      {
-        "word": "so",
-        "k": 14,
-        "onset": 4.91,
+        "word": "Leo",
+        "k": 5,
+        "onset": 2.608,
         "breath": false,
-        "stt_minus_onset": 0.09,
-        "align_minus_onset": 0.05
+        "stt_minus_onset": 0.052,
+        "align_minus_onset": 0.032
       },
       {
         "word": "right",
-        "k": 17,
-        "onset": 6.262,
+        "k": 8,
+        "onset": 3.628,
         "breath": false,
-        "stt_minus_onset": 0.078,
+        "stt_minus_onset": 0.072,
+        "align_minus_onset": 0.052
+      }
+    ],
+    "gain_db": 12.1,
+    "dynamics": {
+      "plr_in": 23.1,
+      "plr_after_comp": 22.2,
+      "plr_out": 14.0,
+      "limiter_gr_db": 9.6,
+      "pre_gain_db": 0.7,
+      "makeup_db": 12.1,
+      "ceiling_dbfs": -1.9
+    },
+    "chain": "highpass=f=70:poles=2,volume=0.70dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=12.10dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "I": -16.1,
+    "TP": -2.1,
+    "LRA": 1.7,
+    "sample_peak_dbfs": -2.15,
+    "f0": {
+      "f0_median_hz": 150.9,
+      "st_sd": 4.72,
+      "st_p5_p95": 13.54,
+      "st_p10_p90": 12.86,
+      "st_motion_per_s": 33.1,
+      "voiced_s": 2.14
+    }
+  },
+  {
+    "id": "s10b-more",
+    "take": "s10b-more.dior.v3.t2.mp3",
+    "shift": -0.025,
+    "duration": 4.893,
+    "words": 14,
+    "syllables": 17,
+    "first_word_at": 0.05,
+    "last_word_end": 4.731,
+    "wps_clip": 2.86,
+    "wps_span": 2.99,
+    "sps_span": 3.63,
+    "pauses": [
+      {
+        "after": "Plus",
+        "k": 0,
+        "sec": 0.224
+      },
+      {
+        "after": "grows",
+        "k": 3,
+        "sec": 0.264
+      },
+      {
+        "after": "goals",
+        "k": 5,
+        "sec": 0.147
+      }
+    ],
+    "stt_offset": 0.036,
+    "anchors": [
+      {
+        "word": "Plus",
+        "k": 0,
+        "onset": 0.025,
+        "breath": false,
+        "stt_minus_onset": 0.015,
+        "align_minus_onset": -0.025
+      },
+      {
+        "word": "trust",
+        "k": 1,
+        "onset": 0.694,
+        "breath": true,
+        "stt_minus_onset": 0.066,
+        "align_minus_onset": 0.026
+      },
+      {
+        "word": "all-or-nothing",
+        "k": 4,
+        "onset": 1.947,
+        "breath": true,
+        "stt_minus_onset": 0.053,
+        "align_minus_onset": 0.053
+      },
+      {
+        "word": "and",
+        "k": 6,
+        "onset": 3.062,
+        "breath": false,
+        "stt_minus_onset": 0.018,
         "align_minus_onset": 0.058
       }
     ],
-    "gain_db": 11.4,
+    "gain_db": 11.7,
     "dynamics": {
-      "plr_in": 23.1,
-      "plr_after_comp": 20.9,
-      "plr_out": 14.1,
-      "limiter_gr_db": 7.5,
-      "pre_gain_db": 2.4,
-      "makeup_db": 11.4,
+      "plr_in": 21.0,
+      "plr_after_comp": 18.2,
+      "plr_out": 14.0,
+      "limiter_gr_db": 5.0,
+      "pre_gain_db": 1.4,
+      "makeup_db": 11.7,
       "ceiling_dbfs": -1.9
     },
-    "chain": "highpass=f=70:poles=2,volume=2.40dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=11.40dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
+    "chain": "highpass=f=70:poles=2,volume=1.40dB,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120:knee=6:detection=rms:makeup=1,volume=11.70dB,aresample=176400,alimiter=limit=0.8035:attack=3:release=40:level=false:latency=true,aresample=44100",
     "I": -16.2,
-    "TP": -2.1,
-    "LRA": 1.7,
-    "sample_peak_dbfs": -2.14,
+    "TP": -2.2,
+    "LRA": 0.6,
+    "sample_peak_dbfs": -2.15,
     "f0": {
-      "f0_median_hz": 145.8,
-      "st_sd": 4.73,
-      "st_p5_p95": 14.35,
-      "st_p10_p90": 12.63,
-      "st_motion_per_s": 35.9,
-      "voiced_s": 3.08
+      "f0_median_hz": 154.0,
+      "st_sd": 4.41,
+      "st_p5_p95": 12.5,
+      "st_p10_p90": 11.4,
+      "st_motion_per_s": 34.8,
+      "voiced_s": 2.09
     }
   },
   {

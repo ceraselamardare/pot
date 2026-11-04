@@ -6,7 +6,7 @@ import "server-only"
 import type * as Api from "@pot/sdk/api"
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm"
 import type { Db } from "@/db/client"
-import { appUser, feedEvent, note } from "@/db/schema"
+import { appUser, depositIntent, feedEvent, note, relayLog } from "@/db/schema"
 import type { HubReader } from "../chain/hub"
 import type { Config } from "../config"
 import { ApiError } from "../http/errors"
@@ -187,6 +187,11 @@ export async function getFeed(
       }
     }
     body.declineReasons = declineReasons
+    // money in: where each add on this page came from (the row's source line; the details are …/deposits/[key])
+    body.addSources = await addSources(db, potId, page).catch((e: unknown) => {
+      console.error(JSON.stringify({ level: "error", where: "feed.addSources", err: errText(e, 200) }))
+      return {}
+    })
     // comments on requests (off-chain): how many each request has, for the cards' count
     // (never fails the feed: a DB without migration 0003 just shows no counts)
     body.commentCounts = await commentCounts(db, potId).catch((e: unknown) => {
@@ -205,4 +210,55 @@ export async function getFeed(
 
   const cacheControl = s ? "private, no-store" : "public, s-maxage=5, stale-while-revalidate=30"
   return { body, cacheControl }
+}
+
+type AddSource = { kind: "demo" | "pot_dollars" | "xc"; coin?: string; chain?: string }
+
+/**
+ * Where each add on a feed page came from (members only): the deposit the relay ADDED (deposit_intent.added_relay_id
+ * → relay_log, whose outer_tx_hash is the add's) or named in its context, else the Add sheet's choice kept on the
+ * row (data.potSource). Adds from before sources were recorded have none.
+ */
+async function addSources(db: Db, potId: string, page: (typeof feedEvent.$inferSelect)[]): Promise<Record<string, AddSource>> {
+  const adds = page.filter((r) => r.kind === "contribution" && r.txHash)
+  if (!adds.length) return {}
+  const out: Record<string, AddSource> = {}
+  const coinOf = (q: unknown): string | undefined => {
+    const o = (q as { origin?: { coin?: unknown } } | null)?.origin?.coin
+    return typeof o === "string" ? o : "USDC"
+  }
+  const relays = await db
+    .select({ id: relayLog.id, tx: relayLog.outerTxHash })
+    .from(relayLog)
+    .where(and(inArray(relayLog.outerTxHash, adds.map((r) => r.txHash!)), eq(relayLog.potId, potId)))
+  const txByRelay = new Map(relays.map((r) => [r.id, r.tx!]))
+  const named = adds.flatMap((r) => {
+    const id = (r.data as { depositIntentId?: unknown } | null)?.depositIntentId
+    return typeof id === "string" ? [[id, r.txHash!] as const] : []
+  })
+  const intents =
+    txByRelay.size || named.length
+      ? await db
+          .select({ id: depositIntent.id, relay: depositIntent.addedRelayId, chain: depositIntent.chain, quote: depositIntent.quote })
+          .from(depositIntent)
+          .where(
+            and(
+              eq(depositIntent.potId, potId),
+              or(
+                txByRelay.size ? inArray(depositIntent.addedRelayId, [...txByRelay.keys()]) : undefined,
+                named.length ? inArray(depositIntent.id, named.map(([id]) => id)) : undefined,
+              ),
+            ),
+          )
+      : []
+  const byId = new Map(named)
+  for (const r of adds) {
+    const src = (r.data as { potSource?: unknown } | null)?.potSource
+    if (src === "demo" || src === "pot_dollars") out[r.txHash!] = { kind: src }
+  }
+  for (const i of intents) {
+    const tx = (i.relay ? txByRelay.get(i.relay) : undefined) ?? byId.get(i.id)
+    if (tx) out[tx] = { kind: "xc", chain: i.chain, coin: coinOf(i.quote) }
+  }
+  return out
 }

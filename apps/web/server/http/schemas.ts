@@ -53,6 +53,8 @@ export const logoutReq = z.strictObject({ pushEndpoint: z.string().max(1024).opt
 
 const relayContext = z.strictObject({
   depositIntentId: z.string().max(64).optional(),
+  /** add_money: where the money came from (the money-in details; kept on the add's feed row) */
+  source: z.enum(["demo", "pot_dollars"]).optional(),
   meta: z.strictObject({ gradient: z.string().max(40).optional() }).optional(),
 })
 

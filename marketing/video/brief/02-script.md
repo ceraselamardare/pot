@@ -1,4 +1,6 @@
-# Script v2 (voice-over + on-screen words)
+# Script v3 (voice-over + on-screen words)
+
+v3 (2026-11-03, brief/06-update-v2.md): the app now has one-OK rules, so s10 is a new line; s10b-more is new ("And more"). All other lines are unchanged and verified true against the Nov 3 app.
 
 v2 (2026-10-22, after brief/research-hypermotion.md): s03 and s05 are shorter so the logo reveal lands near 0:16 and the product near 0:22; s02+s03 play as one continuous shot.
 
@@ -17,7 +19,8 @@ Owner: the director. The VO lines below are the source of truth for the audio ag
 | s07-create | 3 | Start a Pot for the trip, and set the rules in plain words. | Phone: Create → "Lisbon Trip" 🇵🇹; rule sentences fly out beside the phone: "Anyone can spend up to $100 without asking." · "Bigger spends need 2 of 3 approvals." |
 | s08-join | 3 | Drop the link in the chat. Friends join with Google and chip in their share. No wallet. No seed phrase. No gas. | Chat (Day) with the Lisbon Trip link card → Leo taps → invite landing → Join with Google → You're in! → Add $150 → goal bar **$450 of $450**; stamps: No wallet · No seed phrase · No gas |
 | s09-instant | 3 | Small spends approve themselves. Eighty-four dollars for groceries? Pot checks the rules… approved, and paid back in seconds. | Maya: Spend → 8, 4 → Groceries 🛒 → Get $84 back → "Checking Pot rules…" dots → **"Approved by Pot rules"** + marigold burst → "$84 sent to you" → hero $450.00 → **$366.00** |
-| s10-group | 3 | Bigger spends go to the group. The three-hundred-dollar boat trip needs two of three… so Leo approves, right from a notification. | Maya: $300 → "This needs 2 of 3 approvals" → Ask the group → "1 of 2"; Leo's phone: push "Maya needs your OK" → Approve $300 → "Approved! $300 is on its way to Maya" → **$66.00** |
+| s10-group | 3 | Bigger spends need one OK. Leo taps it, right from a notification. | Maya: $300 → Tickets / the boat trip → "This needs one OK from anyone else" → Ask for one OK; Leo's push "Maya needs one OK" → [OK $300] → "Done. Your OK sent $300 to Maya." → **$66.00** |
+| s10b-more | 3 | Plus: trust that grows, all-or-nothing goals, and links to pay in, or pay out. | Feature blitz with the app's own names: Trust grows · All or nothing · Ask anyone to pay in · Send by link |
 | s11-close | 3 | When the trip's over, close the Pot. Everyone gets their fair share back. | Close Pot → refund table rows land: Maya / Sam / Leo put in $150.00 → get back **$22.00** each → "Pot closed" |
 | s12-tech | 4 | Under the hood, every Pot is a Sputnik DAO on NEAR. Its rules are enforced on-chain, not by a person. Every action is gasless. And no one can take money out alone. | X-ray of the stack; labels: Google login (NEAR Auth) · gasless relay (NEP-366 meta-transactions) · Pot rules (Pot Hub contract, auto-approves only inside the rules) · each Pot = a Sputnik DAO (the group approves by majority) · dollars (USDC). End on the trust sentence, huge |
 | s13-end | 5 | Pot. Built at NEAR Hackathon. | Lockup on cream, tagline, "Built at NEAR HACKATHON", "Social Money · Real-World Money" |

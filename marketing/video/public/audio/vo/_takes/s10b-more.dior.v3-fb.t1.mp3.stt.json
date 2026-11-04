@@ -1,0 +1,177 @@
+{
+  "tool": "eleven.stt",
+  "endpoint": "POST /v1/speech-to-text",
+  "model_id": "scribe_v2",
+  "file": "public/audio/vo/_takes/s10b-more.dior.v3-fb.t1.mp3",
+  "request": {
+    "model_id": "scribe_v2",
+    "language_code": "en",
+    "timestamps_granularity": "word",
+    "tag_audio_events": true
+  },
+  "response": {
+    "request_id": null,
+    "headers": {
+      "character-cost": "1",
+      "fiat-cost-before-overages": "0.000364"
+    },
+    "latency_ms": 788
+  },
+  "transcript": {
+    "language_code": "eng",
+    "language_probability": 1,
+    "text": "Plus trust that grows, all or nothing goals and payment links",
+    "words": [
+      {
+        "text": "Plus",
+        "start": 0.04,
+        "end": 0.4,
+        "type": "word",
+        "logprob": -0.0004351384413894266
+      },
+      {
+        "text": " ",
+        "start": 0.4,
+        "end": 0.88,
+        "type": "spacing",
+        "logprob": -0.07905663549900055
+      },
+      {
+        "text": "trust",
+        "start": 0.88,
+        "end": 1.14,
+        "type": "word",
+        "logprob": -0.07905663549900055
+      },
+      {
+        "text": " ",
+        "start": 1.14,
+        "end": 1.18,
+        "type": "spacing",
+        "logprob": -0.000042199197196168825
+      },
+      {
+        "text": "that",
+        "start": 1.18,
+        "end": 1.32,
+        "type": "word",
+        "logprob": -0.000042199197196168825
+      },
+      {
+        "text": " ",
+        "start": 1.32,
+        "end": 1.36,
+        "type": "spacing",
+        "logprob": -0.00005352353764465079
+      },
+      {
+        "text": "grows,",
+        "start": 1.36,
+        "end": 1.76,
+        "type": "word",
+        "logprob": -0.04203344265382233
+      },
+      {
+        "text": " ",
+        "start": 1.76,
+        "end": 2.18,
+        "type": "spacing",
+        "logprob": -0.000002861018856492592
+      },
+      {
+        "text": "all",
+        "start": 2.18,
+        "end": 2.28,
+        "type": "word",
+        "logprob": -0.000002861018856492592
+      },
+      {
+        "text": " ",
+        "start": 2.28,
+        "end": 2.32,
+        "type": "spacing",
+        "logprob": -0.03804141283035278
+      },
+      {
+        "text": "or",
+        "start": 2.32,
+        "end": 2.4,
+        "type": "word",
+        "logprob": -0.03804141283035278
+      },
+      {
+        "text": " ",
+        "start": 2.4,
+        "end": 2.44,
+        "type": "spacing",
+        "logprob": -0.000003576272320060525
+      },
+      {
+        "text": "nothing",
+        "start": 2.44,
+        "end": 2.66,
+        "type": "word",
+        "logprob": -0.000003576272320060525
+      },
+      {
+        "text": " ",
+        "start": 2.66,
+        "end": 2.76,
+        "type": "spacing",
+        "logprob": -0.0000034570634852570947
+      },
+      {
+        "text": "goals",
+        "start": 2.76,
+        "end": 3.1,
+        "type": "word",
+        "logprob": -0.0000034570634852570947
+      },
+      {
+        "text": " ",
+        "start": 3.1,
+        "end": 3.32,
+        "type": "spacing",
+        "logprob": -0.474077433347702
+      },
+      {
+        "text": "and",
+        "start": 3.32,
+        "end": 3.4,
+        "type": "word",
+        "logprob": -0.474077433347702
+      },
+      {
+        "text": " ",
+        "start": 3.4,
+        "end": 3.5,
+        "type": "spacing",
+        "logprob": -0.000012874520507466514
+      },
+      {
+        "text": "payment",
+        "start": 3.5,
+        "end": 3.76,
+        "type": "word",
+        "logprob": -0.000012874520507466514
+      },
+      {
+        "text": " ",
+        "start": 3.76,
+        "end": 3.82,
+        "type": "spacing",
+        "logprob": -0.000005602820692729438
+      },
+      {
+        "text": "links",
+        "start": 3.82,
+        "end": 4.12,
+        "type": "word",
+        "logprob": -0.000005602820692729438
+      }
+    ],
+    "transcription_id": "IVPSeWYrtMRuul79Kclh",
+    "audio_duration_secs": 4.72
+  },
+  "created_at": "2026-11-03T20:13:48.057Z"
+}

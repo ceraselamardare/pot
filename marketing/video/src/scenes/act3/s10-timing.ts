@@ -1,8 +1,10 @@
-// s10-group beat sheet (scene-local frames), every beat keyed to its VO word via voWord() (fallbacks = the locked
-// takes). VO (voAt 15): Bigger 18 · spends 39 · go 64 · to 75 · the 81 · group 87 (end 110) |
-//   The 143 · three-hundred-dollar 147 · boat 194 · trip 206 · needs 225 · two 245 · of 257 · three 267 (end 289) |
-//   so 312 · Leo 330 · approves 344 (end 379) | right 393 · from 406 · a 413 · notification 418 (end 466)
-// Review 1: Leo taps the push on "so" and presses Approve on "approves", so the split comes right after "two of three".
+// s10-group beat sheet v2 (scene-local frames; 360 f at global 2790): the one-OK flow (hub 1.1.0). Every beat is keyed
+// to its VO word via voWord() (fallbacks = the v2 take). VO (voAt 15, 4.985 s):
+//   Bigger 18 · spends 41 · need 67 · one 90 · OK 107 (end 138) | Leo 174 · taps 190 · it 208 (end 215) |
+//   right 235 · from 247 · a 254 · notification 259 (end 304)
+// Maya asks for $300 (How much? → details: Tickets + "the boat trip" → "This needs one OK from anyone else" →
+// [Ask for one OK] → "Sent · One OK from anyone else…"); the request whips to Leo and lands as the push; Leo opens it
+// and presses [OK $300] ON "taps"; "Done. Your OK sent $300 to Maya."; the whip home; Maya $366.00 → $66.00.
 import { voWord } from "../../data/vo";
 import { scene } from "../../data/timeline";
 
@@ -10,101 +12,89 @@ const ID = "s10-group" as const;
 const w = (word: string, fallback: number, occurrence = 0) => voWord(ID, word, fallback, occurrence);
 
 const vBigger = w("Bigger", 18);
-const vSpends = w("spends", 39);
-const vGo = w("go", 64);
-const vTo = w("to", 75);
-const vThe = w("the", 81);
-const vGroup = w("group", 87);
-const vHundred = w("three-hundred-dollar", 147);
-const vBoat = w("boat", 194);
-const vNeeds = w("needs", 225);
-const vTwo = w("two", 245);
-const vOf = w("of", 257);
-const vThree = w("three", 267);
-const vSo = w("so", 312);
-const vLeo = w("Leo", 330);
-const vApproves = w("approves", 344);
-const vRight = w("right", 393);
-const vFrom = w("from", 406);
-const vA = w("a", 413);
-const vNotification = w("notification", 418);
+const vSpends = w("spends", 41);
+const vNeed = w("need", 67);
+const vOne = w("one", 90);
+const vOK = w("OK", 107);
+const vLeo = w("Leo", 174);
+const vTaps = w("taps", 190);
+const vIt = w("it", 208);
+const vRight = w("right", 235);
+const vFrom = w("from", 247);
+const vA = w("a", 254);
+const vNotification = w("notification", 259);
 
 const LEAD = 10;
 
 export const S10 = {
   duration: scene(ID).duration,
-  // ── "Bigger spends / go to the group." (one marigold block under "go to the group") ──
+  // ── "Bigger spends / need one OK." (a marigold block under "one OK") ──
   tBigger: vBigger - LEAD,
   tSpends: vSpends - LEAD,
-  tGo: vGo - LEAD,
-  tTo: vTo - LEAD,
-  tThe: vThe - LEAD,
-  tGroup: vGroup - LEAD,
-  hl: vGroup + 13,
-  typeExit: vGroup + 45,
-  spendTouch: vGroup + 17,
-  sheetIn: vGroup + 25,
-  pushStart: vGroup + 21,
-  pushEnd: vGroup + 59,
-  // ── "The three-hundred-dollar boat trip" ──
-  key3: vHundred - 2,
-  key0a: vHundred + 8,
-  key0b: vHundred + 18,
-  chipsScroll: vHundred + 21, // 12 f flick of the chip row to bring Tickets in
-  ticketsTouch: vHundred + 35,
-  ticketsSelect: vHundred + 38,
-  bodyScroll: vBoat - 8, // the finger drags the form up 56 px (10 f) so the note row clears the footer
-  sticker: vBoat - 2,
-  stickerOut: vNeeds - 2,
-  noteTouch: vBoat + 3, // tap on the (now visible) "+ Add a note"
-  noteType: vBoat + 6, // "the boat trip" at 30 chars/s, done before "needs"
-  // ── "needs two of three" ──
-  askTouch: vNeeds + 4,
-  reframeStart: vNeeds + 7, // blur-matched move to the phone-left framing; the content switches at its peak
-  voteSent: vNeeds + 15,
-  reframeEnd: vNeeds + 27,
-  lift: vTwo - 3,
-  tNeeds: vNeeds - LEAD,
-  tTwoOfThree: vTwo - LEAD,
-  hlTwoOfThree: vOf - 2,
-  // ── the split: pull back, the request flies to Leo and lands as the push ──
-  splitStart: vThree - 1,
-  splitEnd: vThree + 19,
-  splitPills: vThree + 5,
-  flightStart: vThree + 5,
-  flightEnd: vThree + 31,
-  type2Exit: vThree + 21,
-  timelineReturn: vThree + 25,
-  leoPushStart: vThree + 25,
-  leoPushEnd: vSo,
-  // ── "so Leo approves, right from a notification" ──
-  notifTouch: vSo + 4,
-  approveIn: vSo + 8,
-  unlock: vSo + 10,
-  reframe2Start: vSo + 10,
-  reframe2End: vApproves + 2,
-  approveTouch: vApproves - 3, // the press peaks on "approves"
-  approving: vApproves + 3,
-  approved: vApproves + 21,
+  tNeed: vNeed - LEAD,
+  tOne: vOne - LEAD,
+  tOK: vOK - LEAD,
+  hlOneOk: vOK + 5,
+  typeExit: vOK + 45, // review-3: holds ~10 f longer, beside Leo's push
+  // ── Maya: Spend → How much? 3-0-0 → [Next] → details ──
+  spendTouch: 1,
+  sheetIn: 6,
+  pushStart: 3,
+  pushEnd: 34,
+  key3: 24,
+  key0a: 30,
+  key0b: 36,
+  nextTouch: 45,
+  stepMoveStart: 46, // 14 f blur-matched move on speedRamp; step 2 switches in at peak speed
+  details: 53,
+  stepMoveEnd: 60,
+  chipsScroll: 60, // the finger flicks the chip row to Tickets (10 f)
+  ticketsTouch: 71,
+  ticketsSelect: 74,
+  sticker: 75,
+  stickerOut: 109,
+  noteTouch: 78,
+  noteType: 81, // "the boat trip": 13 chars at 1.5 f, done by 101
+  askTouch: vOne + 12, // [Ask for one OK] on "one OK"
+  submitting: vOne + 17, // the grey ask with the dots; a 14 f blur-matched move onto the result starts here
+  oneOkSent: vOne + 24, // switches in at peak speed
+  sentMoveEnd: vOne + 31,
+  // ── the request whips to Leo and lands as the push (review-3: 12 f earlier, so the push holds ≈ 28-30 f) ──
+  flightStart: vOK + 11,
+  whipStart: vOK + 17,
+  whipMid: vOK + 25,
+  whipEnd: vOK + 33,
+  flightEnd: vOK + 35,
+  // ── "Leo taps it" ──
+  pushTouch: vLeo - 8, // Leo taps the push; his sheet opens on "Leo"
+  approveIn: vLeo - 4,
+  unlock: vLeo - 4,
+  approveMoveEnd: vTaps - 6,
+  okTouch: vTaps - 5, // the press peaks on "taps"
+  approving: vTaps + 1,
+  approvedMoveStart: vIt - 6, // 14 f blur-matched move on speedRamp: the sheet's layout changes at peak speed
+  approved: vIt + 1, // "Done. Your OK sent $300 to Maya."
+  approvedMoveEnd: vIt + 8,
   tLeo: vLeo - LEAD,
-  tApproves: vApproves - LEAD,
+  tTaps: vTaps - LEAD,
+  tIt: vIt - LEAD,
   tRight: vRight - LEAD,
   tFrom: vFrom - LEAD,
   tA: vA - LEAD,
   tNotification: vNotification - LEAD,
   leoTypeExit: vNotification + 38,
-  // ── back to Maya: the approval travels home, the hero and the big roll tick $366.00 → $66.00 ──
-  chipPop: vNotification + 42,
-  whipStart: vNotification + 48,
-  whipMid: vNotification + 58,
-  whipEnd: vNotification + 68,
-  chipLand: vNotification + 68,
-  moneyIn: vNotification + 68,
-  tick: vNotification + 70, // 36 f roll (lands 524), then a 0.5 s hold before it clears
-  moneyExit: vNotification + 138, // the $66.00 holds ~0.5 s, cleared (empty type zone) by f566
-  mayaPillIn: vNotification + 66,
-  mayaPillOut: vNotification + 118,
-  camHome: vNotification + 146, // lands f564: ≤ 6 f of pure drift before the cut to s11
-  mayaSheetGone: vRight + 30, // Maya's sheet closes while the camera is on Leo (off screen)
-  leoRest: vNotification + 88, // Leo's phone settles to his Pot screen, off screen
+  // ── "… notification": the whip home, anchored by the "✓ One OK" chip; Maya $366.00 → $66.00 ──
+  chipPop: vNotification - 7,
+  returnStart: vNotification - 1,
+  returnMid: vNotification + 8,
+  returnEnd: vNotification + 17,
+  chipLand: vNotification + 17,
+  moneyIn: vNotification + 17,
+  tick: vNotification + 21, // 30 f roll (lands +51), with Maya's hero and her Pot dollars $84.00 → $384.00
+  mayaPillIn: vNotification + 15,
+  mayaPillOut: vNotification + 65,
+  moneyExit: vNotification + 81, // the big roll holds ≈ 0.5 s; cleared (empty type zone) by +91
+  camHome: vNotification + 89, // lands f348: ≤ 11 f of drift before the cut to s10b
+  mayaSheetGone: vTaps, // Maya's sheet closes while the camera is on Leo (off screen)
+  leoRest: vNotification + 21, // Leo's phone settles to his Pot screen, off screen
 } as const;

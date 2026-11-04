@@ -52,6 +52,8 @@ import type {
   ExtrasRec,
   Vote,
   World,
+  XcAddRecord,
+  AddSourceVM,
 } from "./types"
 
 const TRIP = { instantCap: 10_000, memberBudget: 20_000, expiryDays: 7 }
@@ -226,7 +228,7 @@ export function joinPot(w: World, slug: string, who: string, now: number): { wor
   return { world, result: "joined" }
 }
 
-export function addMoney(w: World, slug: string, who: string, amountCents: number, now: number, source: "demo" | "pot_dollars" = "demo"): World {
+export function addMoney(w: World, slug: string, who: string, amountCents: number, now: number, source: "demo" | "pot_dollars" | "xc" = "demo", xc?: XcAddRecord): World {
   const c = clonePot(w, slug)
   if (!c) throw new Error("not_found")
   const [world, pot] = c
@@ -240,7 +242,14 @@ export function addMoney(w: World, slug: string, who: string, amountCents: numbe
   pot.lastContributor = who
   checkGoalReached(pot, now)
   if (source === "pot_dollars" && amountCents > ownDollarsOf(w, who)) throw new Error("insufficient_own")
-  pot.events.push({ id: `c-${who}-${now}`, kind: "contribution", actor: who, amount: amountCents, at: now, ...(source === "pot_dollars" ? { source } : {}) })
+  pot.events.push({
+    id: `c-${who}-${now}`,
+    kind: "contribution",
+    actor: who,
+    amount: amountCents,
+    at: now,
+    ...(source === "pot_dollars" ? { source } : source === "xc" && xc ? { source, xc } : {}),
+  })
   return world
 }
 
@@ -825,6 +834,12 @@ function closePreviewVM(pot: PotRec, math: ReturnType<typeof closeMath>, gifted 
   }
 }
 
+/** An add's source as its row says it (demo dollars when the event says nothing, like addMoney's default). */
+export function addSourceOf(e: EventRec): AddSourceVM {
+  if (e.source === "xc" && e.xc) return { kind: "xc", coin: e.xc.coin, chain: e.xc.chain }
+  return { kind: e.source === "pot_dollars" ? "pot_dollars" : "demo" }
+}
+
 export function potView(w: World, slug: string, me: string | null, now: number): PotVM | null {
   withAvatars(w)
   const pot = w.pots[slug]
@@ -864,7 +879,7 @@ export function potView(w: World, slug: string, me: string | null, now: number):
     ...pot.events.map((e: EventRec): FeedItemVM => {
       const actor = person(pot, e.actor)
       const txHash = mockTxHash(`${pot.slug}:${e.id}`)
-      if (e.kind === "contribution") return { key: e.id, kind: "contribution", at: e.at, actor, amount: cents(e.amount ?? 0), txHash }
+      if (e.kind === "contribution") return { key: e.id, kind: "contribution", at: e.at, actor, amount: cents(e.amount ?? 0), txHash, source: addSourceOf(e) }
       return { key: e.id, kind: e.kind, at: e.at, actor, txHash }
     }),
     ...reqs.map((r): FeedItemVM => ({ key: `request:${r.id}`, kind: "request", at: r.link?.doneAt ?? r.decidedAt ?? r.createdAt, request: r, txHash: r.txHash })),

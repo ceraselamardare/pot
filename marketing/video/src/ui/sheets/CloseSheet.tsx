@@ -3,7 +3,11 @@
 //    note, [Ask the group to close] + [Keep the Pot open];
 //  - "waiting" (after asking): "Sent to the group. Your approval is counted. It needs 1 more." + the timeline;
 //  - "vote" (Leo / Sam): "Maya wants to close Lisbon Trip", "You'd get back $22.00", [Approve closing] + [Say no];
+//    `voting` is the tap's in-flight beat: [Approving…] and the voter's own row ticks at once (the app's optimistic
+//    timeline), `votePop` pops that tick;
 //  - "closed": a calm moment, no burst: the glyph with an `approved` check badge, "$22.00 is in your Pot account."
+// Checked against the app on 2026-11-03 (p2-day-close*, p2-day-closed-moment): unchanged apart from ClosedMoment's
+// "you didn't put money in" line.
 import { Check, Clock, Info } from "lucide-react";
 import React from "react";
 import { PotMark, EGGPLANT, MARIGOLD } from "../../brand/Logo";
@@ -21,12 +25,14 @@ import { Sheet, type SheetProps } from "./Sheet";
 /** The closed moment: the pot glyph (eggplant in Day, marigold in Night) + an `approved` check badge, the refund line. */
 export const ClosedMoment: React.FC<{
   refund: number;
+  /** What the phone owner put in (default: assume they did). 0 with a 0 refund → "You didn't put money in…". */
+  putIn?: number;
   /** 0..1 pop of the check badge. */
   badgePop?: number;
   /** Glyph height in px (app: 64). */
   glyphHeight?: number;
   style?: React.CSSProperties;
-}> = ({ refund, badgePop = 1, glyphHeight = 64, style }) => {
+}> = ({ refund, putIn = 1, badgePop = 1, glyphHeight = 64, style }) => {
   const { c, theme } = useUi();
   const pp = popAnim(badgePop);
   const w = (glyphHeight * 392) / 278;
@@ -54,8 +60,8 @@ export const ClosedMoment: React.FC<{
           <Check size={16} strokeWidth={2} style={{ display: "block" }} aria-hidden />
         </span>
       </span>
-      <p style={{ margin: 0, ...T.body, color: c.ink }}>{copy["close.done.amount"](formatUsd(refund))}</p>
-      <p style={{ margin: 0, maxWidth: 320, ...T.bodySm, color: c.inkMuted }}>{copy["close.done.where"]}</p>
+      <p style={{ margin: 0, ...T.body, color: c.ink }}>{putIn > 0 || refund > 0 ? copy["close.done.amount"](formatUsd(refund)) : copy["close.done.none"]}</p>
+      {refund > 0 ? <p style={{ margin: 0, maxWidth: 320, ...T.bodySm, color: c.inkMuted }}>{copy["close.done.where"]}</p> : null}
     </div>
   );
 };
@@ -76,6 +82,10 @@ export type CloseSheetProps = Omit<SheetProps, "children" | "footer" | "title"> 
   expires?: string;
   ctaPress?: number;
   secondaryPress?: number;
+  /** mode "vote": the approve tap is in flight ([Approving…], your row ticks at once). */
+  voting?: boolean;
+  /** 0..1 pop of your optimistic tick while `voting`. */
+  votePop?: number;
   badgePop?: number;
   /** Hide the refund table (keeps its space) while a breakout twin is on screen. */
   hideTable?: boolean;
@@ -95,6 +105,8 @@ export const CloseSheet: React.FC<CloseSheetProps> = ({
   expires = copy["time.in_days"](LISBON.expiryDays),
   ctaPress = 0,
   secondaryPress = 0,
+  voting = false,
+  votePop = 1,
   badgePop = 1,
   hideTable,
   ...sheet
@@ -122,7 +134,7 @@ export const CloseSheet: React.FC<CloseSheetProps> = ({
     ) : mode === "vote" ? (
       <>
         <Button variant="primary" fullWidth pressed={ctaPress}>
-          {copy["close.approve.cta"]}
+          {voting ? copy["approve.cta.approving"] : copy["close.approve.cta"]}
         </Button>
         <Button fullWidth pressed={secondaryPress}>
           {copy["close.decline.cta"]}
@@ -134,9 +146,19 @@ export const CloseSheet: React.FC<CloseSheetProps> = ({
       </Button>
     );
 
-  const rowsTimeline =
+  const baseTimeline =
     timeline ??
     timelineRows({ asker: proposer, approved: [proposer], waiting: CREW.filter((p) => p.id !== proposer.id), me: me.id });
+  // the app's optimistic timeline: while my approval is in flight my row is an approval already
+  const mine = baseTimeline.find((r) => r.person.id === me.id);
+  const rowsTimeline: TimelineRow[] =
+    voting && mode === "vote" && mine && mine.state === "wait"
+      ? [
+          ...baseTimeline.filter((r) => r.state === "yes"),
+          { person: me, state: "yes", text: copy["approve.timeline.approved"](copy["feed.you"]), pop: votePop },
+          ...baseTimeline.filter((r) => r.state !== "yes" && r.person.id !== me.id),
+        ]
+      : baseTimeline;
   const approvedRows = rowsTimeline.filter((r) => r.state === "yes");
 
   return (

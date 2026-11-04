@@ -26,6 +26,7 @@ import type {
   TrustRec,
   TrustVM,
   World,
+  XcAddRecord,
 } from "./types"
 
 export const TRUST_STEP = 3
@@ -309,7 +310,8 @@ export function seedShowcase(now: number): Record<string, PotRec> {
       { id: "s3", kind: "joined", actor: "maya", at: now - 6 * DAY + 3 * HOUR },
       { id: "s4", kind: "contribution", actor: "maya", amount: 30_000, at: now - 6 * DAY + 3 * HOUR + 6 * MIN },
       { id: "s5", kind: "joined", actor: "leo", at: now - 5 * DAY },
-      { id: "s6", kind: "contribution", actor: "leo", amount: 30_000, at: now - 5 * DAY + 2 * MIN },
+      // money-in details showcase: Leo's $300 came from another app (ETH on Base, the testnet demo's simulated transfer)
+      { id: "s6", kind: "contribution", actor: "leo", amount: 30_000, at: now - 5 * DAY + 2 * MIN, source: "xc", xc: showcaseXc(now - 5 * DAY + 2 * MIN) },
     ],
     invite: { pk: "ed25519:DLB1QyyAJXtysL5bDPxW3kH9aGeMwUAcZ5C9MeBbnjhn", secret: "BS5XgKnS-yRNdp_I8RpDbJW-5xA5You03QYvWIGq0_w", createdBy: "sam", expiresAt: now + 3 * DAY, maxUses: 10, uses: 2 },
     trust: {
@@ -344,6 +346,30 @@ export function seedShowcase(now: number): Record<string, PotRec> {
     lastContributor: "maya",
   }
   return { [ski.slug]: ski, [festival.slug]: festival }
+}
+
+/**
+ * The showcase's add from another app (Ski Chalet, Leo's $300): 0.1293 ETH sent on Base, $300.00 arrived, each moment
+ * a little before the add at `addedAt` (address shown 4 min before, sent, converting, arrived 58 s after sending).
+ */
+export function showcaseXc(addedAt: number): XcAddRecord {
+  const SEC = 1_000
+  return {
+    id: "dp_showcase0000000000000base1",
+    mode: "simulated",
+    chain: "base",
+    coin: "ETH",
+    decimals: 18,
+    stable: false,
+    sent: "129300000000000000",
+    usdTarget: "300000000",
+    arrived: "300000000",
+    depositAddress: "SIMULATED-base-5k1a2c3e",
+    addressAt: addedAt - 4 * MIN,
+    sentAt: addedAt - 3 * MIN - 20 * SEC,
+    convertingAt: addedAt - 2 * MIN - 50 * SEC,
+    arrivedAt: addedAt - 2 * MIN - 22 * SEC,
+  }
 }
 
 /** Add the showcase Pots to a world (ids above every seeded one). */

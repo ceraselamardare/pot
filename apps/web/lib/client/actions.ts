@@ -81,8 +81,9 @@ export function addMoney(
   return ops.run(
     { kind: "add", pot: pot.slug, actor, amount },
     async () => {
-      // the mock has no deposit ledger: an arrived any-chain deposit is added as it lands (net zero for own dollars)
-      if (!IS_LIVE) return void (await store.addMoney(pot.slug, toCents(amount), opts.context?.depositIntentId ? "demo" : opts.source))
+      // the mock has no deposit ledger: an arrived any-chain deposit is added as it lands (net zero for own dollars),
+      // with its record (the money-in details: coin, network, what was sent and what arrived, the moments)
+      if (!IS_LIVE) return void (await store.addMoney(pot.slug, toCents(amount), opts.context?.depositIntentId ? "demo" : opts.source, opts.xc))
       try {
         return await live.addMoney(pot.slug, amount, opts)
       } catch (e) {

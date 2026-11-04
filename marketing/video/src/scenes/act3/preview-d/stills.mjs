@@ -9,9 +9,10 @@ const [id, outDir, scaleArg = "0.5", framesArg = "0", prefix = "f"] = process.ar
 const frames = framesArg.split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
 fs.mkdirSync(outDir, { recursive: true });
 const serveUrl = await bundle({ entryPoint: path.resolve("src/scenes/act3/preview-d/index.ts") });
-const composition = await selectComposition({ serveUrl, id });
+const PORT = Number(process.env.PORT ?? 3473); // builder D's own port (3000 is the app's dev server; 3417 = the CLI)
+const composition = await selectComposition({ serveUrl, id, port: PORT });
 for (const frame of frames) {
   const output = path.resolve(outDir, `${prefix}${String(frame).padStart(3, "0")}.png`);
-  await renderStill({ composition, serveUrl, output, frame, scale: Number(scaleArg), chromiumOptions: { gl: "angle" } });
+  await renderStill({ composition, serveUrl, output, frame, scale: Number(scaleArg), chromiumOptions: { gl: "angle" }, port: PORT });
   console.log(output);
 }

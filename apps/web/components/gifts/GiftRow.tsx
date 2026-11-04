@@ -2,8 +2,8 @@
 // Money paid in from outside, in the Pot's feed (members; "pay in", notes/frontend.md 2026-11-03): the compact row
 // (CompactRow). A payment: "Alex · Paid in · by link" with an ArrowDownLeft badge and a "From outside" chip; a gift (its
 // link or page said gift): "Ana · Sent a gift ☕" with a Gift badge and a "Gift" chip. Both chips are icon + word, ink.
-// A note mark when they wrote one, the time, and "+ $10.00" in `approved`. The row opens the details
-// (?sheet=gift&gift=<ref>), where the note is. Its name says it all in words.
+// A note mark when they wrote one, the time, and "+ $10.00" in `approved`. The row opens the money-in details
+// (?sheet=deposit&d=<ref>, components/deposits/DepositDetailsSheet.tsx), where the note is. Its name says it all in words.
 import { ArrowDownLeft, Gift, StickyNote } from "lucide-react"
 import { MoneyText } from "@/components/money/MoneyText"
 import { chipGround, CompactRow, LeadAvatar, rowLabel, rowWhen, RowTitle, type RowGround } from "@/components/pot/CompactRow"
@@ -52,8 +52,8 @@ export function GiftRow({ gift, now }: { gift: GiftVM; now: number }) {
   return (
     <CompactRow
       ground={ground}
-      onOpen={() => openSheet("gift", { gift: gift.ref })}
-      label={rowLabel([sentence, gift.note && t("row.gift.note"), when.long])}
+      onOpen={() => openSheet("deposit", { d: gift.ref })}
+      label={rowLabel([sentence, gift.note && t("row.gift.note"), when.long, t("moneyin.row.details")])}
       lead={<LeadAvatar person={gift.from} badge={isGift ? Gift : ArrowDownLeft} ground={ground} />}
       title={<RowTitle who={gift.from.name} what={isGift ? t("row.gift") : gift.linkId ? t("row.payin") : t("row.payin.page")} />}
       meta={
