@@ -6,15 +6,18 @@
 // another amount from $1, or a fixed-amount link's one button) → optional name + 140-character note (+ "Show my name
 // on this page" on the public page) → [Pay $25] (the one marigold; signs in inline first when needed: the mock signs
 // the guest in as Alex) → demo dollars are claimed and sent behind that one button → "Thank you!" with [Start your own Pot].
-// "Another app or exchange" is the simulated 1Click path (no real money moves in the test version). A signed-in giver
+// "Another app or exchange" is the simulated 1Click path (no real money moves in the test version): after [Pay $25] (and
+// signing in) the same network → coin (+ live quote) → address steps as a member's Add flow (components/features/deposit/
+// GiverDeposit.tsx), a simulated transfer timed like that network, then the payment is sent. A signed-in giver
 // with Pot dollars also gets "Pot dollars" (their own balance, no demo top-up), picked by default when it covers the gift.
 // Everything that can stop a gift has its own calm screen (link turned off / ended / used, gifts off, an all-or-nothing
 // goal still collecting, the Pot closed, the public page off).
 import { Check, Gift, Quote, ShieldCheck, X } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useId, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { Glyph } from "@/components/brand/Glyph"
 import { SignInOptions } from "@/components/features/auth/SignInOptions"
+import { GiverDeposit } from "@/components/features/deposit/GiverDeposit"
 import { TypingDots } from "@/components/feedback/TypingDots"
 import { MoneyText } from "@/components/money/MoneyText"
 import { Segmented } from "@/components/pot/Controls"
@@ -42,7 +45,9 @@ type Source = "own" | "demo" | "other"
 type Phase =
   | { tag: "form" }
   | { tag: "signin" }
-  | { tag: "sending"; step: "xc_wait" | "xc_arrived" | "send" }
+  /** "Another app or exchange": network → coin → address → the simulated transfer (GiverDeposit) */
+  | { tag: "xc" }
+  | { tag: "sending"; step: "xc_arrived" | "send" }
   | { tag: "done"; amount: Micro; txHash?: string; noted: boolean; shown: boolean }
 
 type Blocked = "not_found" | "revoked" | "expired" | "used" | "off" | "goal" | "closed" | "page_off"
@@ -156,12 +161,15 @@ function GiveScreen({
   const ownShort = source === "own" && amount !== null && own < amount
   const w = words(tone, pot.name, whole)
 
-  const send = async () => {
+  const send = async (arrived = false) => {
     if (!amountOk || !textOk || amount === null || ownShort) return
     setError(null)
-    if (source === "other") {
-      setPhase({ tag: "sending", step: "xc_wait" })
-      await sleep(1200)
+    if (source === "other" && !arrived) {
+      // the money comes from another app: pick where from, then the (simulated) transfer; it calls back here
+      setPhase({ tag: "xc" })
+      return
+    }
+    if (arrived) {
       setPhase({ tag: "sending", step: "xc_arrived" })
       await sleep(700)
     }
@@ -195,6 +203,13 @@ function GiveScreen({
 
   // signed in from the inline step: straight on to sending (one tap fewer)
   const signedInNow = () => void send()
+  // the other app's (simulated) transfer arrived: send it on
+  const sendRef = useRef(send)
+  useEffect(() => {
+    sendRef.current = send
+  })
+  const xcArrived = useCallback(() => void sendRef.current(true), [])
+  const xcCancel = useCallback(() => setPhase({ tag: "form" }), [])
 
   useEffect(() => {
     if (phase.tag !== "done") return
@@ -253,7 +268,9 @@ function GiveScreen({
     <div className="flex flex-col gap-5" data-give="form">
       <Hero pot={pot} title={w.title} line={groupNote} page={page} tone={tone} />
 
-      {phase.tag === "signin" ? (
+      {phase.tag === "xc" && amount !== null ? (
+        <GiverDeposit potName={pot.name} amount={amount} onArrived={xcArrived} onCancel={xcCancel} />
+      ) : phase.tag === "signin" ? (
         <section aria-labelledby="give-signin-h" className="flex flex-col gap-3 rounded-lg bg-surface p-4 shadow-card" data-give-state="signin">
           <h2 id="give-signin-h" className="font-display text-heading text-ink">
             {w.signin}
@@ -417,7 +434,7 @@ function GiveScreen({
             <div role="status" className="flex min-h-13 items-center justify-center gap-3 rounded-md bg-surface-sunken px-4" data-give-state="sending">
               <TypingDots className="text-ink" />
               <span className="text-label text-ink">
-                {phase.step === "xc_wait" ? t("gift.xc.waiting") : phase.step === "xc_arrived" ? t("gift.xc.arrived") : w.sending}
+                {phase.step === "xc_arrived" ? t("gift.xc.arrived") : w.sending}
               </span>
             </div>
           ) : (

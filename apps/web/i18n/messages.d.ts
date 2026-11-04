@@ -1031,7 +1031,6 @@ export interface Messages {
   "gift.title": { potName: string | number }
   "gift.trust": undefined
   "gift.xc.arrived": undefined
-  "gift.xc.waiting": undefined
   "give.again.payment": undefined
   "give.cta.payment": { amount: string | number }
   "give.fixed.payment": { amount: string | number }
@@ -2196,9 +2195,16 @@ export interface Messages {
   "xc.card.stopped": { network: string | number }
   "xc.change": undefined
   "xc.check_hint": undefined
+  "xc.chip": { network: string | number; token: string | number }
+  "xc.coin.hint": { network: string | number }
+  "xc.coin.label": undefined
+  "xc.coin.priced": { name: string | number }
+  "xc.coin.stable": { name: string | number; amountToken: string | number; coin: string | number }
+  "xc.coin.unavailable": undefined
   "xc.copied": undefined
   "xc.copy": undefined
   "xc.copy_network": { network: string | number }
+  "xc.cta.continue": undefined
   "xc.cta.quote": undefined
   "xc.deadline": { minutes: string | number }
   "xc.deadline.hours": { hours: string | number }
@@ -2217,18 +2223,36 @@ export interface Messages {
   "xc.error.quote": undefined
   "xc.expired": undefined
   "xc.failed": undefined
+  "xc.giver.converting": undefined
+  "xc.giver.real_soon": undefined
+  "xc.giver.subtitle": { amount: string | number; potName: string | number }
+  "xc.giver.title": undefined
+  "xc.giver.waiting": { token: string | number; network: string | number }
   "xc.incomplete": { missing: string | number; deadline: string | number }
   "xc.incomplete.rest_sent": { network: string | number }
   "xc.instructions": { amountToken: string | number; token: string | number; network: string | number }
+  "xc.instructions.arrives": { amount: string | number }
   "xc.instructions.min": { minAmount: string | number }
   "xc.memo": { memo: string | number }
+  "xc.network.coins": { coins: string | number }
   "xc.network.fast": undefined
   "xc.network.label": undefined
+  "xc.network.min": { min: string | number }
+  "xc.network.min_hint": { min: string | number; network: string | number }
   "xc.network.paused": undefined
   "xc.network.slow": undefined
+  "xc.network.slowest": { minutes: string | number }
   "xc.new_address": undefined
   "xc.notify_ok": undefined
   "xc.offline": undefined
+  "xc.only.body": { token: string | number }
+  "xc.only.title": { token: string | number; network: string | number }
+  "xc.quote.arrives": { amount: string | number }
+  "xc.quote.error": undefined
+  "xc.quote.note": { pct: string | number }
+  "xc.quote.send": { amountToken: string | number; coin: string | number }
+  "xc.quote.updated": { time: string | number }
+  "xc.quote.updating": undefined
   "xc.quoting": undefined
   "xc.refunded": undefined
   "xc.show_all": undefined
@@ -2243,9 +2267,11 @@ export interface Messages {
   "xc.sim.scenario.no_liquidity": undefined
   "xc.sim.scenario.partial": undefined
   "xc.sim.scenario.slow": undefined
+  "xc.sim.sped_up": undefined
   "xc.sim.too_late": undefined
   "xc.sim.top_up": { amount: string | number }
   "xc.slow": undefined
+  "xc.slow_network": { network: string | number; minutes: string | number }
   "xc.status.added": undefined
   "xc.status.arrived": undefined
   "xc.status.on_way": undefined
@@ -2253,10 +2279,12 @@ export interface Messages {
   "xc.step.added": undefined
   "xc.step.arrived": { potName: string | number }
   "xc.step.converting": undefined
+  "xc.step.converting.slow": { minutes: string | number }
   "xc.step.spotted": { network: string | number }
   "xc.step.waiting": undefined
   "xc.subtitle": { amount: string | number; potName: string | number }
   "xc.summary": { amount: string | number; network: string | number; potName: string | number }
+  "xc.summary.coin": { amount: string | number; token: string | number; network: string | number; potName: string | number }
   "xc.support": undefined
   "xc.tab.details": undefined
   "xc.tab.progress": undefined

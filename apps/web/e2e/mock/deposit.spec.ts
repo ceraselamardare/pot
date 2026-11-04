@@ -1,4 +1,5 @@
-// F-21 / D-50 on the mock data source: Add money → $150 → [Next] → "Another app or exchange" → [Continue] → network → simulated address (the QR
+// F-21 / D-50 on the mock data source: Add money → $150 → [Next] → "Another app or exchange" → [Continue] → network →
+// coin (any coin, 2026-11-04; these USDC cases keep today's 1:1 behaviour, e2e/mock/deposit-coins.spec.ts has the rest) → simulated address (the QR
 // reads "DO NOT SEND", the testnet pill) → [Simulate sending] → the 5-step DepositStepper → "Your $X arrived" →
 // one tap adds it to the Pot. Scenarios: ok, partial (+ top-up), slow ("Taking longer" at 5 min), failed, a paused
 // network; and the Pot-screen deposit card that takes the marigold while an arrived deposit waits.
@@ -12,12 +13,18 @@ async function openDeposit(page: Page) {
   await openedSheet(page, "Add money to Lisbon Trip")
   await addFlow(page, { amount: "150", source: "Another app or exchange", submit: "Continue" })
   await expect(page).toHaveURL(/sheet=add&step=source&src=xc&amount=150/)
-  return openedSheet(page, "Add from another wallet or exchange")
+  return openedSheet(page, TITLE)
 }
 
-async function getAddress(page: Page, network = "Base") {
-  const sheet = page.getByRole("dialog", { name: "Add from another wallet or exchange" })
-  await sheet.getByRole("radio", { name: new RegExp(network) }).click()
+const TITLE = "Add from another app or exchange"
+
+/** network → [Continue] → coin (USDC by default) → [Get address] */
+async function getAddress(page: Page, network = "Base", coin = "USDC") {
+  const sheet = page.getByRole("dialog", { name: TITLE })
+  await sheet.getByRole("radio", { name: new RegExp(`^${network}`) }).click()
+  await sheet.getByRole("button", { name: "Continue", exact: true }).click()
+  await expect(sheet.locator("[data-coin-step]")).toBeVisible()
+  await sheet.getByRole("radio", { name: new RegExp(`^${coin}`) }).click()
   await sheet.getByRole("button", { name: "Get address" }).click()
   await expect(sheet.locator("[data-address-step]")).toBeVisible()
   await expect(page).toHaveURL(/[?&]d=dp_/)
@@ -50,7 +57,8 @@ test("ok: network → simulated address (DO NOT SEND) → 5 steps → arrived �
   // the QR encodes a warning, never an address; a band says so on top of it
   await expect(sheet.locator("[data-qr]")).toHaveAttribute("data-qr-text", "POT TESTNET DEMO - DO NOT SEND FUNDS")
   await expect(sheet.locator("[data-qr-band]")).toHaveText("Test only · Do not send")
-  await expect(sheet.getByText("Only send USDC on Base. Other coins or networks may be lost.")).toBeVisible()
+  await expect(sheet.locator("[data-send-only]")).toContainText("Send only USDC on Base")
+  await expect(sheet.locator("[data-network-chip]")).toContainText("Base · USDC")
   await expect(sheet.getByRole("button", { name: /Copy/ })).toHaveCount(0)
   await brandChecks(page, { marigold: "one" })
   await axe(page)
@@ -104,7 +112,7 @@ test("partial (2026-11-02): after 'send more' it says the rest is on its way, ne
   await page.clock.fastForward(40_000)
   await statusIs(page, "INCOMPLETE_DEPOSIT", 8_000)
   await sheet.getByRole("button", { name: "Simulate sending $28.50 more" }).click()
-  // Solana takes ~30 s to spot the rest: meanwhile no second "send more" (it used to be offered, then refused)
+  // Solana takes ~18 s (the demo's 30 s cap) to spot the rest: meanwhile no second "send more" (it used to be offered, then refused)
   await expect(sheet.getByText("The rest is on its way")).toBeVisible()
   await expect(sheet.getByRole("button", { name: /^Simulate sending/ })).toHaveCount(0)
   await expect(sheet.getByRole("alert")).toHaveCount(0)
@@ -153,7 +161,7 @@ test("failed: says money is safe, offers support and keeps the details", async (
 test("a paused network can't be picked", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("pot.mock.xcPaused", "base"))
   const sheet = await openDeposit(page)
-  const base = sheet.getByRole("radio", { name: /Base/ })
+  const base = sheet.getByRole("radio", { name: /^Base/ })
   await expect(base).toHaveAttribute("aria-disabled", "true")
   await expect(base).toContainText("Paused right now")
   // the first open network is preselected instead
@@ -189,15 +197,23 @@ test("Back: address → network (kept) → Add sheet (amount + source kept); the
   await brandChecks(page, { marigold: "one" }) // [Continue]
   await add.getByRole("button", { name: "Continue", exact: true }).click()
   await expect(page).toHaveURL(/sheet=add&step=source&src=xc&amount=100/)
-  let sheet = await openedSheet(page, "Add from another wallet or exchange")
+  let sheet = await openedSheet(page, TITLE)
   await expect(sheet.getByText("Adding $100 to Lisbon Trip")).toBeVisible()
   await expect(sheet.getByRole("button", { name: "Back" })).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
 
-  // address → [Back] → the network picker, Solana still picked, focus on its heading, the step announced
-  await getAddress(page, "Solana")
+  // address → [Back] → the coin picker (USDT still picked) → [Back] → the network picker, Solana still picked, focus on
+  // its heading, the step announced
+  await getAddress(page, "Solana", "USDT")
   await expect(sheet.getByRole("button", { name: "Back" })).toBeVisible()
+  await brandChecks(page, { marigold: "one" })
+  await sheet.getByRole("button", { name: "Back" }).click()
+  await expect(sheet.locator("[data-coin-step]")).toBeVisible()
+  await expect(page).not.toHaveURL(/[?&]d=/)
+  await expect(sheet.getByRole("radio", { name: /^USDT/ })).toHaveAttribute("aria-checked", "true")
+  await expect(sheet.locator("[data-step-heading]")).toBeFocused()
+  await expect(sheet.locator("[data-step-live]")).toHaveText("Which coin are you sending?")
   await brandChecks(page, { marigold: "one" })
   await sheet.getByRole("button", { name: "Back" }).click()
   await expect(sheet.locator("[data-network-step]")).toBeVisible()
@@ -227,12 +243,15 @@ test("Back: address → network (kept) → Add sheet (amount + source kept); the
   await addFlow(page, { next: true })
   await expect(add.getByRole("radio", { name: /Another app or exchange/ })).toHaveAttribute("aria-checked", "true")
   await add.getByRole("button", { name: "Continue", exact: true }).click()
-  sheet = await openedSheet(page, "Add from another wallet or exchange")
+  sheet = await openedSheet(page, TITLE)
   await expect(sheet.getByRole("radio", { name: /Solana/ })).toHaveAttribute("aria-checked", "true")
   await getAddress(page, "Base")
   await page.goBack()
+  await expect(sheet.locator("[data-coin-step]")).toBeVisible()
+  await expect(sheet.getByRole("radio", { name: /^USDC/ })).toHaveAttribute("aria-checked", "true")
+  await page.goBack()
   await expect(sheet.locator("[data-network-step]")).toBeVisible()
-  await expect(sheet.getByRole("radio", { name: /Base/ })).toHaveAttribute("aria-checked", "true")
+  await expect(sheet.getByRole("radio", { name: /^Base/ })).toHaveAttribute("aria-checked", "true")
   await page.goBack()
   add = await openedSheet(page, "Add money to Lisbon Trip")
   await expect(add.locator("[data-add-amount]")).toHaveText("How much? $100")
@@ -246,7 +265,7 @@ test("Back: address → network (kept) → Add sheet (amount + source kept); the
   // once "Simulate sending" is pressed there is no Back, and the browser's Back closes the whole flow
   await openDeposit(page)
   await getAddress(page, "Arbitrum")
-  sheet = page.getByRole("dialog", { name: "Add from another wallet or exchange" })
+  sheet = page.getByRole("dialog", { name: TITLE })
   await sheet.getByRole("button", { name: "Simulate sending $150" }).click()
   await expect(sheet.locator("[data-status-word]")).toHaveText("On its way")
   await expect(sheet.getByRole("button", { name: "Back" })).toHaveCount(0)

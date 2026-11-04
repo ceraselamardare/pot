@@ -582,7 +582,8 @@ export const depositIntent = pgTable(
       .references(() => pot.daoId),
     idempotencyKey: text("idempotency_key").notNull(),
     mode: text("mode", { enum: ["real", "simulated"] }).notNull(),
-    chain: text("chain", { enum: ["base", "arb", "sol", "eth"] }).notNull(),
+    // the origin network (a plain text column: server/features/oneclick/origins.ts XC_CHAINS, any-coin 2026-11-04)
+    chain: text("chain", { enum: ["base", "arb", "sol", "eth", "pol", "op", "avax", "sui", "aptos", "ton", "tron", "xrp", "btc", "doge", "zec"] }).notNull(),
     recipient: text("recipient").notNull(),
     amountIn: u128("amount_in").notNull(),
     minAmountIn: u128("min_amount_in"),

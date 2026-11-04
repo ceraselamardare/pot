@@ -2,7 +2,10 @@
 // There is no 1Click testnet, so a simulated deposit answers with the SAME status shapes, driven by server
 // time since "Simulate sending" and the measured chain profile (± 20 % jitter, deterministic per deposit).
 // Pure: no I/O. The service delivers real "USDC (test)" from the treasury once this reaches SUCCESS.
-import { SIM_PROFILE, type XcChain } from "./assets"
+// Amounts sent/arrived are in the ORIGIN coin's base units (USDC/USDT: 6 decimals = USD micro; ETH: wei…); what
+// arrives as Pot dollars is the quote's rate applied to what arrived (simCredit), so the credit equals the quoted
+// amountOut when the quoted amount is sent, more or less in proportion otherwise (FLEX_INPUT has no upper cap).
+import { SIM_MAX_SECONDS, simBaseProfile, type XcChain } from "./origins"
 
 export const SIM_SCENARIOS = ["ok", "partial", "no_liquidity", "failed", "slow", "expired"] as const
 export type SimScenario = (typeof SIM_SCENARIOS)[number]
@@ -36,7 +39,7 @@ export interface SimView {
   updatedAt: number
 }
 
-/** 1 bp platform fee on USDC → USDC (measured), rounded down. */
+/** 1 bp platform fee on USDC → USDC (measured), rounded down: the offline formula when there is no quote. */
 export const simAmountOut = (amount: bigint, withdrawFee = 0n): bigint => {
   const out = amount - (amount + 9_999n) / 10_000n - withdrawFee
   return out > 0n ? out : 0n
@@ -53,9 +56,25 @@ export const SLOW_PROCESSING_SEC = 6 * 60
 const PARTIAL_GRACE_SEC = 60
 const REFUND_LAG_SEC = 10
 
+/**
+ * The simulated timing for a deposit: the chain's typical time (± jitter), capped at SIM_MAX_SECONDS so demos stay
+ * quick (a Bitcoin transfer that really takes ~20 min arrives in ≤ 30 s; the UI says the demo is sped up).
+ */
 export function simProfile(chain: XcChain, jitter: number): { pendingSec: number; processingSec: number } {
-  const p = SIM_PROFILE[chain]
-  return { pendingSec: Math.round(p.pendingSec * jitter), processingSec: Math.round(p.processingSec * jitter) }
+  const p = simBaseProfile(chain)
+  const processingSec = Math.round(p.processingSec * jitter)
+  const pendingSec = Math.min(Math.round(p.pendingSec * jitter), SIM_MAX_SECONDS - processingSec)
+  return { pendingSec, processingSec }
+}
+
+/**
+ * What arrives as Pot dollars for `arrived` origin units: the quote's own rate (quotedOut / quoted), rounded down, so
+ * sending exactly the quoted amount credits exactly the quoted amountOut. Without a quoted out: the 1 bp formula.
+ */
+export function simCredit(arrived: bigint, o: { quoted: bigint; quotedOut?: bigint; withdrawFee?: bigint }): bigint {
+  if (o.quotedOut === undefined || o.quoted <= 0n) return simAmountOut(arrived, o.withdrawFee ?? 0n)
+  if (arrived === o.quoted) return o.quotedOut
+  return (o.quotedOut * arrived) / o.quoted
 }
 
 /**
@@ -65,7 +84,7 @@ export function simProfile(chain: XcChain, jitter: number): { pendingSec: number
  */
 export function simStatus(
   sim: SimState | null,
-  o: { chain: XcChain; required: bigint; quoted: bigint; deadlineMs: number; withdrawFee?: bigint; createdAt: number },
+  o: { chain: XcChain; required: bigint; quoted: bigint; quotedOut?: bigint; deadlineMs: number; withdrawFee?: bigint; createdAt: number },
   nowMs: number,
 ): SimView {
   const deadline = sim?.deadlineMs ?? o.deadlineMs
@@ -111,7 +130,7 @@ export function simStatus(
   if (sim.scenario === "no_liquidity")
     return { status: "REFUNDED", depositedAmount: arrived, refundedAmount: arrived, refundReason: "NO_LIQUIDITY", updatedAt: doneAt }
   if (sim.scenario === "failed") return { status: "FAILED", depositedAmount: arrived, refundedAmount: 0n, refundReason: null, updatedAt: doneAt }
-  return { status: "SUCCESS", depositedAmount: arrived, amountOut: simAmountOut(arrived, o.withdrawFee ?? 0n), updatedAt: doneAt }
+  return { status: "SUCCESS", depositedAmount: arrived, amountOut: simCredit(arrived, o), updatedAt: doneAt }
 }
 
 /** Everything "sent" so far (detected or not), base units. */

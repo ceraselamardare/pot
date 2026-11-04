@@ -13,7 +13,7 @@ import { useOnline } from "@/lib/client/browser"
 import { cn } from "@/lib/client/cn"
 import type { PotVM } from "@/lib/client/mock/types"
 import { openSheet } from "@/lib/client/sheet"
-import { addArrived, arrivedAmount, usePotDeposits, type DepositView } from "@/lib/deposit"
+import { addArrived, arrivedAmount, usePotDeposits, usdTargetOf, type DepositView } from "@/lib/deposit"
 import { NETWORK, usd, usdShort } from "./format"
 
 /** The arrived deposit waiting for its one tap (PotScreen gives it the marigold). */
@@ -38,7 +38,7 @@ function ProgressCard({ d }: { d: DepositView }) {
   return (
     <button
       type="button"
-      onClick={() => openSheet("add", { src: "xc", d: d.id, amount: (Number(BigInt(d.amountIn) / 10_000n) / 100).toString() })}
+      onClick={() => openSheet("add", { src: "xc", d: d.id, amount: (Number(usdTargetOf(d) / 10_000n) / 100).toString() })}
       className="flex min-h-16 items-center gap-3 rounded-lg bg-surface p-4 text-left shadow-card"
       data-deposit-card={d.status}
     >
@@ -47,7 +47,7 @@ function ProgressCard({ d }: { d: DepositView }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-label text-ink">
-          {stopped ? t("xc.card.stopped", { network: NETWORK[d.chain] }) : t("xc.card.progress", { amount: usdShort(BigInt(d.amountIn)), network: NETWORK[d.chain] })}
+          {stopped ? t("xc.card.stopped", { network: NETWORK[d.chain] }) : t("xc.card.progress", { amount: usdShort(usdTargetOf(d)), network: NETWORK[d.chain] })}
         </span>
         {!stopped && (
           <span className="mt-1 flex items-center gap-2 text-body-sm text-ink-muted">

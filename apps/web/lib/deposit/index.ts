@@ -12,7 +12,7 @@ import type { OpHandle } from "@/lib/client/ops/store"
 import { queryClient } from "@/lib/client/query"
 import { liveDeposits } from "./live"
 import { mockDeposits } from "./mock"
-import { isMoving, type ChainsRes, type DepositApi, type DepositView } from "./types"
+import { coinOf, isMoving, usdTargetOf, type ChainsRes, type DepositApi, type DepositView, type PriceRes, type XcChain, type XcCoin } from "./types"
 
 export * from "./types"
 
@@ -20,6 +20,7 @@ export const deposits: DepositApi = IS_LIVE ? liveDeposits : mockDeposits
 
 export const xcKeys = {
   chains: ["xc", "chains"] as const,
+  price: (chain: string, coin: string, amount: string) => ["xc", "price", chain, coin, amount] as const,
   one: (id: string) => ["xc", "deposit", id] as const,
   pot: (dao: string) => ["xc", "pot", dao] as const,
 }
@@ -28,6 +29,25 @@ export const potKey = (slug: string): string => daoOf(slug)
 
 export function useXcChains(enabled: boolean) {
   return useQuery<ChainsRes>({ queryKey: xcKeys.chains, queryFn: () => deposits.chains(), staleTime: 60_000, enabled })
+}
+
+/** How often the coin step refreshes a live quote for a coin whose price moves. */
+export const PRICE_REFRESH_MS = 30_000
+
+/**
+ * The coin step's live dry quote: "Send about 0.008638 ETH → about $20.00 arrives". Refreshed every 30 s while shown
+ * (only for coins whose price moves; a stablecoin is 1:1 and needs no quote to show).
+ */
+export function useXcPrice(req: { chain: XcChain; coin: XcCoin; amount: bigint } | null, enabled: boolean) {
+  return useQuery<PriceRes>({
+    queryKey: xcKeys.price(req?.chain ?? "", req?.coin ?? "", (req?.amount ?? 0n).toString()),
+    queryFn: () => deposits.price({ chain: req!.chain, coin: req!.coin, amount: req!.amount.toString() }),
+    enabled: enabled && !!req,
+    refetchInterval: PRICE_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    staleTime: PRICE_REFRESH_MS - 1_000,
+    retry: false,
+  })
 }
 
 /** One deposit, polled every 3 s while it still moves (the server advances the simulator on each poll). */
@@ -59,7 +79,8 @@ export function invalidateDeposits(slug: string, id?: string) {
   if (id) void qc.invalidateQueries({ queryKey: xcKeys.one(id) })
 }
 
-export const arrivedAmount = (d: DepositView): Micro => BigInt(d.amountOut ?? d.depositedAmount ?? d.amountIn)
+/** The Pot dollars that arrived (USD micro): the delivered amount, else what was asked for (never coin units). */
+export const arrivedAmount = (d: DepositView): Micro => (d.amountOut ? BigInt(d.amountOut) : coinOf(d).stable ? BigInt(d.depositedAmount ?? d.amountIn) : usdTargetOf(d))
 
 /**
  * "Your $X arrived, add it to the Pot": one tap = the person's own relayed `ft_transfer_call` of the arrived dollars

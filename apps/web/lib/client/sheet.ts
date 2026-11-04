@@ -96,8 +96,9 @@ export function openRequest(id: number, pot?: string) {
 // "link": the payment link sheet's request id (?sheet=paylink&link=<id>; not ?r=, which opens the request sheet)
 // "gift": a pay-in's ref (?sheet=gift&gift=<ref>)
 // "then": where the intro goes when it ends (?sheet=intro&then=create)
+// "net": the Add flow's network once picked (?sheet=add&src=xc&net=<chain>: the coin step)
 // "rule": the rules sheet's switch to bring into view (?sheet=rules&rule=links, from the Spend sheet's links-off line)
-const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "d", "pid", "step", "who", "link", "gift", "then", "topup", "rule"]
+const SHEET_PARAMS = ["sheet", "r", "pot", "amount", "src", "net", "d", "pid", "step", "who", "link", "gift", "then", "topup", "rule"]
 const strip = (p: URLSearchParams) => SHEET_PARAMS.forEach((k) => p.delete(k))
 
 /**

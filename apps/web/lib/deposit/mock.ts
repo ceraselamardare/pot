@@ -1,10 +1,13 @@
 // The mock data source's deposit API (NEXT_PUBLIC_DATA_SOURCE=mock): the server's simulator timeline
 // (server/features/oneclick/sim.ts, pure) run in the browser over localStorage, with the same response shapes, so
 // the stepper, the network picker and the one-tap add are exercised without a server. Deterministic e2e hooks:
-// localStorage['pot.mock.xcPaused'] = "base,…" pauses networks.
-import { CHAIN_LABEL, MIN_AMOUNT, SIM_QR_TEXT, stepOf, TYPICAL_SECONDS, XC_CHAINS } from "@/server/features/oneclick/assets"
+// localStorage['pot.mock.xcPaused'] = "base,…" pauses networks; localStorage['pot.mock.xcUnavailable'] = "op:USDT,…"
+// marks coins temporarily unavailable. Coins whose price moves are priced offline at the config's reference prices
+// (origins.ts refUsd, 2026-11-04), the way the server falls back when 1Click can't be reached.
+import { SIM_QR_TEXT, stepOf } from "@/server/features/oneclick/assets"
+import { assetOf, COIN_NAME, defaultCoin, offlineCoinNumbers, slippageFor, XC_CHAINS, XC_CONFIG } from "@/server/features/oneclick/origins"
 import { jitterFor, planSimSend, shortenedDeadline, simAmountOut, simProfile, simSent, simStatus, type SimState } from "@/server/features/oneclick/sim"
-import type { DepositApi, DepositView, QuoteNumbers, SimScenario, XcChain } from "./types"
+import type { DepositApi, DepositView, QuoteNumbers, SimScenario, XcChain, XcCoin } from "./types"
 
 const KEY = "pot.mock.deposits"
 const SIM_MAX = 500_000_000n
@@ -13,6 +16,10 @@ interface MockIntent {
   id: string
   pot: string
   chain: XcChain
+  coin?: XcCoin
+  /** USD micro asked for (absent on older records: = amountIn) */
+  usdTarget?: string
+  /** the coin's base units */
   amountIn: string
   numbers: QuoteNumbers
   depositAddress: string
@@ -46,14 +53,16 @@ function save(all: MockIntent[]) {
 
 const err = (reason: string, why?: string) => Object.assign(new Error(reason), { reason, cls: "specific", ...(why ? { why } : {}) })
 
-function numbers(chain: XcChain, amount: bigint): QuoteNumbers {
+function numbers(chain: XcChain, amount: bigint, coin: XcCoin = defaultCoin(chain)): QuoteNumbers {
+  const asset = assetOf(chain, coin)
+  if (asset && !asset.stable) return offlineCoinNumbers(chain, asset, amount)
   const out = simAmountOut(amount)
   return {
     amountIn: amount.toString(),
     minAmountIn: ((amount * 99n) / 100n).toString(),
     amountOut: out.toString(),
     minAmountOut: ((out * 99n) / 100n).toString(),
-    timeEstimateSec: TYPICAL_SECONDS[chain],
+    timeEstimateSec: XC_CONFIG[chain].typicalSeconds,
     refundFee: "0",
     withdrawFee: "0",
   }
@@ -61,7 +70,11 @@ function numbers(chain: XcChain, amount: bigint): QuoteNumbers {
 
 function refresh(i: MockIntent, now: number): MockIntent {
   if (["SUCCESS", "ADDED", "REFUNDED", "FAILED", "EXPIRED"].includes(i.status)) return i
-  const v = simStatus(i.sim, { chain: i.chain, required: BigInt(i.numbers.minAmountIn), quoted: BigInt(i.amountIn), deadlineMs: i.deadline, createdAt: i.createdAt }, now)
+  const v = simStatus(
+    i.sim,
+    { chain: i.chain, required: BigInt(i.numbers.minAmountIn), quoted: BigInt(i.amountIn), quotedOut: BigInt(i.numbers.amountOut), deadlineMs: i.deadline, createdAt: i.createdAt },
+    now,
+  )
   return {
     ...i,
     status: v.status,
@@ -76,11 +89,16 @@ function refresh(i: MockIntent, now: number): MockIntent {
 }
 
 function view(i: MockIntent): DepositView {
+  const asset = assetOf(i.chain, i.coin ?? "USDC") ?? assetOf(i.chain, defaultCoin(i.chain))!
   return {
     mode: "simulated",
     id: i.id,
     pot: i.pot,
     chain: i.chain,
+    coin: asset.coin,
+    decimals: asset.decimals,
+    stable: asset.stable,
+    usdTarget: i.usdTarget ?? i.amountIn,
     status: i.status,
     step: stepOf(i.status, i.processingSince ? 3 : 1),
     amountIn: i.amountIn,
@@ -116,27 +134,69 @@ const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms))
 export const mockDeposits: DepositApi & { markAdded(id: string): Promise<DepositView> } = {
   async chains() {
     await delay(60)
-    let paused: string[] = []
-    try {
-      paused = (localStorage.getItem("pot.mock.xcPaused") ?? "").split(",").map((s) => s.trim())
-    } catch {}
+    const list = (k: string) => {
+      try {
+        return (localStorage.getItem(k) ?? "").split(",").map((s) => s.trim())
+      } catch {
+        return []
+      }
+    }
+    const paused = list("pot.mock.xcPaused")
+    const unavailable = list("pot.mock.xcUnavailable")
     return {
       mode: "simulated",
-      chains: XC_CHAINS.map((id) => ({
-        id,
-        label: CHAIN_LABEL[id],
-        status: paused.includes(id) ? ("paused" as const) : id === "eth" ? ("slower" as const) : ("ok" as const),
-        minAmount: MIN_AMOUNT[id].toString(),
-        typicalSeconds: TYPICAL_SECONDS[id],
-      })),
+      chains: XC_CHAINS.map((id) => {
+        const c = XC_CONFIG[id]
+        const coins = c.assets.map((a) => ({
+          coin: a.coin,
+          name: COIN_NAME[a.coin],
+          stable: a.stable,
+          decimals: a.decimals,
+          status: unavailable.includes(`${id}:${a.coin}`) ? ("unavailable" as const) : ("ok" as const),
+          minAmount: (c.minUsd > 1_000_000n ? c.minUsd : 1_000_000n).toString(),
+        }))
+        const open = coins.some((x) => x.status === "ok")
+        return {
+          id,
+          label: c.label,
+          status: paused.includes(id) || !open ? ("paused" as const) : c.speed === "fast" ? ("ok" as const) : ("slower" as const),
+          speed: c.speed,
+          minAmount: (c.minUsd > 1_000_000n ? c.minUsd : 1_000_000n).toString(),
+          typicalSeconds: c.typicalSeconds,
+          coins,
+        }
+      }),
+    }
+  },
+  async price(req) {
+    await delay(200)
+    const usd = BigInt(req.amount)
+    const asset = assetOf(req.chain, req.coin)
+    if (!asset) throw err("bad_request")
+    if (usd < XC_CONFIG[req.chain].minUsd || usd < 1_000_000n) throw err("amount_too_low")
+    if (usd > SIM_MAX) throw err("amount_too_high")
+    return {
+      mode: "simulated",
+      chain: req.chain,
+      coin: asset.coin,
+      decimals: asset.decimals,
+      stable: asset.stable,
+      usdTarget: usd.toString(),
+      slippageBps: slippageFor(asset),
+      quote: numbers(req.chain, usd, asset.coin),
+      quotedAt: new Date().toISOString(),
     }
   },
   async quote(req) {
     await delay(250)
     const amount = BigInt(req.amount)
-    if (amount < 1_000_000n) throw err("amount_too_low")
+    const coin = req.coin ?? defaultCoin(req.chain)
+    const asset = assetOf(req.chain, coin)
+    if (!asset) throw err("bad_request")
+    if (amount < 1_000_000n || amount < XC_CONFIG[req.chain].minUsd) throw err("amount_too_low")
     if (amount > SIM_MAX) throw err("amount_too_high")
-    if (req.dry) return { mode: "simulated", quote: numbers(req.chain, amount) }
+    const coinFields = { coin, decimals: asset.decimals, stable: asset.stable, usdTarget: amount.toString() }
+    if (req.dry) return { mode: "simulated", ...coinFields, quote: numbers(req.chain, amount, coin) }
     const all = load()
     const prior = all.find((x) => x.idempotencyKey === req.idempotencyKey)
     const now = Date.now()
@@ -144,8 +204,10 @@ export const mockDeposits: DepositApi & { markAdded(id: string): Promise<Deposit
       id: `dp_${Array.from(crypto.getRandomValues(new Uint8Array(13)), (b) => (b % 36).toString(36)).join("")}${now.toString(36)}`.slice(0, 29).padEnd(29, "0"),
       pot: req.pot,
       chain: req.chain,
-      amountIn: amount.toString(),
-      numbers: numbers(req.chain, amount),
+      coin,
+      usdTarget: amount.toString(),
+      amountIn: numbers(req.chain, amount, coin).amountIn,
+      numbers: numbers(req.chain, amount, coin),
       depositAddress: `SIMULATED-${req.chain}-${Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => b.toString(16).padStart(2, "0")).join("")}`,
       deadline: now + 2 * 3600_000,
       createdAt: now,
@@ -158,6 +220,7 @@ export const mockDeposits: DepositApi & { markAdded(id: string): Promise<Deposit
     return {
       mode: "simulated",
       depositIntentId: rec.id,
+      ...coinFields,
       quote: rec.numbers,
       depositAddress: rec.depositAddress,
       deadline: new Date(rec.deadline).toISOString(),
@@ -195,7 +258,7 @@ export const mockDeposits: DepositApi & { markAdded(id: string): Promise<Deposit
       // the server's rules (sim.ts planSimSend): a second tap while the top-up is on its way is the same top-up
       const plan = planSimSend(
         i.sim,
-        { status: i.status, scenario, required: BigInt(i.numbers.minAmountIn), quoted, cap: quoted < SIM_MAX ? quoted : SIM_MAX, deadlineMs: i.deadline, ...(req.amount !== undefined ? { amount: BigInt(req.amount) } : {}) },
+        { status: i.status, scenario, required: BigInt(i.numbers.minAmountIn), quoted, cap: quoted, deadlineMs: i.deadline, ...(req.amount !== undefined ? { amount: BigInt(req.amount) } : {}) },
         now,
       )
       if (plan.kind === "already_sent") return i

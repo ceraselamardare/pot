@@ -1,9 +1,9 @@
 # NEAR Intents 1Click API: any-chain deposits for Pot (P-7)
-> Owner: intents. Last verified: 2026-10-21. Legend: ✅ verified · 📄 docs-only · ⚠️ unverified/conflicting
+> Owner: intents. Last verified: 2026-10-21; origins and "any coin" re-measured 2026-11-04 (see "More origins and any coin"). Legend: ✅ verified · 📄 docs-only · ⚠️ unverified/conflicting
 
 ## TL;DR
 1. ✅ **No JWT needed for Pot's flow today.** `GET /v0/tokens`, `POST /v0/quote` (`dry:true`) and `GET /v0/status` all work anonymously. The fee actually injected for USDC→USDC is **1 bp** (`appFees:[{recipient:"5880ad2b…47dd",fee:1}]`), not the documented "+25 bps unauthenticated fee". ETH→USDC gets 20 bps. A *bad* key returns `401 Invalid token`; there is no anonymous fallback. Keys are self-serve (Partner Portal: email/Google/GitHub). The SDK README's Google Form is closed.
-2. ✅ **Origins: Base, Arbitrum, Ethereum, Solana only.** The USDC ids are below. All HOT-bridge chains (Polygon, Optimism, BSC, Avalanche, TON, Stellar, Monad, XLayer, ADI, Scroll) have had active Shield incidents since 2026-10-18. Tested: Polygon and Optimism return `Quoting for this pair is not available`; BSC returns `Temporary swap limits: minimum swap amount is $1,000`. The recommended request body (Snippet 1) returns 201 on all four Pot chains.
+2. ✅ **2026-11-04 update: 15 origin networks, any coin** (section "More origins and any coin" below). The HOT-bridge chains are back (no active Shield incident; Polygon/Optimism/Avalanche/TON quote fine); BSC still has a $1,000 minimum, Tron $100, Stellar needs MEMO deposits; Bitcoin quotes don't verify with the documented signing key. *Original 2026-10-21 finding:* **Origins: Base, Arbitrum, Ethereum, Solana only.** The USDC ids are below. All HOT-bridge chains (Polygon, Optimism, BSC, Avalanche, TON, Stellar, Monad, XLayer, ADI, Scroll) have had active Shield incidents since 2026-10-18. Tested: Polygon and Optimism return `Quoting for this pair is not available`; BSC returns `Temporary swap limits: minimum swap amount is $1,000`. The recommended request body (Snippet 1) returns 201 on all four Pot chains.
 3. ✅ **Measured speed** (origin tx mined → `SUCCESS` on NEAR, p50, n=8 each, real swaps Oct 19–21): **Arbitrum 18.5 s, Base 29 s, Solana 42.5 s, Ethereum 83.5 s**. The quote's `timeEstimate` (25/35/20/45 s) understates Solana and Ethereum about 2×. The user's own send time (exchange withdrawals) dominates.
 4. ✅ **Delivery to the member's NEAR account** (`recipientType: DESTINATION_CHAIN`, `recipient: <member>`) is a plain NEP-141 USDC `ft_transfer` from `intents.near`. **1Click registers USDC storage itself** if the account is unregistered: it adds `storage_deposit` 0.00125 NEAR to the withdrawal and charges it as `withdrawFee: "6467"` ≈ $0.0065 (verified on-chain). A **named** recipient must exist (else `400 "Internal server error"`); implicit 64-hex ids are accepted even before they exist.
 5. ✅ **Keep the plan's two-step design** (deliver to member → member's relayed `ft_transfer_call` to Rulebot). `customRecipientMsg` does deliver via `ft_transfer_call(msg)` (seen on mainnet). But the receiver sees **`sender_id = "intents.near"`**, not the member. The API labels it "HIGHLY EXPERIMENTAL", and the verifier makes **no refund** if the call fails. So it fails trustless attribution and risks loss; it is a Phase 3 option only.
@@ -168,6 +168,77 @@ Totals are measured. The PROCESSING ≈ 10–15 s part comes from 1Click swaps f
 ### Incident context (Oct 1, 2026) and status page
 - ✅/⚠️ The deposit-notification feature in `intents.near` was exploited: an attacker contract made notifications fail, so the token contract refunded deposits while the verifier kept the credit. 23 failed deposits (Sep 29 16:14 → Oct 1 05:54 UTC) created ≈$3.8M of unbacked balance, withdrawn via Omni. Identified 08:04 UTC, paused 08:33 UTC (29 min). 11 networks halted. Funds returned Oct 2 (within 36 h); hotfix Oct 2 20:31 UTC. The feature was removed Oct 7 (✅ near/intents PR #374, merged 2026-10-07, after a second critical HackenProof report). New invariant: the contract auto-pauses if internal balances exceed token balances. Postmortem by Alex Shevchenko on X, Oct 16 (primary not fetched: X requires login; facts from CoinDesk, The Defiant, Substack, KuCoin).
 - ✅ Status page: https://partners.near-intents.org/shield/status; JSON at `/api/shield/public/status` (see Reference). SHIELD modes: `normal`, `paranoid` (delays), `under_attack` (pause). Quote-time Shield checks are live (📄), which is why quotes on paused chains return 400.
+
+## More origins and any coin (✅ measured 2026-11-04)
+Live, read-only: `GET /v0/tokens` + ~90 dry quotes into NEAR USDC with recipient = refundTo = an implicit 64-hex
+account (`e2beb9d8…f443b` = sha256("pot: dry-quote recipient (no key, never funded)"), accepted before it exists; a
+named recipient must exist). Raw numbers below; recorded responses in
+`apps/web/server/features/oneclick/fixtures/{dry-quotes-anycoin,tokens-2026-11-04}.json`.
+
+- **`/v0/tokens`: 215 tokens on 38 chains.** Keys unchanged. TON's native coin is listed as symbol **`GRAM`**
+  (`coingeckoId: the-open-network`, `nep245:v2_1.omni.hot.tg:1117_`, 9 dec). HOT-bridge assets are `nep245:v2_1.omni.hot.tg:<chainId>_<id>`.
+- **Shield** (`/api/shield/public/status`): 0 active incidents; recently resolved: btc (42 min, Nov 3), hypercore, tron ×2,
+  bsc (2 days), eth ×4 and **`scopeValue: "*"`** (everything, 48 min, Oct 29). scopeValue = 1Click's `blockchain` id.
+- **Quoted OK ($20 / $1, all 201):** USDC on base/arb/sol/eth/pol/op/avax/sui/aptos; USDT on sol/eth/pol/op/avax/aptos/ton;
+  ETH on base/arb/eth/op; SOL, POL, AVAX, SUI, APT, TON(GRAM), XRP, DOGE, ZEC, BTC.
+- **Refused:** BSC USDT `Temporary swap limits: minimum swap amount is $1,000`; Tron USDT `… is $100`, checked on the USD value
+  sent: 100 USDT (= $99.88) refused, 100.50 USDT ($100.40) and 101 accepted (timeEstimate 80 s) → Pot offers Tron from $101;
+  Stellar USDC `Incorrect depositMode for originAsset from stellar chain` (needs `depositMode: MEMO`; not offered).
+- **Minimums at $1:** only BTC (`try at least 6400` = sats ≈ $5.02), XRP (`2000000` = 2 XRP ≈ $2.58), ZEC (`100000` = 0.001
+  ZEC ≈ $1.32). ⚠️ **The "try at least N" number now comes in base units** for these (no dot), while 2026-10-21's was
+  formatted ("0.300001" USDC). Pot parses: a dot → formatted; a whole number ≥ 1,000 → base units; else formatted.
+- **timeEstimate (s):** arb 25-27, base 35-37, sol 20-22, eth 45-47, pol/op/avax 35-37, sui/aptos 25-27, xrp 27, ton 65-67,
+  doge 127, zec 455, **btc 805**. Pot's typical times: measured p50 for base/arb/sol/eth (kb TL;DR 3), else ≈ 1.5 ×
+  timeEstimate ⚠️ (Sol/Eth estimates were ~2× optimistic): pol/op/avax 50 s, tron 120 s (estimate 80), sui/aptos/xrp 40 s, ton 100 s, doge ~3 min,
+  zec ~11 min, btc ~20 min.
+- **Fees:** USDC/USDT → USDC `appFees` 1 bp (aptos USDC 20 bps); every non-stable coin 20 bps. `withdrawFee` for the
+  unregistered dry recipient: **5116-5128** (0.00125 NEAR storage at today's NEAR price; was 6467 on 2026-10-21).
+- **Quote latency:** 400-520 ms p50 for both swap types.
+
+### Swap type for coins whose price moves (decision: FLEX_INPUT 300 bps, amount from an EXACT_OUTPUT probe)
+The member wants **$X to arrive**. Evidence, ETH on Base, $10 (same pattern for 14 coins at $20):
+| Request | amountIn | minAmountIn | amountOut | Notes |
+|---|---|---|---|---|
+| EXACT_OUTPUT $10, 100 bps | 0.0043647 | 0.0043211 | 10.000000 (min 10.0) | asks +1 %; the excess is **refunded to the member's NEAR Intents balance** (refundType INTENTS) as Base ETH, which only a Phase 3 flow could recover |
+| FLEX_INPUT 0.0043, 100 bps | 0.0043 | 0.004257 | 9.9676 (min 9.8679) | no upper cap; any surplus converts |
+| FLEX_INPUT 0.0043, 300 bps | 0.0043 | 0.004171 | 9.9482 (min 9.6497) | same estimate within solver noise |
+| EXACT_INPUT 0.0043, 100 bps | 0.0043 | 0.0043 | 9.9511 | any shortfall → refund (kb TL;DR 6) |
+
+- **Probe → FLEX:** a dry EXACT_OUTPUT quote for $X; its **`minAmountIn`** is the coin amount that makes $X arrive; rounded up
+  to 4 significant digits (people type it) and quoted FLEX_INPUT → amountOut **19.9998-20.0000 of 20.00** on ETH (base, arb,
+  op, eth), SOL, POL, AVAX, SUI, APT, TON, XRP, DOGE, BTC; ZEC 19.995. The rounding surplus (≤ 0.1 %) arrives as Pot dollars.
+- **Why 300 bps:** FLEX's band applies to the output too (`minAmountOut = out × (1 − s)`); below it the deposit is refunded
+  (`AMOUNT_LESS_THAN_MIN_AMOUNT_OUT`) into the member's Intents balance. Crypto moves > 1 % within a 2 h window often; 3 %
+  keeps refunds rare, and it also accepts a send up to 3 % short (exchange fees). Stablecoins stay at 100 bps.
+- **Copy:** "Send about 0.008621 ETH · About $20.00 arrives" + "Prices move a little. Any difference arrives as a few cents
+  more or less in Pot dollars. If the price moves more than 3%, nothing is converted and your money is kept safe."
+- **Not chosen:** EXACT_OUTPUT (strands the +1 % excess in the Intents balance), EXACT_INPUT (refunds any shortfall),
+  ANY_INPUT (needs a partner key).
+
+### ⚠️ Bitcoin quotes don't verify
+Every BTC quote (FLEX 100/300, EXACT_INPUT, EXACT_OUTPUT; dry) fails `verifyQuoteSignature` with the documented key
+`ed25519:reYaWhvw…`, **in SDK 0.1.26 itself too** (spikes/oneclick/node_modules), while all 13 other curated coins verify.
+Same response shape. Pot: the simulator may use an unverified **dry** BTC quote's numbers for its preview; real mode
+refuses it (`quote_failed` cause signature) and hides Bitcoin for 10 min. → **human:** ask 1Click (t.me/near_intents)
+whether BTC quotes are signed with another key before offering Bitcoin on mainnet.
+
+### What Pot offers (apps/web/server/features/oneclick/origins.ts)
+| Network | Coins (stablecoins first) | Speed shown | Min |
+|---|---|---|---|
+| Base, Arbitrum | USDC, ETH | under a minute | $1 |
+| Solana | USDC, USDT, SOL | under a minute | $1 |
+| Ethereum | USDC, USDT, ETH | 1-2 min | $1 |
+| Polygon / Optimism / Avalanche (HOT bridge) | USDC, USDT, POL / ETH / AVAX | under a minute | $1 |
+| Sui | USDC, SUI | under a minute | $1 |
+| Aptos | USDC, USDT, APT | under a minute | $1 |
+| TON (HOT bridge) | USDT, TON | 1-2 min | $1 |
+| Tron | USDT | 1-2 min | $101 (swap limit $100 on value sent) |
+| XRP Ledger | XRP | under a minute | $5 |
+| Bitcoin / Dogecoin / Zcash | BTC / DOGE / ZEC | slow: ~20 / ~3 / ~11 min (flagged) | $10 / $1 / $5 |
+Left out: BSC ($1,000 limit > Pot's $500 demo cap), Stellar (MEMO), look-alike and vault tokens. The server checks the list
+against `/v0/tokens` (cached 1 h; a missing asset or changed decimals hides that coin; no list = fail open), maps Shield
+(chain scope, `hot` bridge, `*`), and remembers quote refusals for 10 min (a minimum shows as "From $X"; "not available",
+MEMO-only or an unverified signature hides the coin).
 
 ## Snippets
 All TypeScript; the endpoints and payloads are tested live (dry only). Not product code: rewrite on Nov 1.

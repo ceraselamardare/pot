@@ -1,15 +1,16 @@
 "use client"
-// Any-chain deposit sheet (D-50; ux-spec §4.8; design-direction 01 §4): `?sheet=add&src=xc` → network picker →
+// Any-chain deposit sheet (D-50; ux-spec §4.8; design-direction 01 §4; any coin 2026-11-04): `?sheet=add&src=xc` →
+// network picker → `&net=<chain>` "Which coin are you sending?" (+ the live quote for a coin whose price moves) →
 // `&d=<id>` address + QR → DepositStepper. On testnet the address is simulated: a "Testnet demo" pill, a QR that
-// reads "DO NOT SEND" under a "Test only · Do not send" band, and [Simulate sending $150] as the one marigold
-// button (Copy is hidden, design-direction open question 7). Real mode (mainnet clip) shows [Copy Base address].
-// Steps 2-3 of the Add money flow (components/sheets/AddFlow.tsx): each is its own history entry, with a [Back]
-// under the primary (network → the Add sheet, address → the network, the picked network kept). No Back once the
-// money is on its way (the stepper): ✕ and "You can close this screen" apply.
-import { ArrowLeft, Check, ChevronDown, Clock, TriangleAlert } from "lucide-react"
-import dynamic from "next/dynamic"
+// reads "DO NOT SEND" under a "Test only · Do not send" band, and [Simulate sending $150] (or "0.008625 ETH") as the
+// one marigold button (Copy is hidden, design-direction open question 7). Real mode (mainnet clip) shows [Copy Base address].
+// Steps 2-4 of the Add money flow (components/sheets/AddFlow.tsx): each is its own history entry, with a [Back]
+// under the primary (network → the Add sheet, coin → the network, address → the coin, the picks kept). No Back once
+// the money is on its way (the stepper): ✕ and "You can close this screen" apply.
+// The parts shared with the pay-in pages (people outside the Pot) live in ./pickers.tsx.
+import { Check, ChevronDown } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Callout, ProgressSteps } from "@/components/feedback/States"
+import { ProgressSteps } from "@/components/feedback/States"
 import { TypingDots } from "@/components/feedback/TypingDots"
 import { Sheet, SheetBack } from "@/components/sheets/Sheet"
 import { Button } from "@/components/ui/button"
@@ -19,25 +20,58 @@ import { cn } from "@/lib/client/cn"
 import type { PotVM } from "@/lib/client/mock/types"
 import type { AddStep } from "@/lib/client/machines/add-flow"
 import { closeSheet, pushSheetStep } from "@/lib/client/sheet"
-import { deposits, invalidateDeposits, newDepositKey, potKey, useDeposit, useXcChains, xcKeys, type DepositView, type SimScenario, type XcChain } from "@/lib/deposit"
+import {
+  deposits,
+  invalidateDeposits,
+  newDepositKey,
+  potKey,
+  useDeposit,
+  useXcChains,
+  xcKeys,
+  type ChainInfo,
+  type DepositView,
+  type SimScenario,
+  type XcChain,
+  type XcCoin,
+} from "@/lib/deposit"
 import { queryClient } from "@/lib/client/query"
-import { useNow } from "@/lib/client/time"
 import { DepositStepper, SimPill } from "./DepositStepper"
-import { NETWORK, shortAddress, tokenAmount, usdShort } from "./format"
-
-const QR = dynamic(() => import("qrcode.react").then((m) => m.QRCodeSVG), { ssr: false })
+import { NETWORK, sendText, usdShort } from "./format"
+import { AddressCard, chainOpen, CoinList, coinOpen, LiveQuote, NetworkList } from "./pickers"
 
 const reasonOf = (e: unknown): string => (e as { reason?: string })?.reason ?? "failed"
+const minimumOf = (e: unknown): string | null => {
+  const m = (e as { detail?: { minimum?: string } })?.detail?.minimum
+  return typeof m === "string" && /^\d+$/.test(m) ? m : null
+}
+
+/** The words for a quote that didn't go through (shared with the pay-in pages). */
+export function quoteErrorText(e: unknown, network: string): string {
+  const r = reasonOf(e)
+  const min = minimumOf(e)
+  return r === "amount_too_low"
+    ? t("xc.error.min", { min: min ? usdShort(min) : "$1" })
+    : r === "amount_too_high"
+      ? t("xc.error.max", { max: "$500" })
+      : r === "chain_paused"
+        ? t("xc.error.paused", { network })
+        : r === "quota_exceeded"
+          ? t("relayer.cap")
+          : t("xc.error.quote")
+}
 
 export function DepositSheet({
   pot,
   open,
   depositId,
+  net,
   amount,
   actor,
   step,
   chain,
+  coin,
   onChain,
+  onCoin,
   onTracking,
   onBack,
   onNewAddress,
@@ -45,6 +79,8 @@ export function DepositSheet({
   pot: PotVM
   open: boolean
   depositId: string | null
+  /** ?net=: the network the coin step is for */
+  net: XcChain | null
   /** what to add, from the Add sheet (?amount=) */
   amount: bigint
   actor: string
@@ -52,7 +88,10 @@ export function DepositSheet({
   step: AddStep | null
   /** the picked network, kept by the flow across Back */
   chain: XcChain | null
+  /** the picked coin, kept by the flow across Back */
+  coin: XcCoin | null
   onChain: (c: XcChain) => void
+  onCoin: (c: XcCoin) => void
   /** the deposit left "waiting for you to send" */
   onTracking: () => void
   onBack: (from: AddStep) => void
@@ -60,14 +99,9 @@ export function DepositSheet({
 }) {
   // closing never cancels a deposit; it leaves the Pot screen without the sheet (every step's entry unwinds)
   const close = closeSheet
+  const stepKey = depositId ? "address" : net ? "coin" : "network"
   return (
-    <Sheet
-      open={open}
-      onClose={close}
-      title={t("xc.title")}
-      description={t("xc.subtitle", { amount: usdShort(amount), potName: pot.name })}
-      stepKey={depositId ? "address" : "network"}
-    >
+    <Sheet open={open} onClose={close} title={t("xc.title")} description={t("xc.subtitle", { amount: usdShort(amount), potName: pot.name })} stepKey={stepKey}>
       <div className="pb-2" data-deposit-sheet data-step={step ?? undefined}>
         {depositId ? (
           <DepositPanel
@@ -80,64 +114,40 @@ export function DepositSheet({
             onBack={() => onBack("address")}
             onNewAddress={onNewAddress}
           />
+        ) : net ? (
+          <CoinStep pot={pot} amount={amount} open={open} chain={net} coin={coin} onCoin={onCoin} onBack={() => onBack("coin")} />
         ) : (
-          <NetworkStep pot={pot} amount={amount} open={open} chain={chain} onChain={onChain} onBack={() => onBack("network")} />
+          <NetworkStep amount={amount} open={open} chain={chain} onChain={onChain} onBack={() => onBack("network")} />
         )}
       </div>
     </Sheet>
   )
 }
 
-function NetworkStep({
-  pot,
-  amount,
-  open,
-  chain,
-  onChain: setChain,
-  onBack,
-}: {
-  pot: PotVM
-  amount: bigint
-  open: boolean
-  chain: XcChain | null
-  onChain: (c: XcChain) => void
-  onBack: () => void
-}) {
+/** The kept network unless it can't be used now, else the first open one. */
+export function pickChain(list: ChainInfo[], kept: XcChain | null, amount: bigint): XcChain | null {
+  if (kept && list.some((c) => c.id === kept && chainOpen(c, amount))) return kept
+  return list.find((c) => chainOpen(c, amount))?.id ?? null
+}
+
+/** The kept coin unless it can't be used now, else the network's first open one (stablecoins come first). */
+export function pickCoin(c: ChainInfo | undefined, kept: XcCoin | null, amount: bigint): XcCoin | null {
+  if (!c) return null
+  if (kept && c.coins.some((x) => x.coin === kept && coinOpen(x, amount))) return kept
+  return c.coins.find((x) => coinOpen(x, amount))?.coin ?? null
+}
+
+function NetworkStep({ amount, open, chain, onChain: setChain, onBack }: { amount: bigint; open: boolean; chain: XcChain | null; onChain: (c: XcChain) => void; onBack: () => void }) {
   const chains = useXcChains(open)
   const online = useOnline()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const list = chains.data?.chains ?? []
-  // the kept choice, unless it's paused now; else the first open network
-  const kept = chain && list.some((c) => c.id === chain && c.status !== "paused") ? chain : null
-  const picked = kept ?? list.find((c) => c.status !== "paused")?.id ?? null
+  const picked = pickChain(list, chain, amount)
 
-  const go = async () => {
-    if (!picked || busy) return
-    setBusy(true)
-    setError(null)
-    try {
-      const q = await deposits.quote({ pot: potKey(pot.slug), chain: picked, amount: amount.toString(), idempotencyKey: newDepositKey() })
-      if (!q.depositIntentId) throw new Error("no_intent")
-      // the address is its own step (a history entry): Back returns to this network, still picked
-      pushSheetStep((p) => p.set("d", q.depositIntentId!))
-    } catch (e) {
-      const r = reasonOf(e)
-      setError(
-        r === "amount_too_low"
-          ? t("xc.error.min", { min: "$1" })
-          : r === "amount_too_high"
-            ? t("xc.error.max", { max: "$500" })
-            : r === "chain_paused"
-              ? t("xc.error.paused", { network: NETWORK[picked] })
-              : r === "quota_exceeded"
-                ? t("relayer.cap")
-                : t("xc.error.quote"),
-      )
-      if (r === "chain_paused") void queryClient().invalidateQueries({ queryKey: xcKeys.chains })
-    } finally {
-      setBusy(false)
-    }
+  const go = () => {
+    if (!picked) return
+    setChain(picked)
+    // the coin is its own step (a history entry): Back returns to this network, still picked
+    pushSheetStep((p) => p.set("net", picked))
   }
 
   return (
@@ -146,50 +156,75 @@ function NetworkStep({
         <legend tabIndex={-1} className="mb-2 text-label text-ink outline-none" data-step-heading>
           {t("xc.network.label")}
         </legend>
-        <div role="radiogroup" aria-label={t("xc.network.label")} className="flex flex-col overflow-hidden rounded-md border border-line">
-          {chains.isPending
-            ? [0, 1, 2, 3].map((i) => <div key={i} className="h-14 border-b border-line bg-surface-sunken last:border-b-0" aria-hidden />)
-            : list.map((c) => {
-                const paused = c.status === "paused"
-                const checked = picked === c.id
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={checked}
-                    aria-disabled={paused || undefined}
-                    data-network={c.id}
-                    onClick={paused ? undefined : () => setChain(c.id)}
-                    className={cn(
-                      "flex min-h-14 items-center gap-3 border-b border-line px-3 text-left last:border-b-0",
-                      checked ? "bg-surface-sunken" : "bg-surface hover:bg-surface-sunken",
-                      paused && "cursor-not-allowed",
-                    )}
-                  >
-                    <span aria-hidden className={cn("grid size-5 shrink-0 place-items-center rounded-pill border-2", checked ? "border-ink" : "border-line-strong")}>
-                      {checked && <span className="size-2.5 rounded-pill bg-ink" />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className={cn("block text-label", paused ? "text-ink-muted" : "text-ink")}>{NETWORK[c.id]}</span>
-                      <span className="flex items-center gap-1 text-body-sm text-ink-muted">
-                        {paused ? (
-                          <>
-                            <Clock aria-hidden className="size-3.5" strokeWidth={2} />
-                            {t("xc.network.paused")}
-                          </>
-                        ) : c.status === "slower" ? (
-                          t("xc.network.slow")
-                        ) : (
-                          t("xc.network.fast")
-                        )}
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
-        </div>
+        <NetworkList chains={list} loading={chains.isPending} picked={picked} amount={amount} onPick={setChain} />
       </fieldset>
+      {chains.data?.mode === "simulated" && <SimPill />}
+      <Button variant="primary" className="w-full" disabled={!picked || !online} onClick={go} data-network-continue>
+        {t("xc.cta.continue")}
+      </Button>
+      <SheetBack onClick={onBack} />
+    </div>
+  )
+}
+
+function CoinStep({
+  pot,
+  amount,
+  open,
+  chain,
+  coin,
+  onCoin: setCoin,
+  onBack,
+}: {
+  pot: PotVM
+  amount: bigint
+  open: boolean
+  chain: XcChain
+  coin: XcCoin | null
+  onCoin: (c: XcCoin) => void
+  onBack: () => void
+}) {
+  const chains = useXcChains(open)
+  const online = useOnline()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const info = chains.data?.chains.find((c) => c.id === chain)
+  const picked = pickCoin(info, coin, amount)
+  const pickedInfo = info?.coins.find((c) => c.coin === picked)
+  const network = NETWORK[chain]
+
+  const go = async () => {
+    if (!picked || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const q = await deposits.quote({ pot: potKey(pot.slug), chain, coin: picked, amount: amount.toString(), idempotencyKey: newDepositKey() })
+      if (!q.depositIntentId) throw new Error("no_intent")
+      setCoin(picked)
+      // the address is its own step (a history entry): Back returns to this coin, still picked
+      pushSheetStep((p) => p.set("d", q.depositIntentId!))
+    } catch (e) {
+      setError(quoteErrorText(e, network))
+      if (reasonOf(e) === "chain_paused" || reasonOf(e) === "amount_too_low") void queryClient().invalidateQueries({ queryKey: xcKeys.chains })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4" data-coin-step data-chain={chain}>
+      <fieldset>
+        <legend tabIndex={-1} className="mb-0.5 text-label text-ink outline-none" data-step-heading>
+          {t("xc.coin.label")}
+        </legend>
+        <p className="mb-2 text-body-sm text-ink-muted">{t("xc.coin.hint", { network })}</p>
+        {info ? (
+          <CoinList chain={info} picked={picked} amount={amount} onPick={setCoin} />
+        ) : (
+          <div aria-hidden className="h-28 rounded-md bg-surface-sunken" />
+        )}
+      </fieldset>
+      {pickedInfo && <LiveQuote chain={chain} coin={pickedInfo} amount={amount} enabled={open} />}
       {chains.data?.mode === "simulated" && <SimPill />}
       {error && (
         <p role="alert" className="text-body-sm text-ink">
@@ -302,72 +337,16 @@ function AddressStep({
   onChange: () => void
 }) {
   const online = useOnline()
-  const [full, setFull] = useState(false)
   const [copied, setCopied] = useState(false)
   const [more, setMore] = useState(false)
   const network = NETWORK[d.chain]
-  const amount = BigInt(d.amountIn)
   const sim = d.mode === "simulated"
-  const addr = shortAddress(d.depositAddress)
-  const now = useNow()
-  const hours = now ? Math.max(1, Math.round((Date.parse(d.deadline) - now) / 3600_000)) : 2
   const scenarios: SimScenario[] = ["partial", "slow", "failed", "no_liquidity", "expired"]
 
   return (
-    <div className="flex flex-col gap-4" data-address-step>
+    <div className="flex flex-col gap-4" data-address-step data-coin={d.coin ?? "USDC"}>
       {sim && <SimPill />}
-      <div>
-        <h3 tabIndex={-1} className="font-display text-heading text-ink outline-none" data-step-heading>
-          {t("xc.instructions", { amountToken: tokenAmount(amount), token: "USDC", network })}
-        </h3>
-        <p className="mt-1 text-body-sm text-ink-muted">{t("xc.instructions.min", { minAmount: `${tokenAmount(BigInt(d.minAmountIn))} USDC` })}</p>
-      </div>
-
-      <div className="flex flex-col items-center gap-2">
-        {/* dark on a white plate in Night too: scanners fail on inverted codes (surface #fff / ink #2b1b3a) */}
-        <div role="img" aria-label={sim ? t("xc.sim.qr_band") : t("xc.address.label")} className="relative rounded-lg bg-white p-3 shadow-card" data-qr data-qr-text={d.qrText}>
-          <QR value={d.qrText} size={196} level="M" bgColor="#ffffff" fgColor="#2b1b3a" aria-hidden />
-          {sim && (
-            <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-ink px-2 py-1.5 text-center text-label text-surface" data-qr-band>
-              {t("xc.sim.qr_band")}
-            </span>
-          )}
-        </div>
-        <button type="button" onClick={onChange} className="flex min-h-11 items-center gap-1.5 rounded-pill bg-surface-sunken px-3 text-label text-ink">
-          <ArrowLeft aria-hidden className="size-4" strokeWidth={2} />
-          {network}
-          <span className="text-ink-muted">{t("xc.change")}</span>
-        </button>
-      </div>
-
-      <div>
-        <p className="mb-1.5 text-label text-ink">{t("xc.address.label")}</p>
-        <div className="flex items-center gap-2 rounded-md bg-surface-sunken px-3 py-2.5">
-          <span className="min-w-0 flex-1 font-mono text-body-sm break-all text-ink-muted tabular-nums" data-address>
-            {full ? (
-              d.depositAddress
-            ) : (
-              <>
-                <b className="text-ink">{addr.head}</b>
-                {addr.mid}
-                <b className="text-ink">{addr.tail}</b>
-              </>
-            )}
-          </span>
-          <button type="button" className="min-h-11 shrink-0 rounded-sm px-2 text-label text-ink underline-offset-4 hover:underline" onClick={() => setFull((v) => !v)}>
-            {full ? t("xc.show_less") : t("xc.show_all")}
-          </button>
-        </div>
-        {!sim && <p className="mt-1.5 text-body-sm text-ink-muted">{t("xc.check_hint")}</p>}
-      </div>
-
-      <Callout icon={<TriangleAlert strokeWidth={2} />}>
-        <p>{t("xc.warning", { token: "USDC", network })}</p>
-        <p className="mt-1 flex items-center gap-1.5">
-          <Clock aria-hidden className="size-4" strokeWidth={2} />
-          {t("xc.deadline.hours", { hours })}
-        </p>
-      </Callout>
+      <AddressCard d={d} onChange={onChange} sim={sim} />
 
       {error && (
         <p role="alert" className="text-body-sm text-ink">
@@ -379,7 +358,7 @@ function AddressStep({
         <div className="flex flex-col gap-2">
           <Button variant="primary" className="w-full" disabled={busy || !online} aria-busy={busy || undefined} onClick={() => onSimulate("ok")} data-simulate>
             {busy ? <TypingDots size="sm" /> : null}
-            {t("xc.sim.cta", { amount: usdShort(amount) })}
+            {t("xc.sim.cta", { amount: sendText(d, BigInt(d.amountIn)) })}
           </Button>
           <Button variant="ghost" className="w-full" aria-expanded={more} onClick={() => setMore((v) => !v)}>
             {t("xc.sim.problem")}
@@ -411,7 +390,7 @@ function AddressStep({
           {copied ? t("xc.copied") : t("xc.copy_network", { network })}
         </Button>
       )}
-      {/* Back to the network picker (the picked network kept); gone once "Simulate sending" is pressed */}
+      {/* Back to the coin picker (the picks kept); gone once "Simulate sending" is pressed */}
       <SheetBack onClick={onChange} disabled={busy} />
 
       <ProgressSteps

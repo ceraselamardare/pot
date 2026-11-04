@@ -5,28 +5,23 @@
 // undocumented public JSON, cached 60 s and failing open.
 //
 // On testnet only DRY quotes are ever sent (read-only, mainnet API): the simulator borrows their numbers.
+// Any coin (2026-11-04): stablecoins are quoted FLEX_INPUT 100 bps for the dollar amount (unchanged); other coins get
+// a dry EXACT_OUTPUT probe ("how much ETH makes $20 arrive": its minAmountIn), rounded up to 4 significant digits,
+// then the real FLEX_INPUT quote at 300 bps for that amount (kb "Any coin": why not EXACT_OUTPUT itself).
 import "server-only"
 import { sha256 } from "@noble/hashes/sha2.js"
 import { base58 } from "@scure/base"
 import { ApiError } from "../../http/errors"
 import { ed25519Verify } from "../../util/crypto"
-import {
-  DEADLINE_MS,
-  NEAR_USDC_ASSET,
-  ONECLICK_MANAGER_PK,
-  ONECLICK_URL,
-  ORIGIN_ASSET,
-  SHIELD_SCOPE,
-  SHIELD_STATUS_URL,
-  SLIPPAGE_BPS,
-  type XcChain,
-} from "./assets"
+import { DEADLINE_MS, NEAR_USDC_ASSET, ONECLICK_MANAGER_PK, ONECLICK_URL, SHIELD_STATUS_URL } from "./assets"
+import { assetOf, defaultCoin, slippageFor, XC_CHAINS, XC_CONFIG, type XcAsset, type XcChain, type XcCoin } from "./origins"
 
 export type Fetch = typeof fetch
 
 export interface QuoteRequestBody {
   dry: boolean
-  swapType: "FLEX_INPUT"
+  /** FLEX_INPUT for every quote that gets an address; EXACT_OUTPUT only for the dry coin-amount probe */
+  swapType: "FLEX_INPUT" | "EXACT_OUTPUT"
   slippageTolerance: number
   originAsset: string
   depositType: "ORIGIN_CHAIN"
@@ -80,13 +75,23 @@ export interface StatusResponse {
   }
 }
 
-/** The kb's recommended body (snippet 1): FLEX_INPUT 100 bps, INTENTS refunds to the member, 2 h deadline. */
-export function quoteBody(chain: XcChain, recipient: string, amount: bigint, dry: boolean, nowMs = Date.now()): QuoteRequestBody {
+function mustAsset(chain: XcChain, coin: XcCoin): XcAsset {
+  const a = assetOf(chain, coin)
+  if (!a) throw new ApiError("bad_request", { detail: { field: "coin" } })
+  return a
+}
+
+/**
+ * The kb's recommended body (snippet 1): FLEX_INPUT, INTENTS refunds to the member, 2 h deadline, referral `pot`.
+ * `amount` is in the origin coin's base units; the tolerance is 100 bps for stablecoins, 300 bps for other coins.
+ */
+export function quoteBody(chain: XcChain, recipient: string, amount: bigint, dry: boolean, nowMs = Date.now(), coin: XcCoin = defaultCoin(chain)): QuoteRequestBody {
+  const asset = mustAsset(chain, coin)
   return {
     dry,
     swapType: "FLEX_INPUT",
-    slippageTolerance: SLIPPAGE_BPS,
-    originAsset: ORIGIN_ASSET[chain],
+    slippageTolerance: slippageFor(asset),
+    originAsset: asset.assetId,
     depositType: "ORIGIN_CHAIN",
     destinationAsset: NEAR_USDC_ASSET,
     amount: amount.toString(),
@@ -97,6 +102,51 @@ export function quoteBody(chain: XcChain, recipient: string, amount: bigint, dry
     deadline: new Date(nowMs + DEADLINE_MS).toISOString(),
     referral: "pot",
   }
+}
+
+/**
+ * The dry probe for a coin that isn't a stablecoin: EXACT_OUTPUT for `usd` (USD micro of NEAR USDC). Its
+ * `minAmountIn` is the coin amount that makes `usd` arrive (measured 2026-11-04: a FLEX quote for that amount gives
+ * 19.9998-19.99999 of 20.00 on 14 coins); it is never sent with dry: false.
+ */
+export function probeBody(chain: XcChain, coin: XcCoin, recipient: string, usd: bigint, nowMs = Date.now()): QuoteRequestBody {
+  return { ...quoteBody(chain, recipient, usd, true, nowMs, coin), swapType: "EXACT_OUTPUT", slippageTolerance: 100, amount: usd.toString() }
+}
+
+/** The asset a body's originAsset names (for decimals in error messages). */
+export function assetById(assetId: string): XcAsset | null {
+  for (const c of XC_CHAINS) for (const a of XC_CONFIG[c].assets) if (a.assetId === assetId) return a
+  return null
+}
+
+/**
+ * The minimum in a 1Click "Amount is too low for bridge, try at least N" message, in origin base units. N comes both
+ * formatted ("0.300001" USDC, 2026-10-21) and in base units ("6400" sats, "2000000" drops, 2026-11-04): a decimal
+ * point means formatted; a whole number of 1,000 or more means base units (no curated coin has a formatted minimum
+ * that large); a small whole number is formatted.
+ */
+export function parseTryAtLeast(n: string, decimals: number): bigint {
+  const [w = "0", f = ""] = n.split(".")
+  if (n.includes(".") || BigInt(w) < 1000n) return BigInt(w) * 10n ** BigInt(decimals) + BigInt((f + "0".repeat(decimals)).slice(0, decimals) || "0")
+  return BigInt(w)
+}
+
+/** "Temporary swap limits: minimum swap amount is $1,000" → 1000 USD in micro. */
+export function parseSwapLimit(message: string): bigint | null {
+  const m = message.match(/minimum swap amount is \$([0-9][0-9,]*(?:\.[0-9]+)?)/i)
+  if (!m?.[1]) return null
+  const [w = "0", f = ""] = m[1].replace(/,/g, "").split(".")
+  return BigInt(w) * 1_000_000n + BigInt((f + "000000").slice(0, 6))
+}
+
+/** One row of GET /v0/tokens. */
+export interface TokenInfo {
+  assetId: string
+  decimals: number
+  blockchain: string
+  symbol: string
+  price?: number
+  priceUpdatedAt?: string
 }
 
 // ---- quote signature (SDK 0.1.26 `verifyQuoteSignature`) ----
@@ -183,10 +233,36 @@ export function verifyQuoteSignature(r: QuoteResponse, managerPk = ONECLICK_MANA
 
 // ---- HTTP ----
 
+export interface QuoteOptions {
+  /**
+   * Accept a DRY quote whose signature doesn't verify (its numbers only feed the testnet simulator's preview; nothing
+   * is ever sent to it). Bitcoin quotes fail verification with SDK 0.1.26's own verifyQuoteSignature too (2026-11-04,
+   * 4/4 swap types; every other curated coin verifies), so without this the demo would fall back to offline prices.
+   * Never for a quote with an address, never in real mode.
+   */
+  unverifiedDryOk?: boolean
+}
+
 export interface OneClickClient {
-  quote(body: QuoteRequestBody): Promise<QuoteResponse>
+  quote(body: QuoteRequestBody, opts?: QuoteOptions): Promise<QuoteResponse & { unverified?: true }>
   status(depositAddress: string): Promise<StatusResponse | null>
   pausedChains(): Promise<Set<XcChain>>
+  /** GET /v0/tokens, cached 1 h (ToS §4.1(e): no API data kept > 24 h); null when it can't be read (fail open) */
+  tokens?(): Promise<TokenInfo[] | null>
+}
+
+/** Shield incidents → paused chains: the chain's own scope, a `hot` incident for HOT-bridge chains, `*` for all. */
+export function pausedFromShield(incidents: { scopeType?: string; scopeValue?: string; status?: string }[]): Set<XcChain> {
+  const paused = new Set<XcChain>()
+  for (const i of incidents) {
+    if (i.status && i.status !== "active") continue
+    for (const id of XC_CHAINS) {
+      const c = XC_CONFIG[id]
+      if (i.scopeType === "chain" && (i.scopeValue === c.shield || i.scopeValue === "*")) paused.add(id)
+      if (c.bridge && i.scopeValue === c.bridge) paused.add(id)
+    }
+  }
+  return paused
 }
 
 const UA = "pot-app/1 (+https://github.com/pot)"
@@ -195,6 +271,7 @@ export function createOneClick(opts: { fetch?: Fetch; apiKey?: string; timeoutMs
   const f = opts.fetch ?? fetch
   const timeoutMs = opts.timeoutMs ?? 8_000
   let shield: { at: number; paused: Set<XcChain> } | null = null
+  let catalogue: { at: number; tokens: TokenInfo[] | null } | null = null
 
   async function call(path: string, init: RequestInit, withKey = !!opts.apiKey): Promise<Response> {
     const headers: Record<string, string> = { accept: "application/json", "user-agent": UA }
@@ -207,7 +284,7 @@ export function createOneClick(opts: { fetch?: Fetch; apiKey?: string; timeoutMs
   }
 
   return {
-    async quote(body) {
+    async quote(body, qopts = {}) {
       let res: Response
       try {
         res = await call("/v0/quote", { method: "POST", body: JSON.stringify(body) })
@@ -218,16 +295,23 @@ export function createOneClick(opts: { fetch?: Fetch; apiKey?: string; timeoutMs
       if (res.status !== 201 && res.status !== 200) {
         const message = String(json.message ?? "")
         if (/not available|paused/i.test(message)) throw new ApiError("chain_paused")
+        // Stellar-like origins that need MEMO deposits (not offered; kept as "unavailable" if one ever is)
+        if (/depositMode/i.test(message)) throw new ApiError("chain_paused", { detail: { why: "unsupported" } })
+        const limitUsd = parseSwapLimit(message)
+        if (limitUsd !== null) throw new ApiError("amount_too_low", { detail: { minUsd: limitUsd.toString(), why: "swap_limit" } })
         const min = message.match(/try at least ([0-9.]+)/i)
         if (min?.[1]) {
-          const minimum = BigInt(Math.ceil(Number(min[1]) * 1e6))
-          throw new ApiError("amount_too_low", { detail: { minimum: minimum.toString() } })
+          const decimals = assetById(body.originAsset)?.decimals ?? 6
+          throw new ApiError("amount_too_low", { detail: { minimum: parseTryAtLeast(min[1], decimals).toString() } })
         }
         throw new ApiError("quote_failed", { detail: { status: res.status, correlationId: json.correlationId ?? null } })
       }
       const r = json as unknown as QuoteResponse
-      if (!r.quote || !verifyQuoteSignature(r))
+      if (!r.quote) throw new ApiError("quote_failed", { detail: { cause: "no_quote", correlationId: r.correlationId ?? null } })
+      if (!verifyQuoteSignature(r)) {
+        if (qopts.unverifiedDryOk && body.dry && r.quoteRequest?.dry === true) return { ...r, unverified: true as const }
         throw new ApiError("quote_failed", { detail: { cause: "signature", correlationId: r.correlationId ?? null } })
+      }
       return r
     },
     async status(depositAddress) {
@@ -243,15 +327,26 @@ export function createOneClick(opts: { fetch?: Fetch; apiKey?: string; timeoutMs
       try {
         const res = await f(SHIELD_STATUS_URL, { headers: { accept: "application/json", "user-agent": UA }, signal: AbortSignal.timeout(3_000) })
         const j = (await res.json()) as { activeIncidents?: { scopeType?: string; scopeValue?: string; status?: string }[] }
-        for (const i of j.activeIncidents ?? []) {
-          if (i.scopeType !== "chain" || (i.status && i.status !== "active")) continue
-          for (const [chain, scope] of Object.entries(SHIELD_SCOPE)) if (scope === i.scopeValue) paused.add(chain as XcChain)
-        }
+        for (const c of pausedFromShield(j.activeIncidents ?? [])) paused.add(c)
       } catch {
         /* undocumented endpoint: fail open (kb snippet 3) */
       }
       shield = { at: now, paused }
       return paused
+    },
+    async tokens() {
+      const now = opts.now?.() ?? Date.now()
+      if (catalogue && now - catalogue.at < (catalogue.tokens ? 3600_000 : 60_000)) return catalogue.tokens
+      let tokens: TokenInfo[] | null = null
+      try {
+        const res = await call("/v0/tokens", { method: "GET" })
+        const j = res.ok ? ((await res.json()) as unknown) : null
+        tokens = Array.isArray(j) ? (j as TokenInfo[]) : null
+      } catch {
+        tokens = null
+      }
+      catalogue = { at: now, tokens }
+      return tokens
     },
   }
 }

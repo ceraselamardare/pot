@@ -14,8 +14,9 @@ import { announce, useOnline } from "@/lib/client/browser"
 import { cn } from "@/lib/client/cn"
 import type { PotVM } from "@/lib/client/mock/types"
 import { formatTime } from "@/lib/client/time"
-import { addArrived, arrivedAmount, isSlow, type DepositView } from "@/lib/deposit"
-import { NETWORK, safeHref, tokenAmount, usd, usdShort } from "./format"
+import { addArrived, arrivedAmount, coinOf, isSlow, usdTargetOf, type DepositView } from "@/lib/deposit"
+import { XC_CONFIG } from "@/server/features/oneclick/origins"
+import { coinText, minutesOf, NETWORK, safeHref, sendText, usd, usdShort } from "./format"
 
 type Tab = "progress" | "details"
 
@@ -73,7 +74,9 @@ export function DepositStepper({
   const online = useOnline()
   const now = useTick(d.status === "PROCESSING")
   const network = NETWORK[d.chain]
-  const amount = BigInt(d.amountIn)
+  const amount = usdTargetOf(d)
+  const { coin, stable } = coinOf(d)
+  const speed = XC_CONFIG[d.chain]?.speed ?? "fast"
   const slow = isSlow(d, now)
   const [adding, setAdding] = useState(false)
   const lastStatus = useRef(d.status)
@@ -100,7 +103,12 @@ export function DepositStepper({
   const helper = (n: number): string | undefined => {
     if (n === 1) return tLines("xc.step.waiting")[1] ?? undefined
     if (n === 2) return tLines("xc.step.spotted", { network })[1] ?? undefined
-    if (n === 3) return d.chain === "eth" ? t("xc.network.slow") : (tLines("xc.step.converting")[1] ?? undefined)
+    if (n === 3)
+      return speed === "slower"
+        ? t("xc.network.slow")
+        : speed === "slow"
+          ? t("xc.step.converting.slow", { minutes: minutesOf(d.chain) })
+          : (tLines("xc.step.converting")[1] ?? undefined)
     if (n === 4) return tLines("xc.step.arrived", { potName: pot.name })[1] ?? undefined
     return undefined
   }
@@ -122,12 +130,12 @@ export function DepositStepper({
       const [title, body] = tLines("xc.incomplete.rest_sent", { network })
       result = <Result icon={<Clock strokeWidth={2} />} tone="waiting" title={title} body={body} data="rest-sent" />
     } else {
-      const [title, body] = tLines("xc.incomplete", { missing: `${tokenAmount(missing)} USDC`, deadline: formatTime(Date.parse(d.deadline)) })
+      const [title, body] = tLines("xc.incomplete", { missing: coinText(d, missing), deadline: formatTime(Date.parse(d.deadline)) })
       result = (
         <Result icon={<Clock strokeWidth={2} />} tone="waiting" title={title} body={body} data="incomplete">
           {d.mode === "simulated" && onTopUp && (
             <Button variant="primary" className="w-full" disabled={busy || !online} aria-busy={busy || undefined} onClick={() => onTopUp(missing)}>
-              {t("xc.sim.top_up", { amount: usdShort(missing) })}
+              {t("xc.sim.top_up", { amount: sendText(d, missing) })}
             </Button>
           )}
         </Result>
@@ -156,7 +164,9 @@ export function DepositStepper({
         <p className="font-display text-title text-ink" data-status-word>
           {statusWord(d)}
         </p>
-        <p className="mt-1 text-body-sm text-ink-muted">{t("xc.summary", { amount: usdShort(amount), network, potName: pot.name })}</p>
+        <p className="mt-1 text-body-sm text-ink-muted">
+          {stable ? t("xc.summary", { amount: usdShort(amount), network, potName: pot.name }) : t("xc.summary.coin", { amount: usdShort(amount), token: coin, network, potName: pot.name })}
+        </p>
       </div>
       {d.mode === "simulated" && <SimPill />}
       {result}
@@ -307,7 +317,7 @@ function Details({ d }: { d: DepositView }) {
   const receipt = safeHref(d.explorerUrl)
   const rows: [string, ReactNode][] = [
     [t("xc.details.network"), NETWORK[d.chain]],
-    [t("xc.details.amount"), `${tokenAmount(BigInt(d.amountIn))} USDC`],
+    [t("xc.details.amount"), coinText(d, BigInt(d.amountIn))],
     [t("xc.details.address"), <span key="a" className="font-mono text-body-sm break-all">{d.depositAddress}</span>],
     [t("xc.details.expires"), formatTime(Date.parse(d.deadline))],
     [t("xc.details.reference"), <span key="r" className="font-mono text-body-sm break-all">{ref}</span>],

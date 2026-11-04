@@ -5,7 +5,7 @@ import { getDb } from "@/db/client"
 import { getConfig } from "../../config"
 import { defer, getHub, getRpc, getSubmitter } from "../../deps"
 import { micro, opKey } from "../../http/schemas"
-import { XC_CHAINS } from "./assets"
+import { XC_CHAINS, XC_COINS } from "./origins"
 import { createOneClick, type OneClickClient } from "./client"
 import type { OneClickDeps } from "./service"
 import { SIM_SCENARIOS } from "./sim"
@@ -13,9 +13,19 @@ import { SIM_SCENARIOS } from "./sim"
 export const quoteReq = z.strictObject({
   pot: z.string().min(2).max(64),
   chain: z.enum(XC_CHAINS),
+  /** any-coin (2026-11-04); absent = USDC where the network has it */
+  coin: z.enum(XC_COINS).optional(),
+  /** USD micro: what the person wants to add */
   amount: micro,
   dry: z.boolean().optional(),
   idempotencyKey: opKey,
+})
+
+/** POST /api/oneclick/price: the coin step's live dry quote (no Pot needed: members and people paying in) */
+export const priceReq = z.strictObject({
+  chain: z.enum(XC_CHAINS),
+  coin: z.enum(XC_COINS).optional(),
+  amount: micro,
 })
 
 export const simulateReq = z.strictObject({

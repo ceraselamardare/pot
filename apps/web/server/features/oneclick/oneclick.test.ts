@@ -17,7 +17,12 @@ import { FakeChain, FakeSubmitter, methodOf, plainOutcome } from "../../testing/
 import { stepOf } from "./assets"
 import { createOneClick, quoteBody, quoteHash, stableStringify, verifyQuoteSignature, type OneClickClient, type QuoteResponse } from "./client"
 import fixtures from "./fixtures/dry-quotes.json"
-import { createQuote, deliver, depositStatus, listChains, listDeposits, simulate, type OneClickDeps } from "./service"
+import anyCoinFixtures from "./fixtures/dry-quotes-anycoin.json"
+import tokensSnapshot from "./fixtures/tokens-2026-11-04.json"
+import { resetAvailabilityForTests, UNAVAILABLE_TTL_MS } from "./availability"
+import { probeBody, type QuoteRequestBody, type TokenInfo } from "./client"
+import { roundUpSig } from "./origins"
+import { createQuote, deliver, depositStatus, DRY_RECIPIENT, listChains, listDeposits, priceQuote, simulate, type OneClickDeps } from "./service"
 import { jitterFor, planSimSend, simAmountOut, simProfile, simSent, simStatus, type SimState } from "./sim"
 import { readQuota } from "@/db/quota"
 
@@ -81,7 +86,7 @@ describe("1Click HTTP client (fake fetch)", () => {
     await expect(c.quote(quoteBody("sol", "pot.near", 150_000_000n, true))).rejects.toMatchObject({ reason: "quote_failed", detail: { cause: "signature" } })
     expect(seen).toEqual(["k", null])
   })
-  it("Shield: active chain incidents are paused; the endpoint fails open; 60 s cache", async () => {
+  it("Shield: active chain incidents are paused (a `hot` bridge incident pauses the HOT chains); fails open; 60 s cache", async () => {
     let calls = 0
     let t = 0
     const c = createOneClick({
@@ -92,9 +97,9 @@ describe("1Click HTTP client (fake fetch)", () => {
         return res(200, { activeIncidents: [{ scopeType: "chain", scopeValue: "base", status: "active" }, { scopeType: "chain", scopeValue: "pol" }, { scopeType: "bridge", scopeValue: "hot" }] })
       }) as unknown as typeof fetch,
     })
-    expect([...(await c.pausedChains())]).toEqual(["base"])
+    expect([...(await c.pausedChains())]).toEqual(["base", "pol", "op", "avax", "ton"])
     t = 30_000
-    expect([...(await c.pausedChains())]).toEqual(["base"])
+    expect([...(await c.pausedChains())]).toEqual(["base", "pol", "op", "avax", "ton"])
     expect(calls).toBe(1)
     t = 61_000
     expect([...(await c.pausedChains())]).toEqual([])
@@ -116,7 +121,10 @@ describe("simulator timeline (api-spec §2.7 profiles, ± 20 % jitter)", () => {
       expect(jitterFor(id)).toBeLessThanOrEqual(1.2)
     }
     expect(simProfile("arb", 1)).toEqual({ pendingSec: 6, processingSec: 12 })
-    expect(simProfile("eth", 1.2)).toEqual({ pendingSec: 86, processingSec: 14 })
+    expect(simProfile("base", 1)).toEqual({ pendingSec: 17, processingSec: 12 })
+    // capped at 30 s so demos stay quick (any coin, 2026-11-04): Ethereum's 84 s, Bitcoin's ~20 min
+    expect(simProfile("eth", 1.2)).toEqual({ pendingSec: 16, processingSec: 14 })
+    expect(simProfile("btc", 1)).toEqual({ pendingSec: 18, processingSec: 12 })
   })
   it("ok: waiting → spotted → converting → SUCCESS with 1 bp off", () => {
     const s = send("ok", [[1000, 150_000_000n]])
@@ -259,12 +267,33 @@ let keyN = 0
 const key = (n: number) => `0000000000000${String(n).padStart(3, "0")}`.replace(/[ilou]/g, "0")
 
 describe("POST /api/oneclick/quote", () => {
-  it("chains: simulated mode on testnet, Ethereum slower, Shield-paused chains marked", async () => {
+  it("chains: simulated mode on testnet, slower / slow networks, Shield-paused chains marked, coins and minimums", async () => {
     paused = new Set(["base"])
     const r = await listChains(deps, { ONECLICK_SIM_PAUSED: "sol" })
     expect(r.mode).toBe("simulated")
-    expect(Object.fromEntries(r.chains.map((c) => [c.id, c.status]))).toEqual({ base: "paused", arb: "ok", sol: "paused", eth: "slower" })
+    expect(Object.fromEntries(r.chains.map((c) => [c.id, c.status]))).toEqual({
+      base: "paused",
+      arb: "ok",
+      sol: "paused",
+      eth: "slower",
+      pol: "ok",
+      op: "ok",
+      avax: "ok",
+      sui: "ok",
+      aptos: "ok",
+      ton: "slower",
+      tron: "slower",
+      xrp: "ok",
+      btc: "slower",
+      doge: "slower",
+      zec: "slower",
+    })
+    expect(Object.fromEntries(r.chains.map((c) => [c.id, c.speed]))).toMatchObject({ arb: "fast", eth: "slower", btc: "slow", doge: "slow", zec: "slow" })
     expect(r.chains.find((c) => c.id === "arb")?.typicalSeconds).toBe(18)
+    expect(r.chains.find((c) => c.id === "base")?.coins.map((c) => c.coin)).toEqual(["USDC", "ETH"])
+    expect(r.chains.find((c) => c.id === "sol")?.coins.map((c) => [c.coin, c.stable])).toEqual([["USDC", true], ["USDT", true], ["SOL", false]])
+    expect(r.chains.find((c) => c.id === "tron")).toMatchObject({ minAmount: "101000000", coins: [{ coin: "USDT", minAmount: "101000000" }] })
+    expect(r.chains.find((c) => c.id === "btc")?.minAmount).toBe("10000000")
   })
 
   it("dry: the real 1Click numbers, no row", async () => {
@@ -341,15 +370,17 @@ describe("simulate → status → delivery → ADDED", () => {
     await runDeferred()
     // the treasury's real token transfer (1 yocto, ft_transfer, amount − 1 bp)
     const tx = sub.submitted.at(-1)!
+    const quoted = String((await depositStatus(deps, me, id)).amountOutQuoted)
     expect(tx.spec.signerId).toBe(TREASURY)
     expect(tx.spec.receiverId).toBe(USDC)
     expect(methodOf(tx.spec)).toBe("ft_transfer")
     const fc = (tx.spec.actions[0] as unknown as { functionCall: { args: Uint8Array; deposit: bigint } }).functionCall
-    expect(JSON.parse(new TextDecoder().decode(fc.args))).toMatchObject({ receiver_id: ME, amount: "149985000" }) // 150 − 1 bp, registered
+    // exactly the quoted amountOut (what the screen promised), the storage fee given back to a registered member
+    expect(JSON.parse(new TextDecoder().decode(fc.args))).toMatchObject({ receiver_id: ME, amount: quoted })
     expect(fc.deposit).toBe(1n)
     expect(tx.opts.pool).toBe(cfg.treasuryPool)
     const arrived = await depositStatus(deps, me, id)
-    expect(arrived).toMatchObject({ status: "SUCCESS", step: 4, amountOut: "149985000", destinationTxHash: tx.txHash })
+    expect(arrived).toMatchObject({ status: "SUCCESS", step: 4, amountOut: quoted, destinationTxHash: tx.txHash })
     expect(String(arrived.explorerUrl)).toContain(`/txns/${tx.txHash}`)
     // a second delivery attempt is a no-op
     await deliver(deps, id)
@@ -497,5 +528,249 @@ describe("simulate → status → delivery → ADDED", () => {
     await simulate(deps, me, { depositIntentId: sent, idempotencyKey: key(24) })
     const r = await listDeposits(deps, me, DAO)
     expect(r.deposits.map((d) => d.id)).toEqual([sent])
+  })
+})
+
+// ---------------------------------------------------------------------------------------------
+// any coin (2026-11-04): more networks, coins whose price moves, availability, the exact bodies we send
+
+const anyCoin = anyCoinFixtures as unknown as Record<string, QuoteResponse>
+type QN = { amountIn: string; minAmountIn: string; amountOut: string }
+
+/** A fake 1Click that answers like the recorded 2026-11-04 quotes and remembers every body it was sent. */
+function recordingOneClick(opts: { tokens?: TokenInfo[] | null; refuse?: (b: QuoteRequestBody) => ApiError | null } = {}) {
+  const bodies: QuoteRequestBody[] = []
+  const client: OneClickClient = {
+    async quote(body) {
+      bodies.push(structuredClone(body))
+      const refused = opts.refuse?.(body)
+      if (refused) throw refused
+      if (body.swapType === "EXACT_OUTPUT") {
+        const q = structuredClone(anyCoin["probe-eth-base-20"]!)
+        // the probe's minAmountIn scales with the dollars asked for
+        q.quote.minAmountIn = ((BigInt(q.quote.minAmountIn) * BigInt(body.amount)) / 20_000_000n).toString()
+        return q
+      }
+      const stable = body.slippageTolerance === 100
+      const q = structuredClone(stable ? anyCoin["flex-usdc-op-20"]! : anyCoin["flex-eth-base-20"]!)
+      const base = BigInt(q.quote.amountIn)
+      q.quote.amountOut = ((BigInt(q.quote.amountOut) * BigInt(body.amount)) / base).toString()
+      q.quote.minAmountOut = ((BigInt(q.quote.minAmountOut) * BigInt(body.amount)) / base).toString()
+      q.quote.amountIn = body.amount
+      q.quote.minAmountIn = ((BigInt(body.amount) * BigInt(10_000 - body.slippageTolerance)) / 10_000n).toString()
+      if (!body.dry) Object.assign(q.quote, { depositAddress: "0x00000000000000000000000000000000000000aa", deadline: body.deadline })
+      return q
+    },
+    async status() {
+      return null
+    },
+    async pausedChains() {
+      return paused as Set<never>
+    },
+    async tokens() {
+      return opts.tokens === undefined ? (tokensSnapshot as TokenInfo[]) : opts.tokens
+    },
+  }
+  return { client, bodies }
+}
+
+describe("any coin (2026-11-04)", () => {
+  beforeEach(() => resetAvailabilityForTests())
+
+  it("ETH on Base, $20: a dry EXACT_OUTPUT probe, then FLEX_INPUT at 300 bps for its minAmountIn rounded up to 4 digits", async () => {
+    const f = recordingOneClick()
+    deps.oneclick = f.client
+    const r = await createQuote(deps, me, { pot: DAO, chain: "base", coin: "ETH", amount: "20000000", idempotencyKey: key(200) })
+    const probe = anyCoin["probe-eth-base-20"]!.quote
+    const amount = roundUpSig(BigInt(probe.minAmountIn)).toString()
+    expect(f.bodies.map((b) => [b.swapType, b.dry, b.slippageTolerance, b.amount, b.originAsset, b.recipient])).toEqual([
+      ["EXACT_OUTPUT", true, 100, "20000000", "nep141:base.omft.near", DRY_RECIPIENT],
+      ["FLEX_INPUT", true, 300, amount, "nep141:base.omft.near", DRY_RECIPIENT],
+    ])
+    expect(amount).toBe("8621000000000000") // 0.008621 ETH (from 0.008620… on 2026-11-04)
+    expect(r).toMatchObject({ mode: "simulated", coin: "ETH", decimals: 18, stable: false, usdTarget: "20000000" })
+    expect(r.depositAddress).toMatch(/^SIMULATED-base-[0-9a-f]{8}$/)
+    const q = r.quote as QN
+    expect(q.amountIn).toBe(amount)
+    expect(q.minAmountIn).toBe(((BigInt(amount) * 97n) / 100n).toString())
+    // about $20 arrives (the recorded FLEX quote's out, + the storage fee given back to a registered member)
+    expect(Number(q.amountOut) / 1e6).toBeGreaterThan(19.95)
+    expect(Number(q.amountOut) / 1e6).toBeLessThan(20.05)
+    const st = await depositStatus(deps, me, String(r.depositIntentId))
+    expect(st).toMatchObject({ chain: "base", coin: "ETH", decimals: 18, stable: false, usdTarget: "20000000", amountIn: amount, amountOutQuoted: q.amountOut })
+  })
+
+  it("simulated ETH: sending the quoted coin amount credits exactly the quoted dollars; the daily cap counts dollars", async () => {
+    deps.oneclick = recordingOneClick().client
+    const r = await createQuote(deps, me, { pot: DAO, chain: "base", coin: "ETH", amount: "20000000", idempotencyKey: key(201) })
+    const id = String(r.depositIntentId)
+    const quotedOut = (r.quote as QN).amountOut
+    await simulate(deps, me, { depositIntentId: id, idempotencyKey: key(202) })
+    // charged in dollars at the quote's rate, not in wei
+    expect(await readQuota(t.db, `user:${me.user.id}`, "xc_sim_usd")).toBe(20_000_000n)
+    clock += 60_000
+    await depositStatus(deps, me, id)
+    await runDeferred()
+    const tx = sub.submitted.at(-1)!
+    const fc = (tx.spec.actions[0] as unknown as { functionCall: { args: Uint8Array } }).functionCall
+    expect(JSON.parse(new TextDecoder().decode(fc.args))).toMatchObject({ receiver_id: ME, amount: quotedOut })
+    expect(await depositStatus(deps, me, id)).toMatchObject({ status: "SUCCESS", amountOut: quotedOut, depositedAmount: (r.quote as QN).amountIn })
+  })
+
+  it("partial ETH: 80 % arrives, the missing coin amount tops it up; the credit follows what arrived", async () => {
+    deps.oneclick = recordingOneClick().client
+    const r = await createQuote(deps, me, { pot: DAO, chain: "arb", coin: "ETH", amount: "20000000", idempotencyKey: key(203) })
+    const id = String(r.depositIntentId)
+    const q = r.quote as QN
+    await simulate(deps, me, { depositIntentId: id, scenario: "partial", idempotencyKey: key(204) })
+    clock += 30_000
+    const inc = await depositStatus(deps, me, id)
+    expect(inc).toMatchObject({ status: "INCOMPLETE_DEPOSIT", depositedAmount: ((BigInt(q.amountIn) * 8n) / 10n).toString() })
+    const missing = BigInt(q.minAmountIn) - BigInt(String(inc.depositedAmount))
+    await simulate(deps, me, { depositIntentId: id, amount: missing.toString(), idempotencyKey: key(205) })
+    clock += 60_000
+    await depositStatus(deps, me, id)
+    await runDeferred()
+    const done = await depositStatus(deps, me, id)
+    expect(done).toMatchObject({ status: "SUCCESS", depositedAmount: q.minAmountIn })
+    expect(String(done.amountOut)).toBe(((BigInt(q.amountOut) * BigInt(q.minAmountIn)) / BigInt(q.amountIn)).toString())
+  })
+
+  it("stablecoins keep today's behaviour: one FLEX_INPUT quote at 100 bps for the same dollar amount (USDT on Optimism)", async () => {
+    const f = recordingOneClick()
+    deps.oneclick = f.client
+    const r = await createQuote(deps, me, { pot: DAO, chain: "op", coin: "USDT", amount: "20000000", idempotencyKey: key(206) })
+    expect(f.bodies).toHaveLength(1)
+    expect(f.bodies[0]).toMatchObject({ swapType: "FLEX_INPUT", slippageTolerance: 100, amount: "20000000", originAsset: "nep245:v2_1.omni.hot.tg:10_359RPSJVdTxwTJT9TyGssr2rFoWo" })
+    expect(r).toMatchObject({ coin: "USDT", stable: true, usdTarget: "20000000", quote: { amountIn: "20000000", minAmountIn: "19800000" } })
+    // no coin named: USDC where the network has it (older clients)
+    await createQuote(deps, me, { pot: DAO, chain: "op", amount: "20000000", dry: true, idempotencyKey: key(207) })
+    expect(f.bodies.at(-1)?.originAsset).toBe("nep245:v2_1.omni.hot.tg:10_A2ewyUyDp6qsue1jqZsGypkCxRJ")
+  })
+
+  it("price: the coin step's live quote, no Pot needed (people paying in), charged as a dry quote", async () => {
+    deps.oneclick = recordingOneClick().client
+    const stranger = await session("near-auth", "u-payer.users.potapp.testnet")
+    const p = await priceQuote(deps, stranger, { chain: "base", coin: "ETH", amount: "25000000" })
+    expect(p).toMatchObject({ mode: "simulated", chain: "base", coin: "ETH", decimals: 18, stable: false, usdTarget: "25000000", slippageBps: 300 })
+    expect(Date.parse(String(p.quotedAt))).toBe(clock)
+    expect(await readQuota(t.db, `user:${stranger.user.id}`, "xc_dry")).toBe(1n)
+    expect(await t.db.select().from(depositIntent)).toHaveLength(0)
+  })
+
+  it("refuses a coin the network doesn't offer, below a network's minimum, and above $500", async () => {
+    deps.oneclick = recordingOneClick().client
+    await expect(createQuote(deps, me, { pot: DAO, chain: "base", coin: "SOL", amount: "20000000", idempotencyKey: key(208) })).rejects.toMatchObject({
+      reason: "bad_request",
+      detail: { field: "coin" },
+    })
+    await expect(priceQuote(deps, me, { chain: "tron", coin: "USDT", amount: "100000000" })).rejects.toMatchObject({ reason: "amount_too_low", detail: { minimum: "101000000" } })
+    await expect(priceQuote(deps, me, { chain: "btc", coin: "BTC", amount: "5000000" })).rejects.toMatchObject({ reason: "amount_too_low", detail: { minimum: "10000000" } })
+    await expect(priceQuote(deps, me, { chain: "sol", coin: "SOL", amount: "500000001" })).rejects.toMatchObject({ reason: "amount_too_high" })
+  })
+
+  it("quote errors make a coin 'temporarily unavailable' (or raise its minimum) for 10 min, then it's offered again", async () => {
+    const f = recordingOneClick({
+      refuse: (b) =>
+        b.originAsset.includes("43114_372B") // USDT on Avalanche: a swap limit
+          ? new ApiError("amount_too_low", { detail: { minUsd: "1000000000", why: "swap_limit" } })
+          : b.originAsset === "nep141:sui.omft.near" // SUI: paused
+            ? new ApiError("chain_paused")
+            : b.originAsset === "nep141:btc.omft.near" && b.swapType === "EXACT_OUTPUT" // BTC: "try at least 6400" (sats)
+              ? new ApiError("amount_too_low", { detail: { minimum: "6400" } })
+              : null,
+    })
+    deps.oneclick = f.client
+    await expect(priceQuote(deps, me, { chain: "avax", coin: "USDT", amount: "20000000" })).rejects.toMatchObject({ reason: "amount_too_low", detail: { minimum: "1010000000" } })
+    await expect(priceQuote(deps, me, { chain: "sui", coin: "SUI", amount: "20000000" })).rejects.toMatchObject({ reason: "chain_paused" })
+    // a coin minimum in its own units is answered in dollars (6,400 sats at the listed price + 10 %, whole dollars up)
+    await expect(priceQuote(deps, me, { chain: "btc", coin: "BTC", amount: "10000000" })).rejects.toMatchObject({ reason: "amount_too_low", detail: { minimum: "6000000" } })
+    let chains = (await listChains(deps)).chains
+    expect(chains.find((c) => c.id === "avax")?.coins.find((c) => c.coin === "USDT")).toMatchObject({ status: "ok", minAmount: "1010000000" })
+    expect(chains.find((c) => c.id === "sui")?.coins.find((c) => c.coin === "SUI")?.status).toBe("unavailable")
+    expect(chains.find((c) => c.id === "sui")?.status).toBe("ok") // its USDC is still there
+    // the memo answers at once next time, without asking 1Click
+    const n = f.bodies.length
+    await expect(priceQuote(deps, me, { chain: "sui", coin: "SUI", amount: "20000000" })).rejects.toMatchObject({ reason: "chain_paused" })
+    expect(f.bodies).toHaveLength(n)
+    clock += UNAVAILABLE_TTL_MS
+    chains = (await listChains(deps)).chains
+    expect(chains.find((c) => c.id === "sui")?.coins.find((c) => c.coin === "SUI")?.status).toBe("ok")
+    expect(chains.find((c) => c.id === "avax")?.coins.find((c) => c.coin === "USDT")?.minAmount).toBe("1000000")
+  })
+
+  it("the catalogue: a curated coin missing from 1Click's token list (or with other decimals) is hidden; no list hides nothing", async () => {
+    const tokens = (tokensSnapshot as TokenInfo[]).filter((x) => x.assetId !== "nep141:sui.omft.near").map((x) => (x.assetId === "nep141:aptos.omft.near" ? { ...x, decimals: 18 } : x))
+    deps.oneclick = recordingOneClick({ tokens }).client
+    const chains = (await listChains(deps)).chains
+    expect(chains.find((c) => c.id === "sui")?.coins.map((c) => [c.coin, c.status])).toEqual([["USDC", "ok"], ["SUI", "unavailable"]])
+    expect(chains.find((c) => c.id === "aptos")?.coins.find((c) => c.coin === "APT")?.status).toBe("unavailable")
+    await expect(priceQuote(deps, me, { chain: "sui", coin: "SUI", amount: "20000000" })).rejects.toMatchObject({ reason: "chain_paused" })
+    deps.oneclick = recordingOneClick({ tokens: null }).client
+    expect((await listChains(deps)).chains.flatMap((c) => c.coins).every((c) => c.status === "ok")).toBe(true)
+  })
+
+  it("a quote whose signature doesn't verify (Bitcoin, 2026-11-04): fine for the simulator's preview, never for real money", async () => {
+    const seen: (boolean | undefined)[] = []
+    const strict: OneClickClient = {
+      ...recordingOneClick().client,
+      async quote(body, opts) {
+        seen.push(opts?.unverifiedDryOk)
+        if (!opts?.unverifiedDryOk) throw new ApiError("quote_failed", { detail: { cause: "signature" } })
+        return { ...structuredClone(anyCoin["probe-btc-50"]!), unverified: true }
+      },
+    }
+    deps.oneclick = strict
+    const p = await priceQuote(deps, me, { chain: "btc", coin: "BTC", amount: "50000000" })
+    expect(p).toMatchObject({ coin: "BTC", mode: "simulated" })
+    expect(seen.every((x) => x === true)).toBe(true)
+    // real mode: refused, and Bitcoin waits 10 min like a paused coin
+    deps.cfg = { ...cfg, network: "mainnet" } as Config
+    const prev = process.env.ONECLICK_MODE
+    process.env.ONECLICK_MODE = "real"
+    try {
+      await expect(priceQuote(deps, me, { chain: "btc", coin: "BTC", amount: "50000000" })).rejects.toMatchObject({ reason: "quote_failed" })
+      expect(seen.at(-1)).toBeUndefined()
+      expect((await listChains(deps)).chains.find((c) => c.id === "btc")?.status).toBe("paused")
+    } finally {
+      if (prev === undefined) delete process.env.ONECLICK_MODE
+      else process.env.ONECLICK_MODE = prev
+      deps.cfg = cfg
+    }
+  })
+
+  it("real mode (mainnet + ONECLICK_MODE=real): the member receives and is refunded; the probe is dry, the address quote isn't", async () => {
+    const f = recordingOneClick()
+    deps.oneclick = f.client
+    deps.cfg = { ...cfg, network: "mainnet" } as Config
+    const prev = process.env.ONECLICK_MODE
+    process.env.ONECLICK_MODE = "real"
+    try {
+      const r = await createQuote(deps, me, { pot: DAO, chain: "sol", coin: "SOL", amount: "20000000", idempotencyKey: key(209) })
+      expect(r).toMatchObject({ mode: "real", coin: "SOL", depositAddress: "0x00000000000000000000000000000000000000aa" })
+      expect(f.bodies.map((b) => ({ ...b, deadline: "<now + 2 h>" }))).toMatchSnapshot()
+      expect(f.bodies.every((b) => b.recipient === ME && b.refundTo === ME && b.refundType === "INTENTS" && b.recipientType === "DESTINATION_CHAIN")).toBe(true)
+      expect(f.bodies.map((b) => b.dry)).toEqual([true, false])
+      // simulating a real deposit is refused
+      await expect(simulate(deps, me, { depositIntentId: String(r.depositIntentId), idempotencyKey: key(210) })).rejects.toMatchObject({ reason: "not_found" })
+    } finally {
+      if (prev === undefined) delete process.env.ONECLICK_MODE
+      else process.env.ONECLICK_MODE = prev
+    }
+  })
+})
+
+describe("the exact quote bodies per network and coin (what Pot would send 1Click)", () => {
+  const AT = Date.parse("2026-11-04T12:00:00Z")
+  it("FLEX_INPUT for every curated coin (stablecoins 100 bps, others 300 bps), and the EXACT_OUTPUT probe", async () => {
+    const { XC_CHAINS, XC_CONFIG } = await import("./origins")
+    const bodies: Record<string, unknown> = {}
+    for (const chain of XC_CHAINS)
+      for (const a of XC_CONFIG[chain].assets) {
+        bodies[`${chain}:${a.coin}`] = a.stable
+          ? quoteBody(chain, "maya.near", 20_000_000n, false, AT, a.coin)
+          : { probe: probeBody(chain, a.coin, "maya.near", 20_000_000n, AT), flex: quoteBody(chain, "maya.near", 10n ** BigInt(a.decimals), false, AT, a.coin) }
+      }
+    expect(bodies).toMatchSnapshot()
   })
 })

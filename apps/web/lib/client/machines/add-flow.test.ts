@@ -2,20 +2,29 @@ import { describe, expect, it } from "vitest"
 import { BACK_TO, addFlowReducer, canGoBack, initialAddFlow, previousParams, urlStep, type AddFlowEvent, type AddFlowState } from "./add-flow"
 
 const run = (events: AddFlowEvent[], from: AddFlowState = initialAddFlow) => events.reduce(addFlowReducer, from)
-const url = (step: "amount" | "network" | "address" | null): AddFlowEvent => ({ type: "URL", step })
+const url = (step: "amount" | "network" | "coin" | "address" | null): AddFlowEvent => ({ type: "URL", step })
 
 describe("add money flow: steps and Back (notes/frontend.md 'Back in multi-step sheets')", () => {
   it.each([
     [{ sheet: "add", src: null, d: null }, "amount"],
     [{ sheet: "add", src: "xc", d: null }, "network"],
+    [{ sheet: "add", src: "xc", d: null, net: "base" }, "coin"],
+    [{ sheet: "add", src: "xc", d: "dp_1", net: "base" }, "address"],
     [{ sheet: "add", src: "xc", d: "dp_1" }, "address"],
     [{ sheet: "spend", src: null, d: null }, null],
     [{ sheet: null, src: "xc", d: "dp_1" }, null],
   ] as const)("urlStep(%j) = %s", (p, step) => expect(urlStep(p)).toBe(step))
 
   it("Back goes one step back, and never from the first step or once money is on its way", () => {
-    expect(BACK_TO).toEqual({ amount: null, network: "amount", address: "network", tracking: null })
-    expect([canGoBack("amount"), canGoBack("network"), canGoBack("address"), canGoBack("tracking"), canGoBack(null)]).toEqual([false, true, true, false, false])
+    expect(BACK_TO).toEqual({ amount: null, network: "amount", coin: "network", address: "coin", tracking: null })
+    expect([canGoBack("amount"), canGoBack("network"), canGoBack("coin"), canGoBack("address"), canGoBack("tracking"), canGoBack(null)]).toEqual([
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+    ])
   })
 
   it("the previous step's URL drops only this step's params (a deep link's Back)", () => {
@@ -26,6 +35,26 @@ describe("add money flow: steps and Back (notes/frontend.md 'Back in multi-step 
     expect(p.toString()).toBe("sheet=add&amount=100&step=source")
     expect(previousParams("amount")).toBeNull()
     expect(previousParams("tracking")).toBeNull()
+  })
+
+  it("any coin (2026-11-04): address → coin → network → step 2, each Back dropping only its own param", () => {
+    const p = new URLSearchParams("sheet=add&src=xc&net=base&d=dp_1&amount=20")
+    previousParams("address")!(p)
+    expect(p.toString()).toBe("sheet=add&src=xc&net=base&amount=20")
+    previousParams("coin")!(p)
+    expect(p.toString()).toBe("sheet=add&src=xc&amount=20")
+    const q = new URLSearchParams("sheet=add&src=xc&net=op&amount=20")
+    previousParams("network")!(q)
+    expect(q.toString()).toBe("sheet=add&amount=20&step=source")
+  })
+
+  it("coin → Back keeps the network and the coin; another network clears the coin", () => {
+    const atAddress = run([url("network"), { type: "CHAIN", value: "base" }, url("coin"), { type: "COIN", value: "ETH" }, url("address")])
+    const coin = addFlowReducer(atAddress, url("coin"))
+    expect(coin).toMatchObject({ step: "coin", chain: "base", coin: "ETH" })
+    expect(addFlowReducer(coin, url("network"))).toMatchObject({ step: "network", chain: "base", coin: "ETH" })
+    expect(run([url("network"), { type: "CHAIN", value: "base" }], coin)).toMatchObject({ chain: "base", coin: "ETH" })
+    expect(run([url("network"), { type: "CHAIN", value: "op" }], coin)).toMatchObject({ chain: "op", coin: null })
   })
 
   it("network → Back keeps the amount, with Another app or exchange still chosen", () => {

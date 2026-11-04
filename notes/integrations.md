@@ -114,6 +114,52 @@ with nothing on chain (the account's key nonce is still …002: no third delegat
   `deposit.spec.ts` 27/27. Testnet cost of the 3 runs: hub sponsorship 0.19 NEAR (3 Pots, mostly the parked DAO
   floats), ≈ 0.025 NEAR of account creation from the holding account, relayer gas.
 
+### 1c. More origins and "pay with any coin" (2026-11-04)
+
+Measurements and the swap-type decision: kb/intents-1click.md "More origins and any coin". In short: 15 networks, stablecoins
+1:1 as before, other coins converted at a live dry quote; testnet simulates the transfer with the real quote's numbers.
+
+- **Config, not UI:** `server/features/oneclick/origins.ts` (pure; also read by the browser mock and the UI) lists the
+  networks, their coins (allow-listed asset ids, decimals, the symbol `/v0/tokens` uses, a reference price for offline
+  use), speed band, typical seconds (measured or ≈ 1.5 × timeEstimate), minimum. `assets.ts` keeps the API constants.
+  `availability.ts`: the curated list against `GET /v0/tokens` (client cache 1 h, fail open; missing / other decimals →
+  coin "unavailable"), and a 10-min per-instance memo of quote refusals (paused / MEMO-only / unverified signature →
+  unavailable; "try at least N" or "$X swap limit" → that minimum, shown as "From $X"). Shield: chain scope, `hot` for the
+  HOT-bridge chains, `*` for all.
+- **Quotes** (`service.ts priceWith`): stablecoin → one FLEX_INPUT 100 bps quote for the dollars; other coin → dry
+  EXACT_OUTPUT probe for the dollars → its `minAmountIn` rounded up to 4 significant digits → FLEX_INPUT 300 bps for that
+  amount. Rows keep `amountIn`/`minAmountIn`/`depositedAmount` in the coin's base units (USDC = USD micro, so old rows are
+  unchanged) and `quote.origin` {coin, decimals, stable, assetId} + `quote.usdTarget` in the jsonb (no migration; the
+  `chain` text column just takes more values). The dry-quote recipient is now a fixed implicit 64-hex account
+  (`DRY_RECIPIENT`, was `pot.near`).
+- **Routes:** `POST /api/oneclick/quote` takes `coin?` (default USDC where offered); new `POST /api/oneclick/price`
+  {chain, coin, amount} = the coin step's live dry quote, session only (no Pot: pay-in pages use it), charged to `xc_dry`;
+  `GET /api/oneclick/chains` adds `speed` and per-coin rows with status + minimum. Status bodies add coin/decimals/stable/usdTarget.
+- **Simulator:** timing = the network's typical time, capped at 30 s with jitter (Ethereum 84 s → 30 s, Bitcoin ~20 min →
+  30 s; the address says "In this demo it arrives in under 30 seconds" on slow networks). The credit is the quote's rate
+  applied to what arrived (`simCredit`): sending the quoted amount credits exactly the quoted `amountOut` (was "amount −
+  1 bp" for USDC, a few hundredths off the quote); partial sends credit proportionally. The $500/day sim quota is charged
+  in dollars at the quote's rate. Bitcoin: its dry quotes don't verify (kb), so only simulator previews accept them
+  (`unverifiedDryOk`); real mode hides Bitcoin until 1Click answers.
+- **UI** (`components/features/deposit/`): `pickers.tsx` (NetworkList, CoinList, LiveQuote refreshed every 30 s,
+  AddressCard) shared by `DepositSheet` (network → `&net=` coin → `&d=` address, each a history entry; Back address → coin
+  → network → Add step 2) and `GiverDeposit` (pay-in pages: same steps in-page, a local simulated address, then the
+  simulated transfer and the payment of the dollar amount picked; real mode says it isn't open yet). Address step: heading
+  "Send 0.008621 ETH on Base", minimum, "About $20.00 arrives" for priced coins, QR, "Base · ETH" chip (Change), the
+  address, then "Send only ETH on Base" box, memo (real mode, when 1Click gives one), slow-network time, deadline.
+  Title is now "Add from another app or exchange" (matches the Add sheet's row; no "wallet").
+- **Tests:** `anycoin.test.ts` (config vs the recorded token list, catalogue, rounding, offline prices, error parsing,
+  swap types, recorded signatures, sim timing/credit), `oneclick.test.ts` (+10: probe→FLEX bodies, ETH credit and dollar
+  quota, partial ETH, stablecoins unchanged, price without a Pot, minimums, the 10-min memo, catalogue, unverified BTC,
+  real-mode bodies; snapshots of the exact bodies per network/coin in `__snapshots__/`), `live.test.ts` (opt-in
+  `LIVE_ONECLICK=1`, 10 real dry quotes), `components/features/deposit/anycoin-flow.test.tsx` (5), add-flow reducer (+3),
+  mock e2e `deposit-coins.spec.ts` (4 × 3 projects) and `deposit.spec.ts` updated for the coin step. Screens:
+  notes/screens/xc-{network,coin,address}-{day,night}.png.
+- **To go live on mainnet** (not enabled anywhere): a mainnet build with `ONECLICK_MODE=real` (+ optionally
+  `ONECLICK_API_KEY`), the Phase 2 checklist above; a human to confirm the BTC signature question with 1Click; pay-in
+  pages need a giver deposit intent (recipient = the giver's account, then their relayed payment) before "Another app" can
+  be real there; re-check Tron/BSC limits and the HOT-bridge chains' Shield state on the day.
+
 ## 2. NEAR Connect wallet login (B-10, F-19)
 
 - `server/features/wallet/nep413.ts`: the exact NEP-413 bytes (`u32_le(2³¹+413) ‖ borsh{message, nonce[32],

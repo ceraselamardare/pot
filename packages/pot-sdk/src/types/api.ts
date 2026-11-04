@@ -673,7 +673,11 @@ export interface PushPayload {
 
 // ---------------------------------------------------------------- §2.7 1Click (Phase 2)
 
-export type XcChain = "base" | "arb" | "sol" | "eth"
+/** Origin networks (apps/web server/features/oneclick/origins.ts is the curated config, 2026-11-04). */
+export type XcChain = "base" | "arb" | "sol" | "eth" | "pol" | "op" | "avax" | "sui" | "aptos" | "ton" | "tron" | "xrp" | "btc" | "doge" | "zec"
+/** Coins a person can send (stablecoins 1:1; others are converted at the live quote) */
+export type XcCoin = "USDC" | "USDT" | "ETH" | "SOL" | "POL" | "AVAX" | "SUI" | "APT" | "TON" | "XRP" | "BTC" | "DOGE" | "ZEC"
+export type XcSpeed = "fast" | "slower" | "slow"
 export type OneClickStatus = "PENDING_DEPOSIT" | "KNOWN_DEPOSIT_TX" | "PROCESSING" | "SUCCESS" | "INCOMPLETE_DEPOSIT" | "REFUNDED" | "FAILED"
 export type DepositStatus = OneClickStatus | "EXPIRED" | "ADDED" | "STUCK"
 export type OneClickMode = "real" | "simulated"
@@ -681,13 +685,47 @@ export type OneClickMode = "real" | "simulated"
 /** GET /api/oneclick/chains */
 export interface OneClickChainsRes extends Ok {
   mode: OneClickMode
-  chains: { id: XcChain; label: string; status: "ok" | "paused" | "slower"; minAmount: MicroStr; typicalSeconds: number }[]
+  chains: {
+    id: XcChain
+    label: string
+    /** "slower" = not under a minute (`speed` says how slow) */
+    status: "ok" | "paused" | "slower"
+    speed: XcSpeed
+    /** the smallest amount offered on this network right now, USD micro */
+    minAmount: MicroStr
+    typicalSeconds: number
+    coins: { coin: XcCoin; name: string; stable: boolean; decimals: number; status: "ok" | "unavailable"; minAmount: MicroStr }[]
+  }[]
+}
+
+/** POST /api/oneclick/price: the coin step's live dry quote (no Pot) */
+export interface PriceReq {
+  chain: XcChain
+  coin?: XcCoin
+  /** USD micro to add */
+  amount: MicroStr
+}
+export interface PriceRes extends Ok {
+  mode: OneClickMode
+  chain: XcChain
+  coin: XcCoin
+  decimals: number
+  stable: boolean
+  usdTarget: MicroStr
+  /** FLEX_INPUT tolerance: 100 bps for stablecoins, 300 for other coins */
+  slippageBps: number
+  quote: QuoteRes["quote"]
+  quotedAt: IsoTime
+  correlationId?: string
 }
 
 /** POST /api/oneclick/quote */
 export interface QuoteReq {
   pot: DaoId
   chain: XcChain
+  /** absent = USDC where the network has it */
+  coin?: XcCoin
+  /** USD micro to add */
   amount: MicroStr
   dry?: boolean
   idempotencyKey: OpKey
@@ -696,6 +734,11 @@ export interface QuoteRes extends Ok {
   mode: OneClickMode
   /** absent when dry */
   depositIntentId?: string
+  coin?: XcCoin
+  decimals?: number
+  stable?: boolean
+  usdTarget?: MicroStr
+  /** amountIn / minAmountIn / refundFee in the coin's base units; amountOut / minAmountOut / withdrawFee USD micro */
   quote: {
     amountIn: MicroStr
     minAmountIn: MicroStr
@@ -718,6 +761,12 @@ export interface QuoteRes extends Ok {
 /** GET /api/oneclick/status/[id] */
 export interface DepositStatusRes extends Ok {
   mode: OneClickMode
+  chain?: XcChain
+  coin?: XcCoin
+  decimals?: number
+  stable?: boolean
+  /** what the person asked to add, USD micro */
+  usdTarget?: MicroStr
   status: DepositStatus
   /** D-50 stepper: waiting, spotted, converting, arrived, added */
   step: 1 | 2 | 3 | 4 | 5
@@ -739,7 +788,7 @@ export interface SimulateReq {
   depositIntentId: string
   /** default 'ok' */
   scenario?: "ok" | "partial" | "no_liquidity" | "failed" | "slow" | "expired"
-  /** what "arrives"; default = the quote amount */
+  /** what "arrives", in the coin's base units; default = the quote amount */
   amount?: MicroStr
   idempotencyKey: OpKey
 }
@@ -812,6 +861,7 @@ export interface ApiRoutes {
   "DELETE /api/push/subscription": Route<PushUnsubReq, PushUnsubRes>
   "GET /api/oneclick/chains": Route<void, OneClickChainsRes>
   "POST /api/oneclick/quote": Route<QuoteReq, QuoteRes>
+  "POST /api/oneclick/price": Route<PriceReq, PriceRes>
   "GET /api/oneclick/status/[id]": Route<void, DepositStatusRes>
   "POST /api/oneclick/simulate": Route<SimulateReq, SimulateRes>
   "POST /api/telegram/webhook": Route<TelegramWebhookReq, TelegramWebhookRes>

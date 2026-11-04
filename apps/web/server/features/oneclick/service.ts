@@ -30,19 +30,24 @@ import type { SessionCtx } from "../../session/store"
 import { newRelayId, random } from "../../util/crypto"
 import { daoSlug } from "../../util/ids"
 import { ensurePot, isMember } from "../notes"
+import { DEADLINE_MS, OPEN_STATUSES, SIM_QR_TEXT, stepOf, TERMINAL } from "./assets"
+import { listedPrice, missingFromCatalogue, noteUnavailable, unavailableNow } from "./availability"
+import { probeBody, quoteBody, type OneClickClient, type QuoteResponse, type TokenInfo } from "./client"
 import {
-  CHAIN_LABEL,
-  DEADLINE_MS,
-  MIN_AMOUNT,
-  OPEN_STATUSES,
-  SIM_QR_TEXT,
-  stepOf,
-  TERMINAL,
-  TYPICAL_SECONDS,
+  assetOf,
+  COIN_NAME,
+  defaultCoin,
+  offlineCoinNumbers,
+  offlineUsdOut,
+  roundUpSig,
+  slippageFor,
+  stableUnits,
   XC_CHAINS,
+  XC_CONFIG,
+  type XcAsset,
   type XcChain,
-} from "./assets"
-import { quoteBody, type OneClickClient, type QuoteResponse } from "./client"
+  type XcCoin,
+} from "./origins"
 import { jitterFor, planSimSend, shortenedDeadline, simAmountOut, simProfile, simSent, simStatus, type SimScenario, type SimState } from "./sim"
 import { errText } from "../../util/errtext"
 
@@ -65,11 +70,18 @@ export function oneclickMode(cfg: Config, env: Record<string, string | undefined
   return cfg.network === "mainnet" && env.ONECLICK_MODE === "real" ? "real" : "simulated"
 }
 
-/** A mainnet account that exists, used as the recipient of the DRY quotes the simulator borrows numbers from. */
-const DRY_RECIPIENT = "pot.near"
+/**
+ * The recipient of the DRY quotes the simulator borrows its numbers from: a fixed implicit (64-hex) mainnet account,
+ * sha256("pot: dry-quote recipient (no key, never funded)"). 1Click accepts implicit ids before they exist (named ones
+ * must exist, else 400 "Internal server error"); it is never the recipient of a quote with an address. Being
+ * unregistered, its quotes carry the storage `withdrawFee` (≈ 0.0051 USDC on 2026-11-04), given back to a registered
+ * member by forMember().
+ */
+export const DRY_RECIPIENT = "e2beb9d895d15a4e6379a4fd02916fcdc3d63d6aa741277fce64cee3937f443b"
 /** rev4 H-3: simulated mode refuses quotes above $500 */
 export const SIM_MAX = 500_000_000n
 const MAX_OPEN = 5
+const USD_FLOOR = 1_000_000n
 
 /** xc limits with QUOTA_<NAME> overrides (same convention as server/quotas.ts). */
 export function xcLimit(name: "xc_quotes" | "xc_dry" | "xc_sim_usd"): bigint {
@@ -86,40 +98,99 @@ async function charge(db: Db, charges: QuotaCharge[]) {
     throw new ApiError("quota_exceeded", { detail: { family: "xc", limit: r.failed.limit.toString(), resetsAt: nextUtcDay().toISOString() } })
 }
 
+const maxOf = (...xs: bigint[]): bigint => xs.reduce((a, b) => (b > a ? b : a))
+
 // ---------------------------------------------------------------------------------------------
 // GET /api/oneclick/chains
 
-export async function listChains(deps: Pick<OneClickDeps, "cfg" | "oneclick">, env: Record<string, string | undefined> = process.env) {
+export interface CoinRow {
+  coin: XcCoin
+  name: string
+  stable: boolean
+  decimals: number
+  status: "ok" | "unavailable"
+  /** the smallest amount offered with this coin right now, USD micro */
+  minAmount: string
+}
+
+export interface ChainRow {
+  id: XcChain
+  label: string
+  /** "slower" = not under a minute (kept for older clients); `speed` says how slow */
+  status: "ok" | "paused" | "slower"
+  speed: "fast" | "slower" | "slow"
+  typicalSeconds: number
+  /** the smallest amount offered on this network right now (its cheapest open coin), USD micro */
+  minAmount: string
+  coins: CoinRow[]
+}
+
+export async function listChains(
+  deps: Pick<OneClickDeps, "cfg" | "oneclick" | "now">,
+  env: Record<string, string | undefined> = process.env,
+): Promise<{ mode: Mode; chains: ChainRow[] }> {
   const mode = oneclickMode(deps.cfg, env)
-  const paused = new Set(await deps.oneclick.pausedChains())
+  const now = deps.now?.() ?? Date.now()
+  const [shield, tokens] = await Promise.all([deps.oneclick.pausedChains(), deps.oneclick.tokens ? deps.oneclick.tokens().catch(() => null) : Promise.resolve(null)])
+  const paused = new Set<XcChain>(shield)
   // simulator: ONECLICK_SIM_PAUSED=base,… shows the "paused" picker state (kb scenario `paused`)
   if (mode === "simulated")
     for (const c of (env.ONECLICK_SIM_PAUSED ?? "").split(",").map((x) => x.trim()))
       if ((XC_CHAINS as readonly string[]).includes(c)) paused.add(c as XcChain)
+  const missing = missingFromCatalogue(tokens)
   return {
     mode,
-    chains: XC_CHAINS.map((id) => ({
-      id,
-      label: CHAIN_LABEL[id],
-      status: paused.has(id) ? ("paused" as const) : id === "eth" ? ("slower" as const) : ("ok" as const),
-      minAmount: MIN_AMOUNT[id].toString(),
-      typicalSeconds: TYPICAL_SECONDS[id],
-    })),
+    chains: XC_CHAINS.map((id) => {
+      const c = XC_CONFIG[id]
+      const coins: CoinRow[] = c.assets.map((a) => {
+        const u = unavailableNow(id, a.coin, now)
+        const off = missing.has(`${id}:${a.coin}`) || u?.kind === "paused"
+        return {
+          coin: a.coin,
+          name: COIN_NAME[a.coin],
+          stable: a.stable,
+          decimals: a.decimals,
+          status: off ? ("unavailable" as const) : ("ok" as const),
+          minAmount: maxOf(USD_FLOOR, c.minUsd, u?.kind === "min" ? u.minUsd : 0n).toString(),
+        }
+      })
+      const open = coins.filter((x) => x.status === "ok")
+      const minAmount = open.length ? open.map((x) => BigInt(x.minAmount)).reduce((a, b) => (b < a ? b : a)) : maxOf(USD_FLOOR, c.minUsd)
+      return {
+        id,
+        label: c.label,
+        status: paused.has(id) || open.length === 0 ? ("paused" as const) : c.speed === "fast" ? ("ok" as const) : ("slower" as const),
+        speed: c.speed,
+        typicalSeconds: c.typicalSeconds,
+        minAmount: minAmount.toString(),
+        coins,
+      }
+    }),
   }
 }
 
 // ---------------------------------------------------------------------------------------------
-// POST /api/oneclick/quote
+// POST /api/oneclick/quote, POST /api/oneclick/price
 
 export interface QuoteBody {
   pot: string
   chain: XcChain
+  /** default: USDC where the network has it (the original behaviour), else its first coin */
+  coin?: XcCoin
+  /** what the person wants to add, USD micro */
   amount: string
   dry?: boolean
   idempotencyKey: string
 }
 
-interface QuoteNumbers {
+export interface PriceBody {
+  chain: XcChain
+  coin?: XcCoin
+  amount: string
+}
+
+/** Origin amounts (`amountIn`, `minAmountIn`, `refundFee`) are in the coin's base units; out amounts are USD micro. */
+export interface QuoteNumbers {
   amountIn: string
   minAmountIn: string
   amountOut: string
@@ -127,6 +198,14 @@ interface QuoteNumbers {
   timeEstimateSec: number
   refundFee: string
   withdrawFee: string
+}
+
+/** What a deposit row remembers about the coin (quote jsonb `origin`); old rows are USDC. */
+export interface OriginInfo {
+  coin: XcCoin
+  decimals: number
+  stable: boolean
+  assetId: string
 }
 
 const numbersOf = (q: QuoteResponse["quote"]): QuoteNumbers => ({
@@ -147,10 +226,15 @@ export function computedNumbers(chain: XcChain, amount: bigint, withdrawFee = 0n
     minAmountIn: ((amount * 99n) / 100n).toString(),
     amountOut: out.toString(),
     minAmountOut: ((out * 99n) / 100n).toString(),
-    timeEstimateSec: TYPICAL_SECONDS[chain],
+    timeEstimateSec: XC_CONFIG[chain].typicalSeconds,
     refundFee: "0",
     withdrawFee: withdrawFee.toString(),
   }
+}
+
+/** A coin's numbers without 1Click: the listed (or reference) price, 25 bps, FLEX at 300 bps. */
+export function computedCoinNumbers(chain: XcChain, asset: XcAsset, usd: bigint, price = asset.refUsd): QuoteNumbers {
+  return offlineCoinNumbers(chain, asset, usd, price)
 }
 
 async function isRegistered(deps: OneClickDeps, account: string): Promise<boolean> {
@@ -167,27 +251,154 @@ function forMember(n: QuoteNumbers, registered: boolean): QuoteNumbers {
   return { ...n, withdrawFee: "0", amountOut: (BigInt(n.amountOut) + fee).toString(), minAmountOut: (BigInt(n.minAmountOut) + fee).toString() }
 }
 
-async function validateQuote(deps: OneClickDeps, s: SessionCtx, body: QuoteBody, mode: Mode): Promise<bigint> {
+/** A quote error's minimum in USD micro (whole dollars, rounded up; a coin's minimum gets 10 % headroom for price moves). */
+function minUsdOf(e: ApiError, asset: XcAsset, price: number): bigint | null {
+  const d = (e.detail ?? {}) as { minimum?: string; minUsd?: string }
+  let usd: bigint | null = null
+  // a dollar swap limit is checked on the value sent (100 USDT = $99.88 was refused for "$100"): 1 % headroom
+  if (d.minUsd) usd = (BigInt(d.minUsd) * 101n) / 100n
+  else if (d.minimum) {
+    const units = BigInt(d.minimum)
+    usd = asset.stable ? (units * 1_000_000n) / 10n ** BigInt(asset.decimals) : (offlineUsdOut(units, asset, price) * 110n) / 100n
+  }
+  if (usd === null) return null
+  return ((usd + 999_999n) / 1_000_000n) * 1_000_000n
+}
+
+/** Remember a refusal for 10 min (availability.ts) and answer it in USD (`minimum` = USD micro for the UI). */
+function noteQuoteError(chain: XcChain, asset: XcAsset, e: unknown, now: number, price: number): unknown {
+  if (!(e instanceof ApiError)) return e
+  // a quote whose signature doesn't verify is never used for real money: that coin waits 10 min like a paused one
+  if (e.reason === "quote_failed" && (e.detail as { cause?: string } | undefined)?.cause === "signature") {
+    noteUnavailable(chain, asset.coin, { kind: "paused" }, now)
+    return e
+  }
+  if (e.reason === "chain_paused") {
+    noteUnavailable(chain, asset.coin, { kind: "paused", ...((e.detail as { why?: string })?.why === "unsupported" ? { why: "unsupported" as const } : {}) }, now)
+    return e
+  }
+  if (e.reason === "amount_too_low") {
+    const minUsd = minUsdOf(e, asset, price)
+    if (minUsd === null) return e
+    noteUnavailable(chain, asset.coin, { kind: "min", minUsd }, now)
+    return new ApiError("amount_too_low", { detail: { minimum: minUsd.toString() } })
+  }
+  return e
+}
+
+interface Priced {
+  numbers: QuoteNumbers
+  correlationId?: string
+  /** the FLEX quote itself (real mode keeps it whole: signature, deposit address) */
+  quote?: QuoteResponse
+}
+
+/**
+ * The numbers for adding `usd` with `coin` on `chain` (kb "Any coin"):
+ *  - stablecoins: one FLEX_INPUT quote (100 bps) for the same dollar amount;
+ *  - other coins: a dry EXACT_OUTPUT probe for `usd` → its minAmountIn rounded up to 4 significant digits → the FLEX_INPUT
+ *    quote (300 bps) for that coin amount, whose amountOut ≈ `usd` (a rounding surplus becomes Pot dollars).
+ * `dry: false` only in real mode (the FLEX quote then carries the deposit address).
+ */
+async function priceWith(
+  deps: OneClickDeps,
+  o: { chain: XcChain; asset: XcAsset; usd: bigint; recipient: string; dry: boolean; now: number; price: number; simulated?: boolean },
+): Promise<Priced> {
+  const { chain, asset, usd, recipient, dry, now } = o
+  // only the simulator's previews may use a dry quote whose signature doesn't verify (client.ts QuoteOptions)
+  const qo = o.simulated && dry ? { unverifiedDryOk: true } : {}
+  try {
+    if (asset.stable) {
+      const q = await deps.oneclick.quote(quoteBody(chain, recipient, stableUnits(usd, asset.decimals), dry, now, asset.coin), qo)
+      return { numbers: numbersOf(q.quote), ...(q.correlationId ? { correlationId: q.correlationId } : {}), quote: q }
+    }
+    const probe = await deps.oneclick.quote(probeBody(chain, asset.coin, recipient, usd, now), qo)
+    const amount = roundUpSig(BigInt(probe.quote.minAmountIn))
+    const q = await deps.oneclick.quote(quoteBody(chain, recipient, amount, dry, now, asset.coin), qo)
+    return { numbers: numbersOf(q.quote), ...(q.correlationId ? { correlationId: q.correlationId } : {}), quote: q }
+  } catch (e) {
+    throw noteQuoteError(chain, asset, e, now, o.price)
+  }
+}
+
+/** Simulated numbers: the live dry quote's when 1Click answers, else the offline formula (paused / too low still refuse). */
+async function simulatedNumbers(deps: OneClickDeps, s: SessionCtx, o: { chain: XcChain; asset: XcAsset; usd: bigint; now: number; price: number }): Promise<Priced> {
+  const priced = await priceWith(deps, { ...o, recipient: DRY_RECIPIENT, dry: true, simulated: true }).catch((e: unknown) => {
+    if (e instanceof ApiError && (e.reason === "chain_paused" || e.reason === "amount_too_low")) throw e
+    return null
+  })
+  if (!priced) return { numbers: o.asset.stable ? computedNumbers(o.chain, stableUnits(o.usd, o.asset.decimals)) : computedCoinNumbers(o.chain, o.asset, o.usd, o.price) }
+  return { ...priced, numbers: forMember(priced.numbers, await isRegistered(deps, s.user.nearAccount)) }
+}
+
+interface Checked {
+  usd: bigint
+  asset: XcAsset
+  price: number
+}
+
+/** The origin checks every quote shares: a curated coin, the minimum, the $500 demo cap, Shield and availability. */
+async function checkOrigin(deps: OneClickDeps, body: { chain: XcChain; coin?: XcCoin; amount: string }, mode: Mode): Promise<Checked> {
+  const coin = body.coin ?? defaultCoin(body.chain)
+  const asset = assetOf(body.chain, coin)
+  if (!asset) throw new ApiError("bad_request", { detail: { field: "coin" } })
+  const usd = BigInt(body.amount)
+  const { chains } = await listChains(deps)
+  const row = chains.find((c) => c.id === body.chain)!
+  const coinRow = row.coins.find((c) => c.coin === coin)!
+  const minimum = BigInt(coinRow.minAmount)
+  if (usd < minimum) throw new ApiError("amount_too_low", { detail: { minimum: minimum.toString() } })
+  if (mode === "simulated" && usd > SIM_MAX) throw new ApiError("amount_too_high", { detail: { maximum: SIM_MAX.toString() } })
+  if (row.status === "paused" || coinRow.status !== "ok") throw new ApiError("chain_paused")
+  const tokens = deps.oneclick.tokens ? await deps.oneclick.tokens().catch(() => null) : null
+  return { usd, asset, price: listedPrice(tokens as TokenInfo[] | null, asset.assetId) ?? asset.refUsd }
+}
+
+async function validateQuote(deps: OneClickDeps, s: SessionCtx, body: QuoteBody, mode: Mode): Promise<Checked> {
   if (!daoSlug(body.pot, deps.cfg.hubId)) throw new ApiError("bad_request", { detail: { field: "pot" } })
-  const amount = BigInt(body.amount)
-  if (amount < MIN_AMOUNT[body.chain] || amount < 1_000_000n)
-    throw new ApiError("amount_too_low", { detail: { minimum: (MIN_AMOUNT[body.chain] > 1_000_000n ? MIN_AMOUNT[body.chain] : 1_000_000n).toString() } })
-  if (mode === "simulated" && amount > SIM_MAX) throw new ApiError("amount_too_high", { detail: { maximum: SIM_MAX.toString() } })
+  const checked = await checkOrigin(deps, body, mode)
   const potRow = await ensurePot(deps.db, deps.hub, deps.cfg, body.pot)
   if (potRow.status !== "open") {
     const v = await deps.hub.getPot(body.pot, { fresh: true }).catch(() => null)
     if (!v || v.status !== "open") throw new ApiError("pot_closed")
   }
   if (!(await isMember(deps.hub, body.pot, s.user.nearAccount))) throw new ApiError("not_a_member")
-  const { chains } = await listChains(deps)
-  if (chains.find((c) => c.id === body.chain)?.status === "paused") throw new ApiError("chain_paused")
-  return amount
+  return checked
+}
+
+const originOfAsset = (a: XcAsset): OriginInfo => ({ coin: a.coin, decimals: a.decimals, stable: a.stable, assetId: a.assetId })
+
+/** The coin part of a quote answer. */
+const coinFields = (a: XcAsset, usd: bigint) => ({ coin: a.coin, decimals: a.decimals, stable: a.stable, usdTarget: usd.toString(), slippageBps: slippageFor(a) })
+
+/**
+ * A dry quote for the coin step (the live "Send about 0.008638 ETH → about $20.00 arrives"), for members and for
+ * people paying in from outside alike: no Pot, no row, charged to the person's daily dry-quote quota.
+ */
+export async function priceQuote(deps: OneClickDeps, s: SessionCtx, body: PriceBody): Promise<Record<string, unknown>> {
+  const mode = oneclickMode(deps.cfg)
+  const now = deps.now?.() ?? Date.now()
+  const c = await checkOrigin(deps, body, mode)
+  await charge(deps.db, [{ subject: subjectOf(s), action: "xc_dry", amount: 1n, limit: xcLimit("xc_dry") }])
+  const priced =
+    mode === "real"
+      ? await priceWith(deps, { chain: body.chain, asset: c.asset, usd: c.usd, recipient: s.user.nearAccount, dry: true, now, price: c.price })
+      : await simulatedNumbers(deps, s, { chain: body.chain, asset: c.asset, usd: c.usd, now, price: c.price })
+  return {
+    mode,
+    chain: body.chain,
+    ...coinFields(c.asset, c.usd),
+    quote: priced.numbers,
+    quotedAt: new Date(now).toISOString(),
+    ...(priced.correlationId ? { correlationId: priced.correlationId } : {}),
+  }
 }
 
 export async function createQuote(deps: OneClickDeps, s: SessionCtx, body: QuoteBody): Promise<Record<string, unknown>> {
   const { db, cfg } = deps
   const mode = oneclickMode(cfg)
   const now = deps.now?.() ?? Date.now()
+  const coin = body.coin ?? defaultCoin(body.chain)
 
   // a non-dry retry with the same key returns the stored intent (before any check that could have changed)
   if (!body.dry) {
@@ -195,27 +406,21 @@ export async function createQuote(deps: OneClickDeps, s: SessionCtx, body: Quote
       await db.select().from(depositIntent).where(and(eq(depositIntent.userId, s.user.id), eq(depositIntent.idempotencyKey, body.idempotencyKey))).limit(1)
     )[0]
     if (prior) {
-      if (prior.potId !== body.pot || prior.chain !== body.chain || prior.amountIn !== body.amount) throw new ApiError("idempotency_conflict")
+      if (prior.potId !== body.pot || prior.chain !== body.chain || originOf(prior).coin !== coin || usdTargetOf(prior) !== body.amount)
+        throw new ApiError("idempotency_conflict")
       return { ...quoteResponse(prior, cfg), replayed: true }
     }
   }
 
-  const amount = await validateQuote(deps, s, body, mode)
+  const c = await validateQuote(deps, s, body, mode)
 
   if (body.dry) {
     await charge(db, [{ subject: subjectOf(s), action: "xc_dry", amount: 1n, limit: xcLimit("xc_dry") }])
-    const recipient = mode === "real" ? s.user.nearAccount : DRY_RECIPIENT
-    if (mode === "real") {
-      const q = await deps.oneclick.quote(quoteBody(body.chain, recipient, amount, true, now))
-      return { mode, quote: numbersOf(q.quote), correlationId: q.correlationId }
-    }
-    // simulated: the live dry quote's numbers (fees, out amount) when 1Click answers, else the FLEX formula
-    const q = await deps.oneclick.quote(quoteBody(body.chain, recipient, amount, true, now)).catch((e: unknown) => {
-      if (e instanceof ApiError && (e.reason === "chain_paused" || e.reason === "amount_too_low")) throw e
-      return null
-    })
-    const numbers = q ? forMember(numbersOf(q.quote), await isRegistered(deps, s.user.nearAccount)) : computedNumbers(body.chain, amount)
-    return { mode, quote: numbers, ...(q?.correlationId ? { correlationId: q.correlationId } : {}) }
+    const priced =
+      mode === "real"
+        ? await priceWith(deps, { chain: body.chain, asset: c.asset, usd: c.usd, recipient: s.user.nearAccount, dry: true, now, price: c.price })
+        : await simulatedNumbers(deps, s, { chain: body.chain, asset: c.asset, usd: c.usd, now, price: c.price })
+    return { mode, ...coinFields(c.asset, c.usd), quote: priced.numbers, ...(priced.correlationId ? { correlationId: priced.correlationId } : {}) }
   }
 
   // non-dry: quotas (20 quotes/day, ≤ 5 open intents)
@@ -228,6 +433,7 @@ export async function createQuote(deps: OneClickDeps, s: SessionCtx, body: Quote
   await charge(db, [{ subject: subjectOf(s), action: "xc_quotes", amount: 1n, limit: xcLimit("xc_quotes") }])
 
   const id = `dp_${ulid().toLowerCase()}`
+  const origin = originOfAsset(c.asset)
   let numbers: QuoteNumbers
   let depositAddress: string
   let depositMemo: string | null = null
@@ -236,21 +442,23 @@ export async function createQuote(deps: OneClickDeps, s: SessionCtx, body: Quote
   let quoteJson: Record<string, unknown>
   let deadline = new Date(now + DEADLINE_MS)
   if (mode === "real") {
-    const q = await deps.oneclick.quote(quoteBody(body.chain, s.user.nearAccount, amount, false, now))
+    // the member's own NEAR account receives (named accounts must exist: they do, the member is signed in)
+    const priced = await priceWith(deps, { chain: body.chain, asset: c.asset, usd: c.usd, recipient: s.user.nearAccount, dry: false, now, price: c.price })
+    const q = priced.quote!
     if (!q.quote.depositAddress) throw new ApiError("quote_failed", { detail: { cause: "no_address", correlationId: q.correlationId ?? null } })
-    numbers = numbersOf(q.quote)
+    numbers = priced.numbers
     depositAddress = q.quote.depositAddress
     depositMemo = q.quote.depositMemo ?? null
     correlationId = q.correlationId ?? null
     signature = q.signature
-    quoteJson = q as unknown as Record<string, unknown>
+    quoteJson = { ...(q as unknown as Record<string, unknown>), origin, usdTarget: c.usd.toString() }
     deadline = new Date(String(q.quoteRequest.deadline ?? deadline.toISOString()))
   } else {
-    const dry = await deps.oneclick.quote(quoteBody(body.chain, DRY_RECIPIENT, amount, true, now)).catch(() => null)
-    numbers = dry ? forMember(numbersOf(dry.quote), await isRegistered(deps, s.user.nearAccount)) : computedNumbers(body.chain, amount)
+    const priced = await simulatedNumbers(deps, s, { chain: body.chain, asset: c.asset, usd: c.usd, now, price: c.price })
+    numbers = priced.numbers
     depositAddress = `SIMULATED-${body.chain}-${Buffer.from(random(4)).toString("hex")}`
-    correlationId = dry?.correlationId ?? null
-    quoteJson = { simulated: true, numbers, dryCorrelationId: correlationId, __sim: null }
+    correlationId = priced.correlationId ?? null
+    quoteJson = { simulated: true, numbers, dryCorrelationId: correlationId, origin, usdTarget: c.usd.toString(), __sim: null }
   }
   const [row] = await db
     .insert(depositIntent)
@@ -262,7 +470,7 @@ export async function createQuote(deps: OneClickDeps, s: SessionCtx, body: Quote
       mode,
       chain: body.chain,
       recipient: s.user.nearAccount,
-      amountIn: amount.toString(),
+      amountIn: numbers.amountIn,
       minAmountIn: numbers.minAmountIn,
       amountOutQuoted: numbers.amountOut,
       depositAddress,
@@ -294,11 +502,37 @@ function quoteNumbersOf(row: Row): QuoteNumbers {
   return computedNumbers(row.chain, BigInt(row.amountIn))
 }
 
+/** The coin of a deposit (rows from before any-coin are USDC). */
+export function originOf(row: Pick<Row, "quote" | "chain">): OriginInfo {
+  const o = (row.quote as { origin?: OriginInfo } | null)?.origin
+  if (o && o.coin) return o
+  const a = assetOf(row.chain, "USDC")
+  return { coin: "USDC", decimals: 6, stable: true, assetId: a?.assetId ?? "" }
+}
+
+/** The dollars the person asked to add (rows from before any-coin: the USDC amount). */
+export function usdTargetOf(row: Pick<Row, "quote" | "amountIn">): string {
+  return (row.quote as { usdTarget?: string } | null)?.usdTarget ?? row.amountIn
+}
+
+/** USD micro for `units` of this deposit's coin, at the quote's own rate (rounded up: caps and quotas). */
+function usdOfUnits(row: Row, units: bigint): bigint {
+  const quoted = BigInt(row.amountIn)
+  const usd = BigInt(usdTargetOf(row))
+  if (quoted <= 0n || usd === quoted) return units
+  return (units * usd + quoted - 1n) / quoted
+}
+
 function quoteResponse(row: Row, _cfg: Config): Record<string, unknown> {
   void _cfg
+  const o = originOf(row)
   return {
     mode: row.mode,
     depositIntentId: row.id,
+    coin: o.coin,
+    decimals: o.decimals,
+    stable: o.stable,
+    usdTarget: usdTargetOf(row),
     quote: quoteNumbersOf(row),
     depositAddress: row.depositAddress,
     ...(row.depositMemo ? { depositMemo: row.depositMemo } : {}),
@@ -346,8 +580,9 @@ export async function simulate(deps: OneClickDeps, s: SessionCtx, body: Simulate
     throw new ApiError("bad_request", { detail: { field: "depositIntentId", why: "not_pending" } })
 
   // a partial deposit can be topped up while INCOMPLETE, with what is still missing; a second tap while the
-  // first top-up is still on its way answers like the first one (2026-11-02: it was `amount_too_high`)
-  const cap = quoted < SIM_MAX ? quoted : SIM_MAX
+  // first top-up is still on its way answers like the first one (2026-11-02: it was `amount_too_high`).
+  // Amounts are the coin's base units; never more than the quote (which is ≤ $500, checked at quote time).
+  const cap = quoted
   const plan = planSimSend(
     prev,
     {
@@ -370,12 +605,14 @@ export async function simulate(deps: OneClickDeps, s: SessionCtx, body: Simulate
   const amount = plan.amount
   if (scenario !== "expired" && amount === 0n) throw new ApiError("bad_request", { detail: { field: "amount" } })
 
-  // rev4 H-3: ≤ $500 per person per UTC day, inside the global faucet cap
-  if (amount > 0n)
+  // rev4 H-3: ≤ $500 per person per UTC day, inside the global faucet cap (in dollars, at the quote's rate)
+  if (amount > 0n) {
+    const usd = usdOfUnits(row, amount)
     await charge(db, [
-      { subject: subjectOf(s), action: "xc_sim_usd", amount, limit: xcLimit("xc_sim_usd") },
-      { subject: "global", action: "faucet_usd", amount, limit: limit("global_faucet_usd") },
+      { subject: subjectOf(s), action: "xc_sim_usd", amount: usd, limit: xcLimit("xc_sim_usd") },
+      { subject: "global", action: "faucet_usd", amount: usd, limit: limit("global_faucet_usd") },
     ])
+  }
 
   const next: SimState & { keys: string[] } = {
     scenario,
@@ -425,6 +662,7 @@ async function refresh(deps: OneClickDeps, row: Row, now: number): Promise<Row> 
         chain: row.chain,
         required: BigInt(row.minAmountIn ?? row.amountIn),
         quoted: BigInt(row.amountIn),
+        quotedOut: BigInt(row.amountOutQuoted ?? q.amountOut),
         deadlineMs: row.deadline.getTime(),
         withdrawFee: BigInt(q.withdrawFee ?? "0"),
         createdAt: row.createdAt.getTime(),
@@ -508,6 +746,7 @@ export async function deliver(deps: OneClickDeps, id: string): Promise<void> {
       chain: row.chain,
       required: BigInt(row.minAmountIn ?? row.amountIn),
       quoted: BigInt(row.amountIn),
+      quotedOut: BigInt(row.amountOutQuoted ?? q.amountOut),
       deadlineMs: row.deadline.getTime(),
       withdrawFee: BigInt(q.withdrawFee ?? "0"),
       createdAt: row.createdAt.getTime(),
@@ -623,11 +862,16 @@ export function statusBody(row: Row, cfg: Config): Record<string, unknown> {
       : row.destinationTxHash
         ? `${cfg.explorerUrl}/txns/${row.destinationTxHash}`
         : undefined
+  const o = originOf(row)
   return {
     mode: row.mode,
     id: row.id,
     pot: row.potId,
     chain: row.chain,
+    coin: o.coin,
+    decimals: o.decimals,
+    stable: o.stable,
+    usdTarget: usdTargetOf(row),
     status: row.status,
     step: stepOf(row.status, reached),
     amountIn: row.amountIn,

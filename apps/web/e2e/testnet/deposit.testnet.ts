@@ -59,9 +59,12 @@ test("simulate a deposit → it arrives on chain → one tap adds it to the Pot 
     // step 1: $150 (any prefill cleared) → [Next]; step 2: another app → [Continue]
     for (let i = 0; i < 6; i++) await add.getByRole("button", { name: "delete", exact: true }).click()
     await addFlow(page, { amount: "150", source: "Another app or exchange", submit: "Continue" })
-    const sheet = page.getByRole("dialog", { name: "Add from another wallet or exchange" })
+    const sheet = page.getByRole("dialog", { name: "Add from another app or exchange" })
     await expect(sheet).toBeVisible()
-    await sheet.getByRole("radio", { name: /Base/ }).click()
+    await sheet.getByRole("radio", { name: /^Base/ }).click()
+    // any coin (2026-11-04): network → [Continue] → coin (USDC) → [Get address]
+    await sheet.getByRole("button", { name: "Continue", exact: true }).click()
+    await sheet.getByRole("radio", { name: /^USDC/ }).click()
     await sheet.getByRole("button", { name: "Get address" }).click()
     await expect(sheet.locator("[data-qr]")).toHaveAttribute("data-qr-text", "POT TESTNET DEMO - DO NOT SEND FUNDS", { timeout: 20_000 })
     await expect(sheet.getByText("Testnet demo: simulated transfer, no real money")).toBeVisible()

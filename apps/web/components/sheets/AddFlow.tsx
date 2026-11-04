@@ -1,6 +1,7 @@
 "use client"
 // The Add money flow (ux-spec §4.7-4.8): the Add sheet in two steps ("How much?" → "How do you want to add it?",
-// &step=source) and, for "Another app or exchange" + [Continue], the deposit sheet (network → address + QR → progress). The step is URL state, one history entry
+// &step=source) and, for "Another app or exchange" + [Continue], the deposit sheet (network → coin → address + QR →
+// progress). The step is URL state, one history entry
 // per step, so [Back] in the sheet and the browser's Back both go one step back with the amount and the network
 // kept (lib/client/machines/add-flow.ts holds them). Once money is on its way there is no Back: a browser Back
 // closes the flow, like ✕ ("You can close this screen").
@@ -10,11 +11,14 @@ import { DepositSheet, depositAmount } from "@/components/features/deposit/Depos
 import { addFlowReducer, initialAddFlow, previousParams, urlStep, type AddStep } from "@/lib/client/machines/add-flow"
 import type { PotVM } from "@/lib/client/mock/types"
 import { closeSheet, sheetStepBack, useSheetParams } from "@/lib/client/sheet"
+import { isXcChain } from "@/server/features/oneclick/origins"
 
 export function AddFlow({ pot, actor }: { pot: PotVM; actor: string }) {
   const { sheet, amount, params } = useSheetParams()
   const depositId = params.get("d")
-  const step = urlStep({ sheet, src: params.get("src"), d: depositId })
+  const netParam = params.get("net")
+  const net = isXcChain(netParam) ? netParam : null
+  const step = urlStep({ sheet, src: params.get("src"), d: depositId, net })
   const [flow, dispatch] = useReducer(addFlowReducer, step, (s) => ({ ...initialAddFlow, step: s }))
   // the URL is the step: keep the reducer in line with it (Back, the browser's Back, a step forward, a deep link)
   const [seen, setSeen] = useState(step)
@@ -47,13 +51,16 @@ export function AddFlow({ pot, actor }: { pot: PotVM; actor: string }) {
       />
       <DepositSheet
         pot={pot}
-        open={(step === "network" || step === "address") && !flow.closing}
+        open={(step === "network" || step === "coin" || step === "address") && !flow.closing}
         depositId={depositId}
+        net={net}
         amount={depositAmount(pot, amount)}
         actor={actor}
         step={flow.step}
         chain={flow.chain}
+        coin={flow.coin}
         onChain={(value) => dispatch({ type: "CHAIN", value })}
+        onCoin={(value) => dispatch({ type: "COIN", value })}
         onTracking={() => dispatch({ type: "TRACKING" })}
         onBack={back}
         onNewAddress={() => {
