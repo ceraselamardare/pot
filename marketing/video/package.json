@@ -1,5 +1,6 @@
 {
   "name": "pot-video",
+  "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",
   "description": "Pot hackathon demo video (Remotion). Standalone npm project, not part of the pnpm workspace.",

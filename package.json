@@ -1,5 +1,6 @@
 {
   "name": "pot",
+  "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.1.0",

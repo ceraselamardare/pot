@@ -1,5 +1,6 @@
 {
   "name": "@pot/sdk",
+  "license": "AGPL-3.0-only",
   "version": "0.1.0",
   "private": true,
   "description": "Typed client for the Pot hub, the Pot DAOs and the test USDC token: views, action builders, math. Source-only TypeScript (no build step).",

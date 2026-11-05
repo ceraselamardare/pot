@@ -3,7 +3,7 @@
 Pot moves group money, so this page states plainly what protects it, what we trust, and what is still open.
 It is **testnet software**: test dollars, test NEAR, and a hub contract that is still upgradeable on purpose.
 
-- Full audit (six reviewers, 2026-11-04): [notes/security-audit-2026-11-04.md](notes/security-audit-2026-11-04.md).
+- Full audit: [notes/security-audit-2026-11-04.md](notes/security-audit-2026-11-04.md).
 - What we fixed afterwards, and how each fix is tested: [Fixes since the audit](#fixes-since-the-audit) below.
 - Reporting a problem: open a GitHub issue without exploit details and ask for a private channel. If you are
   reporting a public pay-in page, use the "Report this page" link on that page.
@@ -12,7 +12,7 @@ It is **testnet software**: test dollars, test NEAR, and a hub contract that is 
 
 | Party | What it can do | What stops it doing more |
 |---|---|---|
-| **Pot members (a majority)** | Approve any spend that goes to a vote, change the rules, close the Pot | Since hub 1.3.0, members can only vote on proposals the hub files. They cannot file raw DAO proposals (transfers, policy changes, new members, code calls). Every money move therefore appears in the app, where everyone can see it and vote on it. |
+| **Pot members (a majority)** | Approve any spend that goes to a vote, change the rules, close the Pot | In new Pots (policy v3), members can only vote on proposals the hub files. They cannot file raw DAO proposals (transfers, policy changes, new members, code calls). Every money move therefore appears in the app, where everyone can see it and vote on it. |
 | **One member** | Spend within the rules on their own: instant spends up to the cap and the member budget. With one OK from someone else, a bigger spend up to the one-OK ceiling. | The hub checks every rule on chain. An instant or one-OK spend needs the requester to have added at least $1. The person giving the OK must be someone else who joined before the request and has also added at least $1, and must not be the one receiving the money. Each member's one-OK spending has a lifetime cap. |
 | **The Pot Hub (`pots.<root>`)** | Holds the 1-of-1 "rulebot" seat in every Pot, so it files and auto-approves the spends the rules allow | Its code is public and its decisions are tested (unit, property, sandbox tests). **Testnet stage:** the hub still has an owner key and can be redeployed, and Pots accept code updates from it. This is deliberate while we iterate; the plan is to lock the hub (delete its keys) before any real money. |
 | **Our relayer (server)** | Pays gas for the actions people sign | It is not trusted with money. It can only forward one allowlisted function call per signed delegate, to the hub, the token or a Pot. Deposits and gas are exact. Arguments are checked key by key. It can't make up an action, because people sign every action in their own browser. |
@@ -26,10 +26,10 @@ It is **testnet software**: test dollars, test NEAR, and a hub contract that is 
 - **No credit before the money arrives.** Contributions and gifts are recorded only in the callback after the
   token transfer to the Pot has succeeded. Every callback is `#[private]`.
 - **A close isn't done until the money has left.** Sputnik reports a close as `Approved` before its payout settles.
-  Since 1.3.0 the hub keeps the Pot "settling" until the Pot's balance shows the money has gone out. A failed payout
+  The hub keeps the Pot "settling" until the Pot's balance shows the money has gone out. A failed payout
   stays retryable and is never shown as refunded.
 - **Two rounds of review.** The six-reviewer audit and then an independent review of the fixes themselves, whose
-  findings are fixed too. Contract suite: 183 tests (unit, token and sandbox tests on two Sputnik builds).
+  findings are fixed too. The contracts have unit, token and sandbox tests, run on two Sputnik builds.
 - **Pro-rata math** is overflow-safe and the shares add up exactly.
 - **Sign-in:** NEAR Auth tokens are checked for issuer, audience, nonce and device binding. Wallet sign-in
   signatures must be addressed to this deployment's own host. Sessions are `__Host-` HttpOnly cookies, stored
@@ -45,7 +45,7 @@ It is **testnet software**: test dollars, test NEAR, and a hub contract that is 
 | W4-1, HUB-2 | Two fake accounts could loop one-OK spends; a $0.000001 contribution unlocked instant spends | $1 stake; the OK-giver rules above; a lifetime one-OK allowance per member, checked again at OK time | `t_security::w4_1_hub_2_one_ok_sybils`, `unit_security::w4_1_*`, `hub_2_*` |
 | HUB-4, HUB-6 | A close counted as done on Sputnik's provisional `Approved`; an old failed close could be finalized later | "Settling" until the money has left; only the hub retries, and only the Pot's current close | `t_close` T-92, `unit_security::hub_4_*`, `hub_6_*` |
 | W4-5, W4-8 | Unfunded links blocked the close; tiny links farmed the hub's NEAR | Only links that hold or may be moving money block the close; $1 minimum per link | `t_security::w4_5_w4_8_links_and_the_close` |
-| Review M-1, M-2, L-1, L-2, L-5 (second, independent review of the 1.3.0 diff) | Link money in transit at close time could be left out of the split; money sent straight to a Pot after its payout could keep it "settling"; edge cases around re-OKs, rules changes and failed close attempts | Approved-but-unfunded links block the close; a close is confirmed once the money has left or after 10 blocks; a new `propose_sweep` pays out leftovers in a closed Pot (members approve it); the OK is re-checked in the callback | `unit_security::m_1_*`, `m_2_*`, `l_1_*`, `l_2_*`, `l_5_*`; `t_security::m_2_sweep_after_close` |
+| Review M-1, M-2, L-1, L-2, L-5 (second, independent review of the fixes) | Link money in transit at close time could be left out of the split; money sent straight to a Pot after its payout could keep it "settling"; edge cases around re-OKs, rules changes and failed close attempts | Approved-but-unfunded links block the close; a close is confirmed once the money has left or after 10 blocks; a new `propose_sweep` pays out leftovers in a closed Pot (members approve it); the OK is re-checked in the callback | `unit_security::m_1_*`, `m_2_*`, `l_1_*`, `l_2_*`, `l_5_*`; `t_security::m_2_sweep_after_close` |
 | CLI-1, APP-5 | No script restrictions | CSP with no `unsafe-eval` and a `connect-src` allowlist (`apps/web/lib/security/csp.ts`) | `e2e/mock/csp.spec.ts` (0 violations across every page and the wallet picker) |
 | CLI-3 | The vote screen didn't show who gets the money | A "Goes to" block, a "Not in this Pot" badge, and duplicate names told apart | `e2e/mock/security.spec.ts` |
 | CLI-4 | Public pay pages could pass as official | "Made by people who use Pot" notice, Report link, reserved names enforced on the server | `e2e/mock/security.spec.ts`, `reserved-names.test.ts` |
@@ -60,7 +60,7 @@ It is **testnet software**: test dollars, test NEAR, and a hub contract that is 
   - The hub's owner key can redeploy the hub, and Pots accept the hub's code updates. Before mainnet: lock the hub,
     turn off DAO auto-update, keep custody keys off developer machines, and give each environment its own
     low-balance relayer. (GOV-1, GOV-5, GOV-6, GOV-8)
-  - **Pots created before hub 1.3.0** keep their old policy: there, members can still file raw DAO proposals.
+  - **Older Pots (policy v1/v2)** keep their old policy: there, members can still file raw DAO proposals.
 - **Invites are trust.** An invite link is a bearer pass that expires after 7 days and 10 joins by default, and a
   Pot holds at most 40 members.
   - Whoever gathers a majority of members can approve a group-vote spend. The vote now happens in the app, where

@@ -15,7 +15,7 @@ closes everyone gets back their share of what is left, split by what they put in
 - Split-the-bill apps track debts but hold no money, so nobody can actually pay from the group.
 
 **Live:** https://usepot.xyz, on NEAR **testnet** with test dollars ("USDC (test)", no value). Nothing is on mainnet
-yet. The contracts are under `potprev.testnet`; the Pot Hub `pots.potprev.testnet` runs **v1.3.0**.
+yet. The contracts are under `potprev.testnet`; the Pot Hub is `pots.potprev.testnet` (`get_config` shows its version).
 
 **Where NEAR does the work:** each Pot is a Sputnik DAO that holds the money; our Pot Hub contract holds a 1-of-1
 "rulebot" seat in it and approves only what the Pot's rules allow; every action is a gasless NEP-366 meta
@@ -92,10 +92,10 @@ near account list-keys $POT network-config testnet now
 near account list-keys $HUB network-config testnet now
 ```
 
-What you see (checked on 2026-10-22; `scripts/readme-cli-check.sh` runs exactly these and asserts the values):
+What you see (`scripts/readme-cli-check.sh` runs exactly these and asserts the values):
 - `get_policy`: a Sputnik DAO with two roles. `member` (Maya, Sam, Leo; majority, `threshold [1, 2]`) and `rulebot`
   (only `pots.potprev.testnet`, which may add and approve transfers and member additions, 1 of 1). `proposal_bond`
-  is `"0"` and `quorum` is `"1"`. This Pot was created by hub 1.0.0. A Pot created since hub 1.3.0 shows policy v3:
+  is `"0"` and `quorum` is `"1"`. This is an early Pot. A Pot created now shows policy v3:
   the `member` role has only `*:VoteApprove` and `*:VoteReject` (members vote; only the hub files proposals), and
   `get_pot` shows `policy_version: 3`.
 - `get_pot`: "Lisbon Trip", `status: "open"`, `member_count: 3`, `total_contributed: "450000000"`, rules
@@ -175,7 +175,7 @@ Code map (pnpm workspace):
 
 | Path | What |
 |---|---|
-| `contracts/pot-hub` | the Pot Hub contract (Rust, near-sdk 5.29.1) |
+| `contracts/pot-hub` | the Pot Hub contract (Rust, near-sdk) |
 | `contracts/test-usdc` | "USDC (test)", a vendored NEP-141 token (6 decimals) |
 | `contracts/tests` | sandbox tests on two Sputnik builds (near-workspaces 0.23) |
 | `packages/pot-sdk` | `@pot/sdk`: views, money math, intents, delegate signing, mocks |
@@ -186,22 +186,22 @@ Code map (pnpm workspace):
 
 | NEAR feature | How Pot uses it | Where | Check it |
 |---|---|---|---|
-| **Sputnik DAO v2** | Every Pot is its own DAO that holds the money. Policy: a `member` role (majority) and a `rulebot` role held only by the Pot Hub (1 of 1). Since hub 1.3.0 (policy v3) members can only vote; every proposal is filed by the hub, so every money move goes through the Pot's rules and shows in the app | `contracts/pot-hub/src/policy.rs` | J-7 `get_policy` |
+| **Sputnik DAO v2** | Every Pot is its own DAO that holds the money. Policy: a `member` role (majority) and a `rulebot` role held only by the Pot Hub (1 of 1). In new Pots (policy v3) members can only vote; every proposal is filed by the hub, so every money move goes through the Pot's rules and shows in the app | `contracts/pot-hub/src/policy.rs` | J-7 `get_policy` |
 | **Global contracts** (NEP-591) | Each DAO is created with `UseGlobalContract` by the hash of the official Sputnik code (0.0121 NEAR per Pot, against about 5.4 NEAR through the old Sputnik factory) | `create_pot` in `contracts/pot-hub/src/lib.rs` | J-7 `view-account-summary` |
 | **Named sub-accounts + locked accounts** | A Pot is `<slug>.pots.potprev.testnet`, a person `u-<8>.users.potprev.testnet`. Pots and the token have **no access keys**: only their code can move money | `lib.rs` (create), `server/features/wallet`, `server/session` | J-7 `list-keys` |
-| **Cross-contract calls and callbacks** | The hub files and approves DAO proposals, forwards money, reads DAO state, and records anything only in `#[private]` callbacks after the call succeeded | `lib.rs`, `wave4.rs`, `security.rs` | `cargo test` (183 tests) |
+| **Cross-contract calls and callbacks** | The hub files and approves DAO proposals, forwards money, reads DAO state, and records anything only in `#[private]` callbacks after the call succeeded | `lib.rs`, `wave4.rs`, `security.rs` | `cargo test` (unit and sandbox tests) |
 | **NEP-141 / NEP-145 token** | Dollars are a 6-decimal USDC-style token. Money comes in with `ft_transfer_call` → the hub's `ft_on_transfer` (only from that token) and is forwarded to the Pot | `contracts/test-usdc`, `ft_on_transfer` in `lib.rs` | J-7 `ft_balance_of` |
 | **NEP-366 meta transactions** | People hold 0 NEAR. They sign delegate actions in the browser; our relayer checks a per-method allowlist (receiver, method, exact args, deposit, gas), per-person and per-IP quotas, then pays gas and deposits | `apps/web/server/relay/` | relayer tests: `pnpm test` |
 | **NEP-448 zero-balance accounts** | New accounts cost ≈ 0.0085 NEAR in total, paid by the relayer | `server/features/wallet`, `registration.ts` | [Costs](#costs-and-sustainability) |
 | **NEAR Auth (MPC)** | "Continue with Google": Auth0 login, the account's key derived by NEAR's MPC network, then a device key so each action doesn't need a popup | `apps/web/lib/signing/near-auth/`, `server/session/` | works on `localhost:3000` only (see Limitations) |
 | **NEAR Connect + NEP-413** | "I have a NEAR wallet": wallet picker, sign-in by a signed message bound to this site's host (no transaction) | `apps/web/lib/signing/near-connect/` | J-9 |
-| **NEAR Intents (1Click API)** | "Add from another app or exchange": 15 networks and any coin, with **real live quotes** from 1Click (`FLEX_INPUT`); on testnet the transfer itself is simulated and labeled "Test" | `apps/web/server/features/oneclick/` | Add money → "Another app or exchange" |
+| **NEAR Intents (1Click API)** | "Add from another app or exchange": many networks and coins, with **real live quotes** from 1Click (`FLEX_INPUT`); on testnet the transfer itself is simulated and labeled "Test" | `apps/web/server/features/oneclick/` | Add money → "Another app or exchange" |
 | **NEAR AI Cloud** | "Scan receipt": a model running in a TEE reads the photo; the reply's signature is checked against our exact request and linked to NEAR's Verification Center. A SHA-256 fingerprint of the saved receipt goes on chain in the spend's `request_ref` | `apps/web/server/features/receipts/` | Spend → "Scan receipt" |
 | **NEP-297 events** | Every hub action emits a `pot` event the app reads for its feed | `contracts/pot-hub/src/events.rs` | any tx on nearblocks |
 | **`env::ed25519_verify`** | Invite links and pay-by-link claims are ed25519 signatures checked on chain (domain-separated; a claim is bound to the account that receives it) | `lib.rs` (join), `wave4.rs` (claim_link) | `cargo test` |
 | **FastNEAR RPC** | All reads, with a dRPC failover | `apps/web/lib/client/config.ts` | — |
 
-### What the Pot Hub enforces (v1.3.0)
+### What the Pot Hub enforces
 
 - **Three ways a spend gets approved:** instantly within the Pot's limits (per spend and per person); with **one
   OK** from another member up to the one-OK limit; otherwise by a majority vote. Instant and one-OK spends need the
@@ -225,7 +225,7 @@ Code map (pnpm workspace):
 | TREZU (social) | not used on testnet: Trezu is mainnet-only. The app's Advanced screen shows the "On-chain rules" panel from `get_policy`, plus explorer links |
 | NAMED ACCOUNTS (social) | readable ids: `<slug>.pots.<root>` for Pots, `u-<8>.users.<root>` for people |
 | STABLECOINS (realworld) | every amount is in dollars, held as a 6-decimal USDC-style token |
-| NEAR INTENTS (realworld) | "Add money from another app or exchange": 15 networks and any coin through the 1Click API (`FLEX_INPUT`), with real live quotes; the transfer is **simulated on testnet** (labeled "Test"); each deposit has a details sheet (coin, rate, timeline) |
+| NEAR INTENTS (realworld) | "Add money from another app or exchange": many networks and coins through the 1Click API (`FLEX_INPUT`), with real live quotes; the transfer is **simulated on testnet** (labeled "Test"); each deposit has a details sheet (coin, rate, timeline) |
 | META TRANSACTIONS (realworld) | every user action is a relayed NEP-366 delegate |
 
 For `realworld`: the Club and Team presets (club dues, a team's offsite budget) use the same contracts with
@@ -266,8 +266,8 @@ daily budgets. Two ways to pay for it without new contracts: a small app fee on 
 - **The 1Click deposit is a simulator on testnet**: a labeled "do not send" address; on success the server sends test
   dollars to the member, who adds them to the Pot with one tap. Real cross-chain deposits need mainnet. Refunds land
   in the member's NEAR Intents balance and getting them out is not built.
-- Pots created since hub 1.3.0: members can only vote on what the hub proposes, so every money move goes through
-  Pot's rules and shows in the app. Pots created earlier still let a majority file any Sputnik proposal. No
+- New Pots (policy v3): members can only vote on what the hub proposes, so every money move goes through
+  Pot's rules and shows in the app. Older Pots (policy v1/v2) still let a majority file any Sputnik proposal. No
   minority can take funds. See [SECURITY.md](SECURITY.md) for the trust model and the audit.
 - Invite links are bearer passes: anyone holding one can join and vote. Links expire after 7 days and 10 joins by
   default, and a new member can't spend without asking before putting money in.
@@ -282,21 +282,21 @@ daily budgets. Two ways to pay for it without new contracts: a small app fee on 
 
 ## Built with
 
-Contracts: Rust 1.93, `near-sdk` 5.29.1, `cargo-near`, `near-workspaces` 0.23 (sandbox tests), the official Sputnik
-DAO v2 code (testnet global contract). App: Next.js 16.4.5, React 19.3, TypeScript 5.9, Tailwind CSS 4.3, Base UI +
-shadcn, TanStack Query, Zod 4, Drizzle ORM on Neon Postgres, Vercel (functions, cron, Workflow). NEAR libraries:
-`near-api-js` 7.3, `@hot-labs/near-connect` 0.11.4, `@auth0/auth0-spa-js` (NEAR Auth), NEAR Intents 1Click API,
-NEAR AI Cloud. Also `web-push`, `qrcode.react`, `lucide-react`, Playwright + axe, Vitest, Remotion (the video).
+Contracts: Rust, `near-sdk`, `cargo-near`, `near-workspaces` (sandbox tests), the official Sputnik DAO v2 code
+(testnet global contract). App: Next.js, React, TypeScript, Tailwind CSS, Base UI + shadcn, TanStack Query, Zod,
+Drizzle ORM on Neon Postgres, Vercel (functions, cron, Workflow). NEAR libraries: `near-api-js`,
+`@hot-labs/near-connect`, `@auth0/auth0-spa-js` (NEAR Auth), NEAR Intents 1Click API, NEAR AI Cloud. Exact versions
+are pinned in `package.json`, `pnpm-lock.yaml`, `contracts/Cargo.toml` and `contracts/rust-toolchain.toml`. Also `web-push`, `qrcode.react`, `lucide-react`, Playwright + axe, Vitest, Remotion (the video).
 Much of the code was written with AI assistance (Claude Code), reviewed and tested by the team.
 
 ## Run it locally
 
-Requirements: Node 22.22, pnpm 11, Docker (Postgres 17), Rust via `contracts/rust-toolchain.toml` (1.93.0) and
-cargo-near 0.22.0 for the contracts.
+Requirements: Node and pnpm (versions in the root `package.json`), Docker (Postgres, `infra/docker-compose.yml`),
+and for the contracts Rust (pinned by `contracts/rust-toolchain.toml`) and `cargo-near`.
 
 ```bash
 pnpm install
-pnpm db:up                                  # Postgres 17 on localhost:54329 (infra/docker-compose.yml)
+pnpm db:up                                  # Postgres on localhost:54329 (infra/docker-compose.yml)
 cp .env.example apps/web/.env.local         # names only; fill in values for a testnet run
 pnpm dev                                    # http://localhost:3000 (mock data unless NEXT_PUBLIC_DATA_SOURCE=testnet)
 ```
@@ -318,6 +318,20 @@ this repository.
 
 The latest full run, with outputs and the bugs it found, is in `notes/qa-report.md`. CI is
 `.github/workflows/ci.yml`.
+
+## License
+
+Copyright (c) 2026 Cerasela Mardare. Open source, in two parts:
+
+| Part | License |
+|---|---|
+| The app, API, relayer and SDK (`apps/`, `packages/`, `scripts/`, everything not listed below) | [AGPL-3.0](LICENSE) |
+| The contracts (`contracts/`) | [MIT](contracts/LICENSE) |
+| Vendored third-party code: the test token (`contracts/test-usdc`) and the Sputnik DAO builds (`contracts/res/sputnik`) | MIT, their own notices |
+| The name "Pot", the logo and the brand assets (`brand/`) | Not licensed; see [TRADEMARKS.md](TRADEMARKS.md) |
+
+The AGPL means anyone may use and change the app, but whoever runs a changed version as a service must publish its
+source. The contracts are MIT so anyone can audit and reuse the code that holds the money.
 
 ## Repository notes
 

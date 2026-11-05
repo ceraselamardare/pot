@@ -1,6 +1,7 @@
 [package]
 name = "pot-tests"
 version = "0.1.0"
+license.workspace = true
 edition = "2021"
 publish = false
 description = "Sandbox tests for pot-hub against both Sputnik builds (A = testnet global 278adc7, B = mainnet v3.2)"
