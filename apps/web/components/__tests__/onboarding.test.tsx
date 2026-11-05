@@ -82,7 +82,7 @@ describe("the intro", { timeout: 20_000 }, () => {
     const d = sheet()
     const rules = d.querySelector("[data-onboarding-rules]")!
     // a new Pot's rules (what Create starts with): the $300 boat trip needs one OK, not 2 of 3
-    expect([...rules.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["Anyone can spend up to $100 without asking.", "Spends up to $300 need just one OK from anyone else."])
+    expect([...rules.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["Anyone can spend up to $100 without asking.", "Spends up to $300 need just one OK from someone else who has added money."])
     const example = d.querySelector("[data-onboarding-example]")!
     expect(example.getAttribute("aria-hidden")).toBe("true")
     expect(example.hasAttribute("inert")).toBe(true)
@@ -134,13 +134,13 @@ describe("the intro", { timeout: 20_000 }, () => {
     const pot = (oneOkCap: bigint) => ({ state: "ready", data: { rules: { instantCap: 100_000_000n }, extras: { trust: true, oneOkCap, links: true }, k: 2, n: 3 } })
     potState.current = pot(300_000_000n)
     let d = sheet()
-    expect([...d.querySelectorAll("[data-onboarding-rules] li")].map((li) => li.textContent)).toEqual(["Anyone can spend up to $100 without asking.", "Spends up to $300 need just one OK from anyone else."])
+    expect([...d.querySelectorAll("[data-onboarding-rules] li")].map((li) => li.textContent)).toEqual(["Anyone can spend up to $100 without asking.", "Spends up to $300 need just one OK from someone else who has added money."])
     expect(d.querySelector("[data-onboarding-example] [data-status='needs']")!.textContent).toBe("Needs one OK")
     cleanup()
     // one OK only up to $150: the $300 boat trip goes to the group
     potState.current = pot(150_000_000n)
     d = sheet()
-    expect(d.querySelector("[data-onboarding-rules]")!.textContent).toContain("Spends up to $150 need just one OK from anyone else.")
+    expect(d.querySelector("[data-onboarding-rules]")!.textContent).toContain("Spends up to $150 need just one OK from someone else who has added money.")
     expect(d.querySelector("[data-onboarding-example] [data-status='needs']")!.textContent).toBe("1 of 2 approvals")
   })
 })

@@ -25,7 +25,7 @@ async function session(page: Page) {
   return ((await r.json()) as { session: { kind: string; accountId: string; displayName: string } | null }).session
 }
 
-test("I have a NEAR wallet → one prompt → a wallet session; USDC registration paid once", async ({ page }) => {
+test("I have a NEAR wallet → one prompt → a wallet session; no USDC registration paid at sign-in (APP-2)", async ({ page }) => {
   const w = newWallet(`alice-${RUN}.testnet`)
   await onChain(w.accountId, [w.pk])
   await useWallet(page, w)
@@ -35,9 +35,10 @@ test("I have a NEAR wallet → one prompt → a wallet session; USDC registratio
   const s = await session(page)
   expect(s).toMatchObject({ kind: "wallet", accountId: w.accountId })
   expect(s!.displayName).toMatch(/^Alice /)
-  await expect
-    .poll(async () => ((await (await fetch(`${FAKE_RPC}/__state?account=${w.accountId}`)).json()) as { registered: boolean }).registered)
-    .toBe(true)
+  // APP-2 (security audit 2026-11-04): registration waits until the account first needs to receive money (create, join,
+  // a spend to itself); a sign-in alone pays nothing, so throwaway accounts can't drain the relayer
+  await page.waitForTimeout(2_000)
+  expect(((await (await fetch(`${FAKE_RPC}/__state?account=${w.accountId}`)).json()) as { registered: boolean }).registered).toBe(false)
 })
 
 test("refused: one of Pot's own accounts, a key that isn't full access; a cancelled wallet is silent", async ({ page }) => {

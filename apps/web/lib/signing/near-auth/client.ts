@@ -12,6 +12,7 @@ import type { Api } from "@pot/sdk"
 import { base64urlnopad } from "@scure/base"
 import { deviceKeys } from "@/lib/client/keys/device-key-store"
 import { api } from "@/lib/client/live/api"
+import { chainRpc } from "@/lib/client/live/chain"
 import { SESSION_KEY } from "@/lib/client/live/session"
 import { queryClient } from "@/lib/client/query"
 import {
@@ -25,6 +26,7 @@ import {
   sessionPopMessage,
   type AuthorizeParams,
 } from "./oidc"
+import { verifyNewAccountKeys } from "./verify-keys"
 
 const PENDING_KEY = "pot.nearauth.pending"
 const HINT_KEY = "pot.nearauth.loginHint"
@@ -166,6 +168,27 @@ async function finishLogin(idToken: string, p: PreparedLogin, displayName?: stri
     ...(displayName ? { displayName } : {}),
   }
   const { data } = await api<Api.SessionCreateRes>("POST", "/api/session", body)
+  // GOV-7 (security audit 2026-11-04): a brand-new account must hold exactly {the MPC key, this device's key}, checked
+  // here on our own RPCs (lib/signing/near-auth/verify-keys.ts). A resumed creation (deviceOnChain false) or a returning
+  // person isn't checked: their account may hold keys from before.
+  if (data.isNew && data.deviceOnChain) {
+    const check = await verifyNewAccountKeys({ accountId: data.accountId, devicePublicKey: p.devicePublicKey, idToken }, chainRpc())
+    if (check.result === "mismatch") {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          what: "GOV-7 account key check failed",
+          unexpected: check.unexpected.length,
+          missing: check.missing.length,
+        }),
+      )
+      // refuse: end the session the server just set, and never let this device's key act for that account
+      await api("DELETE", "/api/session", {}).catch(() => undefined)
+      await keys.clear().catch(() => undefined)
+      prepared = null
+      throw new NearAuthError("account_check")
+    }
+  }
   await keys.promotePending(data.accountId)
   prepared = null
   const qc = queryClient()

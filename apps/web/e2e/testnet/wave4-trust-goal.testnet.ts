@@ -91,7 +91,7 @@ test("trust + one OK: Ben's $180 needs one OK; Ana's OK pays it; 3 paid spends m
   accA = await accountOf(A.request)
   slug = await newPot(A, TRUST_POT, async (s) => {
     await expect(s.getByRole("switch", { name: "Trust grows" })).toHaveAttribute("aria-checked", "true")
-    await expect(s.getByRole("textbox", { name: "Spends up to this much need just one OK from anyone else" })).toHaveValue("300")
+    await expect(s.getByRole("textbox", { name: "Spends up to this much need just one OK from someone else who has added money" })).toHaveValue("300")
   })
   console.log(`[wave4] trust Pot ${dao(slug)}`)
   const pv = await eventually(() => chain.hub.getPot(dao(slug)), (v) => !!v.value)
@@ -119,7 +119,7 @@ test("trust + one OK: Ben's $180 needs one OK; Ana's OK pays it; 3 paid spends m
   const prev = await chain.hub.previewSpend(dao(slug), accB as never, usd(180), accB as never, usd(300))
   expect(prev.value).toMatchObject({ path: "vote", tier: "one_ok", effectiveCap: usd(100), trustLevel: 0, oneOkCap: usd(300) })
   await B.goto(`/p/${slug}`)
-  await spend(B, TRUST_POT, "180", /A place to stay|Stay/, "Ask for one OK", "One OK from anyone else in the group and it's paid.")
+  await spend(B, TRUST_POT, "180", /A place to stay|Stay/, "Ask for one OK", "One OK from someone else who has added money and it's paid.")
   const req = await eventually(
     () => chain.hub.getRequests(dao(slug), 0, 50).then((r) => r.value.find((x) => x.requester === accB && x.path === "vote")),
     (r) => !!r && r.proposalId !== null,

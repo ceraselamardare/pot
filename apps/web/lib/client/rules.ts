@@ -49,8 +49,10 @@ export interface PreviewInput {
   memberCount: number
   /** the requester's instant spends so far (counts toward memberBudget) */
   used: Micro
-  /** the requester's contributions so far (rev4: instant needs contributed > 0) */
+  /** the requester's contributions so far (hub 1.3.0: instant and one OK need at least $1, HUB_1_3.minStake) */
   contributed: Micro
+  /** hub 1.3.0 (W4-1 c): one-OK spends already charged to the requester's lifetime allowance (= the one-OK ceiling) */
+  oneOkUsed?: Micro
   receiverIsMember: boolean
   /** money reserved for approved-but-unpaid requests */
   reserved?: Micro
@@ -87,7 +89,7 @@ export function previewSpend(i: PreviewInput): SpendPreview {
     requestCount: 0,
     maxRequestsPerPot: Number.MAX_SAFE_INTEGER,
     maxPendingPerMember: Number.MAX_SAFE_INTEGER,
-    requester: { instantUsed: i.used, contributed: i.contributed, pendingVotes: 0 },
+    requester: { instantUsed: i.used, contributed: i.contributed, pendingVotes: 0, oneOkUsed: i.oneOkUsed ?? 0n },
     receiverIsMember: i.receiverIsMember,
     receiverId: i.receiverIsMember ? "member.users.hub" : "outsider.users.hub",
     amount: i.amount,

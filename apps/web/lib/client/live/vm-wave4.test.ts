@@ -143,7 +143,7 @@ describe("live view models (hub 1.1.0)", () => {
     const r = vm.feed.find((f) => f.kind === "request")
     expect(r?.kind === "request" && [r.request.tier, r.request.okBy?.id]).toEqual(["one_ok", A])
     expect(vm.goalDetail).toBeNull()
-    expect(vm.goal).toBe(150_000_000n * 3n) // no on-chain goal: the device's "$X each" estimate
+    expect(vm.goal).toBeNull() // no on-chain goal: no total (the device's "$X each" stays per person)
   })
 
   it("the on-chain goal wins over the device's estimate; a 1.0.0 Pot reads as everything off", () => {

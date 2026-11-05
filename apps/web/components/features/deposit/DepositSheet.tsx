@@ -8,7 +8,7 @@
 // under the primary (network → the Add sheet, coin → the network, address → the coin, the picks kept). No Back once
 // the money is on its way (the stepper): ✕ and "You can close this screen" apply.
 // The parts shared with the pay-in pages (people outside the Pot) live in ./pickers.tsx.
-import { Check, ChevronDown } from "lucide-react"
+import { Check, ChevronDown, ShieldX } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ProgressSteps } from "@/components/feedback/States"
 import { TypingDots } from "@/components/feedback/TypingDots"
@@ -35,6 +35,7 @@ import {
   type XcCoin,
 } from "@/lib/deposit"
 import { queryClient } from "@/lib/client/query"
+import { depositAddressLooksRight } from "@/lib/deposit/address"
 import { DepositStepper, SimPill } from "./DepositStepper"
 import { NETWORK, sendText, usdShort } from "./format"
 import { AddressCard, chainOpen, CoinList, coinOpen, LiveQuote, NetworkList } from "./pickers"
@@ -342,6 +343,22 @@ function AddressStep({
   const network = NETWORK[d.chain]
   const sim = d.mode === "simulated"
   const scenarios: SimScenario[] = ["partial", "slow", "failed", "no_liquidity", "expired"]
+
+  // CLI-10 (security audit 2026-11-04): an address that doesn't look like one on the picked network (or whose QR says
+  // something else) is never shown or copied: icon + words, and the way back (lib/deposit/address.ts)
+  if (!depositAddressLooksRight(d))
+    return (
+      <div className="flex flex-col gap-4" data-address-step data-address-refused>
+        <div role="alert" className="flex items-start gap-3 rounded-md bg-surface-sunken p-3">
+          <ShieldX aria-hidden className="mt-0.5 size-5 shrink-0 text-declined" strokeWidth={2} />
+          <div>
+            <p className="text-label text-ink">{t("xc.address_bad.title")}</p>
+            <p className="mt-0.5 text-body-sm text-ink">{t("xc.address_bad.body", { network })}</p>
+          </div>
+        </div>
+        <SheetBack onClick={onChange} disabled={busy} />
+      </div>
+    )
 
   return (
     <div className="flex flex-col gap-4" data-address-step data-coin={d.coin ?? "USDC"}>

@@ -21,6 +21,7 @@ import { t } from "@/i18n/t"
 import { announce } from "@/lib/client/browser"
 import { cn } from "@/lib/client/cn"
 import { createGiftLink, setGiftsOn } from "@/lib/client/gifts/actions"
+import { isReservedNameError } from "@/lib/reserved-names"
 import { dollarsInput, parseDollars } from "@/lib/client/gifts/amount"
 import { giftLinkUrl, useOrigin, useShareLink } from "@/lib/client/gifts/share"
 import type { PotVM } from "@/lib/client/mock/types"
@@ -53,7 +54,8 @@ export function PayInSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
   const [note, setNote] = useState("")
   const [once, setOnce] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(false)
+  // true = something failed; "reserved" = CLI-4: the Pot's name (or the note) reads like an official / brand page
+  const [error, setError] = useState<boolean | "reserved">(false)
   const [turningOn, setTurningOn] = useState(false)
   // the link just made (its QR and share buttons); null = the form
   const [made, setMade] = useState<{ id: string; tone: PayInTone; amount: bigint | null; once: boolean; expiresAt: number } | null>(null)
@@ -97,8 +99,8 @@ export function PayInSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
       const newId = await createGiftLink(pot.slug, { amount: amt, note: note.trim() || null, reusable: !once, tone })
       setMade({ id: newId, tone, amount: amt, once, expiresAt: Date.now() + GIFT_LINK_TTL_MS })
       announce(t("payin.ready"))
-    } catch {
-      setError(true)
+    } catch (e) {
+      setError(isReservedNameError(e) ? "reserved" : true)
     } finally {
       setBusy(false)
     }
@@ -271,8 +273,8 @@ export function PayInSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
     footer = (
       <div className="flex flex-col gap-2">
         {error && (
-          <p role="alert" className="text-body-sm text-ink">
-            {t("payin.error")}
+          <p role="alert" className="text-body-sm text-ink" data-payin-error={error === "reserved" ? "reserved" : undefined}>
+            {error === "reserved" ? t("publicpage.reserved.body") : t("payin.error")}
           </p>
         )}
         <Button variant="primary" className="w-full" onClick={() => void make()} disabled={busy || fixedBad || noteLen > GIFT_NOTE_MAX} aria-busy={busy || undefined} data-payin-make>

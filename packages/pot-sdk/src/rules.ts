@@ -133,7 +133,8 @@ export function validateExtras(
   if (g) {
     if (g.amount <= 0n || g.amount > MAX_AMOUNT) return "ERR_GOAL_INVALID"
     if (g.deadlineMs <= nowMs + WAVE4_LIMITS.minGoalLeadMs || g.deadlineMs > nowMs + WAVE4_LIMITS.maxGoalLeadMs) return "ERR_GOAL_INVALID"
-    if (g.allOrNothing && current && current.policyVersion < 2) return "ERR_GOAL_UNSUPPORTED"
+    // only a Pot whose policy lets the hub approve the refund (v2, or hub 1.3.0's v4) can hold an all-or-nothing goal
+    if (g.allOrNothing && current && current.policyVersion !== 2 && current.policyVersion !== 4) return "ERR_GOAL_UNSUPPORTED"
   }
   return null
 }

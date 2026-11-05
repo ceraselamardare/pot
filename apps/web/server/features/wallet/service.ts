@@ -2,13 +2,14 @@
 // "Sign in to Pot" (NEP-413) during `connector.connect({signMessageParams})`; the server rebuilds the payload,
 // verifies the signature, checks that the key is a FULL-ACCESS key of the account (a function-call key can't
 // attach the 1 yocto contributions need), refuses our own accounts (everything under <root>), then opens a
-// `wallet` session. The relayer pays the USDC registration once per account ever, after the response.
+// `wallet` session. APP-2 (security audit 2026-11-04): sign-in no longer pays the USDC registration; it happens lazily
+// when the account first needs to receive money (creating or joining a Pot, a spend to itself, a close payout), through
+// server/features/registration.ts with per-IP and global budgets.
 import "server-only"
-import { and, eq } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import type { Db } from "@/db/client"
 import { chargeQuotas, nextUtcDay } from "@/db/quota"
-import { appUser, relayLog, TINTS } from "@/db/schema"
-import { relayerAvailable, sponsorAllows, sponsorLevel } from "../../chain/balance"
+import { appUser, TINTS } from "@/db/schema"
 import { viewAccessKey, viewFunction } from "../../chain/near"
 import { RpcUnavailableError, type RpcClient } from "../../chain/rpc"
 import type { Submitter } from "../../chain/submitter"
@@ -17,7 +18,6 @@ import { ApiError, unavailable } from "../../http/errors"
 import { limit } from "../../quotas"
 import { hintCookie, sessionCookie } from "../../session/cookies"
 import { spendProof } from "../../session/pop"
-import { registerToken } from "../../session/onboard"
 import { createSession, hintFor, sessionInfo } from "../../session/store"
 import { sha256Hex } from "../../util/crypto"
 import { isAccountId } from "../../util/ids"
@@ -50,9 +50,12 @@ export function rootOf(cfg: Config): string {
   return i > 0 ? cfg.hubId.slice(i + 1) : cfg.hubId
 }
 
-/** The hosts a NEP-413 `recipient` may name: our allowed origins' hosts. */
+/**
+ * The hosts a NEP-413 `recipient` may name. APP-7: this deployment's own hosts only (`cfg.signInHosts`), not every
+ * origin the CSRF check allows: a preview never accepts a signature addressed to production, or the other way round.
+ */
 export function allowedRecipients(cfg: Config): string[] {
-  return cfg.allowedOrigins.map((o) => new URL(o).host)
+  return cfg.signInHosts
 }
 
 const tintFor = (account: string) => TINTS[parseInt(sha256Hex(account).slice(0, 8), 16) % TINTS.length]!
@@ -69,7 +72,7 @@ export function walletDisplayName(accountId: string): string {
 export async function walletLogin(
   deps: WalletDeps,
   body: WalletSessionBody,
-  meta: { ipHash: string; userAgent: string | null },
+  meta: { ipHash: string; userAgent: string | null; origin?: string | null },
 ): Promise<{ status: number; body: Record<string, unknown>; cookies: string[] }> {
   const { db, cfg, rpc } = deps
   const now = deps.now?.() ?? Date.now()
@@ -78,6 +81,8 @@ export async function walletLogin(
   if (!isAccountId(body.accountId)) throw bad("accountId")
   if (body.message !== SIGN_IN_MESSAGE) throw bad("message")
   if (!allowedRecipients(cfg).includes(body.recipient)) throw bad("recipient")
+  // APP-7: and the page that asked for it is the one it was signed for (the browser's Origin, already CSRF-checked)
+  if (meta.origin !== undefined && (!meta.origin || hostOf(meta.origin) !== body.recipient)) throw bad("recipient", "origin")
   // rev4: never for our own accounts (NEAR Auth users, the hub/token/relayer/treasury)
   const root = rootOf(cfg)
   if (body.accountId === root || body.accountId.endsWith(`.${root}`)) throw bad("accountId", "own_account")
@@ -114,6 +119,12 @@ export async function walletLogin(
   let isNew = false
   if (user && user.kind !== "wallet") throw bad("accountId", "own_account")
   if (!user) {
+    // APP-1: free wallet accounts are free sybils; at most `ip_signups` new people per IP per day
+    const signup = await chargeQuotas(db, [{ subject: `ip:${meta.ipHash}`, action: "signups", amount: 1n, limit: limit("ip_signups") }])
+    if (!signup.ok)
+      throw new ApiError("quota_exceeded", {
+        detail: { family: "accounts", limit: signup.failed.limit.toString(), resetsAt: nextUtcDay().toISOString() },
+      })
     const inserted = await db
       .insert(appUser)
       .values({
@@ -129,16 +140,12 @@ export async function walletLogin(
     user = inserted[0] ?? (await db.select().from(appUser).where(eq(appUser.nearAccount, body.accountId)).limit(1))[0]!
   }
 
-  // USDC registration (D-23): read now; pay it after the response, once per account ever
+  // USDC registration (D-23): only read here, to keep the flag right. APP-2: never paid at sign-in any more (it drained
+  // NEAR and a shared counter for every throwaway account); see server/features/registration.ts for when it is paid.
   const registered = cfg.usdcId
     ? !!(await viewFunction<unknown>(rpc, cfg.usdcId, "storage_balance_of", { account_id: body.accountId }).catch(() => "unknown"))
     : false
   if (registered && !user.usdcRegistered) await db.update(appUser).set({ usdcRegistered: true }).where(eq(appUser.id, user.id))
-  if (!registered && cfg.usdcId) {
-    const userId = user.id
-    const account = body.accountId
-    deps.defer(async () => void (await registerOnce(deps, userId, account)))
-  }
 
   const s = await createSession(db, { userId: user.id, kind: "wallet", ipHash: meta.ipHash, userAgent: meta.userAgent })
   const info = sessionInfo({ kind: "wallet", user: { ...user, usdcRegistered: registered }, device: null, expiresAt: s.expiresAt })
@@ -149,22 +156,10 @@ export async function walletLogin(
   }
 }
 
-/** The relayer pays `storage_deposit` once per account ever (relay_log key `register:{account}`). */
-export async function registerOnce(deps: WalletDeps, userId: string, account: string): Promise<boolean> {
-  const { db, cfg } = deps
-  const before = (
-    await db
-      .select({ status: relayLog.status })
-      .from(relayLog)
-      .where(and(eq(relayLog.op, "storage_deposit"), eq(relayLog.idempotencyKey, `register:${account}`)))
-      .limit(1)
-  )[0]
-  if (before?.status === "executed") return false
-  const q = await chargeQuotas(db, [{ subject: "global", action: "registrations", amount: 1n, limit: limit("global_registrations") }])
-  if (!q.ok) return false
-  const level = sponsorLevel(await relayerAvailable(deps.rpc, cfg.relayerAccountId), cfg.relayerThresholds)
-  if (!sponsorAllows(level, "registration")) return false
-  const r = await registerToken(deps, account)
-  if (r.ok) await db.update(appUser).set({ usdcRegistered: true }).where(eq(appUser.id, userId))
-  return r.ok
+const hostOf = (origin: string): string | null => {
+  try {
+    return new URL(origin).host
+  } catch {
+    return null
+  }
 }

@@ -52,7 +52,10 @@ async function connector(): Promise<ConnectorLike> {
   if (MOCK_WALLET) return (await import("pot-e2e-mock-wallet")).mockConnector() as unknown as ConnectorLike
   return (connectorP ??= (async () => {
     const { NearConnector } = await import("@hot-labs/near-connect")
-    return new NearConnector({ network: "testnet", footerBranding: null, features: {} }) as unknown as ConnectorLike
+    // CLI-1 (security audit 2026-11-04): the wallets' own RPC reads go to OUR RPCs (already in the CSP's connect-src,
+    // lib/security/csp.ts) instead of each wallet's default, some of which is the deprecated near.org endpoint
+    const providers = { mainnet: [] as string[], testnet: [...sdkConfig().rpcUrls] }
+    return new NearConnector({ network: "testnet", footerBranding: null, features: {}, providers }) as unknown as ConnectorLike
   })())
 }
 

@@ -224,8 +224,9 @@ daily budgets. Two ways to pay for it without new contracts: a small app fee on 
 - **The 1Click deposit is a simulator on testnet**: a labeled "do not send" address; on success the server sends test
   dollars to the member, who adds them to the Pot with one tap. Real cross-chain deposits need mainnet. Refunds land
   in the member's NEAR Intents balance and getting them out is not built.
-- A majority can do anything a Sputnik DAO allows, immediately (move the money, change members or the policy). No
-  minority can take funds.
+- Pots created since hub 1.3.0: members can only vote on what the hub proposes, so every money move goes through
+  Pot's rules and shows in the app. Pots created earlier still let a majority file any Sputnik proposal. No
+  minority can take funds. See [SECURITY.md](SECURITY.md) for the trust model and the audit.
 - Invite links are bearer passes: anyone holding one can join and vote. Links expire after 7 days and 10 joins by
   default, and a new member can't spend without asking before putting money in.
 - Refunds are pro rata to everything a member ever put in, so money added late subsidizes earlier spending.

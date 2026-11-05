@@ -500,6 +500,8 @@ export interface MemberVM {
   spentShare: Micro
   getsBack: Micro
   spentInstant: Micro
+  /** hub 1.3.0 (W4-1 c): one-OK spends charged to this member's lifetime allowance (MemberView.oneOkUsed; absent before) */
+  oneOkUsed?: Micro
   isMe: boolean
   /** hub 1.1.0 earned trust (absent on 1.0.0 data) */
   trust?: TrustVM | null
@@ -569,7 +571,10 @@ export interface PotVM {
   balance: Micro
   totalIn: Micro
   goal: Micro | null
+  /** "$X each": the creator's choice, or Create's default (prefills Add money) */
   goalEach: Micro | null
+  /** `goalEach` is the creator's real choice, so the hero may say "Aiming for $X each" (never Create's default) */
+  goalEachChosen?: boolean
   rules: Rules
   k: number
   n: number
@@ -591,6 +596,9 @@ export interface PotVM {
   closePreview?: ClosePreviewVM | null
   /** a propose_close chain is in flight (money in is blocked for ≤ 60 s) */
   closingInFlight?: boolean
+  /** hub 1.3.0 (HUB-4): the group approved the close and everyone's share is being sent; the Pot reads "closed" only
+   *  once the money has left (PotView.close_settling). The mock pays out at once, so it never sets this. */
+  closeSettling?: boolean
   /** who added money last (the close's tiny remainder goes to them) */
   lastContributor?: PersonVM | null
   /** the close math's smallest amount: absent = 1 micro (testnet); the mock world keeps cents (lib/client/refund.ts) */

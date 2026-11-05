@@ -46,3 +46,27 @@ describe("getsBack (D-09 pro-rata, floored)", () => {
     expect(getsBack(dollars(66), dollars(100), dollars(450))).toBe(14_660_000n)
   })
 })
+
+// hub 1.3.0 (W4-1 a, c; HUB-2): the local preview goes through the sdk's decideSpend with the requester's stake and
+// lifetime one-OK allowance, so it shows the same tier the hub will pick.
+describe("previewSpend: hub 1.3.0 one-OK tier", () => {
+  const base: PreviewInput = {
+    amount: dollars(250),
+    balance: dollars(900),
+    rules: DEFAULT_RULES,
+    memberCount: 3,
+    used: 0n,
+    contributed: dollars(150),
+    receiverIsMember: true,
+    extras: { trust: false, oneOkCap: dollars(300) },
+  }
+  it("one OK while the allowance covers it; the group once it's used up", () => {
+    expect(previewSpend(base).tier).toBe("one_ok")
+    expect(previewSpend({ ...base, oneOkUsed: dollars(50) }).tier).toBe("one_ok")
+    expect(previewSpend({ ...base, oneOkUsed: dollars(60) }).tier).toBe("group")
+  })
+  it("less than $1 added: no instant spend and no one OK", () => {
+    expect(previewSpend({ ...base, contributed: 999_999n }).tier).toBe("group")
+    expect(previewSpend({ ...base, amount: dollars(20), contributed: 999_999n })).toMatchObject({ path: "vote", reason: "new_member" })
+  })
+})

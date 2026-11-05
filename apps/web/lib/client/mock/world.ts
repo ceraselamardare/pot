@@ -1,7 +1,7 @@
 // The mock world: pure functions over a JSON-safe `World` (seed, actions, selectors). The client store
 // (store.ts) persists it in localStorage and adds latency; server components call seedWorld() for /j and
 // /demo. The money rules mirror the hub (D-05, D-07, D-08, D-09) so the beats and copy match testnet.
-import { receiptFingerprintOfRef, spendRef, type Rules as SdkRules } from "@pot/sdk"
+import { HUB_1_3, okGiverRefusal, receiptFingerprintOfRef, spendRef, type Rules as SdkRules } from "@pot/sdk"
 import { receiptFingerprint, shortFingerprint, validateSavedReceipt, type SavedReceipt } from "@/lib/receipt-saved"
 import { sha256 } from "@noble/hashes/sha2.js"
 import { base58 } from "@scure/base"
@@ -21,6 +21,7 @@ import {
   goalBlocksSpends,
   goalRefusesMoney,
   goalVM,
+  oneOkUsedOf,
   trustDecline,
   trustLevelFor,
   trustSettle,
@@ -313,6 +314,8 @@ export function requestSpend(
   const x = extrasOf(pot)
   // pay by link: only where the Pot's rules allow links (ERR_LINKS_OFF); the payee counts as allowed (D4-4)
   if (input.link && !x.links) throw new HubError("ERR_LINKS_OFF")
+  // hub 1.3.0 (W4-8): no link under $1
+  if (input.link && cents(input.amountCents) < HUB_1_3.minLinkAmount) throw new HubError("ERR_LINK_TOO_SMALL")
   const p = previewSpend({
     amount: cents(input.amountCents),
     balance: cents(pot.balance),
@@ -320,6 +323,8 @@ export function requestSpend(
     memberCount: pot.members.length,
     used: cents(m.spentInstant),
     contributed: cents(m.contributed),
+    // hub 1.3.0 (W4-1 c): the requester's lifetime one-OK allowance so far (the sdk's decideSpend checks it)
+    oneOkUsed: cents(oneOkUsedOf(pot, who)),
     receiverIsMember: !!input.link || isMember(pot, input.receiver),
     ...(pot.extras ? { extras: { trust: x.trust, oneOkCap: cents(x.oneOkCap) }, trustLevel: trustLevelFor(pot, who) } : {}),
   })
@@ -400,6 +405,24 @@ export function okRequest(w: World, slug: string, id: number, who: string, now: 
   if (isExpired(pot, r, now)) return { world: w, result: "expired" }
   if (r.status !== "proposed") return { world: w, result: "decided" }
   if (!canOk(r, who)) return { world: w, result: "objection" }
+  // hub 1.3.0 (W4-1 b): the OK-giver is an Active member other than the requester and the payee, a member since before
+  // the request, who has added at least $1 (the sdk's okGiverRefusal, the twin of the hub's ok_giver_rules)
+  const giver = pot.members.find((x) => x.id === who)
+  const refusal = okGiverRefusal({
+    by: who,
+    requester: r.requester,
+    receiver: r.receiver,
+    requestCreatedAtMs: r.createdAt,
+    member: giver ? { joinedAtMs: giver.joinedAt, contributed: cents(giver.contributed) } : null,
+  })
+  if (refusal === "self") return { world: w, result: "self" }
+  if (refusal === "not_member") return { world: w, result: "not_member" }
+  if (refusal) return { world: w, result: "not_eligible" }
+  // hub 1.3.0 (W4-1 a, c): the tier is re-checked at OK time: the requester still has a stake and the allowance
+  const asker = pot.members.find((x) => x.id === r.requester)
+  const ceiling = extrasOf(pot).oneOkCap
+  if (!asker || cents(asker.contributed) < HUB_1_3.minStake || r.amount > ceiling || oneOkUsedOf(pot, r.requester) + r.amount > ceiling)
+    return { world: w, result: "not_one_ok" }
   r.okBy = who
   r.decidedAt = now
   if (pot.balance >= r.amount) {
@@ -864,6 +887,8 @@ export function potView(w: World, slug: string, me: string | null, now: number):
         getsBack: back,
         spentShare: contributed > back ? contributed - back : 0n,
         spentInstant: cents(m.spentInstant),
+        // hub 1.3.0 (W4-1 c): one-OK spends charged to their lifetime allowance
+        ...(pot.extras ? { oneOkUsed: cents(oneOkUsedOf(pot, m.id)) } : {}),
         isMe: m.id === me,
         ...(pot.extras ? { trust: trustVM(pot, m) } : {}),
       }
@@ -907,8 +932,9 @@ export function potView(w: World, slug: string, me: string | null, now: number):
     creator: person(pot, pot.creator),
     balance,
     totalIn: cents(totalIn),
-    goal: goalDetail ? goalDetail.amount : goalEach === null ? null : goalEach * BigInt(Math.max(3, pot.members.length)),
+    goal: goalDetail ? goalDetail.amount : null, // "$X each" stays per person (goalEach), as on testnet
     goalEach,
+    goalEachChosen: goalEach !== null,
     rules: rulesOf(pot),
     k: approvalsNeeded(pot.members.length),
     n: pot.members.length,

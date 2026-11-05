@@ -725,11 +725,21 @@ export class MockChain implements ChainViews {
       config: { name, purpose: `Pot group fund (${preset}). Rules enforced by ${hub}`, metadata: "" },
       policy: {
         roles: [
-          { name: "member", kind: { Group: [creator] }, permissions: ["*:AddProposal", "*:VoteApprove", "*:VoteReject", "*:Finalize"], vote_policy: {} },
+          // hub 1.3.0 policy v3 (HUB-1 / GOV-2): members only vote; only the hub (rulebot) creates proposals and it
+          // may also finalize a failed call (a close payout retry). contracts/pot-hub/src/policy.rs
+          { name: "member", kind: { Group: [creator] }, permissions: ["*:VoteApprove", "*:VoteReject"], vote_policy: {} },
           {
             name: "rulebot",
             kind: { Group: [hub] },
-            permissions: ["transfer:AddProposal", "transfer:VoteApprove", "transfer:Finalize", "add_member_to_role:AddProposal", "add_member_to_role:VoteApprove", "call:AddProposal"],
+            permissions: [
+              "transfer:AddProposal",
+              "transfer:VoteApprove",
+              "transfer:Finalize",
+              "add_member_to_role:AddProposal",
+              "add_member_to_role:VoteApprove",
+              "call:AddProposal",
+              "call:Finalize",
+            ],
             vote_policy: {
               transfer: { weight_kind: "RoleWeight", quorum: "1", threshold: [1, 1] },
               add_member_to_role: { weight_kind: "RoleWeight", quorum: "1", threshold: [1, 1] },

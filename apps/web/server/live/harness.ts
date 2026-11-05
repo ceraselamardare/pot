@@ -18,6 +18,7 @@ import { createSubmitter, type Submitter } from "../chain/submitter"
 import { resetBalanceCacheForTests } from "../chain/balance"
 import { loadConfig, setConfigForTests, type Config } from "../config"
 import { ApiError } from "../http/errors"
+import { ensureRegistered } from "../features/registration"
 import { walletLogin } from "../features/wallet/service"
 import { relay, type Actor, type RelayDeps, type RelayResponse } from "../relay/pipeline"
 import { sha256Hex } from "../util/crypto"
@@ -129,7 +130,7 @@ function views(cfg: SdkConfig) {
 /**
  * Rev 9: NEAR-wallet users. Throwaway 0-NEAR accounts `<name>.e2e-<run>.<funds>` (e2e/testnet/accounts.ts), each
  * signed in through POST /api/session/wallet's core (NEP-413 "Sign in to Pot" with its full-access key); the
- * relayer pays the token registration after the response (drained here) and every relayed action.
+ * relayer pays the token registration (APP-2: explicitly here, as the app does on create/join) and every relayed action.
  */
 export async function walletUsers(L: Live, names: string[]): Promise<LiveUser[]> {
   const accounts = await createTestAccounts(names, (line) => console.log(line))
@@ -143,11 +144,13 @@ export async function walletUsers(L: Live, names: string[]): Promise<LiveUser[]>
       { ipHash: `live-${p.name}`, userAgent: "vitest-live" },
     )
     const user = (await L.t.db.select().from(appUser).where(eq(appUser.nearAccount, p.accountId)))[0]!
+    // APP-2: sign-in no longer pays the token registration; these users receive test money right away, so register now
+    await ensureRegistered(L.deps, { account: p.accountId, userId: user.id, budget: "general" })
     const actor: Actor = { userId: user.id, accountId: p.accountId, kind: "wallet", device: null }
     const signer = new KeyPairPotSigner({ accountId: p.accountId, secretKey: p.keyPair, chain: views(L.sdkCfg), cfg: L.sdkCfg, nonces: new NonceTracker() })
     out.push({ name: p.name, accountId: p.accountId, key: p.keyPair, actor, signer })
   }
-  await L.drain() // the relayer's token registrations (registerOnce, after the login response)
+  await L.drain()
   return out
 }
 

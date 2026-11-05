@@ -50,14 +50,15 @@ async fn t01(build: Build) -> anyhow::Result<()> {
     assert_eq!(acc.global_contract_hash.map(|h| h.to_string()), Some(build.expected_hash().to_string()));
     let amount = acc.amount.as_yoctonear();
     assert!(amount >= 50 * MILLI && amount < 51 * MILLI, "dao balance {amount}");
-    // policy == the §3.2 template
+    // policy == the §3.2 template, hub 1.3.0 v3 (HUB-1 / GOV-2): members only vote; the rulebot may
+    // also finalize a failed call (a close payout retry)
     let want = json!({
         "roles": [
           { "name": "member", "kind": { "Group": [env.maya.id] },
-            "permissions": ["*:AddProposal", "*:VoteApprove", "*:VoteReject", "*:Finalize"], "vote_policy": {} },
+            "permissions": ["*:VoteApprove", "*:VoteReject"], "vote_policy": {} },
           { "name": "rulebot", "kind": { "Group": [env.hub] },
             "permissions": ["transfer:AddProposal", "transfer:VoteApprove", "transfer:Finalize",
-                            "add_member_to_role:AddProposal", "add_member_to_role:VoteApprove", "call:AddProposal"],
+                            "add_member_to_role:AddProposal", "add_member_to_role:VoteApprove", "call:AddProposal", "call:Finalize"],
             "vote_policy": {
               "transfer":           { "weight_kind": "RoleWeight", "quorum": "1", "threshold": [1, 1] },
               "add_member_to_role": { "weight_kind": "RoleWeight", "quorum": "1", "threshold": [1, 1] } } }

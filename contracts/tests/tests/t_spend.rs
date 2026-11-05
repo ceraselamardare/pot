@@ -117,7 +117,7 @@ async fn t20(build: Build) -> anyhow::Result<()> {
     for k in ["version","owner","usdc","dao_code_hash","dao_float","min_dao_float","relayers","limits","paused","pot_count","sponsored_today","free_balance"] {
         assert!(cfg.get(k).is_some(), "get_config.{k}");
     }
-    assert_eq!(cfg["version"], "1.2.0"); // hub 1.2.0 (gifts)
+    assert_eq!(cfg["version"], "1.3.0"); // hub 1.3.0 (security fixes)
     assert_eq!(cfg["dao_code_hash"], build.expected_hash());
     Ok(())
 }
@@ -191,9 +191,15 @@ dual!(t23_payee_balance_receiver, t23);
 
 /// T-31 (DAO side) · T-28a · T-28b · T-27 · T-96: the live DAO policy is respected.
 async fn t28(build: Build) -> anyhow::Result<()> {
-    let env = Env::new(build).await?;
-    // T-31: a member removed in the DAO by a group vote → refused not_in_dao_group
+    // hub 1.3.0: Pots made by hub 1.3.0 (policy v3) let members only vote, so the raw DAO proposals
+    // this test needs come from Pots made by the 1.2.0 hub (policy v1); the hub is upgraded right after
+    let env = Env::legacy(build).await?;
     let (dao, _, _) = env.pot_with_members(&env.maya, "rm", &[&env.sam, &env.leo], 100 * USDC).await;
+    let (d2, _, _) = env.pot_with_members(&env.maya, "norb", &[&env.sam], 100 * USDC).await;
+    let (d3, _, _) = env.pot_with_members(&env.maya, "weak", &[&env.sam], 100 * USDC).await;
+    env.upgrade_hub().await?;
+    assert_eq!(env.pot(&dao).await["policy_version"], 1);
+    // T-31: a member removed in the DAO by a group vote → refused not_in_dao_group
     let kind = json!({"RemoveMemberFromRole": {"member_id": env.leo.id, "role": "member"}});
     let id = env.relay(&env.maya, &dao, "add_proposal", json!({"proposal": {"description": "remove leo", "kind": kind}}), 50, 0).await.json().as_u64().unwrap();
     env.vote(&env.maya, &dao, id, "VoteApprove", 100).await.ok();
@@ -214,7 +220,6 @@ async fn t28(build: Build) -> anyhow::Result<()> {
     env.hub_relay(&env.maya, "retry_payout", json!({"pot": dao, "proposal_id": own}), 100).await.expect_err("ERR_UNKNOWN_PROPOSAL");
 
     // T-28a: rulebot removed by the group → instant request refused add_failed (prepay reverted)
-    let (d2, _, _) = env.pot_with_members(&env.maya, "norb", &[&env.sam], 100 * USDC).await;
     let kind = json!({"ChangePolicyRemoveRole": {"role": "rulebot"}});
     let id = env.relay(&env.maya, &d2, "add_proposal", json!({"proposal": {"description": "drop rulebot", "kind": kind}}), 50, 0).await.json().as_u64().unwrap();
     env.vote(&env.maya, &d2, id, "VoteApprove", 100).await.ok();
@@ -229,7 +234,6 @@ async fn t28(build: Build) -> anyhow::Result<()> {
     assert_eq!(env.pot(&d2).await["reserved"], "0");
 
     // T-28b: rulebot vote not decisive (quorum 2) → pending, auto_approve_failed, payout_failed{approve}
-    let (d3, _, _) = env.pot_with_members(&env.maya, "weak", &[&env.sam], 100 * USDC).await;
     let role = json!({"name":"rulebot","kind":{"Group":[env.hub]},
         "permissions":["transfer:AddProposal","transfer:VoteApprove","transfer:Finalize","add_member_to_role:AddProposal","add_member_to_role:VoteApprove","call:AddProposal"],
         "vote_policy":{"transfer":{"weight_kind":"RoleWeight","quorum":"2","threshold":[1,1]},

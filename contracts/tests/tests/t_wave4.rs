@@ -45,7 +45,8 @@ async fn w1(build: Build) -> anyhow::Result<()> {
     // contract defaults for a new Pot: trust on, one-OK up to 3 × the cap, links on, no goal
     let pot = env.pot(&dao).await;
     assert_eq!(pot["extras"], json!({"trust": true, "one_ok_cap": "60000000", "links": true, "goal": null}));
-    assert_eq!((pot["policy_version"].as_u64(), pot["goal_state"].as_str(), pot["open_links"].as_u64()), (Some(1), Some("none"), Some(0)));
+    // hub 1.3.0: a new Pot gets policy v3 (members only vote)
+    assert_eq!((pot["policy_version"].as_u64(), pot["goal_state"].as_str(), pot["open_links"].as_u64()), (Some(3), Some("none"), Some(0)));
     let t = trust(&env, &dao, &env.maya).await;
     assert_eq!(
         (t["level"].as_u64(), t["next_level_in"].as_u64(), t["effective_cap"].as_str(), t["min_qualifying"].as_str(), t["instant_up_to"].as_str()),
@@ -116,12 +117,18 @@ async fn w1(build: Build) -> anyhow::Result<()> {
     let group_pid = v["proposal_id"].as_u64().unwrap();
     ok_request(&env, &env.sam, &dao, group_rid).await.expect_err("ERR_NOT_ONE_OK");
 
+    // hub 1.3.0 (W4-1 (c)): Maya's one-OK allowance (= the $60 ceiling) has $5 left, so $50 more needs the group
+    let p = preview(&env, &dao, &env.maya, 50 * USDC, &env.maya.id).await;
+    assert_eq!((p["path"].as_str(), p["tier"].as_str()), (Some("vote"), Some("group")));
+    assert_eq!(env.member(&dao, &env.maya.id).await["one_ok_left"], "5000000");
+
     // an objection (any Reject vote in the DAO) means the majority decides
-    let v = env.request_spend(&env.maya, &dao, 50 * USDC, &env.maya.id, &rref(7)).await.json();
+    let v = env.request_spend(&env.sam, &dao, 50 * USDC, &env.sam.id, &rref(7)).await.json();
+    assert_eq!(v["tier"], "one_ok");
     let obj_rid = v["request_id"].as_u64().unwrap();
     let obj_pid = v["proposal_id"].as_u64().unwrap();
     env.vote(&env.leo, &dao, obj_pid, "VoteReject", 100).await.ok();
-    let o = ok_request(&env, &env.sam, &dao, obj_rid).await;
+    let o = ok_request(&env, &env.maya, &dao, obj_rid).await;
     assert_eq!(o.json(), json!({"request_id": obj_rid, "ok": false, "status": "pending", "reason": "objection"}));
     let rv = env.hub_view("get_request", json!({"pot": dao, "request_id": obj_rid})).await;
     assert_eq!((rv["status"].as_str(), rv["ok_by"].as_str()), (Some("pending"), None));
@@ -359,9 +366,12 @@ async fn w4(build: Build) -> anyhow::Result<()> {
     let (sk, pk) = Env::invite_key();
     let (dao, o) = env.create_pot_extras(&env.maya, "fund", "trip", Value::Null, extras.clone(), Some(pk.clone())).await;
     assert_eq!(o.json()["ok"], true, "{}", o.dump());
-    assert_eq!(o.event("rule_extras_set")["policy_version"], 2);
-    // policy v2: the rulebot may also approve / finalize `call` proposals
+    assert_eq!(o.event("rule_extras_set")["policy_version"], 4);
+    // policy v4 (hub 1.3.0; v2 before): the rulebot may also approve / finalize `call` proposals, and
+    // members only vote
     let pol = env.policy(&dao).await;
+    let mb = pol["roles"].as_array().unwrap().iter().find(|r| r["name"] == "member").unwrap().clone();
+    assert_eq!(mb["permissions"].as_array().unwrap().len(), 2, "member: VoteApprove + VoteReject only: {mb}");
     let rb = pol["roles"].as_array().unwrap().iter().find(|r| r["name"] == "rulebot").unwrap().clone();
     assert!(rb["permissions"].as_array().unwrap().contains(&json!("call:VoteApprove")));
     assert_eq!(rb["vote_policy"]["call"], json!({"weight_kind": "RoleWeight", "quorum": "1", "threshold": [1, 1]}));
@@ -402,9 +412,18 @@ async fn w4(build: Build) -> anyhow::Result<()> {
     // phase 2: the hub approves it as rulebot; everyone gets exactly their contribution back
     let before: Vec<u128> = futures_balances(&env, &[&env.maya, &env.sam, &env.leo]).await;
     let o = env.relayer_call("refund_unfunded", json!({"pot": dao}), 300).await;
+    // HUB-4 (hub 1.3.0): the approval's own read is provisional (Sputnik's payout callback hasn't
+    // run yet), so the Pot is "refunding" (settling), never "refunded", until the money is seen out
+    assert_eq!(o.json(), json!({"proposal_id": pid, "subject": "close", "dao_status": "Approved", "hub_status": "closing", "changed": true}), "{}", o.dump());
+    assert!(!o.event_names().contains(&"goal_refunded".to_string()) && !o.event_names().contains(&"pot_closed".to_string()));
+    println!("[{build:?}] W4 refund approve (n=3): {:.2} Tgas burnt", o.total_gas_burnt() as f64 / 1e12);
+    let g = env.hub_view("get_goal", json!({"pot": dao})).await;
+    assert_eq!((g["state"].as_str(), g["can_refund"].as_bool()), (Some("refunding"), Some(true)));
+    assert_eq!(env.pot(&dao).await["close_settling"], true);
+    // phase 3: the next call (our cron) reads the proposal AND the DAO's balance → refunded
+    let o = env.relayer_call("refund_unfunded", json!({"pot": dao}), 300).await;
     assert_eq!(o.json(), json!({"proposal_id": pid, "subject": "close", "dao_status": "Approved", "hub_status": "closed", "changed": true}), "{}", o.dump());
     assert!(o.event_names().contains(&"goal_refunded".to_string()) && o.event_names().contains(&"pot_closed".to_string()));
-    println!("[{build:?}] W4 refund approve (n=3): {:.2} Tgas burnt", o.total_gas_burnt() as f64 / 1e12);
     let after: Vec<u128> = futures_balances(&env, &[&env.maya, &env.sam, &env.leo]).await;
     let got: Vec<u128> = after.iter().zip(&before).map(|(a, b)| a - b).collect();
     assert_eq!(got, vec![100 * USDC, 50 * USDC, 30 * USDC]);
@@ -424,7 +443,8 @@ async fn w4(build: Build) -> anyhow::Result<()> {
     assert_eq!(env.request_spend(&env.ana, &dao2, 50 * USDC, &env.ana.id, &rref(1)).await.json()["status"], "approved");
     env.relayer_call("refund_unfunded", json!({"pot": dao2}), 300).await.expect_err("ERR_GOAL_NOT_MISSED");
 
-    // rules edits before the deadline (sole member): move the goal; a 1.0-policy Pot can't add all-or-nothing
+    // rules edits before the deadline (sole member): move the goal; a Pot without the refund approval
+    // (policy v3 here; v1 before hub 1.3.0) can't add all-or-nothing
     let g3 = json!({"amount": (500 * USDC).to_string(), "deadline_ms": (env.now_ms().await + 3_600_000) as u64, "all_or_nothing": true});
     let (dao3, o) = env.create_pot_extras(&env.leo, "solo", "trip", Value::Null, json!({"trust": true, "one_ok_cap": "0", "links": false, "goal": g3}), None).await;
     assert_eq!(o.json()["ok"], true);

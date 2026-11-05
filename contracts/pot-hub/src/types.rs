@@ -9,7 +9,7 @@ use near_sdk::{near, AccountId, BorshStorageKey, NearToken};
 // Constants (contracts-spec §2.3)
 // ---------------------------------------------------------------------------------------------
 
-pub const VERSION: &str = "1.2.0";
+pub const VERSION: &str = "1.3.0";
 pub const ROLE_MEMBER: &str = "member";
 pub const ROLE_RULEBOT: &str = "rulebot";
 pub const PROPOSAL_PERIOD_NS: u64 = 604_800_000_000_000; // 7 days (D-04)
@@ -81,9 +81,45 @@ pub const STATE_BYTES_CLAIM: u64 = 100;
 pub const LINK_MEMO: &str = "pot link payout";
 pub const LINK_RETURN_MEMO: &str = "pot link returned";
 /// Policy template versions (`PotExt.policy_v`): 1 = the v1 template (§3.2); 2 = v1 + the rulebot
-/// may `VoteApprove`/`Finalize` `call` proposals (all-or-nothing Pots only, for the goal refund).
+/// may `VoteApprove`/`Finalize` `call` proposals (all-or-nothing Pots only, for the goal refund);
+/// 3 / 4 = hub 1.3.0's hub-only-proposals templates (below). Pots keep the version they were born with.
 pub const POLICY_V1: u8 = 1;
 pub const POLICY_V2: u8 = 2;
+/// Hub 1.3.0 (audit HUB-1 / GOV-2 / GOV-3 / GOV-4 / W4-7 / GOV-9 / HUB-6): members may only vote
+/// (`*:VoteApprove`, `*:VoteReject`); only the hub (rulebot) can create proposals, so every money
+/// move, member add, rules change and close goes through the hub's checks. The rulebot may also
+/// `Finalize` a failed `call` proposal (a close payout retry, HUB-4). Every new Pot gets v3.
+pub const POLICY_V3: u8 = 3;
+/// v3 + the rulebot may approve `call` proposals (`call:VoteApprove`, `call` 1/1): Pots created with
+/// an all-or-nothing goal, for the goal refund (the hub only ever approves its own refund close).
+pub const POLICY_V4: u8 = 4;
+
+/// The rulebot may `VoteApprove` `call` proposals (the goal refund): policy v2 and v4.
+pub fn policy_rulebot_approves_call(v: u8) -> bool {
+    v == POLICY_V2 || v == POLICY_V4
+}
+/// The rulebot may `Finalize` a failed `call` proposal (retry a close payout): policy v2, v3, v4.
+pub fn policy_rulebot_finalizes_call(v: u8) -> bool {
+    v >= POLICY_V2
+}
+/// Members may create proposals directly in the DAO (the legacy v1 / v2 templates only).
+pub fn policy_members_propose(v: u8) -> bool {
+    v < POLICY_V3
+}
+
+// Hub 1.3.0: security fixes (notes/contracts.md, "Hub 1.3.0 security fixes").
+/// W4-1 / HUB-2: the least a member must have added (lifetime) before they can spend instantly,
+/// ask for a one-OK spend, or give the one OK. $1 at the token's 6 decimals: a 1-unit
+/// ($0.000001) contribution no longer turns a stranger into a spender.
+pub const MIN_STAKE: u128 = 1_000_000;
+/// W4-8: the smallest pay-by-link amount ($1). Each claim may cost the hub a token registration
+/// (0.00125 NEAR), so dust links can't farm the hub's NEAR.
+pub const MIN_LINK_AMOUNT: u128 = 1_000_000;
+/// M-2: a close `sync` saw `Approved` at least this many blocks ago is final: Sputnik's payout
+/// callback (which turns a failed payout into `Failed`) runs 2-3 blocks after the approving vote.
+pub const CLOSE_CONFIRM_BLOCKS: u64 = 10;
+/// M-2: at most one sweep proposal per Pot per day.
+pub const SWEEP_COOLDOWN_MS: u64 = 86_400_000;
 
 // Hub 1.2.0: gifts (notes/contracts-gifts.md). Anyone can send a Pot a gift; it is group money.
 /// The smallest gift: $1 at 6 dp.
@@ -128,6 +164,14 @@ pub enum StorageKey {
     // ---- hub 1.2.0 (gifts). NOT a field of the root struct: read/written directly under this
     // prefix (`gifts.rs`), so 1.1.0 → 1.2.0 is a plain DeployContract (no `migrate`). ----
     Gifts,        // 0x0D pot idx → GiftState
+    // ---- hub 1.3.0 (security fixes). Like `Gifts`: NOT fields of the root struct, read/written
+    // directly under these prefixes (`security.rs`), so 1.2.0 → 1.3.0 is a plain DeployContract. ----
+    OneOkUsed,    // 0x0E (pot idx, account) → u128: one-OK spends charged to the member budget (W4-1)
+    OkCharge,     // 0x0F (pot idx, request id) → u128: the one-OK charge of this request (released once)
+    LinkTrack,    // 0x10 pot idx → LinkTrack: pending (not yet approved) links (W4-5 / M-1)
+    LinkPending,  // 0x11 (pot idx, request id) → (): this link request is counted in LinkTrack.pending
+    CloseSeen,    // 0x12 pot idx → CloseSeen: when `sync` first saw the close Approved (M-2)
+    Sweep,        // 0x13 pot idx → SweepRecord: the latest sweep of a Closed Pot (M-2)
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -663,4 +707,39 @@ impl GiftState {
     pub fn in_flight_at(&self, now_ms: u64) -> bool {
         self.in_flight > 0 && now_ms < self.in_flight_until_ms
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Hub 1.3.0 (security fixes). One record per Pot under `LinkTrack` (0x10).
+// ---------------------------------------------------------------------------------------------
+
+/// W4-5 / M-1: how many of the Pot's open links are still plain pending requests (not approved, no
+/// OK in flight). Only those let a close through: an approved link whose money may be moving, or one
+/// being OK'd, blocks it like a funded one. A missing record means "not tracked": the Pot had open
+/// links made before hub 1.3.0, so every open link keeps blocking the close (the old rule) until they
+/// are all settled; the record is created the next time a link is requested while none is open.
+#[near(serializers = [borsh])]
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct LinkTrack {
+    pub pending: u32,
+}
+
+/// M-2: the first time `sync` saw a close proposal `Approved` (the block height).
+#[near(serializers = [borsh])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct CloseSeen {
+    pub proposal_id: u64,
+    pub block_height: u64,
+}
+
+/// M-2: a sweep of a Closed Pot: USDC that reached the DAO after (or around) the close, paid out
+/// like the close (pro-rata to contributions, equal when nobody contributed), by a hub-made proposal
+/// the members approve.
+#[near(serializers = [borsh])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct SweepRecord {
+    pub proposal_id: u64,
+    pub balance: u128,
+    pub payouts: Vec<(AccountId, u128)>,
+    pub created_at_ms: u64,
 }

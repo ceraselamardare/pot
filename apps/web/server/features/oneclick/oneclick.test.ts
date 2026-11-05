@@ -22,7 +22,19 @@ import tokensSnapshot from "./fixtures/tokens-2026-11-04.json"
 import { resetAvailabilityForTests, UNAVAILABLE_TTL_MS } from "./availability"
 import { probeBody, type QuoteRequestBody, type TokenInfo } from "./client"
 import { roundUpSig } from "./origins"
-import { createQuote, deliver, depositStatus, DRY_RECIPIENT, listChains, listDeposits, priceQuote, simulate, type OneClickDeps } from "./service"
+import {
+  createQuote,
+  deliver,
+  deliveryRefusal,
+  depositStatus,
+  DRY_RECIPIENT,
+  listChains,
+  listDeposits,
+  priceQuote,
+  simulate,
+  SIM_MAX,
+  type OneClickDeps,
+} from "./service"
 import { jitterFor, planSimSend, simAmountOut, simProfile, simSent, simStatus, type SimState } from "./sim"
 import { readQuota } from "@/db/quota"
 
@@ -772,5 +784,21 @@ describe("the exact quote bodies per network and coin (what Pot would send 1Clic
           : { probe: probeBody(chain, a.coin, "maya.near", 20_000_000n, AT), flex: quoteBody(chain, "maya.near", 10n ** BigInt(a.decimals), false, AT, a.coin) }
       }
     expect(bodies).toMatchSnapshot()
+  })
+})
+
+describe("APP-8: the simulator's delivery guard", () => {
+  const cfg = testConfig()
+  const ok = { recipient: "u-maya0001.users.potapp.testnet", owner: "u-maya0001.users.potapp.testnet", amountOut: 50_000_000n }
+  it("delivers only on testnet, to the deposit's owner, on the right network, never to our own accounts, within the cap", () => {
+    expect(deliveryRefusal(cfg, ok)).toBeNull()
+    expect(deliveryRefusal(cfg, { ...ok, recipient: "a".repeat(64), owner: "a".repeat(64) })).toBeNull()
+    expect(deliveryRefusal({ ...cfg, network: "mainnet" }, ok)).toBe("network")
+    expect(deliveryRefusal(cfg, { ...ok, owner: "sam.testnet" })).toBe("not_owner")
+    expect(deliveryRefusal(cfg, { ...ok, owner: null })).toBe("not_owner")
+    expect(deliveryRefusal(cfg, { ...ok, recipient: "maya.near", owner: "maya.near" })).toBe("receiver_network")
+    for (const ours of [cfg.treasuryAccountId, cfg.relayerAccountId, cfg.hubId, DAO, "potapp.testnet"])
+      expect(deliveryRefusal(cfg, { ...ok, recipient: ours, owner: ours }), ours).toBe("receiver_ours")
+    expect(deliveryRefusal(cfg, { ...ok, amountOut: SIM_MAX * 2n + 1n })).toBe("amount")
   })
 })

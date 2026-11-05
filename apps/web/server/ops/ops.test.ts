@@ -15,7 +15,7 @@ import type { RelayDeps } from "../relay/pipeline"
 import { DAO, HUB, USDC } from "../testing/delegates"
 import { insertUser, NEAR, potView, RELAYER, seedChain, testConfig, TREASURY } from "../testing/env"
 import { FakeChain, FakeSubmitter, methodOf, plainOutcome } from "../testing/fakeChain"
-import { checkBalances, checkGlobalCaps, hubAllowsCreate, resetOpsCacheForTests, treasuryAllowsFaucet } from "./balances"
+import { checkBalances, checkGlobalCaps, hubAllows, hubAllowsCreate, resetOpsCacheForTests, treasuryAllowsFaucet } from "./balances"
 import { requireCron } from "./cron"
 import { runReconcile } from "./reconcile"
 import { runRetention } from "./retention"
@@ -70,12 +70,31 @@ describe("balances and caps (api-spec §3.5)", () => {
     chain.view(USDC, "ft_balance_of", () => "50000000000") // $50k < $100k
     const r = await checkBalances(deps)
     expect(r).toMatchObject({ relayer: { level: "low" }, hub: { level: "critical" }, treasury: { level: "low" } })
-    expect(r.alerts.sort()).toEqual(["hub_low", "relayer_low", "treasury_low"])
-    expect((await t.db.select().from(alertState)).map((a) => a.key).sort()).toEqual(["hub_low", "relayer_low", "treasury_low"])
+    // APP-1: the hub (0.5 NEAR) can't pay today's hub cap above its floor either
+    expect(r.alerts.sort()).toEqual(["cap_exceeds_balance:hub", "hub_low", "relayer_low", "treasury_low"])
+    expect((await t.db.select().from(alertState)).map((a) => a.key).sort()).toEqual([
+      "cap_exceeds_balance:hub",
+      "hub_low",
+      "relayer_low",
+      "treasury_low",
+    ])
     // deduped: a second check within the hour records nothing new
     await t.db.execute(sql`UPDATE alert_state SET last_sent_at = now()`)
     await checkBalances(deps)
-    expect(await t.db.select().from(alertState)).toHaveLength(3)
+    expect(await t.db.select().from(alertState)).toHaveLength(4)
+  })
+
+  it("APP-1: a relayer that can't pay today's cap above its floor alerts the team", async () => {
+    chain.accounts.get(RELAYER)!.amount = NEAR + NEAR / 2n // 1.5 NEAR: floor 1 + preview cap 1 → short
+    const r = await checkBalances(deps)
+    expect(r.alerts).toContain("cap_exceeds_balance:relayer")
+  })
+
+  it("APP-1: hub-sponsored actions need the hub's floor plus their own cost", async () => {
+    chain.accounts.get(HUB)!.amount = 2n * NEAR
+    resetOpsCacheForTests()
+    expect(await hubAllows(chain, cfg, NEAR / 2n)).toBe(true)
+    expect(await hubAllows(chain, cfg, NEAR + NEAR / 2n)).toBe(false)
   })
 
   it("create_pot is refused below the hub floor; the faucet is off below the critical treasury float", async () => {

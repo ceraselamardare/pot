@@ -46,6 +46,7 @@ export function BalanceHero({
   contributed,
   pendingIn,
   goal,
+  eachSlot,
   collected,
   actions,
   className,
@@ -58,6 +59,8 @@ export function BalanceHero({
   contributed: Micro
   pendingIn: Micro
   goal: Micro | null
+  /** the creator's "$X each" (this device only): per-person rings (components/pot/EachStrip), not a made-up total bar */
+  eachSlot?: ReactNode
   collected: Micro
   /** the Pot's action row (components/pot/PotActions); not shown once the Pot is closed */
   actions?: ReactNode
@@ -107,7 +110,12 @@ export function BalanceHero({
       {goalSlot && !closedAt ? (
         <div className="mt-4">{goalSlot}</div>
       ) : (
-        goal !== null && goal > 0n && !closedAt && <GoalBar collected={collected} goal={goal} className="mt-4" />
+        !closedAt &&
+        (goal !== null && goal > 0n ? (
+          <GoalBar collected={collected} goal={goal} className="mt-4" />
+        ) : (
+          (eachSlot ?? null)
+        ))
       )}
       {closedAt ? null : actions}
     </section>

@@ -18,6 +18,7 @@ import { viewFunction } from "../chain/near"
 import { burnt, trustedEvents } from "../chain/outcome"
 import { logError } from "../log"
 import { notifyFromEvents } from "../notify/notify"
+import { closePayees, registerPayees } from "../features/registration"
 import { applyHubEvents } from "../relay/effects"
 import { blockTimes, type RelayDeps } from "../relay/pipeline"
 import { TGAS } from "../relay/policy"
@@ -67,6 +68,8 @@ export interface GoalsReport {
   refundable: number
   proposed: number
   approved: number
+  /** hub 1.3.0: refunds confirmed (money seen out of the DAO) in the same run */
+  confirmed: number
   waiting: number
   gaveUp: number
   failed: number
@@ -94,7 +97,13 @@ const readGoal = (deps: RelayDeps, dao: string) => viewFunction<GoalRow | null>(
  * One relayer-signed refund_unfunded (0 deposit; the hub sponsors the close prepay for its relayers). Keyed so a run
  * twice on the same day never proposes twice: `refund:<dao>:propose:<utc day>`, `refund:<dao>:approve:<id>:<utc day>`.
  */
-export async function serverRefundUnfunded(deps: RelayDeps, dao: string, phase: "propose" | "approve", key: string, cause: string): Promise<"done" | "failed" | "duplicate" | "pending"> {
+export async function serverRefundUnfunded(
+  deps: RelayDeps,
+  dao: string,
+  phase: "propose" | "approve" | "confirm",
+  key: string,
+  cause: string,
+): Promise<"done" | "failed" | "duplicate" | "pending"> {
   const { db, cfg } = deps
   const id = newRelayId()
   try {
@@ -161,7 +170,7 @@ export async function serverRefundUnfunded(deps: RelayDeps, dao: string, phase: 
 
 /** The reconcile step: every open/closing Pot's goal; refunds the missed all-or-nothing ones (with back-off). */
 export async function refundUnfundedGoals(deps: RelayDeps, cause: string, now = Date.now()): Promise<GoalsReport> {
-  const out: GoalsReport = { scanned: 0, refundable: 0, proposed: 0, approved: 0, waiting: 0, gaveUp: 0, failed: 0 }
+  const out: GoalsReport = { scanned: 0, refundable: 0, proposed: 0, approved: 0, confirmed: 0, waiting: 0, gaveUp: 0, failed: 0 }
   const day = new Date(now).toISOString().slice(0, 10)
   const pots = await deps.db.select({ daoId: pot.daoId }).from(pot).where(inArray(pot.status, ["open", "closing"])).limit(500)
   for (const { daoId } of pots) {
@@ -196,9 +205,38 @@ export async function refundUnfundedGoals(deps: RelayDeps, cause: string, now = 
       g = await readGoal(deps, daoId).catch(() => null)
     }
     if (g?.can_refund && g.state === "refunding") {
+      // HUB-5: the approval executes the refund close (an atomic batch of ft_transfers): register every payee first,
+      // from the close budget; one we could not try now → wait for the next run rather than fail the whole close
+      if (g.refund_proposal_id !== null) {
+        const proposal = await deps.hub.getProposal(daoId, g.refund_proposal_id).catch(() => null)
+        if (proposal) {
+          const reg = await registerPayees(deps, closePayees(proposal.kind as Record<string, unknown>, deps.cfg.usdcId), daoId)
+          if (reg.skipped.length > 0) {
+            out.waiting++
+            continue
+          }
+        }
+      }
       const r = await serverRefundUnfunded(deps, daoId, "approve", `refund:${daoId}:approve:${g.refund_proposal_id ?? "x"}:${day}`, cause)
       if (r === "done") out.approved++
       else if (r === "failed") out.failed++
+      // hub 1.3.0 (HUB-4): the approval pays out, but the refund is confirmed (state refunded, `goal_refunded`) only by
+      // a third refund_unfunded that sees the money left the DAO. The approve call above is keyed per day, so confirm
+      // now under a per-run key instead of waiting for tomorrow. On 1.2.0 the approval already settled it (no call).
+      if (r !== "failed") {
+        const after = await readGoal(deps, daoId).catch(() => null)
+        if (after?.can_refund && after.state === "refunding") {
+          const c = await serverRefundUnfunded(
+            deps,
+            daoId,
+            "confirm",
+            `refund:${daoId}:confirm:${after.refund_proposal_id ?? "x"}:${cause}`,
+            cause,
+          )
+          if (c === "done") out.confirmed++
+          else if (c === "failed") out.failed++
+        }
+      }
     }
   }
   return out

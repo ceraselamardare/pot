@@ -1,5 +1,5 @@
 // Hub, DAO and token views the server needs (contracts-spec §4), with short per-instance caches
-// (api-spec §3.1: get_proposal_subject 60 s, get_members 10 s; get_pot 10 s; unknown Pots 60 s).
+// (api-spec §3.1: get_proposal_subject 60 s, get_members 3 s (APP-9; was 10 s); get_pot 10 s; unknown Pots 60 s).
 // View JSON types are @pot/sdk's snake_case `Raw*` twins of the contract (types/hub-raw.ts, dao.ts).
 import type { RawMemberView, RawPotView, RawProposal, RawRequestView, RawSubjectView } from "@pot/sdk"
 import { viewFunction, type Finality } from "./near"
@@ -45,6 +45,9 @@ class TtlCache<V> {
 const isPanic = (e: unknown) =>
   e instanceof RpcError && (e.type === "CONTRACT_EXECUTION_ERROR" || e.type === "QUERY_ERROR" || /panicked|ERR_/.test(e.message))
 
+/** get_members cache per instance (APP-9, security audit 2026-11-04). */
+export const MEMBERS_TTL_MS = 3_000
+
 export function createHubReader(rpc: RpcClient, hubId: string): HubReader {
   const pots = new TtlCache<PotView | null>()
   const members = new TtlCache<MemberView[]>()
@@ -66,7 +69,9 @@ export function createHubReader(rpc: RpcClient, hubId: string): HubReader {
         if (hit) return hit
       }
       const v = (await viewFunction<MemberView[] | null>(rpc, hubId, "get_members", { pot }, "optimistic")) ?? []
-      members.set(pot, v, 10_000)
+      // APP-9: 10 s → 3 s, so someone who leaves loses access to members-only data within seconds (isMember also
+      // re-reads before saying no, so a fresh joiner is never refused by a stale list)
+      members.set(pot, v, MEMBERS_TTL_MS)
       return v
     },
     async getProposalSubject(pot, proposalId) {

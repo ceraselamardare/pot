@@ -114,7 +114,9 @@ describe("livePotVM", () => {
     expect(vm.k).toBe(2)
     expect(vm.me?.person).toMatchObject({ id: ben, name: "Ben", joinIndex: 1 })
     expect(vm.myShare).toBe(usd(138))
-    expect(vm.goal).toBe(usd(450))
+    expect(vm.goal).toBeNull() // "$150 each" stays per person, never a made-up total
+    expect(vm.goalEach).toBe(usd(150))
+    expect(vm.goalEachChosen).toBe(false) // not set on this device: Create's default, never shown as a fact
     expect(vm.invite).toBeNull()
   })
 

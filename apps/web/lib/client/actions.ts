@@ -277,11 +277,15 @@ export async function voteRules(slug: string, proposalId: number, v: "Approve" |
 
 // ------------------------------------------------------------------------------------------------- hub 1.1.0
 
-export type OkResult = "approved" | "failed" | "objection" | "decided" | "expired" | "self" | "not_one_ok" | "not_member"
+export type OkResult = "approved" | "failed" | "objection" | "decided" | "expired" | "self" | "not_one_ok" | "not_member" | "not_eligible"
 
-/** Can `me` give the one OK on this request (not the requester, no "no" yet, still waiting)? */
-export function canGiveOk(r: Pick<RequestVM, "tier" | "status" | "requester" | "declines">, me: string | null): boolean {
-  return !!me && r.tier === "one_ok" && r.status === "needs" && r.requester.id !== me && r.declines.length === 0
+/**
+ * Can `me` give the one OK on this request (not the requester, not the one getting paid, no "no" yet, still waiting)?
+ * Hub 1.3.0 (W4-1) also needs the OK-giver to have added ≥ $1 and to have joined before the request: the hub refuses
+ * those with ERR_OK_NOT_ELIGIBLE (→ "not_eligible"), and they can still approve with the group.
+ */
+export function canGiveOk(r: Pick<RequestVM, "tier" | "status" | "requester" | "receiver" | "declines">, me: string | null): boolean {
+  return !!me && r.tier === "one_ok" && r.status === "needs" && r.requester.id !== me && r.receiver.id !== me && r.declines.length === 0
 }
 
 /** The one OK on a one-OK request (hub ok_request; relayer R13): the hub then approves it as the rules. */

@@ -4,6 +4,7 @@
 // prefetch user data in RSC (Cache Components, KB).
 // The sign-in dialog's host sits here so every page can open it (`?signin=1`, components/features/auth/SignInHost);
 // it reads the search params, so it has its own <Suspense> and every route stays static.
+import "@/lib/security/zod-jitless"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { Suspense, useState, type ReactNode } from "react"
 import { SignInHost } from "@/components/features/auth/SignInHost"

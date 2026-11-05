@@ -99,8 +99,9 @@ export interface TokenSet {
 
 export class NearAuthError extends Error {
   constructor(
-    /** cancelled: the person closed or denied the window (silent) · blocked: no window · timeout · failed · unavailable */
-    readonly kind: "cancelled" | "blocked" | "timeout" | "failed" | "unavailable",
+    /** cancelled: the person closed or denied the window (silent) · blocked: no window · timeout · failed · unavailable ·
+     *  account_check: GOV-7, the new account's keys aren't exactly {MPC key, this device's key} (verify-keys.ts) */
+    readonly kind: "cancelled" | "blocked" | "timeout" | "failed" | "unavailable" | "account_check",
     message?: string,
   ) {
     super(message ?? kind)

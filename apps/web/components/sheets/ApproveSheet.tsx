@@ -1,6 +1,7 @@
 "use client"
 // Approve sheet (ux-spec §4.10, §6.4; design-direction 02 §5a; frontend-architecture §5.4). Everything needed to
-// decide fairly: who asks, how much, why it needs you, who already said yes, what's left after, when it expires.
+// decide fairly: who asks, how much, who gets it (CLI-3: a member by name, anyone else by account hint and "Not in this
+// Pot"), why it needs you, who already said yes, what's left after, when it expires.
 // [Approve $300] is the sheet's one marigold; [Decline] stays secondary and expands an optional reason.
 // The meter ticks optimistically (< 100 ms) and reverts with a toast if the approval didn't go through.
 // A group approval gets a calm check and `approve.final`, never the burst (brand: one celebration only).
@@ -21,6 +22,7 @@ import { reasonWord } from "@/components/pot/Feed"
 import { ApprovalTimeline } from "@/components/pot/RequestCard"
 import { Button } from "@/components/ui/button"
 import { Sheet } from "@/components/sheets/Sheet"
+import { ApproveReceiver } from "@/components/sheets/ApproveReceiver"
 import { ReceiptLink } from "@/components/receipt/ReceiptLink"
 import { SpendReceiptSection } from "@/components/receipt/SavedReceipt"
 import { RecordStatusChip } from "@/components/record/RecordStatusChip"
@@ -122,6 +124,10 @@ function ApproveBody({ pot, r, onClose, actions }: { pot: PotVM; r: RequestVM; o
         const vars = { k: r.k, n: r.n }
         announce(t("approve.ok.objection", vars))
         dispatch({ type: "set", phase: { tag: "done", key: "approve.ok.objection", vars, tone: "neutral" } })
+      } else if (res === "not_eligible") {
+        // hub 1.3.0 (W4-1): only someone who added money before the request (and isn't paid by it) can give the one OK
+        announce(t("approve.ok.not_eligible"))
+        dispatch({ type: "set", phase: { tag: "done", key: "approve.ok.not_eligible", vars: {}, tone: "neutral" } })
       } else {
         dispatch({ type: "set", phase: { tag: "done", key: "approve.decided.declined", vars: {}, tone: "neutral" } })
       }
@@ -174,6 +180,8 @@ function ApproveBody({ pot, r, onClose, actions }: { pot: PotVM; r: RequestVM; o
         <MoneyText micro={r.amount} variant="hero" className="text-ink" strike={r.status === "declined" || r.status === "expired"} />
         <p className="mt-1 text-body text-ink">{t("approve.reason", { reason: reasonWord(r) })}</p>
       </div>
+      {/* CLI-3 (security audit 2026-11-04): who gets the money, before anyone approves */}
+      <ApproveReceiver pot={pot} r={r} me={me} />
       {r.status === "needs" && <p className="rounded-md bg-surface-sunken p-3 text-body text-ink">{oneOk && r.declines.length === 0 ? t("approve.why.one_ok", { name: r.requester.name }) : whyText(r)}</p>}
       {oneOk && r.declines.length === 0 && r.status === "needs" ? (
         <OneOkLine r={r} potName={pot.name} />

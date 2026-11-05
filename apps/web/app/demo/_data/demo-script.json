@@ -172,10 +172,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -192,7 +190,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -490,10 +489,8 @@
                               ]
                             },
                             "permissions": [
-                              "*:AddProposal",
                               "*:VoteApprove",
-                              "*:VoteReject",
-                              "*:Finalize"
+                              "*:VoteReject"
                             ],
                             "vote_policy": {}
                           },
@@ -510,7 +507,8 @@
                               "transfer:Finalize",
                               "add_member_to_role:AddProposal",
                               "add_member_to_role:VoteApprove",
-                              "call:AddProposal"
+                              "call:AddProposal",
+                              "call:Finalize"
                             ],
                             "vote_policy": {
                               "transfer": {
@@ -962,10 +960,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -982,7 +978,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -1162,10 +1159,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -1182,7 +1177,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -1999,10 +1995,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -2019,7 +2013,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -2199,10 +2194,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -2219,7 +2212,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -2911,10 +2905,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -2931,7 +2923,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -3154,10 +3147,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -3174,7 +3165,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -3677,7 +3669,7 @@
                 }
               ],
               "parallelGroup": "reads",
-              "result": "{\"roles\":[{\"name\":\"member\",\"kind\":{\"Group\":[\"u-7k2m9qxa.users.potprev.testnet\",\"u-4hn8c2wd.users.potprev.testnet\",\"u-3p8w2kdn.users.potprev.testnet\"]},\"permissions\":[\"*:AddProposal\",\"*:VoteApprove\",\"*:VoteReject\",\"*:Finalize\"],\"vote_policy\":{}},{\"name\":\"rulebot\",\"kind\":{\"Group\":[\"pots.potprev.testnet\"]},\"permissions\":[\"transfer:AddProposal\",\"transfer:VoteApprove\",\"transfer:Finalize\",\"add_member_to_role:AddProposal\",\"add_member_to_role:VoteApprove\",\"call:AddProposal\"],\"vote_policy\":{\"transfer\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]},\"add_member_to_role\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]}}}],\"default_vote_policy\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,2]},\"proposal_bond\":\"0\",\"proposal_period\":\"604800000000000\",\"bounty_bond\":\"0\",\"bounty_forgiveness_period\":\"86400000000000\"}"
+              "result": "{\"roles\":[{\"name\":\"member\",\"kind\":{\"Group\":[\"u-7k2m9qxa.users.potprev.testnet\",\"u-4hn8c2wd.users.potprev.testnet\",\"u-3p8w2kdn.users.potprev.testnet\"]},\"permissions\":[\"*:VoteApprove\",\"*:VoteReject\"],\"vote_policy\":{}},{\"name\":\"rulebot\",\"kind\":{\"Group\":[\"pots.potprev.testnet\"]},\"permissions\":[\"transfer:AddProposal\",\"transfer:VoteApprove\",\"transfer:Finalize\",\"add_member_to_role:AddProposal\",\"add_member_to_role:VoteApprove\",\"call:AddProposal\",\"call:Finalize\"],\"vote_policy\":{\"transfer\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]},\"add_member_to_role\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]}}}],\"default_vote_policy\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,2]},\"proposal_bond\":\"0\",\"proposal_period\":\"604800000000000\",\"bounty_bond\":\"0\",\"bounty_forgiveness_period\":\"86400000000000\"}"
             },
             {
               "n": 6,
@@ -4409,10 +4401,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -4429,7 +4419,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -4698,10 +4689,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -4718,7 +4707,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -5333,7 +5323,7 @@
                 }
               ],
               "parallelGroup": "reads",
-              "result": "{\"roles\":[{\"name\":\"member\",\"kind\":{\"Group\":[\"u-7k2m9qxa.users.potprev.testnet\",\"u-4hn8c2wd.users.potprev.testnet\",\"u-3p8w2kdn.users.potprev.testnet\"]},\"permissions\":[\"*:AddProposal\",\"*:VoteApprove\",\"*:VoteReject\",\"*:Finalize\"],\"vote_policy\":{}},{\"name\":\"rulebot\",\"kind\":{\"Group\":[\"pots.potprev.testnet\"]},\"permissions\":[\"transfer:AddProposal\",\"transfer:VoteApprove\",\"transfer:Finalize\",\"add_member_to_role:AddProposal\",\"add_member_to_role:VoteApprove\",\"call:AddProposal\"],\"vote_policy\":{\"transfer\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]},\"add_member_to_role\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]}}}],\"default_vote_policy\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,2]},\"proposal_bond\":\"0\",\"proposal_period\":\"604800000000000\",\"bounty_bond\":\"0\",\"bounty_forgiveness_period\":\"86400000000000\"}"
+              "result": "{\"roles\":[{\"name\":\"member\",\"kind\":{\"Group\":[\"u-7k2m9qxa.users.potprev.testnet\",\"u-4hn8c2wd.users.potprev.testnet\",\"u-3p8w2kdn.users.potprev.testnet\"]},\"permissions\":[\"*:VoteApprove\",\"*:VoteReject\"],\"vote_policy\":{}},{\"name\":\"rulebot\",\"kind\":{\"Group\":[\"pots.potprev.testnet\"]},\"permissions\":[\"transfer:AddProposal\",\"transfer:VoteApprove\",\"transfer:Finalize\",\"add_member_to_role:AddProposal\",\"add_member_to_role:VoteApprove\",\"call:AddProposal\",\"call:Finalize\"],\"vote_policy\":{\"transfer\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]},\"add_member_to_role\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,1]}}}],\"default_vote_policy\":{\"weight_kind\":\"RoleWeight\",\"quorum\":\"1\",\"threshold\":[1,2]},\"proposal_bond\":\"0\",\"proposal_period\":\"604800000000000\",\"bounty_bond\":\"0\",\"bounty_forgiveness_period\":\"86400000000000\"}"
             },
             {
               "n": 6,
@@ -6530,10 +6520,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -6550,7 +6538,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {
@@ -6873,10 +6862,8 @@
                   ]
                 },
                 "permissions": [
-                  "*:AddProposal",
                   "*:VoteApprove",
-                  "*:VoteReject",
-                  "*:Finalize"
+                  "*:VoteReject"
                 ],
                 "vote_policy": {}
               },
@@ -6893,7 +6880,8 @@
                   "transfer:Finalize",
                   "add_member_to_role:AddProposal",
                   "add_member_to_role:VoteApprove",
-                  "call:AddProposal"
+                  "call:AddProposal",
+                  "call:Finalize"
                 ],
                 "vote_policy": {
                   "transfer": {

@@ -21,7 +21,7 @@ import { logError } from "../log"
 import { notify, notifyTopupReminder } from "../notify/notify"
 import { reconcileTopups, type TopupsReport } from "../features/topups"
 import { limit } from "../quotas"
-import { serverRetryPayout, serverSync, type RelayDeps } from "../relay/pipeline"
+import { serverRetryClose, serverRetryPayout, serverSync, type RelayDeps } from "../relay/pipeline"
 import { reconcileStaleRelays } from "../relay/reconcile"
 import { checkBalances, checkGlobalCaps, type BalanceReport } from "./balances"
 import { refundUnfundedGoals, type GoalsReport } from "./goals"
@@ -90,7 +90,7 @@ export async function runReconcile(
 
 /** Step 2 over the `pot` cache: open (or closing) Pots with activity in the last 14 days. */
 async function reconcilePots(deps: RelayDeps, cause: string) {
-  const out = { scanned: 0, expiredSynced: 0, payoutRetries: 0, approvalPushes: 0 }
+  const out = { scanned: 0, expiredSynced: 0, payoutRetries: 0, approvalPushes: 0, closesSynced: 0, closeRetries: 0 }
   const pots = await deps.db
     .select({ daoId: pot.daoId })
     .from(pot)
@@ -101,6 +101,22 @@ async function reconcilePots(deps: RelayDeps, cause: string) {
     out.scanned++
     const v = await deps.hub.getPot(daoId, { fresh: true }).catch(() => null)
     if (!v || v.status === "closed") continue
+    // hub 1.3.0 (HUB-4): an approved close is Closed only once `sync` sees the money out of the DAO; until then the Pot
+    // is "settling". Confirm it here (any later relayed sync would too). A 1.2.0 hub has no `close_settling`.
+    if (v.status === "closing" && v.close_proposal_id !== null && v.close_proposal_id !== undefined) {
+      if (v.close_settling === true) {
+        await serverSync(deps, daoId, v.close_proposal_id, cause)
+        out.closesSynced++
+        continue
+      }
+      // hub 1.3.0: a failed close is retried by the hub itself (members have no Finalize on v3/v4 Pots), server-signed
+      // at 300 Tgas with its payees registered first (≤ 3/proposal/day, shared with the relayer's retries)
+      if (v.close_settling === false && (v.policy_version ?? 1) >= 2) {
+        const p = await deps.hub.getProposal(daoId, v.close_proposal_id).catch(() => null)
+        if (p?.status === "Failed" && (await serverRetryClose(deps, daoId, v.close_proposal_id, cause)) === "retried") out.closeRetries++
+        continue
+      }
+    }
     const reqs = await deps.hub.getRequests(daoId, Math.max(0, v.request_count - 50), 50).catch(() => [])
     let usdc: bigint | null = null
     for (const r of reqs) {

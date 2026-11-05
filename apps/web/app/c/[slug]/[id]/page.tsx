@@ -8,6 +8,7 @@ import { Suspense } from "react"
 import { Lockup } from "@/components/brand/Lockup"
 import { LiveRegion } from "@/components/app-shell/Shell"
 import { ClaimFlow, ClaimNotFound } from "@/components/paylink/ClaimFlow"
+import { PublicNotice } from "@/components/public/PublicNotice"
 import { t } from "@/i18n/t"
 import { claimTitle, getClaimPreview, parseClaimParams } from "./claim-preview"
 
@@ -59,5 +60,11 @@ async function ClaimBody({ params }: Pick<Props, "params">) {
   const ok = parseClaimParams(slug, id)
   if (!ok) return <ClaimNotFound />
   const p = await getClaimPreview(ok.slug, ok.id).catch(() => null)
-  return <ClaimFlow slug={ok.slug} id={ok.id} initial={p} />
+  return (
+    <>
+      <ClaimFlow slug={ok.slug} id={ok.id} initial={p} />
+      {/* CLI-4 (security audit 2026-11-04): "made by people who use Pot, not by Pot" + Report this page */}
+      <PublicNotice page="pay_link" slug={ok.slug} />
+    </>
+  )
 }

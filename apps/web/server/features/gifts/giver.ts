@@ -139,6 +139,13 @@ export async function startGift(
     if (oneTime) {
       await tx.select({ id: giftLink.id }).from(giftLink).where(eq(giftLink.id, linkId!)).for("update")
       if (await reserved(tx)) throw linkRefusal("link_used")
+      // APP-6 (security audit 2026-11-04): at most ONE live ref per one-time link, the giver's own earlier ones
+      // included (a retry under a new key supersedes them), so the relay pre-flight (validateGiftRef: pending only) can
+      // never pass two refs through one one-time link. A superseded ref that lands anyway is still recorded on arrival.
+      await tx
+        .update(gift)
+        .set({ status: "failed" })
+        .where(and(eq(gift.linkId, linkId!), eq(gift.giverAccount, me), eq(gift.status, "pending")))
     }
     return (await tx.insert(gift).values(values).onConflictDoNothing().returning())[0]
   })

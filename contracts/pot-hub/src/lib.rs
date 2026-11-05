@@ -23,6 +23,7 @@ pub mod kinds;
 pub mod ledger;
 pub mod policy;
 pub mod prorata;
+pub mod security;
 pub mod types;
 pub mod views;
 pub mod wave4;
@@ -30,6 +31,8 @@ pub mod wave4;
 mod unit_time;
 #[cfg(test)]
 mod unit_gifts;
+#[cfg(test)]
+mod unit_security;
 
 use errors::*;
 use events::*;
@@ -381,6 +384,10 @@ impl PotHub {
         if is_link && !ext.extras.links {
             return Err((ERR_LINKS_OFF, "links_off"));
         }
+        // W4-8: no dust links (each claim may cost the hub a token registration)
+        if is_link && amount < MIN_LINK_AMOUNT {
+            return Err((ERR_LINK_TOO_SMALL, "link_too_small"));
+        }
         if let Some(r) = request_ref {
             if !valid_request_ref(r) {
                 return Err((ERR_BAD_REQUEST_REF, "bad_request_ref"));
@@ -404,7 +411,8 @@ impl PotHub {
             (Path::Vote, Reason::OverBudget)
         } else if !receiver_ok {
             (Path::Vote, Reason::PayeeNotAllowed)
-        } else if member.contributed == 0 {
+        } else if member.contributed < MIN_STAKE {
+            // HUB-2: adding 1 unit no longer makes a stranger an instant spender
             (Path::Vote, Reason::NewMember)
         } else {
             (Path::Instant, Reason::WithinRules)
@@ -412,10 +420,11 @@ impl PotHub {
         if decision.0 == Path::Vote && member.pending_votes >= self.config.limits.max_pending_per_member {
             return Err((ERR_TOO_MANY_PENDING, "too_many_pending"));
         }
-        let one_ok = ext.extras.one_ok_cap.0;
+        // W4-1 (a) / (c): one OK only for a requester who added ≥ MIN_STAKE, within the one-OK ceiling and
+        // their one-OK allowance; everything else goes to the group (`ok_request` re-checks it at OK time)
         let tier = if decision.0 == Path::Instant {
             Tier::Instant
-        } else if one_ok > 0 && amount <= one_ok && pot.member_count >= 2 {
+        } else if self.one_ok_rules(pot, &ext, requester, &member, amount, None).is_ok() {
             Tier::OneOk
         } else {
             Tier::Group
@@ -460,7 +469,21 @@ impl PotHub {
         if new == Some(old) {
             return;
         }
+        // W4-1 (c): a one-OK charge stays on the allowance only while the spend is (being) paid
+        match new {
+            None | Some(RequestStatus::Rejected | RequestStatus::Expired | RequestStatus::Removed) => self.release_one_ok(pot.idx, req),
+            Some(RequestStatus::Approved) => self.settle_one_ok_charge(pot.idx, req.id),
+            _ => {}
+        }
         let is_link = self.is_link(pot.idx, req.id);
+        // M-1: only a plain pending link request (no OK in flight) lets a close through
+        if is_link {
+            match new {
+                Some(RequestStatus::Pending) if !self.rx(pot.idx, req).ok_in_flight => self.mark_link_pending(pot.idx, req.id),
+                Some(RequestStatus::Checking | RequestStatus::Proposing | RequestStatus::Pending) => {}
+                _ => self.unmark_link_pending(pot.idx, req.id),
+            }
+        }
         match new {
             Some(RequestStatus::Approved) if !is_link => self.trust_settle(pot, req),
             Some(RequestStatus::Rejected) => {
@@ -837,8 +860,9 @@ impl PotHub {
         if let Err(code) = self.validate_extras(&rules, &extras, None) {
             fail(code);
         }
-        // the rulebot may approve `call` proposals only in all-or-nothing Pots (the goal refund)
-        let policy_v = if extras.goal.as_ref().is_some_and(|g| g.all_or_nothing) { POLICY_V2 } else { POLICY_V1 };
+        // Hub 1.3.0 (HUB-1 / GOV-2 / GOV-3): members of a new Pot can only vote, so every proposal is
+        // the hub's. The rulebot may approve `call` proposals only in all-or-nothing Pots (the goal refund).
+        let policy_v = if extras.goal.as_ref().is_some_and(|g| g.all_or_nothing) { POLICY_V4 } else { POLICY_V3 };
         let day = today();
         let daily = self.creator_daily.get(&creator).cloned().unwrap_or_default();
         check(daily.count_on(day) < self.config.limits.max_pots_per_creator_per_day, ERR_CREATOR_DAILY_LIMIT);
@@ -1155,12 +1179,16 @@ impl PotHub {
         ledger::apply_transition(&mut p, &mut m, req.amount, None, Some((path, RequestStatus::Checking)));
         self.put_member(p.idx, &requester, m);
         self.requests.insert((p.idx, req.id), req.clone());
+        let open_before = self.pext(p.idx).open_links;
         if is_link {
             let mut e = self.pext(p.idx);
             e.open_links += 1;
             self.pot_ext.insert(p.idx, e);
         }
         self.req_ext.insert((p.idx, req.id), RequestExt { tier, ok_by: None, ok_in_flight: false, counted: false, link });
+        if is_link {
+            self.track_new_link(p.idx, req.id, open_before); // W4-5: a plain pending link until approved
+        }
         if path == Path::Instant {
             p.busy_until_ms = now + BUSY_WINDOW_MS;
         }
@@ -1365,12 +1393,16 @@ impl PotHub {
     /// Permissionless and idempotent; allowed in every Pot status and while paused.
     pub fn sync(&mut self, pot: AccountId, proposal_id: u64) -> Promise {
         let p = self.pot(&pot);
-        check(self.subjects.contains_key(&(p.idx, proposal_id)), ERR_UNKNOWN_PROPOSAL);
-        ext_dao::ext(pot.clone())
-            .with_static_gas(GAS_VIEW_DAO)
-            .with_unused_gas_weight(0)
-            .get_proposal(proposal_id)
-            .then(
+        let subject = self.subjects.get(&(p.idx, proposal_id)).cloned().unwrap_or_else(|| fail(ERR_UNKNOWN_PROPOSAL));
+        let read = ext_dao::ext(pot.clone()).with_static_gas(GAS_VIEW_DAO).with_unused_gas_weight(0).get_proposal(proposal_id);
+        // HUB-4: a close is confirmed only by the DAO's USDC balance (promise 1), never by `Approved`
+        // alone (Sputnik stores Approved before its payout callback can set Failed)
+        let read = if subject == Subject::Close {
+            read.and(ext_ft::ext(self.config.usdc.clone()).with_static_gas(GAS_VIEW).with_unused_gas_weight(0).ft_balance_of(pot.clone()))
+        } else {
+            read
+        };
+        read.then(
                 Self::ext(Self::me())
                     .with_static_gas(GAS_ON_STATUS)
                     .with_unused_gas_weight(0)
@@ -1456,16 +1488,44 @@ impl PotHub {
                 SyncOutcome { proposal_id, subject: "join".into(), dao_status: ds, hub_status: hs.into(), changed: true }
             }
             Subject::Close => {
+                // HUB-4: only `sync` reads the DAO's USDC balance (promise 1); other chains pass none
+                let dao_balance: Option<u128> = promise_json::<U128>(1).ok().map(|b| b.0);
                 let current = p.status == (PotStatus::Closing { proposal_id });
                 let Some(mut rec) = self.closes.get(&p.idx).cloned().filter(|r| r.proposal_id == Some(proposal_id)) else {
                     return SyncOutcome::unchanged(proposal_id, "close", &ds, "replaced");
                 };
                 if !current {
+                    if p.status == PotStatus::Closed && prop.status == "Failed" {
+                        // HUB-4: a close confirmed on an earlier read whose payout the DAO now reports
+                        // Failed: the money never left, so the Pot is a failed close again (retryable)
+                        rec.status = CloseStatus::Failed;
+                        p.status = PotStatus::Closing { proposal_id };
+                        p.closed_at_ms = 0;
+                        self.closes.insert(p.idx, rec);
+                        self.emit_synced(&pot, proposal_id, "close", None, None, &ds, "closing");
+                        self.save_pot(&pot, p);
+                        return SyncOutcome { proposal_id, subject: "close".into(), dao_status: ds, hub_status: "closing".into(), changed: true };
+                    }
                     let hs = if p.status == PotStatus::Closed { "closed" } else { "replaced" };
                     return SyncOutcome::unchanged(proposal_id, "close", &ds, hs);
                 }
+                // HUB-4 / M-2: Sputnik stores `Approved` when the vote passes, before its payout callback
+                // can turn it into `Failed`. So `Approved` alone is provisional. It is final when either
+                // - the money is visibly out: the payout is ONE atomic batch of ft_transfers paying the
+                //   whole balance the close read (Σ payouts == rec.balance), and money in is refused
+                //   while closing, so the DAO holding less than that means it was paid (fast path); or
+                // - a sync saw it `Approved` at least CLOSE_CONFIRM_BLOCKS ago (the callback has run by
+                //   then), so USDC that reaches the DAO afterwards can't keep the Pot settling (M-2).
+                // Until then the Pot stays closing ("settling": record Approved). A later `Failed` reopens
+                // it as a retryable failed close; USDC left in a Closed Pot can be swept (`propose_sweep`).
+                let aged = prop.status == "Approved" && self.close_approved_long_enough(p.idx, proposal_id);
+                if prop.status != "Approved" {
+                    self.forget_close_seen(p.idx); // only an unbroken run of Approved sightings ages
+                }
+                let paid = dao_balance.is_some_and(|b| b < rec.balance);
                 let (new_status, new_rec): (PotStatus, CloseStatus) = match prop.status.as_str() {
-                    "Approved" => (PotStatus::Closed, CloseStatus::Approved),
+                    "Approved" if paid || aged => (PotStatus::Closed, CloseStatus::Approved),
+                    "Approved" => (PotStatus::Closing { proposal_id }, CloseStatus::Approved),
                     "Rejected" | "Removed" | "Moved" => (PotStatus::Open, CloseStatus::Rejected),
                     "Failed" => (PotStatus::Closing { proposal_id }, CloseStatus::Failed),
                     _ if expired => (PotStatus::Open, CloseStatus::Expired),
@@ -1513,6 +1573,10 @@ impl PotHub {
 
     pub fn retry_payout(&mut self, pot: AccountId, proposal_id: u64) -> Promise {
         let p = self.pot(&pot);
+        // HUB-4: the Pot's current close, Failed, is retried by the hub too (not for an Open Pot)
+        if self.subjects.get(&(p.idx, proposal_id)) == Some(&Subject::Close) && p.status != PotStatus::Open {
+            return self.retry_close(&pot, &p, proposal_id);
+        }
         check(Self::is_open(&p), ERR_POT_NOT_OPEN);
         let request_id = match self.subjects.get(&(p.idx, proposal_id)) {
             Some(Subject::Spend { request_id }) => *request_id,
@@ -1535,6 +1599,30 @@ impl PotHub {
                     .with_unused_gas_weight(0)
                     .on_retry_status(pot, proposal_id),
             )
+    }
+
+    /// HUB-4 / HUB-6: re-runs the payout of the Pot's CURRENT close after it failed (e.g. a payee
+    /// wasn't registered on the token), as rulebot `Finalize` (policy v2+; members of v3 / v4 Pots
+    /// can't finalize). Never an older close: one replaced by a re-proposal can't pay out later.
+    /// Like any approval, the result is provisional: the Pot stays closing until `sync` sees the
+    /// money out of the DAO.
+    fn retry_close(&mut self, pot: &AccountId, p: &Pot, proposal_id: u64) -> Promise {
+        check(p.status == (PotStatus::Closing { proposal_id }), ERR_NOT_RETRYABLE);
+        let rec = self
+            .closes
+            .get(&p.idx)
+            .cloned()
+            .filter(|r| r.proposal_id == Some(proposal_id) && r.status == CloseStatus::Failed)
+            .unwrap_or_else(|| fail(ERR_NOT_RETRYABLE));
+        check(policy_rulebot_finalizes_call(self.pext(p.idx).policy_v), ERR_USE_DAO_FINALIZE);
+        self.forget_close_seen(p.idx); // M-2: the re-run payout's `Approved` must age from now
+        let kind = close_kind(&self.config.usdc, &rec.payouts);
+        ext_dao::ext(pot.clone())
+            .with_static_gas(close_act_gas(rec.payouts.len()))
+            .with_unused_gas_weight(0)
+            .act_proposal(proposal_id, DaoAction::Finalize, kind, Some("retry".to_string()))
+            .then(ext_dao::ext(pot.clone()).with_static_gas(GAS_VIEW_DAO).with_unused_gas_weight(0).get_proposal(proposal_id))
+            .then(Self::ext(Self::me()).with_static_gas(GAS_ON_STATUS).with_unused_gas_weight(0).on_sync(pot.clone(), proposal_id))
     }
 
     #[private]
@@ -1857,7 +1945,9 @@ impl PotHub {
         let excess = self.charge(self.sponsored(), prepay + state);
         check(p.busy_until_ms <= now, ERR_POT_BUSY);
         check(p.unpaid_approved == 0 && p.reserved == 0, ERR_PAYOUTS_PENDING);
-        check(self.pext(p.idx).open_links == 0, ERR_LINKS_PENDING);
+        // W4-5 / M-1: every open link blocks a close except plain pending requests (not approved, no
+        // OK in flight); while the Pot is closing the hub refuses to fund those, so no escrow outlives it
+        check(self.links_blocking_close(p.idx) == 0, ERR_LINKS_PENDING);
         // hub 1.2.0: a gift forward still pending would land after the balance read
         let gifts = self.gifts_of(p.idx);
         check(!gifts.in_flight_at(now), ERR_GIFT_IN_FLIGHT);
@@ -1962,6 +2052,12 @@ impl PotHub {
         self.save_pot(&pot, p);
         CloseOutcome { ok: true, proposal_id: Some(pid), balance: Some(balance), payouts, dust: Some(dust), dust_to: Some(dust_to), approvals_needed: Some(needed), reason: None }
     }
+}
+
+/// Gas for the vote / Finalize that executes a close: the DAO pays every ft_transfer (5 Tgas each),
+/// ≈ 15 + 6·n burnt (CALIBRATION §4); capped so the whole call fits in 300 Tgas.
+pub(crate) fn close_act_gas(payees: usize) -> Gas {
+    Gas::from_tgas((20 + 6 * payees as u64).min(265))
 }
 
 /// An all-or-nothing goal that isn't reached yet blocks spends (collecting or missed).
@@ -2072,6 +2168,7 @@ mod tests {
             code_only(include_str!("kinds.rs")),
             code_only(include_str!("wave4.rs")),
             code_only(include_str!("gifts.rs")),
+            code_only(include_str!("security.rs")),
         ]
         .concat();
         for forbidden in ["RemoveProposal", "VoteReject", "VoteRemove", "store_blob", "remove_blob", "\"update\"", "deploy_contract", "add_full_access_key", "delete_account"] {
@@ -2091,5 +2188,8 @@ mod tests {
         assert_eq!(code_only(include_str!("wave4.rs")).matches(".transfer(").count(), 0);
         // hub 1.2.0: gifts move USDC only (the forward to the DAO), never NEAR
         assert_eq!(code_only(include_str!("gifts.rs")).matches(".transfer(").count(), 0);
+        // hub 1.3.0: the security module moves no money itself (a sweep is a DAO proposal members approve)
+        assert_eq!(code_only(include_str!("security.rs")).matches(".transfer(").count(), 0);
+        assert_eq!(code_only(include_str!("security.rs")).matches("ft_transfer").count(), 0);
     }
 }

@@ -10,9 +10,13 @@ fn rules(cap: u128, budget: u128) -> Value {
 
 /// T-60 sole member · T-61 ★ group rules · T-62 auth · T-91 one open rules proposal.
 async fn t60(build: Build) -> anyhow::Result<()> {
-    let env = Env::new(build).await?;
-    // T-60: the sole member applies at once
+    // hub 1.3.0: Pots made by hub 1.3.0 (policy v3) let members only vote, so the raw DAO proposals
+    // this test needs come from Pots made by the 1.2.0 hub (policy v1); the hub is upgraded right after
+    let env = Env::legacy(build).await?;
     let (solo, _) = env.create_pot(&env.maya, "solo").await;
+    let (dao, _, _) = env.pot_with_members(&env.maya, "group", &[&env.sam, &env.leo], 0).await;
+    env.upgrade_hub().await?;
+    // T-60: the sole member applies at once
     let o = env.hub_relay(&env.maya, "set_rules", json!({"pot": solo, "rules": rules(50 * USDC, 150 * USDC)}), 30).await;
     assert_eq!(o.json(), json!({"applied": true, "proposal_id": null, "rules_version": 2}));
     assert_eq!(
@@ -29,7 +33,6 @@ async fn t60(build: Build) -> anyhow::Result<()> {
     env.hub_relay(&env.eve, "propose_rules", json!({"pot": solo, "rules": rules(1, 1)}), 100).await.expect_err("ERR_NOT_MEMBER");
 
     // T-61 ★ group rules in a 3-member Pot
-    let (dao, _, _) = env.pot_with_members(&env.maya, "group", &[&env.sam, &env.leo], 0).await;
     env.hub_relay(&env.sam, "set_rules", json!({"pot": dao, "rules": rules(1, 1)}), 30).await.expect_err("ERR_USE_PROPOSE_RULES");
     let new_rules = rules(50 * USDC, 150 * USDC);
     let o = env.hub_relay(&env.sam, "propose_rules", json!({"pot": dao, "rules": new_rules}), 100).await;

@@ -12,7 +12,6 @@ test("(a) invite landing → join → You're in → add $150 → the balance upd
   await expect(page.getByRole("heading", { level: 1, name: "Maya invited you to Porto Weekend" })).toBeVisible()
   await expect(page.getByText("Maya and 1 other are in")).toBeVisible() // the inviter by name, everyone else a count (privacy audit 2026-11-02)
   await expect(page.locator("[data-money]").first()).toHaveText("$300.00")
-  await expect(page.getByText("$300 of $450 collected")).toBeVisible()
   await brandChecks(page, { marigold: "one" })
 
   // tap 2: Join with Google (the mock signs in without a popup)
@@ -31,7 +30,7 @@ test("(a) invite landing → join → You're in → add $150 → the balance upd
   await expect(page).toHaveURL(/\/p\/porto-weekend\?sheet=add&amount=150&step=source/)
   const add = await openedSheet(page, "Add money to Porto Weekend")
   await expect(add.locator("[data-add-amount]")).toHaveText("How much? $150")
-  await expect(add.getByText("Porto Weekend will have $450.00. Goal reached.")).toBeVisible()
+  await expect(add.getByText("Porto Weekend will have $450.00.", { exact: true })).toBeVisible() // no "Goal reached": "$150 each" is per person, not a total
   await expect(add.getByRole("radio", { name: /Demo dollars \(test money\)/ })).toHaveAttribute("aria-checked", "true")
   await brandChecks(page, { marigold: "one" })
 
@@ -42,7 +41,7 @@ test("(a) invite landing → join → You're in → add $150 → the balance upd
   await expect(page.getByText("Adding $150…")).toBeVisible()
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$450.00", { timeout: 10_000 })
   await expect(page.getByText("Added. Porto Weekend now has $450.00.")).toBeVisible()
-  await expect(page.getByText("$450 of $450 collected")).toBeVisible()
+  await expect(page.locator("[data-goal-each] [data-each-done]")).toHaveText("3 of 3 people there") // $150 each, everyone in
   await expect(page.getByRole("button", { name: /^Leo added \$150\. Demo dollars\..*Details$/ }).first()).toBeVisible()
 })
 
@@ -277,6 +276,6 @@ test("Create, the default path: Start a Pot → name → Create Pot (3 taps, no 
   await expect(rules).toContainText("Each person can spend up to $200 in total without asking.")
   await expect(rules).toContainText("Instant payments only go to members.")
   await expect(rules).toContainText("Trust grows: every 3 paid spends raise someone's instant limit by $100, up to $300.")
-  await expect(rules).toContainText("Spends up to $300 need just one OK from anyone else.")
+  await expect(rules).toContainText("Spends up to $300 need just one OK from someone else who has added money.")
   await expect(rules).not.toContainText("All or nothing")
 })

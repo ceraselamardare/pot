@@ -200,7 +200,13 @@ export function PotMoreSheet({ pot, open, onClose }: { pot: PotVM; open: boolean
         <MoreItem
           Icon={LogOut}
           title={closed ? t("close.summary.cta") : t("pot.menu.close")}
-          sub={closed ? undefined : pot.status === "closing" ? t("close.menu.waiting") : t("close.menu.sub")}
+          sub={
+            closed
+              ? undefined
+              : pot.status === "closing"
+                ? t(pot.closeSettling ? "close.menu.settling" : "close.menu.waiting")
+                : t("close.menu.sub")
+          }
           onClick={() => swapSheet("close")}
           data="close"
         />

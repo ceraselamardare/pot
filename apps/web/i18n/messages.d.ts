@@ -156,6 +156,7 @@ export interface Messages {
   "approve.ok.done": { amount: string | number; name: string | number }
   "approve.ok.error": undefined
   "approve.ok.failed": { amount: string | number }
+  "approve.ok.not_eligible": undefined
   "approve.ok.objection": { k: string | number; n: string | number }
   "approve.ok.own": undefined
   "approve.one_ok.header": undefined
@@ -166,6 +167,12 @@ export interface Messages {
   "approve.own.hint": undefined
   "approve.progress": { count: string | number; k: string | number }
   "approve.reason": { reason: string | number }
+  "approve.receiver.account": { hint: string | number }
+  "approve.receiver.label": undefined
+  "approve.receiver.member": undefined
+  "approve.receiver.outsider": undefined
+  "approve.receiver.outsider_body": undefined
+  "approve.receiver.same_name": { name: string | number }
   "approve.rules.cta": undefined
   "approve.rules.declined": undefined
   "approve.rules.final": undefined
@@ -289,6 +296,7 @@ export interface Messages {
   "close.keep": undefined
   "close.links_pending": undefined
   "close.math": { balance: string | number }
+  "close.menu.settling": undefined
   "close.menu.sub": undefined
   "close.menu.waiting": undefined
   "close.next": undefined
@@ -1289,11 +1297,14 @@ export interface Messages {
   "members.only_you": undefined
   "members.refund_hint": undefined
   "members.row": { contributed: string | number; spentShare: string | number; refund: string | number }
-  "members.row.short": { contributed: string | number; spentShare: string | number }
+  "members.stat.in": undefined
+  "members.stat.used": undefined
   "members.totals.in": undefined
   "members.totals.left": undefined
   "members.totals.spent": undefined
+  "members.up_to": { amount: string | number }
   "members.you": { name: string | number }
+  "members.you.tag": undefined
   "moneyin.done": undefined
   "moneyin.for": undefined
   "moneyin.loading": undefined
@@ -1548,6 +1559,12 @@ export interface Messages {
   "pot.closing": undefined
   "pot.cta.add": undefined
   "pot.cta.spend": undefined
+  "pot.each.done": { done: string | number; n: number }
+  "pot.each.invite": undefined
+  "pot.each.member_done": { each: string | number }
+  "pot.each.member_of": { each: string | number }
+  "pot.each.title": { each: string | number }
+  "pot.each.you": undefined
   "pot.explorer": undefined
   "pot.explorer.label": { potName: string | number }
   "pot.feed.empty.body": { potName: string | number }
@@ -1574,6 +1591,7 @@ export interface Messages {
   "pot.not_found.title": undefined
   "pot.not_member.body": { potName: string | number }
   "pot.not_member.title": undefined
+  "pot.settling": undefined
   "pot.tabs.activity": undefined
   "pot.tabs.members": undefined
   "pot.tabs.settings": undefined
@@ -1635,8 +1653,22 @@ export interface Messages {
   "privacy.record_link": undefined
   "privacy.survey": undefined
   "privacy.title": undefined
+  "public.notice": undefined
+  "public.notice.label": undefined
+  "public.og.byline": undefined
+  "public.report": undefined
+  "public.report.cancel": undefined
+  "public.report.error": undefined
+  "public.report.impersonation": undefined
+  "public.report.other": undefined
+  "public.report.scam": undefined
+  "public.report.sent": undefined
+  "public.report.why": undefined
   "publicpage.qr.alt": { potName: string | number }
   "publicpage.qr.hint": undefined
+  "publicpage.reserved.body": undefined
+  "publicpage.reserved.line": undefined
+  "publicpage.reserved.title": undefined
   "publicpage.share": undefined
   "publicpage.switch": undefined
   "publicpage.switch.hint": undefined
@@ -1906,6 +1938,7 @@ export interface Messages {
   "share.rotate.confirm.cta": undefined
   "share.title": { potName: string | number }
   "sheet.back": undefined
+  "signin.account_check": undefined
   "signin.back.body": undefined
   "signin.body": undefined
   "signin.cancel": undefined
@@ -2221,6 +2254,8 @@ export interface Messages {
   "trust.you.up_to": { amount: string | number }
   "xc.added.body": { potName: string | number }
   "xc.address.label": undefined
+  "xc.address_bad.body": { network: string | number }
+  "xc.address_bad.title": undefined
   "xc.arrived.adding": { potName: string | number }
   "xc.arrived.body": { potName: string | number }
   "xc.arrived.cta": undefined

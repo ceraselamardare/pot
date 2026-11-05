@@ -55,6 +55,8 @@ export interface LiveContext {
   now: number
   /** off-chain "$X each" goal in Micro, or null (D-61: Create suggests $150) */
   goalEach: Micro | null
+  /** the creator chose `goalEach` on this device (else it's Create's default, fine to prefill, never shown as a fact) */
+  goalEachChosen?: boolean
 }
 
 export const DEFAULT_GOAL_EACH: Micro = 150_000_000n
@@ -213,6 +215,8 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
         getsBack: back,
         spentShare: m.contributed > back ? m.contributed - back : 0n,
         spentInstant: m.instantUsed,
+        // hub 1.3.0 (W4-1 c): MemberView.one_ok_used, so the local preview mirrors the lifetime one-OK allowance
+        ...(m.oneOkUsed !== undefined ? { oneOkUsed: m.oneOkUsed } : {}),
         isMe: m.account === ctx.me,
         ...(trustBy.has(m.account) ? { trust: trustVMOf(trustBy.get(m.account)!) } : {}),
       }
@@ -266,9 +270,11 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
     creator: person(v.creator),
     balance: b.balance,
     totalIn,
-    // hub 1.1.0: the goal with a date (on chain) wins over this device's "$X each" estimate
-    goal: goalDetail ? goalDetail.amount : goalEach === null ? null : goalEach * BigInt(Math.max(3, v.memberCount)),
+    // only the goal with a date (hub 1.1.0, on chain) is a total; the device's "$X each" stays per person (goalEach),
+    // never multiplied into a made-up total (it was each × max(3, members))
+    goal: goalDetail ? goalDetail.amount : null,
     goalEach,
+    goalEachChosen: ctx.goalEachChosen === true && goalEach !== null,
     rules: {
       instantCap: v.rules.instantCap,
       memberBudget: v.rules.memberBudget,
@@ -291,6 +297,8 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
     rulesPending: v.openRulesProposal !== undefined && v.openRulesProposal !== null,
     closePreview: preview ? closePreviewVM(preview, person) : null,
     closingInFlight: v.closingInFlight,
+    // hub 1.3.0 (HUB-4): the close is approved but the money hasn't left yet (PotView.close_settling)
+    ...(v.closeSettling ? { closeSettling: true } : {}),
     lastContributor: v.lastContributor ? person(v.lastContributor) : null,
     invite:
       b.invite && (!inviteView || inviteView.status === "active")

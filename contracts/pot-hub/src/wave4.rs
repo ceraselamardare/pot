@@ -7,7 +7,7 @@
 
 use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::serde_json::json;
-use near_sdk::{env, near, AccountId, Gas, NearToken, Promise, PromiseOrValue, PublicKey};
+use near_sdk::{env, near, AccountId, NearToken, Promise, PromiseOrValue, PublicKey};
 
 use crate::errors::*;
 use crate::events::*;
@@ -15,7 +15,7 @@ use crate::ext::*;
 use crate::kinds::*;
 use crate::types::*;
 use crate::{
-    bytes_cost, goal_missed, now_ms, pk_string, promise_json, promise_ok, PotHub, GAS_ACT, GAS_ACT_LINK, GAS_FT_TRANSFER,
+    bytes_cost, close_act_gas, goal_missed, now_ms, pk_string, promise_json, promise_ok, PotHub, GAS_ACT, GAS_ACT_LINK, GAS_FT_TRANSFER,
     GAS_ON_CLOSE_BALANCE, GAS_ON_LINK_DONE, GAS_ON_OK_CHECKED, GAS_ON_OK_CHECKED_LINK, GAS_ON_STATUS, GAS_STORAGE_DEPOSIT,
     GAS_VIEW, GAS_VIEW_DAO,
 };
@@ -193,7 +193,7 @@ impl PotHub {
             if g.amount.0 == 0 || g.amount.0 > MAX_AMOUNT || g.deadline_ms <= now + MIN_GOAL_LEAD_MS || g.deadline_ms > now + MAX_GOAL_LEAD_MS {
                 return Err(ERR_GOAL_INVALID);
             }
-            if g.all_or_nothing && cur.is_some_and(|(_, e)| e.policy_v < POLICY_V2) {
+            if g.all_or_nothing && cur.is_some_and(|(_, e)| !policy_rulebot_approves_call(e.policy_v)) {
                 return Err(ERR_GOAL_UNSUPPORTED);
             }
         }
@@ -238,7 +238,7 @@ impl PotHub {
             "reached"
         } else if now_ms() < g.deadline_ms {
             "collecting"
-        } else if g.all_or_nothing && p.status != PotStatus::Closed && e.policy_v >= POLICY_V2 {
+        } else if g.all_or_nothing && p.status != PotStatus::Closed && policy_rulebot_approves_call(e.policy_v) {
             "refundable"
         } else {
             "missed"
@@ -253,6 +253,13 @@ impl PotHub {
         let (Some(req), Some(mut rx)) = (self.requests.get(&key).cloned(), self.req_ext.get(&key).cloned()) else { return amount };
         let Some(mut link) = rx.link.clone() else { return amount };
         if link.status != LinkStatus::AwaitingFunds || req.amount != amount.0 || req.receiver_id != Self::me() {
+            return amount;
+        }
+        // W4-5: a Pot that is closing (or closed) no longer funds links: the money goes back to the
+        // DAO and is paid out by the close, so no escrow can outlive the Pot. L-5: only once a close
+        // is proposed (or done), not while a close attempt is still reading the balance: that attempt
+        // may fail, and the link's proposal can't be paid again.
+        if p.status != PotStatus::Open {
             return amount;
         }
         link.status = LinkStatus::Funded;
@@ -358,13 +365,25 @@ impl PotHub {
         let mut rx = self.rx(p.idx, &req);
         check(rx.tier == Tier::OneOk, ERR_NOT_ONE_OK);
         check(req.status == RequestStatus::Pending, ERR_NOT_PENDING);
-        check(by != req.requester, ERR_OK_SELF);
+        // W4-1 (b): not the requester or the payee, a member since before the request, has added money
+        self.check_ok_giver(p.idx, &by, &req);
         check(!rx.ok_in_flight, ERR_OK_IN_FLIGHT);
+        // W4-1 (a) / (c): the request must STILL be a one-OK spend (rules, stake, allowance re-checked now)
+        let requester = self.active_member(p.idx, &req.requester).unwrap_or_else(|| fail(ERR_NOT_MEMBER));
+        // L-1: the request's own earlier charge (an OK whose result was unknown) doesn't count against it
+        if let Err(why) = self.one_ok_rules(&p, &self.pext(p.idx), &req.requester, &requester, req.amount, Some(req.id)) {
+            fail_with(ERR_NOT_ONE_OK, why);
+        }
         let pid = req.proposal_id.unwrap_or_else(|| fail(ERR_NOT_PENDING));
         let link = rx.link.is_some();
         rx.ok_in_flight = true;
         rx.ok_by = Some(by.clone());
         self.req_ext.insert((p.idx, request_id), rx);
+        // W4-1 (c): reserve the requester's one-OK allowance now (two OKs in one block can't both
+        // fit); released if the hub's approval doesn't land
+        self.charge_one_ok(p.idx, &req);
+        // M-1: a link with an OK in flight may be paid into escrow any moment: it blocks a close
+        self.unmark_link_pending(p.idx, request_id);
         self.save_pot(&pot, p);
         ext_dao::ext(pot.clone())
             .with_static_gas(GAS_VIEW_DAO)
@@ -405,6 +424,14 @@ impl PotHub {
                     Some("not_in_dao_group")
                 } else if !Self::is_open(&p) {
                     Some("pot_not_open")
+                } else if self.ok_giver_rules(p.idx, &by, &req).is_err() {
+                    // L-2: re-checked here: the state may have changed since `ok_request`
+                    Some("not_eligible")
+                } else if self.active_member(p.idx, &req.requester).is_none_or(|m| {
+                    self.one_ok_rules(&p, &self.pext(p.idx), &req.requester, &m, req.amount, Some(req.id)).is_err()
+                }) {
+                    // L-2: e.g. a rules change that lowered or turned off the one-OK ceiling landed meanwhile
+                    Some("not_one_ok")
                 } else {
                     None
                 }
@@ -414,6 +441,10 @@ impl PotHub {
             rx.ok_in_flight = false;
             rx.ok_by = None;
             self.req_ext.insert((p.idx, request_id), rx);
+            self.release_one_ok(p.idx, &req);
+            if req.status == RequestStatus::Pending {
+                self.mark_link_pending(p.idx, request_id); // M-1: plain pending again (no-op for a non-link)
+            }
             self.save_pot(&pot, p);
             return PromiseOrValue::Value(OkOutcome::no(request_id, status_str(req.status), r));
         }
@@ -465,6 +496,10 @@ impl PotHub {
         let voted = prop.votes.get(&Self::me()).is_some_and(|v| v == "Approve");
         if !voted {
             rx.ok_by = None; // our vote didn't land
+            self.release_one_ok(p.idx, &req);
+            if target == RequestStatus::Pending {
+                self.mark_link_pending(p.idx, request_id); // M-1: plain pending again
+            }
         }
         // write the ext BEFORE the transition: the transition may mark it `counted` (trust)
         self.req_ext.insert((p.idx, request_id), rx);
@@ -519,6 +554,8 @@ impl PotHub {
             receiver_id != hub && receiver_id != pot && receiver_id != self.config.usdc && !self.pots.contains_key(&receiver_id),
             ERR_BAD_RECEIVER,
         );
+        // W4-1 (b): the member who gave a one-OK link its OK can't be the one it pays
+        check(rx.ok_by.as_ref() != Some(&receiver_id), ERR_BAD_RECEIVER);
         let sig: [u8; 64] = signature.0.as_slice().try_into().unwrap_or_else(|_| fail(ERR_BAD_SIGNATURE));
         let msg = format!("{CLAIM_DOMAIN}:{hub}:{pot}:{request_id}:{receiver_id}");
         check(env::ed25519_verify(&sig, msg.as_bytes(), &link.pk), ERR_BAD_SIGNATURE);
@@ -652,7 +689,7 @@ impl PotHub {
         check(e.extras.goal.as_ref().is_some_and(|g| g.all_or_nothing), ERR_NO_GOAL);
         let now = now_ms();
         check(goal_missed(&e, now), ERR_GOAL_NOT_MISSED);
-        check(e.policy_v >= POLICY_V2, ERR_GOAL_UNSUPPORTED);
+        check(policy_rulebot_approves_call(e.policy_v), ERR_GOAL_UNSUPPORTED);
         match p.status.clone() {
             PotStatus::Open => {
                 check(p.closing_until_ms <= now, ERR_CLOSE_IN_PROGRESS);
@@ -689,11 +726,21 @@ impl PotHub {
                 let action = match rec.status {
                     CloseStatus::Pending => DaoAction::VoteApprove,
                     CloseStatus::Failed => DaoAction::Finalize,
+                    // HUB-4: approved, money not confirmed out yet: re-read the proposal AND the DAO's
+                    // balance (what `sync` does); never report "refunded" before the money left
+                    CloseStatus::Approved => {
+                        return ext_dao::ext(pot.clone())
+                            .with_static_gas(GAS_VIEW_DAO)
+                            .with_unused_gas_weight(0)
+                            .get_proposal(proposal_id)
+                            .and(ext_ft::ext(self.config.usdc.clone()).with_static_gas(GAS_VIEW).with_unused_gas_weight(0).ft_balance_of(pot.clone()))
+                            .then(Self::ext(Self::me()).with_static_gas(GAS_ON_STATUS).with_unused_gas_weight(0).on_sync(pot, proposal_id));
+                    }
                     _ => fail(ERR_CLOSE_IN_PROGRESS),
                 };
                 let kind = close_kind(&self.config.usdc, &rec.payouts);
                 // the executing vote pays every ft_transfer (5 Tgas each): ≈ 15 + 6·n (CALIBRATION §4)
-                let gas = Gas::from_tgas((20 + 6 * rec.payouts.len() as u64).min(265));
+                let gas = close_act_gas(rec.payouts.len());
                 ext_dao::ext(pot.clone())
                     .with_static_gas(gas)
                     .with_unused_gas_weight(0)
@@ -741,7 +788,8 @@ impl PotHub {
                     && p.total_contributed > 0
                     && !self.gifts_of(p.idx).in_flight_at(now_ms())
             }
-            "refunding" => self.closes.get(&p.idx).is_some_and(|r| matches!(r.status, CloseStatus::Pending | CloseStatus::Failed)),
+            // HUB-4: Approved but not confirmed out ("settling") needs one more call to confirm it
+            "refunding" => self.closes.get(&p.idx).is_some_and(|r| matches!(r.status, CloseStatus::Pending | CloseStatus::Failed | CloseStatus::Approved)),
             _ => false,
         };
         Some(GoalView {

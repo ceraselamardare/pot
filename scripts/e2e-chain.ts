@@ -72,9 +72,9 @@ async function walletSession(a: TestAccount): Promise<User> {
   const r = await http(u, "POST", "/api/session/wallet", nep413SignIn(a, new URL(ORIGIN).host))
   assert(r.status === 200, `wallet session ${a.name}: ${r.status} ${JSON.stringify(r.body).slice(0, 300)}`)
   u.signer = new KeyPairPotSigner({ accountId: a.accountId, secretKey: a.keyPair, chain, cfg: sdkCfg, nonces: new NonceTracker() })
-  // the relayer registers a wallet account on the token once, right after the sign-in (D-23)
-  await eventually(() => view<unknown>(IDS.usdc, "storage_balance_of", { account_id: a.accountId }), (v) => !!v, 45_000)
-  log(`${a.name}: ${a.accountId} (0 NEAR, one full-access key, registered by the relayer)`)
+  // APP-2 (security audit 2026-11-04): sign-in pays no token registration any more; the faucet below (and creating or
+  // joining a Pot) registers the account when it first needs to receive money
+  log(`${a.name}: ${a.accountId} (0 NEAR, one full-access key)`)
   return u
 }
 

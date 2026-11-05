@@ -108,8 +108,11 @@ dual!(t10_contributions, t10);
 /// the forward fails → full refund; the hub holds 0.
 async fn t15(build: Build) -> anyhow::Result<()> {
     use base64::Engine;
-    let env = Env::new(build).await?;
+    // hub 1.3.0: Pots made by hub 1.3.0 (policy v3) let members only vote, so the raw DAO proposals
+    // this test needs come from Pots made by the 1.2.0 hub (policy v1); the hub is upgraded right after
+    let env = Env::legacy(build).await?;
     let (dao, _) = env.create_pot(&env.maya, "unreg").await;
+    env.upgrade_hub().await?;
     let kind = json!({"FunctionCall": {"receiver_id": env.usdc, "actions": [{
         "method_name": "storage_unregister",
         "args": base64::engine::general_purpose::STANDARD.encode("{}"),

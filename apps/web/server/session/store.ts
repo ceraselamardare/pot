@@ -70,6 +70,8 @@ export async function loadSession(db: DbOrTx, req: Request, cfg: Config): Promis
   if (!r) return null
   const now = Date.now()
   if (r.s.expiresAt.getTime() <= now || r.s.idleExpiresAt.getTime() <= now) return null
+  // APP-4: a cookie replayed from another browser is not a session (see uaBound)
+  if (!uaBound(r.s.userAgent, req.headers.get("user-agent"))) return null
   if (now - r.s.lastSeenAt.getTime() > 15 * 60_000) {
     await db
       .update(session)
@@ -85,6 +87,26 @@ export async function loadSession(db: DbOrTx, req: Request, cfg: Config): Promis
     device: r.d,
     pendingDevice: deviceBound && (!r.d || r.d.status !== "active"),
   }
+}
+
+/**
+ * APP-4 (security audit 2026-11-04): a session is bound to the browser family that opened it. The user agent is
+ * compared with its version numbers removed (digits and the separators between them), so browser and OS updates keep
+ * the session, while a stolen cookie replayed from a script or another browser is refused (the request is treated as
+ * signed out; the real session is untouched). Sessions stored without a user agent are not bound. Off with
+ * SESSION_UA_BINDING=off. This raises the bar; it is not a secret (a careful thief copies the header too).
+ */
+export function uaFamily(ua: string | null | undefined): string {
+  return (ua ?? "")
+    .slice(0, 300)
+    .toLowerCase()
+    .replace(/[0-9]+([._][0-9]+)*/g, "#")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+export function uaBound(stored: string | null | undefined, current: string | null | undefined): boolean {
+  if (process.env.SESSION_UA_BINDING === "off" || !stored) return true
+  return uaFamily(stored) === uaFamily(current)
 }
 
 export interface RequireOpts {

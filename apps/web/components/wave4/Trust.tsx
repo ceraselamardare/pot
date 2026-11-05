@@ -14,9 +14,21 @@ export function trustWord(level: number): string {
   return t(`trust.level.${Math.max(0, Math.min(2, level))}` as "trust.level.0")
 }
 
-export function TrustBadge({ trust, className }: { trust: Pick<TrustVM, "level">; className?: string }) {
+/** `iconOnly` (member rows): just the icon in a round chip; the word stays for screen readers and as a tooltip. */
+export function TrustBadge({ trust, className, iconOnly }: { trust: Pick<TrustVM, "level">; className?: string; iconOnly?: boolean }) {
   const level = Math.max(0, Math.min(2, trust.level))
   const Icon = ICONS[level]!
+  if (iconOnly)
+    return (
+      <span
+        data-trust-level={level}
+        title={trustWord(level)}
+        className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-pill bg-surface-sunken text-ink", className)}
+      >
+        <Icon aria-hidden className="size-3.5" strokeWidth={2.25} />
+        <span className="sr-only">{trustWord(level)}</span>
+      </span>
+    )
   return (
     <span
       data-trust-level={level}

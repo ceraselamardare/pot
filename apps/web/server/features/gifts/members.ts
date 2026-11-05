@@ -5,6 +5,7 @@ import "server-only"
 import { and, desc, eq, gt, isNull, or } from "drizzle-orm"
 import { gift, giftLink, giftPage } from "@/db/schema"
 import { checkGiftAmount, GIFT_LINK_ID_RE, GIFT_LINK_TTL_MS, GIFT_LINE_MAX, GIFT_NOTE_MAX, newGiftLinkId, optionalGiftText } from "@/lib/gifts"
+import { publicPageRefusal, RESERVED_DETAIL } from "@/lib/reserved-names"
 import type { GiftLinkWire, GiftPageWire, GiftsRes } from "@/lib/gifts-api"
 import { ApiError } from "../../http/errors"
 import type { SessionCtx } from "../../session/store"
@@ -76,6 +77,10 @@ export async function createGiftLink(
   // a link to a Pot that is closing or closed would only ever say "closed"
   const info = await potInfo(deps, potRow.daoId)
   if (info && info.status !== "open") throw new ApiError("pot_closed")
+  // CLI-4 (security audit 2026-11-04): no pay-in link for a Pot whose name (or the link's note) reads like an official
+  // or brand page (lib/reserved-names.ts)
+  if (publicPageRefusal({ name: info?.name ?? potRow.name, slug: potRow.slug, line: note }))
+    throw new ApiError("bad_request", { detail: { ...RESERVED_DETAIL } })
 
   await chargeGiftQuotas(db, [
     { subject: `user:${s.user.id}`, action: "gift_link_burst", amount: 1n, limit: giftLimit("gifts_user_link_burst", deps.cfg), period: "minute" },
@@ -155,6 +160,11 @@ export async function putGiftPage(deps: GiftDeps, s: SessionCtx, potParam: strin
   if (body.on) {
     const info = await potInfo(deps, potRow.daoId)
     if (info && info.status !== "open") throw new ApiError("pot_closed")
+    // CLI-4 (security audit 2026-11-04): no public page for a Pot whose name, address or one-liner reads like an
+    // official or brand page (lib/reserved-names.ts); turning a page OFF is always allowed
+    const kept = line === undefined ? (await pageOf(deps.db, potRow.daoId)).line : line
+    if (publicPageRefusal({ name: info?.name ?? potRow.name, slug: potRow.slug, line: kept }))
+      throw new ApiError("bad_request", { detail: { ...RESERVED_DETAIL } })
   }
   await chargeGiftQuotas(deps.db, [{ subject: `user:${s.user.id}`, action: "gift_page", amount: 1n, limit: giftLimit("gifts_user_page", deps.cfg) }])
   const set = { on: body.on, ...(line !== undefined ? { line } : {}), ...(body.tone ? { tone: body.tone } : {}), updatedBy: s.user.nearAccount, updatedAt: new Date(nowOf(deps)) }

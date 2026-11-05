@@ -119,7 +119,7 @@ export async function nearAuthLogin(
   const claims = await verifyIdToken(body.idToken, cfg, { jwks: deps.jwks })
   if (body.challenge || cfg.nearAuth.requireNonce) {
     if (!body.challenge) throw new ApiError("id_token_invalid", { detail: { cause: "nonce" } })
-    const bytes = checkChallenge(hmacSecret(), body.challenge)
+    const bytes = checkChallenge(hmacSecret(), body.challenge, Date.now(), cfg.authScope)
     if (claims.nonce !== nonceFor(body.devicePublicKey, bytes)) throw new ApiError("id_token_invalid", { detail: { cause: "nonce" } })
     if (!(await spendProof(db, "auth_challenge", sha256Hex(body.challenge))))
       throw new ApiError("id_token_invalid", { detail: { cause: "nonce" } })

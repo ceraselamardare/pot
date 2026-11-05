@@ -106,7 +106,8 @@ async function login(over: { token?: string; key?: KeyPair; challenge?: string; 
 }
 
 const cookieOf = (cookies: string[]) => cookies[0]!.split(";")[0]!
-const reqWith = (cookie: string) => new Request("https://pot.test/api/x", { headers: { cookie } })
+// the browser that opened the session (APP-4: sessions are bound to the user-agent family)
+const reqWith = (cookie: string, ua = "vitest") => new Request("https://pot.test/api/x", { headers: { cookie, "user-agent": ua } })
 
 describe("ID token verification (A-07)", () => {
   it("accepts an RS256 token from the issuer for our client", async () => {
@@ -289,8 +290,8 @@ describe("device-bound nonce (B-20, A-25)", () => {
 
   it("accepts a token whose nonce = b64url(sha256(rawPk ‖ challenge)) and spends the challenge", async () => {
     const key = KeyPair.fromRandom("ed25519")
-    const { challenge } = makeChallenge(secret)
-    const nonce = nonceFor(key.getPublicKey().toString(), checkChallenge(secret, challenge))
+    const { challenge } = makeChallenge(secret, Date.now(), cfg.authScope)
+    const nonce = nonceFor(key.getPublicKey().toString(), checkChallenge(secret, challenge, Date.now(), cfg.authScope))
     const { res } = await login({ key, challenge, token: await idToken({ nonce }) })
     expect(res.status).toBe(200)
     const proofs = await t.db.select().from(usedProof).where(eq(usedProof.purpose, "auth_challenge"))
@@ -299,8 +300,8 @@ describe("device-bound nonce (B-20, A-25)", () => {
 
   it("a token minted for device A replayed with device B → id_token_invalid (cause nonce)", async () => {
     const a = KeyPair.fromRandom("ed25519")
-    const { challenge } = makeChallenge(secret)
-    const nonce = nonceFor(a.getPublicKey().toString(), checkChallenge(secret, challenge))
+    const { challenge } = makeChallenge(secret, Date.now(), cfg.authScope)
+    const nonce = nonceFor(a.getPublicKey().toString(), checkChallenge(secret, challenge, Date.now(), cfg.authScope))
     await expect(login({ challenge, token: await idToken({ nonce }) })).rejects.toMatchObject({
       reason: "id_token_invalid",
       detail: { cause: "nonce" },
@@ -309,19 +310,51 @@ describe("device-bound nonce (B-20, A-25)", () => {
 
   it("a reused, stale or forged challenge → id_token_invalid", async () => {
     const key = KeyPair.fromRandom("ed25519")
-    const { challenge } = makeChallenge(secret)
-    const nonce = nonceFor(key.getPublicKey().toString(), checkChallenge(secret, challenge))
+    const { challenge } = makeChallenge(secret, Date.now(), cfg.authScope)
+    const nonce = nonceFor(key.getPublicKey().toString(), checkChallenge(secret, challenge, Date.now(), cfg.authScope))
     await login({ key, challenge, token: await idToken({ nonce }) })
     await expect(login({ key, challenge, token: await idToken({ nonce }) })).rejects.toMatchObject({ reason: "id_token_invalid" })
-    const old = makeChallenge(secret, Date.now() - 11 * 60_000).challenge
-    expect(() => checkChallenge(secret, old)).toThrow(ApiError)
-    expect(() => checkChallenge("y".repeat(40), makeChallenge(secret).challenge)).toThrow(ApiError)
+    const old = makeChallenge(secret, Date.now() - 11 * 60_000, cfg.authScope).challenge
+    expect(() => checkChallenge(secret, old, Date.now(), cfg.authScope)).toThrow(ApiError)
+    expect(() => checkChallenge("y".repeat(40), makeChallenge(secret, Date.now(), cfg.authScope).challenge)).toThrow(ApiError)
+  })
+
+  it("APP-7: a challenge minted by another environment (a preview, say) never verifies here", async () => {
+    const key = KeyPair.fromRandom("ed25519")
+    const { challenge } = makeChallenge(secret, Date.now(), "testnet|preview|pot-git-x.vercel.app")
+    expect(() => checkChallenge(secret, challenge, Date.now(), cfg.authScope)).toThrow(ApiError)
+    const nonce = nonceFor(
+      key.getPublicKey().toString(),
+      checkChallenge(secret, challenge, Date.now(), "testnet|preview|pot-git-x.vercel.app"),
+    )
+    await expect(login({ key, challenge, token: await idToken({ nonce }) })).rejects.toMatchObject({
+      reason: "id_token_invalid",
+      detail: { cause: "nonce" },
+    })
+  })
+
+  it("APP-3: the challenge is required unless a local run turns it off explicitly", async () => {
+    cfg = testConfig({ NEAR_AUTH_REQUIRE_NONCE: "true" })
+    deps.cfg = cfg
+    await expect(login()).rejects.toMatchObject({ reason: "id_token_invalid", detail: { cause: "nonce" } })
   })
 
   it("production requires the challenge", async () => {
     cfg = testConfig({ VERCEL_ENV: "production" })
     deps.cfg = cfg
     await expect(login()).rejects.toMatchObject({ reason: "id_token_invalid", detail: { cause: "nonce" } })
+  })
+})
+
+describe("APP-4: a session cookie only works from the browser that opened it", () => {
+  it("another browser family (or no user agent) is signed out; the owner's browser, updated, is not", async () => {
+    const { res } = await login()
+    const cookie = cookieOf(res.cookies)
+    expect(await loadSession(t.db, reqWith(cookie, "vitest"), cfg)).not.toBeNull()
+    expect(await loadSession(t.db, reqWith(cookie, "curl/8.7.1"), cfg)).toBeNull()
+    expect(await loadSession(t.db, new Request("https://pot.test/api/x", { headers: { cookie } }), cfg)).toBeNull()
+    // the stolen-cookie attempt didn't revoke the real session
+    expect(await loadSession(t.db, reqWith(cookie, "vitest"), cfg)).not.toBeNull()
   })
 })
 

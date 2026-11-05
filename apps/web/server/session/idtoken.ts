@@ -73,18 +73,26 @@ export async function verifyIdToken(
 
 const CHALLENGE_TTL_MS = 10 * 60_000
 
-/** base64url(8-byte BE ms ‖ 16 random ‖ first 8 bytes of HMAC(secret, ts ‖ random)) */
-export function makeChallenge(secret: string, nowMs = Date.now()): { challenge: string; expiresAt: string } {
+/**
+ * APP-7 (security audit 2026-11-04): the MAC also covers the environment's scope (`cfg.authScope`: network, Vercel
+ * environment, host), so a challenge minted by a preview never verifies on production (or the other way round), even
+ * when both share APP_HMAC_SECRET. The 32 challenge bytes the browser hashes into its nonce are unchanged.
+ */
+const challengeMac = (secret: string, scope: string, body: Uint8Array) =>
+  hmac(secret, new Uint8Array([...new TextEncoder().encode(`pot-challenge-v2|${scope}|`), ...body])).slice(0, 8)
+
+/** base64url(8-byte BE ms ‖ 16 random ‖ first 8 bytes of HMAC(secret, scope ‖ ts ‖ random)) */
+export function makeChallenge(secret: string, nowMs = Date.now(), scope = ""): { challenge: string; expiresAt: string } {
   const ts = new Uint8Array(8)
   new DataView(ts.buffer).setBigUint64(0, BigInt(nowMs))
   const rnd = random(16)
   const body = new Uint8Array([...ts, ...rnd])
-  const mac = hmac(secret, body).slice(0, 8)
+  const mac = challengeMac(secret, scope, body)
   return { challenge: b64url(new Uint8Array([...body, ...mac])), expiresAt: new Date(nowMs + CHALLENGE_TTL_MS).toISOString() }
 }
 
 /** The 32 challenge bytes when the MAC is right and it is ≤ 10 min old; else id_token_invalid (cause nonce). */
-export function checkChallenge(secret: string, challenge: string, nowMs = Date.now()): Uint8Array {
+export function checkChallenge(secret: string, challenge: string, nowMs = Date.now(), scope = ""): Uint8Array {
   const bad = () => new ApiError("id_token_invalid", { detail: { cause: "nonce" } })
   let raw: Uint8Array
   try {
@@ -94,7 +102,7 @@ export function checkChallenge(secret: string, challenge: string, nowMs = Date.n
   }
   if (raw.length !== 32) throw bad()
   const body = raw.slice(0, 24)
-  if (!safeEqual(hmac(secret, body).slice(0, 8), raw.slice(24))) throw bad()
+  if (!safeEqual(challengeMac(secret, scope, body), raw.slice(24))) throw bad()
   const ts = Number(new DataView(body.buffer, body.byteOffset, 8).getBigUint64(0))
   if (nowMs - ts > CHALLENGE_TTL_MS || ts - nowMs > 60_000) throw bad()
   return raw

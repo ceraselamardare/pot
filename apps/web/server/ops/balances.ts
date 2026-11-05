@@ -52,8 +52,20 @@ export const tokenBalance = (rpc: RpcClient, token: string, account: string, max
 
 /** create_pot pre-check: the hub panics ERR_HUB_LOW_BALANCE below its reserve; refuse earlier (api-spec §3.5). */
 export async function hubAllowsCreate(rpc: RpcClient, cfg: Config): Promise<boolean> {
-  const available = await accountAvailable(rpc, cfg.hubId).catch(() => null)
-  return available === null || available >= opsThresholds(cfg).hubFloor
+  return hubAllows(rpc, cfg, 0n)
+}
+
+/**
+ * APP-1: any hub-sponsored action (create, spends, joins, closes, links…) needs the hub's floor PLUS what this action
+ * may cost it (the relay's `hubYocto` estimate), so the last actions before the floor are refused cleanly instead of
+ * panicking on chain. The read is cached ≤ 30 s, and ≤ 5 s once the hub is below its warn level. An unreadable balance
+ * lets the chain decide (it refuses on its own reserve check).
+ */
+export async function hubAllows(rpc: RpcClient, cfg: Config, need: bigint): Promise<boolean> {
+  const th = opsThresholds(cfg)
+  let available = await accountAvailable(rpc, cfg.hubId).catch(() => null)
+  if (available !== null && available < th.hubWarn) available = await accountAvailable(rpc, cfg.hubId, 5_000).catch(() => null)
+  return available === null || available >= th.hubFloor + need
 }
 
 /** Faucet / simulator pre-check: below the critical treasury float the faucet is off (api-spec §3.5). */
@@ -83,6 +95,14 @@ export async function checkBalances(deps: { db: DbOrTx; rpc: RpcClient; cfg: Con
     accountAvailable(rpc, cfg.hubId, 0),
     tokenBalance(rpc, cfg.usdcId, cfg.treasuryAccountId, 0),
   ])
+  // APP-1: a daily cap the sponsor can't pay is no cap: the floor guard would refuse first, so warn the team to fund it
+  if (relayer - cfg.relayerThresholds.floor < limit("global_relay_yocto"))
+    await alert(
+      "cap_exceeds_balance:relayer",
+      `relayer ${cfg.relayerAccountId} holds ${fmtNear(relayer)} NEAR, below its floor + today's cap`,
+    )
+  if (hub - th.hubFloor < limit("global_hub_yocto"))
+    await alert("cap_exceeds_balance:hub", `hub ${cfg.hubId} holds ${fmtNear(hub)} NEAR, below its floor + today's cap`)
   const rLevel = sponsorLevel(relayer, cfg.relayerThresholds)
   if (rLevel === "critical" || rLevel === "empty") await alert("relayer_critical", `relayer ${cfg.relayerAccountId} available ${fmtNear(relayer)} NEAR`)
   else if (rLevel === "low") await alert("relayer_low", `relayer ${cfg.relayerAccountId} available ${fmtNear(relayer)} NEAR`)
@@ -106,6 +126,9 @@ export const GLOBAL_COUNTERS = [
   "pots_created",
   "accounts_created",
   "registrations",
+  "close_registrations",
+  "new_relay_yocto",
+  "new_hub_yocto",
   "mpc_signs",
   "faucet_usd",
 ] as const

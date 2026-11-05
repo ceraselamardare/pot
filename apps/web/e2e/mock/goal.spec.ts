@@ -115,7 +115,7 @@ test("Create → [Change]: trust and one OK on by default; a goal with a date, a
   const step2 = await openedSheet(page, "Pot rules")
   await expect(step2.getByRole("switch", { name: "Trust grows" })).toHaveAttribute("aria-checked", "true")
   await expect(step2.getByText("People who spend well get a bigger instant limit.")).toBeVisible()
-  const oneOk = step2.getByRole("textbox", { name: "Spends up to this much need just one OK from anyone else" })
+  const oneOk = step2.getByRole("textbox", { name: "Spends up to this much need just one OK from someone else who has added money" })
   await expect(oneOk).toHaveValue("300")
   // the one-OK ceiling follows the instant limit until it's typed
   await step2.getByRole("textbox", { name: "Anyone can spend up to this much at a time without asking" }).fill("50")
@@ -144,7 +144,7 @@ test("Create → [Change]: trust and one OK on by default; a goal with a date, a
   const rules = page.locator("[data-rules-list]")
   await expect(rules).toContainText("Anyone can spend up to $50 without asking.")
   await expect(rules).toContainText("Trust grows: every 3 paid spends raise someone's instant limit by $50, up to $150.")
-  await expect(rules).toContainText("Spends up to $200 need just one OK from anyone else.")
+  await expect(rules).toContainText("Spends up to $200 need just one OK from someone else who has added money.")
   await expect(rules).toContainText(/All or nothing: if the Pot doesn't reach \$1,200 by/)
   await axe(page)
 })

@@ -8,6 +8,7 @@ import { Suspense } from "react"
 import { Lockup } from "@/components/brand/Lockup"
 import { LiveRegion } from "@/components/app-shell/Shell"
 import { Blank, GiftLinkFlow } from "@/components/gifts/GiveFlow"
+import { PublicNotice } from "@/components/public/PublicNotice"
 import { getGiftLandingPreview, giftDescription, giftTitle, parseGiftLinkParams } from "@/app/_lib/gift-preview"
 
 // (typed by hand: the generated PageProps needs `next typegen` in the default dist dir)
@@ -53,5 +54,11 @@ async function Body({ params }: Pick<Props, "params">) {
   const ok = parseGiftLinkParams(slug, id)
   if (!ok) return <Blank kind="not_found" />
   const p = await getGiftLandingPreview(ok.slug, ok.id).catch(() => null)
-  return <GiftLinkFlow slug={ok.slug} id={ok.id} initial={p} />
+  return (
+    <>
+      <GiftLinkFlow slug={ok.slug} id={ok.id} initial={p} />
+      {/* CLI-4 (security audit 2026-11-04): "made by people who use Pot, not by Pot" + Report this page */}
+      <PublicNotice page="gift_link" slug={ok.slug} />
+    </>
+  )
 }

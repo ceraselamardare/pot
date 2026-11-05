@@ -25,6 +25,8 @@ export function testConfig(env: Record<string, string> = {}): Config {
     APP_HMAC_SECRET: "x".repeat(40),
     SERVER_RPC_URLS: "https://rpc.testnet.fastnear.com",
     RELAY_TEST_ALLOWLIST: "wrap.testnet:ft_transfer:1",
+    // APP-3: the nonce is required unless a local run turns it off explicitly; most unit tests log in without one
+    NEAR_AUTH_REQUIRE_NONCE: "false",
     ...env,
   } as NodeJS.ProcessEnv)
   setConfigForTests(cfg)

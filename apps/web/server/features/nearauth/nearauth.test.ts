@@ -105,8 +105,10 @@ async function popFor(key: KeyPair, idToken: string) {
 describe("NEAR Auth through the fake issuer", () => {
   it("the client's nonce is the server's nonceFor(device key, challenge)", async () => {
     const key = KeyPair.fromRandom("ed25519")
-    const { challenge } = makeChallenge(SECRET)
-    expect(await deviceNonce(key.getPublicKey().toString(), challenge)).toBe(nonceFor(key.getPublicKey().toString(), checkChallenge(SECRET, challenge)))
+    const { challenge } = makeChallenge(SECRET, Date.now(), cfg.authScope)
+    expect(await deviceNonce(key.getPublicKey().toString(), challenge)).toBe(
+      nonceFor(key.getPublicKey().toString(), checkChallenge(SECRET, challenge, Date.now(), cfg.authScope)),
+    )
   })
 
   it("authorize URL: code + PKCE S256 + our nonce + web_message + the Google connection", async () => {
@@ -126,7 +128,7 @@ describe("NEAR Auth through the fake issuer", () => {
   it("new person, redirect mode: login → POST /api/session creates the account with the MPC key and the device key", async () => {
     const key = KeyPair.fromRandom("ed25519")
     const pk = key.getPublicKey().toString()
-    const { challenge } = makeChallenge(SECRET)
+    const { challenge } = makeChallenge(SECRET, Date.now(), cfg.authScope)
     const tokens = await login({ nonce: await deviceNonce(pk, challenge) })
     expect(peekClaims(tokens.idToken)).toMatchObject({ sub: "google-oauth2|1000001", given_name: "Leo" })
     const r = await nearAuthLogin(deps, { idToken: tokens.idToken, devicePublicKey: pk, keyKind: "webcrypto", challenge, pop: await popFor(key, tokens.idToken) }, { ipHash: "ip", userAgent: null })
@@ -141,11 +143,11 @@ describe("NEAR Auth through the fake issuer", () => {
 
   it("popup mode (web_message): returning person on a new device gets a pending_device session", async () => {
     const first = KeyPair.fromRandom("ed25519")
-    const c1 = makeChallenge(SECRET).challenge
+    const c1 = makeChallenge(SECRET, Date.now(), cfg.authScope).challenge
     const t1 = await login({ nonce: await deviceNonce(first.getPublicKey().toString(), c1), mode: "web_message", hint: "auth0|leo" })
     await nearAuthLogin(deps, { idToken: t1.idToken, devicePublicKey: first.getPublicKey().toString(), keyKind: "webcrypto", challenge: c1, pop: await popFor(first, t1.idToken) }, { ipHash: "ip", userAgent: null })
     const phone = KeyPair.fromRandom("ed25519")
-    const c2 = makeChallenge(SECRET).challenge
+    const c2 = makeChallenge(SECRET, Date.now(), cfg.authScope).challenge
     const t2 = await login({ nonce: await deviceNonce(phone.getPublicKey().toString(), c2), mode: "web_message", hint: "auth0|leo" })
     const r = await nearAuthLogin(deps, { idToken: t2.idToken, devicePublicKey: phone.getPublicKey().toString(), keyKind: "webcrypto", challenge: c2, pop: await popFor(phone, t2.idToken) }, { ipHash: "ip", userAgent: null })
     expect(r.body).toMatchObject({ isNew: false, deviceOnChain: false, session: { device: { status: "pending" } } })
@@ -154,7 +156,7 @@ describe("NEAR Auth through the fake issuer", () => {
   it("S-6: a token bound to another device key, or a reused challenge, opens no session", async () => {
     const mine = KeyPair.fromRandom("ed25519")
     const thief = KeyPair.fromRandom("ed25519")
-    const { challenge } = makeChallenge(SECRET)
+    const { challenge } = makeChallenge(SECRET, Date.now(), cfg.authScope)
     const tok = await login({ nonce: await deviceNonce(mine.getPublicKey().toString(), challenge) })
     await expect(
       nearAuthLogin(deps, { idToken: tok.idToken, devicePublicKey: thief.getPublicKey().toString(), keyKind: "webcrypto", challenge, pop: await popFor(thief, tok.idToken) }, { ipHash: "ip", userAgent: null }),

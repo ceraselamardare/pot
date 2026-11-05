@@ -158,6 +158,15 @@ export const proposalsQuery = (dao: string, ids: number[]) => ({
 })
 
 /** Off-chain "$X each" goal: the creator's choice on this device, else Create's suggested $150 (D-61). */
+/** Did the creator set "$X each" on this device? Other devices only have Create's default. */
+export function goalEachChosenHere(slug: string): boolean {
+  try {
+    return /^[0-9]+$/.test(localStorage.getItem(`pot.goal.${slug}`) ?? "")
+  } catch {
+    return false
+  }
+}
+
 export function goalEachOf(slug: string): Micro | null {
   try {
     const v = localStorage.getItem(`pot.goal.${slug}`)
@@ -181,7 +190,7 @@ function useChangeDetector(dao: string, view: PotView | null | undefined, balanc
 }
 
 function ctxOf(me: string | null, myName: string | undefined, now: number, slug: string, myAvatar?: AvatarId | null): LiveContext {
-  return { me, myName, myAvatar, now, goalEach: goalEachOf(slug) }
+  return { me, myName, myAvatar, now, goalEach: goalEachOf(slug), goalEachChosen: goalEachChosenHere(slug) }
 }
 
 export type LivePotState =

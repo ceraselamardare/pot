@@ -78,7 +78,7 @@ Details are in `kb/`.
   - The sandbox runs on arm64 Macs but not Intel Macs.
   - See [kb/contracts-toolchain.md](kb/contracts-toolchain.md).
 - **Frontend pins**
-  - next `16.4.2` (≥ 16.4.1 fixes an RCE), react `19.3.1`, TypeScript `5.9.3`, ESLint 9, Tailwind 4.3, shadcn on Base UI.
+  - next `16.4.5` (≥ 16.4.1 fixes an RCE; 16.4.5 is the latest security release, audit CLI-8), react `19.3.1`, TypeScript `5.9.3`, ESLint 9, Tailwind 4.3, shadcn on Base UI.
   - No vaul and no Serwist.
   - Cache Components is on, so wrap anything that reads `params` in `<Suspense>`.
   - pnpm 11 needs `allowBuilds` for packages with install scripts.

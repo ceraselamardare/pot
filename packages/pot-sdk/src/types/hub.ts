@@ -285,8 +285,11 @@ export interface PotView {
   closingInFlight: boolean
   /** hub 1.1.0 (parse fills it; LEGACY_EXTRAS on 1.0.0 data). Optional for hand-built mocks. */
   extras?: RuleExtras
-  /** 1 = v1 DAO policy; 2 = the rulebot can also approve the goal-refund close */
+  /** 1 = v1 DAO policy; 2 = the rulebot can also approve the goal-refund close; hub 1.3.0: 3 = members
+   * only vote (every proposal is the hub's); 4 = 3 + the goal-refund approval */
   policyVersion?: number
+  /** hub 1.3.0 (HUB-4): the close was approved but the money isn't confirmed out yet ("paying everyone back") */
+  closeSettling?: boolean
   /** link requests not claimed / returned / void yet (they block closing) */
   openLinks?: number
   goalState?: GoalState
@@ -323,6 +326,10 @@ export interface MemberView {
   spent: Micro
   instantUsed: Micro
   budgetLeft: Micro
+  /** hub 1.3.0 (W4-1): one-OK spends approved for this member so far (lifetime; absent on older hubs) */
+  oneOkUsed?: Micro
+  /** hub 1.3.0 (W4-1): how much more can be approved for this member with one OK */
+  oneOkLeft?: Micro
   /** What propose_close would pay now (pro-rata + dust), or the CloseRecord payout. */
   wouldGetBack: Micro
   /** contributed \u2212 wouldGetBack (saturating) = ux-spec "Share of spending". */
@@ -436,7 +443,7 @@ export interface InviteView {
   status: InviteStatus
 }
 
-export type SubjectKind = "spend" | "join" | "close" | "rules"
+export type SubjectKind = "spend" | "join" | "close" | "rules" | "sweep"
 
 /** get_proposal_subject (rev4): what the hub created a DAO proposal for. */
 export interface SubjectView {
@@ -546,4 +553,16 @@ export interface GiftReceived {
   ref: string
   giftsTotal: Micro
   giftsCount: number
+}
+
+/** hub 1.3.0 `get_ok_check`: whether `account` could give the one OK on a request right now. */
+export interface OkCheck {
+  pot: DaoId
+  requestId: number
+  account: AccountId
+  canOk: boolean
+  /** why not: "not_one_ok" | "not_pending" | "in_flight" | "self" | "not_member" | "receiver" | "joined_after" |
+   * "no_stake" | the requester's side: "off" | "over_one_ok_cap" | "alone" | "one_ok_used_up" | "goal_not_reached" |
+   * "requester_not_member" | "pot_not_open" | "paused" */
+  reason: string | null
 }

@@ -235,8 +235,11 @@ async fn g5(build: Build) -> anyhow::Result<()> {
 /// (ERR_GIFT_IN_FLIGHT) and the block clears as soon as the forward settles.
 async fn g6(build: Build) -> anyhow::Result<()> {
     use base64::Engine;
-    let env = Env::new(build).await?;
+    // hub 1.3.0: Pots made by hub 1.3.0 (policy v3) let members only vote, so the raw DAO proposals
+    // this test needs come from Pots made by the 1.2.0 hub (policy v1); the hub is upgraded right after
+    let env = Env::legacy(build).await?;
     let (dao, _) = env.create_pot(&env.maya, "unreg").await;
+    env.upgrade_hub().await?;
     let kind = json!({"FunctionCall": {"receiver_id": env.usdc, "actions": [{
         "method_name": "storage_unregister",
         "args": base64::engine::general_purpose::STANDARD.encode("{}"),
@@ -292,8 +295,9 @@ async fn g6(build: Build) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// G7: the testnet 1.1.0 build (fixture) → 1.2.0 with a plain DeployContract (NO migrate): live
-/// Pots, requests, a funded link, a goal and an invite all keep working; gifts default ON for old Pots.
+/// G7: the testnet 1.1.0 build (fixture) → 1.2.0 (fixture, the build deployed on testnet) with a plain
+/// DeployContract (NO migrate): live Pots, requests, a funded link, a goal and an invite all keep
+/// working; gifts default ON for old Pots. (1.2.0 → 1.3.0 is t_migrate m2.)
 async fn g7(build: Build) -> anyhow::Result<()> {
     let env = Env::with(build, HubOpts { limits: Some(roomy_limits()), hub_wasm: Some(hub_v11_wasm()), ..Default::default() }).await?;
     assert_eq!(env.hub_view("get_config", json!({})).await["version"], "1.1.0");
@@ -330,7 +334,7 @@ async fn g7(build: Build) -> anyhow::Result<()> {
     let cfg0 = snap("get_config", json!({})).await;
 
     // ---- the upgrade: ONE DeployContract action, no function call
-    let r = env.hub_account.deploy(&hub_wasm()).await?;
+    let r = env.hub_account.deploy(&hub_v12_wasm()).await?;
     assert!(r.is_success(), "plain deploy: {:?}", r.details);
     let cfg1 = env.hub_view("get_config", json!({})).await;
     assert_eq!(cfg1["version"], "1.2.0");

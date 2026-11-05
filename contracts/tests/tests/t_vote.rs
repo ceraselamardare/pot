@@ -136,8 +136,11 @@ dual!(t29_payout_failure_retry, t29);
 /// T-42 expiry (the group shortens the DAO's period, so a later vote expires it) · T-44 pending
 /// cap · T-97 (sandbox part: expiry follows the DAO's status).
 async fn t42(build: Build) -> anyhow::Result<()> {
-    let env = Env::new(build).await?;
+    // hub 1.3.0: Pots made by hub 1.3.0 (policy v3) let members only vote, so the raw DAO proposals
+    // this test needs come from Pots made by the 1.2.0 hub (policy v1); the hub is upgraded right after
+    let env = Env::legacy(build).await?;
     let (dao, _, _) = env.pot_with_members(&env.maya, "exp", &[&env.sam, &env.leo], 150 * USDC).await;
+    env.upgrade_hub().await?;
     let v = env.request_spend(&env.maya, &dao, 120 * USDC, &env.maya.id, &rref(1)).await.json();
     let pid = v["proposal_id"].as_u64().unwrap();
     // T-44: 10 open vote requests max per requester

@@ -88,6 +88,29 @@ describe("envelope and CSRF (A-19)", () => {
     await expectErr(await DELETE(new Request(`${ORIGIN}/api/session`, { method: "DELETE" })), 403, "forbidden_origin")
   })
 
+  it("APP-9: DELETE /api/session with a malformed body → 400 bad_request, not a 500", async () => {
+    const { DELETE } = await import("@/app/api/session/route")
+    const del = (body: string) =>
+      DELETE(
+        new Request(`${ORIGIN}/api/session`, { method: "DELETE", headers: { "content-type": "application/json", origin: ORIGIN }, body }),
+      )
+    const b = await expectErr(await del("{not json"), 400, "bad_request")
+    expect(b).toMatchObject({ detail: { field: "body", cause: "json" } })
+    await expectErr(await del("null"), 400, "bad_request")
+    await expectErr(await del(JSON.stringify({ surprise: 1 })), 400, "bad_request")
+    // a well-formed body still reaches the session check
+    await expectErr(await del("{}"), 401, "not_signed_in")
+  })
+
+  it("APP-7: the challenge from this route verifies only with this environment's scope", async () => {
+    const { GET } = await import("@/app/api/session/challenge/route")
+    const { checkChallenge } = await import("@/server/session/idtoken")
+    const { getConfig } = await import("@/server/config")
+    const { challenge } = (await (await GET(new Request(`${ORIGIN}/api/session/challenge`))).json()) as { challenge: string }
+    expect(checkChallenge("x".repeat(40), challenge, Date.now(), getConfig().authScope)).toHaveLength(32)
+    expect(() => checkChallenge("x".repeat(40), challenge, Date.now(), "testnet|production|pot.app")).toThrow()
+  })
+
   it("GET /api/session/challenge → a 32-byte challenge, no-store", async () => {
     const { GET } = await import("@/app/api/session/challenge/route")
     const res = await GET(new Request(`${ORIGIN}/api/session/challenge`))

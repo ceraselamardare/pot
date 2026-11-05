@@ -1,6 +1,7 @@
 // The pay-in pages' link preview (1200×630, the invite / claim previews' look): a marigold ground, the Pot's cover tile,
 // "Pay Lisbon Trip" (a payment link or page) or "Send a gift to Lisbon Trip ☕" (a gift one) in Gabarito 800 eggplant
-// (on-brand), how many people are in it, and the glyph + lowercase wordmark bottom left. No balance, no names. Unknown
+// (on-brand), how many people are in it, the glyph + lowercase wordmark bottom left and "Made by people who use Pot"
+// bottom right (CLI-4). No balance, no names. Unknown
 // link / page or any error: the static brand image.
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
@@ -8,6 +9,7 @@ import { ImageResponse } from "next/og"
 import { t } from "@/i18n/t"
 import type { GiftPotVM } from "@/lib/client/mock/gifts"
 import type { PayInTone } from "@/lib/gifts"
+import { isReservedPublicName } from "@/lib/reserved-names"
 import { C, COVERS, GLYPH, WORDMARK } from "./og-brand"
 
 export const OG_SIZE = { width: 1200, height: 630 }
@@ -31,7 +33,9 @@ export async function giftOgImage(read: () => Promise<{ pot: GiftPotVM; tone: Pa
   } catch {
     pot = null
   }
-  if (!pot || !fonts) return staticImage()
+  // CLI-4 (security audit 2026-11-04): never a big branded card for an official-looking name (the resolvers already
+  // hide such pages; this keeps any other caller honest)
+  if (!pot || !fonts || isReservedPublicName(pot.name)) return staticImage()
   return new ImageResponse(<Card pot={pot} tone={tone} />, {
     ...OG_SIZE,
     emoji: "twemoji",
@@ -66,6 +70,10 @@ function Card({ pot, tone }: { pot: GiftPotVM; tone: PayInTone }) {
         {headline}
       </div>
       <div style={{ marginTop: 12, display: "flex", fontSize: 36, fontWeight: 600, color: C.onBrand }}>{t("gift.members", { n: pot.members })}</div>
+      {/* CLI-4: the preview says who made the page, so it can't pass for an official one */}
+      <div style={{ position: "absolute", right: 48, bottom: 48, display: "flex", fontSize: 26, fontWeight: 600, color: C.onBrand }}>
+        {t("public.og.byline")}
+      </div>
       <div style={{ position: "absolute", left: 48, bottom: 40, display: "flex", alignItems: "center", gap: 12 }}>
         <svg width={68} height={48} viewBox="60 128 392 278">
           <rect x="72" y="196" width="56" height="40" rx="20" fill={C.onBrand} />

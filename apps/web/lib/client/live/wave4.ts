@@ -10,7 +10,7 @@ import { innerError } from "./relay"
 import { invalidatePot, settlePot } from "./settle"
 import { send } from "./signing"
 
-export type LiveOkResult = "approved" | "failed" | "objection" | "decided" | "expired" | "self" | "not_one_ok" | "not_member"
+export type LiveOkResult = "approved" | "failed" | "objection" | "decided" | "expired" | "self" | "not_one_ok" | "not_member" | "not_eligible"
 
 /** The hub's OkOutcome reasons / error codes → what the Approve sheet says (notes/contracts-wave4.md §3). */
 export function okResultOf(code: string | null, approved: boolean, payoutFailed: boolean): LiveOkResult {
@@ -19,7 +19,12 @@ export function okResultOf(code: string | null, approved: boolean, payoutFailed:
     case "ERR_OK_SELF":
       return "self"
     case "ERR_NOT_ONE_OK":
+    case "OK_NOT_ONE_OK": // hub 1.3.0 (L-2): the one-OK rules changed while the OK was on its way
       return "not_one_ok"
+    // hub 1.3.0 (W4-1): the payee, someone who joined after the request, or someone who hasn't added money
+    case "ERR_OK_NOT_ELIGIBLE":
+    case "OK_NOT_ELIGIBLE":
+      return "not_eligible"
     case "ERR_NOT_MEMBER":
     case "OK_NOT_IN_DAO_GROUP":
       return "not_member"

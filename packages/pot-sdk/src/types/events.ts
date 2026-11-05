@@ -87,6 +87,9 @@ export interface HubEventDataMap {
   /** anyone's gift reached the Pot; `ref` = the gift-link id; totals after this gift */
   gift_received: { pot: string; from: string; amount: string; ref: string; gifts_total: string; gifts_count: number }
   gifts_set: { pot: string; on: boolean; by: string }
+  // ---- hub 1.3.0 (event version "1.3.0") ----
+  /** M-2: the hub proposed paying out USDC left in a Closed Pot (members approve it like a close) */
+  sweep_proposed: { pot: string; proposal_id: number; by: string; balance: string; payouts: { account_id: string; amount: string }[] }
 }
 
 export type HubEventName = keyof HubEventDataMap
@@ -117,6 +120,7 @@ export const HUB_EVENT_NAMES: readonly HubEventName[] = [
   "goal_refunded",
   "gift_received",
   "gifts_set",
+  "sweep_proposed",
 ]
 
 /** A typed hub event (discriminated by `event`). */

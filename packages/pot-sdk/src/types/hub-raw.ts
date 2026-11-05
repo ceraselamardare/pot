@@ -117,6 +117,8 @@ export interface RawPotView {
   gifts_on?: boolean
   gifts_total?: string
   gifts_count?: number
+  /** hub 1.3.0 (HUB-4): the close was approved but the money isn't confirmed out yet (status stays "closing") */
+  close_settling?: boolean
 }
 
 export interface RawPotSummary {
@@ -143,6 +145,10 @@ export interface RawMemberView {
   spent: string
   instant_used: string
   budget_left: string
+  /** hub 1.3.0 (W4-1): one-OK spends approved for this member so far (lifetime; absent on older hubs = 0) */
+  one_ok_used?: string
+  /** hub 1.3.0 (W4-1): how much more can be approved for this member with one OK (the ceiling − used) */
+  one_ok_left?: string
   would_get_back: string
   share_of_spending: string
   is_last_contributor: boolean
@@ -174,6 +180,8 @@ export type RawPreviewReason =
   // hub 1.1.0
   | "goal_not_reached"
   | "links_off"
+  // hub 1.3.0 (W4-8)
+  | "link_too_small"
 
 export interface RawSpendPreview {
   path: "instant" | "vote" | "blocked"
@@ -264,7 +272,8 @@ export interface RawInviteView {
 export interface RawSubjectView {
   pot: string
   proposal_id: number
-  kind: "spend" | "join" | "close" | "rules"
+  /** "sweep" (hub 1.3.0): a hub-made payout of USDC left in a Closed Pot */
+  kind: "spend" | "join" | "close" | "rules" | "sweep"
   request_id: number | null
   member: string | null
   rules_version: number | null
@@ -470,4 +479,23 @@ export interface RawGiftsView {
   accepting: boolean
   refusal: RawGiftRefusal | null
   min_amount: string
+}
+
+/** hub 1.3.0 `get_ok_check(pot, request_id, account_id)`: could this member give the one OK now? */
+export interface RawOkCheck {
+  pot: string
+  request_id: number
+  account_id: string
+  can_ok: boolean
+  reason: string | null
+}
+
+/** hub 1.3.0 `get_sweep(pot)`: the latest sweep of a Closed Pot (M-2). */
+export interface RawSweepView {
+  pot: string
+  proposal_id: number | null
+  balance: string
+  payouts: { account_id: string; amount: string }[]
+  created_at_ms: number
+  next_allowed_ms: number
 }

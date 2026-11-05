@@ -870,3 +870,92 @@ presets people see.
 - **Tests:** `server/features/gifts/gifts.test.ts` (+1: the tone snapshot from link and page; tone on create/replay,
   page PUT keeps/sets the tone; push copy per tone; landing/page shapes). DB tests ran on a private `pot_payin`
   (migrated with `drizzle-kit migrate`, so `db.test.ts`'s migrator run is idempotent there).
+
+
+---
+
+# Security fixes (2026-11-05)
+
+Backend half of notes/security-audit-2026-11-04.md (APP-1…APP-9, HUB-5). Out of scope by decision: GOV-1/5/6/8 (hub
+upgradeability, keys, custody, relayer/treasury key types). Every change carries its audit ID in a comment.
+
+| ID | What changed | Where |
+|---|---|---|
+| **APP-1** | Per trusted-IP quotas on every relay (`ip_relays`, `ip_relay_burst`/min, `ip_relay_yocto`, `ip_hub_yocto`, `ip_pots_created`) and on new wallet people (`ip_signups`); a lower tier for accounts first seen < 24 h ago (`new_user_relays`, `new_user_relay_yocto`, `new_user_hub_yocto`, and together at most `global_new_relay_yocto` / `global_new_hub_yocto` of the global budgets, so a sybil wave leaves the rest). Sponsor guard (step 11): the relayer must cover this delegate's estimate above its floor (re-read ≤ 5 s once below warn), and every hub-sponsored action needs the hub's floor + its `hubYocto` (`hubAllows`; was create only) → 503 `sponsor_low` + alert `sponsor_refused:relayer\|hub`. The cron alerts `cap_exceeds_balance:relayer\|hub` when a sponsor holds less than floor + today's global cap. Defaults changed: `user_hub_yocto` prod 0.3 → 0.6 NEAR (a judge's 3 Pots + 20 spends is ≈ 0.40 of estimates), `global_pots_created` prod 20 → 40 | `server/quotas.ts`, `relay/pipeline.ts` (`quotaCharges`, `sponsorGuard`), `ops/balances.ts`, `features/wallet/service.ts`, `app/api/relay/route.ts` (actor `createdAt`) |
+| **APP-2** | Wallet sign-in pays **no** USDC registration. `server/features/registration.ts` `ensureRegistered` registers lazily, once per account ever, when the account first needs to receive money: after a successful create (R2) or join (R4) (in `after()`, charged to `global_registrations` + `ip_registrations`), and before relaying a spend to oneself when `usdc_registered` is false. Close payees have their **own** budget (`global_close_registrations` + `pot_close_registrations`) | `features/registration.ts`, `relay/pipeline.ts`, `features/wallet/service.ts` |
+| **HUB-5** | Close payees are registered (close budget; a payee who unregistered on purpose is registered again): before every close approval/Finalize (as before, now from the close budget, also when the balance read fails, and with a sponsor check); **new:** right after `propose_close` from the hub's `close_proposed` payouts, and before the goal-refund approval in the cron (`ops/goals.ts`; a payee we can't try now → the approval waits for the next run). If a payee can't be tried (budget/sponsor), the vote is refused with 503 `sponsor_low {why: payee_registration}` and the request's quota pre-charges are given back, instead of relaying a vote whose close would fail atomically. Still open on chain: a USDC blocklist (mainnet) or a payee that can't be registered still fails the batch → pull payouts are a hub change | `relay/pipeline.ts`, `ops/goals.ts` |
+| **APP-3** | `runtimeOf(env)` (config.ts): `onVercel` (`VERCEL=1`), `localDev` (not Vercel and NODE_ENV ≠ production), `testMode` (not Vercel and vitest or `POT_TEST_MODE=1`). The development HMAC value exists only in `localDev`; anywhere else a missing/short secret **or the dev value copied into a deploy** throws (every route that needs it refuses). The NEAR Auth nonce is always required; only `localDev` with an explicit `NEAR_AUTH_REQUIRE_NONCE=false` turns it off (a local `next start` and previews require it). `RELAY_TEST_ALLOWLIST` is honoured only in `testMode` (never Vercel, production or mainnet). `http://localhost:3000` is never an allowed origin on Vercel. "Previews share the relayer" is a deploy matter (GOV-6, out of scope): see the steps below | `server/config.ts`, `server/secrets.ts` |
+| **APP-7** | Sign-in is bound to the environment: NEP-413 `recipient` must be one of `cfg.signInHosts` (production: its domain + own deployment urls; a preview: its branch/deployment urls only, never production's, although a preview's `appUrl` falls back to production) **and** the host of the request's Origin. The NEAR Auth challenge MAC covers `cfg.authScope` (`network\|VERCEL_ENV\|host`), so a challenge from a preview never verifies on production even with a shared `APP_HMAC_SECRET` (the 32 bytes the browser hashes are unchanged; no client change) | `config.ts`, `features/wallet/service.ts`, `session/idtoken.ts`, `app/api/session/challenge/route.ts`, `app/api/session/wallet/route.ts` |
+| **APP-6** | Checked: the API already enforces the link rules where a gift starts (`startGift`: link of this Pot, not revoked/expired/used, fixed amount, $1-$10k, the Pot takes gifts, one-time reservation under the link's row lock); the relay pre-flight re-checks them. Gap closed: a one-time link now has **at most one live ref** (the giver's own retry under a new key supersedes their earlier pending ref → `not_pending` in the pre-flight). The contract deliberately doesn't know links: bypassing them with a direct `ft_transfer_call` only pays one's own money into a Pot that accepts gifts (the hub enforces open, gifts on, goal, ≥ $1), and such a gift is never recorded against a link | `features/gifts/giver.ts` |
+| **APP-8** | `deliver()` (1Click simulator, real test tokens from the treasury) has its own guard `deliveryRefusal`: testnet only; receiver = the deposit owner's account; `*.testnet` or implicit; never the hub, token, relayer, treasury, a Pot or the root; amount ≤ 2 × `SIM_MAX`. A refusal alerts `delivery_refused:<id>` and sends nothing | `features/oneclick/service.ts` |
+| **APP-9** | `clientIp` trusts `x-forwarded-for`/`x-real-ip` only on Vercel (or `TRUST_PROXY_HEADERS=1`); elsewhere every request shares the `untrusted` bucket. Relay nonce race: partial unique index `relay_log_inflight_nonce_uq` (sender, key, nonce) over in-flight rows; a conflict at insert → 409 `nonce_pending` (rejected row, quota pre-charges given back); an in-flight row of that nonce whose delegate already expired is released as `lost_broadcast` and the insert retried once. Membership cache 10 s → 3 s (`MEMBERS_TTL_MS`), and `isMember` re-reads fresh before saying no. `DELETE /api/session` with a malformed body → 400 `bad_request {field: body, cause: json}` | `http/context.ts`, `db/schema.ts`, `relay/pipeline.ts`, `chain/hub.ts`, `features/notes.ts`, `app/api/session/route.ts` |
+| **APP-4** | Partly: a session is bound to the user-agent *family* that opened it (`uaFamily`: version numbers removed, so updates keep the session); a cookie replayed with another UA (or none) is treated as signed out, the real session untouched. Sessions stored without a UA aren't bound; `SESSION_UA_BINDING=off` disables it. This raises the bar only (a careful thief copies the header); the real fix is a per-request device-key proof (near-auth has device keys) | `session/store.ts` |
+
+**New env vars (all optional, safe defaults):**
+- `TRUST_PROXY_HEADERS` (unset): `1` trusts `x-forwarded-for` off Vercel (only behind a proxy that overwrites it).
+- `POT_TEST_MODE` (unset): `1` lets a non-Vercel test server honour `RELAY_TEST_ALLOWLIST`.
+- `SESSION_UA_BINDING` (on): `off` disables APP-4's binding.
+- `NEAR_AUTH_REQUIRE_NONCE` now only matters for `next dev` / unit tests (default on; `false` there turns it off).
+- New `QUOTA_*` names (prod / preview defaults): `IP_RELAYS` 300/300 · `IP_RELAY_BURST` 60/60 per min · `IP_RELAY_YOCTO`
+  1 / 0.3 NEAR · `IP_HUB_YOCTO` 1.2 / 0.3 NEAR · `IP_POTS_CREATED` 6/6 · `IP_SIGNUPS` 10/10 · `IP_REGISTRATIONS` 6/6 ·
+  `NEW_USER_RELAYS` 150/150 · `NEW_USER_RELAY_YOCTO` 0.15 / 0.08 NEAR · `NEW_USER_HUB_YOCTO` 0.5 / 0.15 NEAR ·
+  `GLOBAL_NEW_RELAY_YOCTO` / `GLOBAL_NEW_HUB_YOCTO` 3.5 / 0.7 NEAR · `GLOBAL_CLOSE_REGISTRATIONS` 150/40 ·
+  `POT_CLOSE_REGISTRATIONS` 80/80. (Yocto values in `.env` are yocto strings, like the existing ones.)
+
+**Migration `0009_inflight_nonce.sql`** (drizzle-kit generated + a hand-added first statement that marks older in-flight
+duplicates of a nonce `failed/lost_broadcast`, so the index builds on any data). Applied to the local `pot` DB
+(`drizzle-kit migrate`, localhost only). **It must be applied to Neon (preview and production) before deploying this
+build**; without it the relay still works but the race protection is off, and with the code but without the index the
+`nonce_pending` path is never taken.
+
+**Deploy-time steps (human):**
+1. `drizzle-kit migrate` against Neon `DATABASE_URL_UNPOOLED` (0009), before the deploy.
+2. Every Vercel environment that serves the API (Production **and** Preview) needs its own `APP_HMAC_SECRET` (≥ 32
+   chars, never the dev value): a missing one now fails closed on every route that rate-limits or signs a challenge.
+3. Fund the sponsors above floor + daily cap, or the cron alerts `cap_exceeds_balance:*` (and the guard refuses earlier
+   than the cap): prod defaults relayer ≥ 1 + 5 = 6 NEAR, hub ≥ 1 + 5 = 6 NEAR (or lower `QUOTA_GLOBAL_RELAY_YOCTO` /
+   `QUOTA_GLOBAL_HUB_YOCTO`). Set `ALERT_WEBHOOK_URL` to receive `sponsor_refused:*`, `cap_exceeds_balance:*`,
+   `delivery_refused:*`.
+4. Recommended (GOV-6, not done here): previews use their own relayer/treasury accounts and keys, not production's.
+5. After the deploy: a NEAR Auth challenge fetched before it fails once (new MAC); the client refreshes every 8 min.
+
+**Tests:** new `server/relay/pipeline-security.test.ts` (15: per-IP relay/budget caps, the new-account tier and its global
+share, the relayer and hub balance guards + alerts, lazy registration after join and before a spend to oneself, close
+payees from the close budget even with sign-ups' budget used up, re-registering an unregistered payee, 503 + refunds
+with no close budget, payees registered at `propose_close`, the DB index, the insert race → `nonce_pending` + refunds,
+an expired same-nonce row released); `server/features/membership.test.ts` (1); additions in `util.test.ts` (APP-3
+config/secret, APP-7 scopes, APP-9 client IP, APP-4 UA family), `session.test.ts` (foreign-scope challenge, explicit
+nonce flag, UA-bound cookie), `wallet.test.ts` (no registration at sign-in, per-IP sign-ups and registrations, Origin and
+preview/production recipients), `routes.test.ts` (logout 400, challenge scope), `ops.test.ts` (cap vs balance alerts,
+`hubAllows`), `goals.test.ts` (refund payees, waiting without budget), `gifts.test.ts` (one live ref per one-time link),
+`oneclick.test.ts` (delivery guard), `app/api/relay/route.test.ts` (untrusted XFF). `e2e/integrations/wallet.int.ts` now
+expects no registration at sign-in; `scripts/e2e-chain.ts` no longer waits for it (the faucet registers);
+`server/live/harness.ts` registers its users explicitly.
+
+## Hub 1.3.0 wiring (2026-11-05; works against 1.2.0 too)
+
+From notes/contracts.md "Hub 1.3.0 security fixes" (follow-ups for the backend):
+- **Goal refunds (`ops/goals.ts`):** after the approve step, the goal is re-read; if it is still `refunding` with
+  `can_refund` (1.3.0: approved, money not confirmed out), a third `refund_unfunded` runs at once under a per-run key
+  (`refund:<dao>:confirm:<pid>:<cause>`, relay_log intent `refund_confirm`, report `goals.confirmed`). On 1.2.0 the
+  approval already settled it, so nothing extra is sent.
+- **Reconcile cron (`ops/reconcile.ts`):** a Pot with `close_settling: true` gets `sync(pot, close_proposal_id)`
+  (`pots.closesSynced`). A closing Pot with `close_settling: false`, policy v2+, whose close proposal is `Failed` is retried
+  by the hub as rulebot: `serverRetryClose` (payees registered first from the close budget, `retry_payout` relayer-signed at
+  300 Tgas, then `sync`; ≤ 3/proposal/day shared finalize quota; `pots.closeRetries`). A 1.2.0 hub (no `close_settling`)
+  is left as before.
+- **Relayer syncs:** every relayed R11 vote was already synced (close approvals included); now every relayed `retry_payout`
+  that ran (outcome ≠ delegate_failed) is synced, not only one whose payout failed. Server retries of a close sync after too.
+- **Member Finalize on v3/v4 Pots (`policy_version ≥ 3`):** refused in the R11 pre-flight with 409 `action_not_allowed
+  {cause: finalize_by_hub, retrying}`, nothing relayed (the DAO would refuse it). When it targets the Pot's current failed
+  close, the server starts `serverRetryClose` in `after()` (`retrying: true`). v1/v2 Pots: relayed as before. The app never
+  sends Finalize itself, so no copy change.
+- **Close retries over the relayer's gas cap:** R9 stays capped at 150 Tgas. A relayed `retry_payout` of the Pot's current
+  close needs `40 + 6·n` Tgas (n ≤ members); when that exceeds the delegate's gas (> 18 members at 150), it is refused with
+  409 `{cause: close_retry_by_server, retrying: true}` and retried server-signed at 300 Tgas (≤ 43 payees; the hub caps
+  members at 40). A relayed close retry that fits registers the payees first (503 `sponsor_low {why: payee_registration}`
+  if it can't).
+- **Tests:** `pipeline-security.test.ts` +6 (v3 Finalize refused + server retry at 300 Tgas, v2 Finalize relayed, small
+  close retry registers/syncs, big close retry goes server-side, the shared finalize quota, a paid spend retry is synced);
+  `goals.test.ts` +3 (propose → approve → confirm in one run, no confirm on 1.2.0, the cron's settling sync / failed-close
+  retry / 1.2.0 untouched).

@@ -13,9 +13,11 @@ import { resetBalanceCacheForTests } from "../../chain/balance"
 import type { Config } from "../../config"
 import { USDC } from "../../testing/delegates"
 import { NEAR, RELAYER, testConfig } from "../../testing/env"
+import { loadConfig } from "../../config"
 import { FakeChain, FakeSubmitter, methodOf, plainOutcome } from "../../testing/fakeChain"
 import { makeNonce, nep413Bytes, nep413Hash, NEP413_TAG, nonceTime, SIGN_IN_MESSAGE, toBase64, verifyNep413 } from "./nep413"
-import { registerOnce, rootOf, walletDisplayName, walletLogin, type WalletDeps } from "./service"
+import { ensureRegistered } from "../registration"
+import { allowedRecipients, rootOf, walletDisplayName, walletLogin, type WalletDeps } from "./service"
 
 describe("NEP-413 byte layout", () => {
   const nonce = Uint8Array.from({ length: 32 }, (_, i) => i)
@@ -110,22 +112,89 @@ async function signedBody(over: { account?: string; recipient?: string; message?
 const meta = { ipHash: "ip1", userAgent: "vitest" }
 
 describe("POST /api/session/wallet", () => {
-  it("opens a wallet session for a full-access key, then registers USDC once (after the response)", async () => {
+  it("opens a wallet session for a full-access key and pays NO registration at sign-in (APP-2)", async () => {
     const r = await walletLogin(deps, await signedBody(), meta)
     expect(r.status).toBe(200)
     expect(r.body).toMatchObject({ isNew: true, usdcRegistered: false, session: { kind: "wallet", accountId: WALLET, displayName: "Alice" } })
     expect(r.cookies.some((c) => c.startsWith("pot_session=") || c.startsWith("__Host-pot_session="))).toBe(true)
     expect(r.cookies.some((c) => c.startsWith("pot_hint="))).toBe(true)
     expect(await t.db.select().from(session)).toHaveLength(1)
-    expect(sub.submitted).toHaveLength(0)
     for (const f of deferred) await f()
+    expect(sub.submitted).toHaveLength(0) // nothing paid for a sign-in
+    // the lazy path (create/join/spend to self) registers once per account ever, from the per-IP + global budget
+    const userId = (await t.db.select().from(appUser))[0]!.id
+    expect(await ensureRegistered(deps, { account: WALLET, userId, ipHash: "ip1", budget: "general" })).toBe("registered")
     expect(sub.submitted.map((s) => methodOf(s.spec))).toEqual(["storage_deposit"])
     expect((await t.db.select().from(appUser).where(eq(appUser.nearAccount, WALLET)))[0]!.usdcRegistered).toBe(true)
-    // once per account ever
-    expect(await registerOnce(deps, (await t.db.select().from(appUser))[0]!.id, WALLET)).toBe(false)
+    expect(await ensureRegistered(deps, { account: WALLET, userId, ipHash: "ip1", budget: "general" })).toBe("already")
+    expect(sub.submitted).toHaveLength(1)
     // a second login: same user, a new session, registered
     const again = await walletLogin(deps, await signedBody(), meta)
     expect(again.body).toMatchObject({ isNew: false, usdcRegistered: true })
+  })
+
+  it("APP-1: at most ip_signups new people per IP per day; returning people are not counted", async () => {
+    process.env.QUOTA_IP_SIGNUPS = "2"
+    try {
+      for (const name of ["a1.testnet", "a2.testnet"]) {
+        chain.account(name, { keys: { [key.getPublicKey().toString()]: 5n } })
+        await walletLogin(deps, await signedBody({ account: name }), meta)
+      }
+      chain.account("a3.testnet", { keys: { [key.getPublicKey().toString()]: 5n } })
+      await expect(walletLogin(deps, await signedBody({ account: "a3.testnet" }), meta)).rejects.toMatchObject({
+        reason: "quota_exceeded",
+        detail: { family: "accounts" },
+      })
+      // another IP, or someone who signed in before, is fine
+      await walletLogin(deps, await signedBody({ account: "a3.testnet" }), { ...meta, ipHash: "ip2" })
+      await walletLogin(deps, await signedBody({ account: "a1.testnet" }), meta)
+    } finally {
+      delete process.env.QUOTA_IP_SIGNUPS
+    }
+  })
+
+  it("APP-2: the general registration budget is per IP, and an unreadable chain pays nothing", async () => {
+    process.env.QUOTA_IP_REGISTRATIONS = "1"
+    chain.view(USDC, "storage_balance_of", () => null) // nobody is registered
+    try {
+      expect(await ensureRegistered(deps, { account: "b1.testnet", ipHash: "ipx", budget: "general" })).toBe("registered")
+      expect(await ensureRegistered(deps, { account: "b2.testnet", ipHash: "ipx", budget: "general" })).toBe("skipped")
+      chain.view(USDC, "storage_balance_of", () => {
+        throw new Error("rpc down")
+      })
+      expect(await ensureRegistered(deps, { account: "b3.testnet", ipHash: "ipy", budget: "general" })).toBe("skipped")
+      expect(sub.submitted).toHaveLength(1)
+    } finally {
+      delete process.env.QUOTA_IP_REGISTRATIONS
+    }
+  })
+
+  it("APP-7: the signature must be addressed to the page that sent it (Origin), and to this deployment only", async () => {
+    await expect(walletLogin(deps, await signedBody(), { ...meta, origin: "https://evil.app" })).rejects.toMatchObject({
+      detail: { field: "recipient", why: "origin" },
+    })
+    await expect(walletLogin(deps, await signedBody(), { ...meta, origin: null })).rejects.toMatchObject({ detail: { field: "recipient" } })
+    expect((await walletLogin(deps, await signedBody(), { ...meta, origin: "https://pot.test" })).status).toBe(200)
+    const vercel = {
+      VERCEL: "1",
+      VERCEL_PROJECT_PRODUCTION_URL: "pot.app",
+      VERCEL_URL: "pot-abc123.vercel.app",
+      NEXT_PUBLIC_HUB_ID: "pots.potapp.testnet",
+    }
+    // a preview: its own urls only, never production's (appUrl falls back to production there)
+    const preview = loadConfig({ ...vercel, VERCEL_ENV: "preview", VERCEL_BRANCH_URL: "pot-git-x.vercel.app" })
+    expect(preview.appUrl).toBe("https://pot.app")
+    expect(allowedRecipients(preview).sort()).toEqual(["pot-abc123.vercel.app", "pot-git-x.vercel.app"])
+    // production: its domain and its own deployment urls, never a preview's
+    const prod = loadConfig({ ...vercel, VERCEL_ENV: "production", VERCEL_URL: "pot-def456.vercel.app" })
+    expect(allowedRecipients(prod)).toContain("pot.app")
+    expect(allowedRecipients(prod)).not.toContain("pot-git-x.vercel.app")
+    expect(allowedRecipients(prod)).not.toContain("localhost:3000")
+    // a preview signature replayed to production is refused
+    const onProd = { ...deps, cfg: prod }
+    await expect(walletLogin(onProd, await signedBody({ recipient: "pot-git-x.vercel.app" }), meta)).rejects.toMatchObject({
+      detail: { field: "recipient" },
+    })
   })
 
   it("refuses a bad signature, a replayed nonce and a stale nonce", async () => {

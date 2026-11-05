@@ -156,6 +156,12 @@ pub fn hub_v1_wasm() -> Vec<u8> {
 pub fn hub_v11_wasm() -> Vec<u8> {
     std::fs::read(contracts_dir().join("tests/fixtures/pot_hub_v1.1.0.wasm")).expect("tests/fixtures/pot_hub_v1.1.0.wasm")
 }
+/// The hub 1.2.0 build (gifts; sha256 a78f4fdc…, 574,805 B), the starting point of the 1.2.0 →
+/// 1.3.0 upgrade test and of the tests that need a Pot with the legacy (v1) policy, where members
+/// can still file raw DAO proposals (hub 1.3.0 Pots can't).
+pub fn hub_v12_wasm() -> Vec<u8> {
+    std::fs::read(contracts_dir().join("tests/fixtures/pot_hub_v1.2.0.wasm")).expect("tests/fixtures/pot_hub_v1.2.0.wasm")
+}
 pub fn usdc_wasm() -> Vec<u8> {
     ensure_built();
     std::fs::read(contracts_dir().join("target/near/test_usdc/test_usdc.wasm")).expect("test_usdc.wasm")
@@ -811,6 +817,23 @@ impl Env {
         Ok(env)
     }
 
+    /// An env whose hub starts at 1.2.0, so the Pots created before `upgrade_hub` get the legacy v1
+    /// policy (members may file raw DAO proposals: the tests of how the hub copes with a DAO changed
+    /// behind its back). Call `upgrade_hub` after creating them.
+    pub async fn legacy(build: Build) -> Result<Self> {
+        Self::with(build, HubOpts { limits: Some(roomy_limits()), hub_wasm: Some(hub_v12_wasm()), ..Default::default() }).await
+    }
+
+    /// Hub 1.2.0 → current: ONE DeployContract, no function call (1.3.0's new state lives under new
+    /// storage prefixes, so the old state deserializes unchanged).
+    pub async fn upgrade_hub(&self) -> Result<()> {
+        let r = self.hub_account.batch(self.hub_account.id()).deploy(&hub_wasm()).transact().await?;
+        if !r.is_success() {
+            bail!("upgrade: {r:?}");
+        }
+        Ok(())
+    }
+
     pub fn personas(&self) -> Vec<Actor> {
         vec![self.maya.clone(), self.sam.clone(), self.leo.clone(), self.ana.clone(), self.eve.clone()]
     }
@@ -1150,6 +1173,25 @@ macro_rules! dual {
             }
         }
     };
+}
+
+/// Every field of `old` (an object, or an array of objects) is unchanged in `new`; fields `new` adds
+/// are ignored (upgrade tests: views gain fields, existing ones must read the same).
+pub fn assert_same_fields(new: &Value, old: &Value, what: &str) {
+    match (new, old) {
+        (Value::Array(n), Value::Array(o)) => {
+            assert_eq!(n.len(), o.len(), "{what}: length");
+            for (i, (a, b)) in n.iter().zip(o).enumerate() {
+                assert_same_fields(a, b, &format!("{what}[{i}]"));
+            }
+        }
+        (Value::Object(n), Value::Object(o)) => {
+            for (k, v) in o {
+                assert_eq!(n.get(k), Some(v), "{what}.{k}");
+            }
+        }
+        _ => assert_eq!(new, old, "{what}"),
+    }
 }
 
 pub fn u(v: &Value) -> u128 {

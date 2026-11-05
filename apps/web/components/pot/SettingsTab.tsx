@@ -101,7 +101,12 @@ function Rows({ children, className }: { children: ReactNode; className?: string
 
 export function SettingsTab({ pot }: { pot: PotVM }) {
   const open = pot.status === "open"
-  const closeSub = pot.status === "closed" ? t("close.summary.cta") : pot.status === "closing" ? t("close.menu.waiting") : undefined
+  const closeSub =
+    pot.status === "closed"
+      ? t("close.summary.cta")
+      : pot.status === "closing"
+        ? t(pot.closeSettling ? "close.menu.settling" : "close.menu.waiting") // hub 1.3.0: approved, shares on their way
+        : undefined
   return (
     <div className="flex flex-col gap-8" data-settings>
       <Section id="rules" title={t("settings.rules.h")} who={t("settings.who.group")}>

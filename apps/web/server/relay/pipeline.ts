@@ -2,7 +2,7 @@
 // step 12 and nothing is signed before step 15. Rejections after the decode are recorded as `rejected`
 // relay_log rows WITHOUT the idempotency key or delegate hash, so a corrected retry is never blocked.
 import "server-only"
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, inArray, lt, sql } from "drizzle-orm"
 import { actions as nearActions } from "near-api-js"
 import type { Db } from "@/db/client"
 import { adjustQuota, chargeQuotas, nextUtcDay, type QuotaCharge } from "@/db/quota"
@@ -18,14 +18,14 @@ import { ApiError, errBody, REASON_STATUS, unavailable } from "../http/errors"
 import { logError } from "../log"
 import { notifyFromEvents } from "../notify/notify"
 import type { PushSender } from "../notify/webpush"
-import { hubAllowsCreate } from "../ops/balances"
+import { hubAllows } from "../ops/balances"
 import { limit } from "../quotas"
 import { newRelayId } from "../util/crypto"
 import { classify, retryPayoutFailed, type Classified } from "./classify"
 import { kindsEqual, type ProposalKind } from "@pot/sdk"
 import { decodeSignedDelegate, verifyDelegateSignature, type DecodedDelegate } from "./decode"
 import { burnt, trustedEvents } from "../chain/outcome"
-import { registerToken } from "../session/onboard"
+import { closePayees, ensureRegistered, registerPayees, type PayeeRegistration } from "../features/registration"
 import { applyHubEvents, upsertPotRow } from "./effects"
 import { evaluatePolicy, TGAS, type PolicyMatch } from "./policy"
 import type { RelayOk, RelayPending, RelayResult } from "./types"
@@ -79,7 +79,15 @@ export interface Actor {
   device: { publicKey: string; status: "pending" | "active" | "revoked" } | null
   /** sha256 of a verified email (per-email create quota) */
   emailHash?: string | null
+  /** app_user.created_at: APP-1's lower tier for accounts first seen < 24 h ago (absent = treated as established) */
+  createdAt?: Date | null
+  /** app_user.usdc_registered: APP-2's lazy registration before a spend to oneself (absent = not checked) */
+  usdcRegistered?: boolean
 }
+
+/** APP-1: an account first seen less than this long ago gets the `new_user_*` tier. */
+export const NEW_ACCOUNT_MS = 24 * 3_600_000
+export const isNewAccount = (actor: Actor, now: number): boolean => !!actor.createdAt && now - actor.createdAt.getTime() < NEW_ACCOUNT_MS
 
 export interface RelayRequest {
   requestId: string
@@ -148,6 +156,61 @@ async function replay(deps: RelayDeps, row: Row, requestId: string, bodyHash: st
 const isUniqueViolation = (e: unknown) => {
   const err = e as { code?: string; cause?: { code?: string } }
   return err?.code === "23505" || err?.cause?.code === "23505"
+}
+const constraintOf = (e: unknown): string | undefined => {
+  const err = e as { constraint?: string; cause?: { constraint?: string } }
+  return err?.constraint ?? err?.cause?.constraint
+}
+
+/** `p`, or undefined after `ms` (or on error); the timer never outlives the race. */
+async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([p.catch(() => undefined), new Promise<undefined>((r) => (timer = setTimeout(() => r(undefined), ms)))])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * Step 11 (APP-1, security audit 2026-11-04): refuse with 503 `sponsor_low` while the sponsors can still pay, never
+ * after. The relayer's balance is cached ≤ 30 s while healthy and re-read (≤ 5 s) once it is below the warn level, and
+ * must cover this delegate's estimate above the floor; the hub must keep its floor plus this action's sponsored
+ * storage (create, spends, joins, closes, links…). A refusal alerts the team (deduped hourly; ALERT_WEBHOOK_URL).
+ */
+async function sponsorGuard(deps: RelayDeps, m: PolicyMatch): Promise<void> {
+  const { cfg } = deps
+  let available = await mapRpc(relayerAvailable(deps.rpc, cfg.relayerAccountId))
+  if (sponsorLevel(available, cfg.relayerThresholds) !== "ok")
+    available = await mapRpc(relayerAvailable(deps.rpc, cfg.relayerAccountId, 5_000))
+  const level = sponsorLevel(available - m.estYocto, cfg.relayerThresholds)
+  if (!sponsorAllows(level, m.rule === "R2" ? "create_pot" : "relay")) {
+    deps.defer(
+      async () =>
+        void (await sendAlert(
+          deps.db,
+          "sponsor_refused:relayer",
+          `relayer ${cfg.relayerAccountId} available ${available} yocto: refusing relays`,
+        )),
+    )
+    throw unavailable("sponsor_low", 60_000)
+  }
+  // B-11 + APP-1: the hub sponsors create_pot (float + storage) and every request/close/link's storage; refuse before
+  // it would panic ERR_HUB_LOW_BALANCE
+  if (m.hubYocto > 0n && !(await hubAllows(deps.rpc, cfg, m.hubYocto))) {
+    deps.defer(
+      async () => void (await sendAlert(deps.db, "sponsor_refused:hub", `hub ${cfg.hubId} is below its floor: refusing ${m.rule}`)),
+    )
+    throw unavailable("sponsor_low", 60_000, { account: "hub" })
+  }
+}
+
+/** Give back a request's quota pre-charges (a refusal after step 12 that is not the caller's doing). */
+async function refundCharges(deps: RelayDeps, charges: QuotaCharge[]): Promise<void> {
+  for (const c of charges) {
+    if (c.period === "minute") continue
+    await adjustQuota(deps.db, [c.subject], c.action, -c.amount).catch(() => undefined)
+  }
 }
 
 function mapRpc<T>(p: Promise<T>): Promise<T> {
@@ -240,6 +303,19 @@ async function chainChecks(deps: RelayDeps, actor: Actor, d: DecodedDelegate, m:
     const pid = m.retry?.proposalId ?? m.sync?.proposalId ?? 0
     const last = await mapRpc(viewFunction<number>(rpc, m.potId!, "get_last_proposal_id", {}, "optimistic"))
     if (pid >= Number(last)) throw new ApiError("args_invalid", { detail: { field: "proposal_id", why: "unknown" } })
+    // hub 1.3.0 (HUB-4/HUB-6): retry_payout(pot, close_id) finalizes the Pot's current failed close as rulebot. It
+    // needs 40 + 6·n Tgas for n payees (≤ members); the relayed call is capped at R9's 150 Tgas (≈ 17 payees), so a
+    // bigger close is retried server-signed at 300 Tgas instead (≤ 43 payees; the hub caps members at 40)
+    if (m.retry && potView && isCurrentClose(potView, pid)) {
+      const fcGas = d.actions[0]?.kind === "functionCall" ? d.actions[0].gas : 0n
+      if (closeRetryTgas(potView.member_count) * TGAS > fcGas) {
+        scheduleServerCloseRetry(deps, m.potId!, pid, `relay:${newRelayId()}`)
+        throw new ApiError("action_not_allowed", { status: 409, detail: { cause: "close_retry_by_server", retrying: true } })
+      }
+      ;(m as PolicyMatch & { closeKind?: Record<string, unknown> }).closeKind = (await mapRpc(hub.getProposal(m.potId!, pid)))?.kind as
+        | Record<string, unknown>
+        | undefined
+    }
   }
   if (m.rule === "R11") await r11Preflight(deps, actor, m, potView!, now)
   if (m.rule === "R16") await giftPreflight(deps, actor, m)
@@ -286,6 +362,14 @@ async function r11Preflight(deps: RelayDeps, actor: Actor, m: PolicyMatch, potVi
   if (v.action === "Finalize") {
     if (!(proposal.status === "Failed" || (proposal.status === "InProgress" && expired)))
       throw new ApiError("proposal_not_open", { detail: { status: proposal.status, expired } })
+    // hub 1.3.0 (HUB-6): members have no Finalize on policy v3/v4 Pots (the DAO would refuse it, ERR_PERMISSION_DENIED,
+    // and the relayer would pay for nothing). The hub retries a failed close itself (retry_payout as rulebot): the
+    // server starts that (300 Tgas, payees registered first) and the member is told it's on its way.
+    if ((potView.policy_version ?? 1) >= 3) {
+      const retrying = subject.kind === "close" && proposal.status === "Failed" && isCurrentClose(potView, v.proposalId)
+      if (retrying) scheduleServerCloseRetry(deps, v.daoId, v.proposalId, `finalize:${newRelayId()}`)
+      throw new ApiError("action_not_allowed", { status: 409, detail: { cause: "finalize_by_hub", retrying } })
+    }
   } else {
     if (proposal.status !== "InProgress" || expired)
       throw new ApiError("proposal_not_open", { detail: { status: proposal.status, expired } })
@@ -298,12 +382,30 @@ async function r11Preflight(deps: RelayDeps, actor: Actor, m: PolicyMatch, potVi
 // ---------------------------------------------------------------------------------------------
 // step 12: quotas
 
-function quotaCharges(actor: Actor, m: PolicyMatch, ipHash?: string): QuotaCharge[] {
+export function quotaCharges(actor: Actor, m: PolicyMatch, ipHash?: string, now = Date.now()): QuotaCharge[] {
   const user = `user:${actor.userId}`
+  const fresh = isNewAccount(actor, now)
   const c: QuotaCharge[] = [
     { subject: user, action: "burst", amount: 1n, limit: limit("user_burst"), period: "minute", tag: "burst" },
     { subject: user, action: m.family, amount: 1n, limit: limit(`user_${m.family}`), tag: `family:${m.family}` },
   ]
+  // APP-1 (security audit 2026-11-04): per trusted client IP (HMAC, never the IP), so a farm of free accounts behind
+  // one address can't take the global caps and the sponsors' NEAR for everyone. Every relay passes through here.
+  if (ipHash) {
+    const ip = `ip:${ipHash}`
+    c.push({ subject: ip, action: "relay_burst", amount: 1n, limit: limit("ip_relay_burst"), period: "minute", tag: "burst" })
+    c.push({ subject: ip, action: "relays", amount: 1n, limit: limit("ip_relays"), tag: "family:ip" })
+    c.push({ subject: ip, action: "relay_yocto", amount: m.estYocto, limit: limit("ip_relay_yocto"), tag: "budget" })
+    if (m.hubYocto > 0n) c.push({ subject: ip, action: "hub_yocto", amount: m.hubYocto, limit: limit("ip_hub_yocto"), tag: "budget" })
+    if (m.rule === "R2") c.push({ subject: ip, action: "pots_created", amount: 1n, limit: limit("ip_pots_created"), tag: "family:create" })
+  }
+  // APP-1: the lower tier for brand-new accounts: a daily total, and together at most a share of the global budgets
+  if (fresh) {
+    c.push({ subject: user, action: "relays", amount: 1n, limit: limit("new_user_relays"), tag: "budget" })
+    c.push({ subject: "global", action: "new_relay_yocto", amount: m.estYocto, limit: limit("global_new_relay_yocto"), tag: "global_cap" })
+    if (m.hubYocto > 0n)
+      c.push({ subject: "global", action: "new_hub_yocto", amount: m.hubYocto, limit: limit("global_new_hub_yocto"), tag: "global_cap" })
+  }
   if (m.potId && ["contribute", "spend", "vote", "close", "gift"].includes(m.family))
     c.push({ subject: `pot:${m.potId}`, action: m.family, amount: 1n, limit: limit(`pot_${m.family}`), tag: `family:${m.family}` })
   // hub 1.2.0: gifts come from anyone, so they are also capped per (hashed) IP when the route passes it
@@ -319,9 +421,21 @@ function quotaCharges(actor: Actor, m: PolicyMatch, ipHash?: string): QuotaCharg
   }
   c.push({ subject: "global", action: "relays", amount: 1n, limit: limit("global_relays"), tag: "global_cap" })
   c.push({ subject: "global", action: "relay_yocto", amount: m.estYocto, limit: limit("global_relay_yocto"), tag: "global_cap" })
-  c.push({ subject: user, action: "relay_yocto", amount: m.estYocto, limit: limit("user_relay_yocto"), tag: "budget" })
+  c.push({
+    subject: user,
+    action: "relay_yocto",
+    amount: m.estYocto,
+    limit: limit(fresh ? "new_user_relay_yocto" : "user_relay_yocto"),
+    tag: "budget",
+  })
   if (m.hubYocto > 0n) {
-    c.push({ subject: user, action: "hub_yocto", amount: m.hubYocto, limit: limit("user_hub_yocto"), tag: "budget" })
+    c.push({
+      subject: user,
+      action: "hub_yocto",
+      amount: m.hubYocto,
+      limit: limit(fresh ? "new_user_hub_yocto" : "user_hub_yocto"),
+      tag: "budget",
+    })
     c.push({ subject: "global", action: "hub_yocto", amount: m.hubYocto, limit: limit("global_hub_yocto"), tag: "global_cap" })
   }
   return c
@@ -333,7 +447,7 @@ async function chargeOrThrow(deps: RelayDeps, actor: Actor, m: PolicyMatch, ipHa
     WHERE user_id = ${actor.userId} AND outcome = 'delegate_failed'
       AND created_at >= (date_trunc('day', now() AT TIME ZONE 'utc') AT TIME ZONE 'utc')`)
   if ((r.rows[0]?.n ?? 0) > 10) throw new ApiError("user_suspended", { detail: { resetsAt: nextUtcDay().toISOString() } })
-  const charges = quotaCharges(actor, m, ipHash)
+  const charges = quotaCharges(actor, m, ipHash, deps.now?.() ?? Date.now())
   const res = await chargeQuotas(deps.db, charges)
   if (res.ok) return charges
   const f = res.failed
@@ -348,7 +462,7 @@ async function chargeOrThrow(deps: RelayDeps, actor: Actor, m: PolicyMatch, ipHa
     })
     throw unavailable("global_cap", 60_000, { counter: f.action })
   }
-  const family = f.tag === "budget" ? "budget" : (f.tag ?? "family:other").replace("family:", "")
+  const family = f.tag === "budget" ? "budget" : f.tag === "family:ip" ? "relays" : (f.tag ?? "family:other").replace("family:", "")
   throw new ApiError("quota_exceeded", { detail: { family, limit: f.limit.toString(), resetsAt } })
 }
 
@@ -392,19 +506,36 @@ export async function relay(deps: RelayDeps, actor: Actor, req: RelayRequest): P
     if (dup) return replay(deps, dup, req.requestId, null)
     // 10. chain reads
     chain = await chainChecks(deps, actor, d, m)
-    // 11. sponsor health
-    const level = sponsorLevel(
-      await mapRpc(relayerAvailable(deps.rpc, cfg.relayerAccountId)),
-      cfg.relayerThresholds,
-    )
-    if (!sponsorAllows(level, m.rule === "R2" ? "create_pot" : "relay")) throw unavailable("sponsor_low", 60_000)
-    // B-11: the hub sponsors create_pot (float + storage); refuse before it would panic ERR_HUB_LOW_BALANCE
-    if (m.rule === "R2" && !(await hubAllowsCreate(deps.rpc, cfg))) throw unavailable("sponsor_low", 60_000, { account: "hub" })
+    // 11. sponsor health (APP-1: fails closed with 503 sponsor_low before a sponsor runs dry, and tells the team)
+    await sponsorGuard(deps, m)
     // 12. quotas (one transaction, all or nothing)
-    await chargeOrThrow(deps, actor, m, req.ipHash)
+    const charges = await chargeOrThrow(deps, actor, m, req.ipHash)
     if (chain.potView) await upsertPotRow(db, cfg.hubId, chain.potView).catch(() => undefined)
-    if (m.rule === "R11" && m.vote!.action !== "VoteReject" && (m as PolicyMatch & { subjectKind?: string }).subjectKind === "close")
-      await registerClosePayees(deps, m.vote!.kind)
+    if (m.rule === "R11" && m.vote!.action !== "VoteReject" && (m as PolicyMatch & { subjectKind?: string }).subjectKind === "close") {
+      // HUB-5: every payee registered before the vote that may execute the close (one unregistered payee fails the whole
+      // atomic batch). Payees we could not even try (budget, sponsor) → 503 now, quota pre-charges given back.
+      const reg = await registerClosePayees(deps, m.vote!.kind, m.potId ?? undefined)
+      if (reg.skipped.length > 0) {
+        await refundCharges(deps, charges)
+        throw unavailable("sponsor_low", 60_000, { why: "payee_registration" })
+      }
+    }
+    // HUB-5 + hub 1.3.0: a relayed retry of a failed close pays every payee in one batch: register them first
+    const closeKind = (m as PolicyMatch & { closeKind?: Record<string, unknown> }).closeKind
+    if (m.rule === "R9" && closeKind) {
+      const reg = await registerClosePayees(deps, closeKind, m.potId ?? undefined)
+      if (reg.skipped.length > 0) {
+        await refundCharges(deps, charges)
+        throw unavailable("sponsor_low", 60_000, { why: "payee_registration" })
+      }
+    }
+    // APP-2: a spend to oneself is the first time an account may receive money: register it now (once ever) so the
+    // hub's payee check doesn't refuse it. Best effort and bounded; the hub still has the last word.
+    if (m.rule === "R3" && m.spend?.receiverId === actor.accountId && actor.usdcRegistered === false)
+      await withTimeout(
+        ensureRegistered(deps, { account: actor.accountId, userId: actor.userId, ipHash: req.ipHash, budget: "general" }),
+        8_000,
+      )
   } catch (e) {
     if (e instanceof ApiError) await recordRejected(deps, actor, req, d, m, e)
     throw e
@@ -412,36 +543,79 @@ export async function relay(deps: RelayDeps, actor: Actor, req: RelayRequest): P
 
   // 13. record
   const relayId = newRelayId()
-  try {
-    await db.insert(relayLog).values({
+  const insertRow = () =>
+    db.insert(relayLog).values({
       id: relayId,
       requestId: req.requestId,
       userId: actor.userId,
       idempotencyKey: req.idempotencyKey,
       bodyHash: req.bodyHash,
       op: "relay",
-      intent: m.intent,
+      intent: m!.intent,
       senderId: d.senderId,
       receiverId: d.receiverId,
-      methods: m.methods,
-      potId: m.potId,
+      methods: m!.methods,
+      potId: m!.potId,
       delegateHash: d.hash,
       delegatePublicKey: d.publicKey,
       delegateNonce: d.nonce.toString(),
       maxBlockHeight: Number(d.maxBlockHeight),
       status: "validated",
-      estYocto: m.estYocto.toString(),
-      result: { __match: snapshotMatch(m) },
+      estYocto: m!.estYocto.toString(),
+      result: { __match: snapshotMatch(m!) },
+    })
+  try {
+    // APP-9: an in-flight row holding this nonce whose delegate already expired can never execute (step 10 checked the
+    // key's nonce is still below ours): it is a lost broadcast, so free the nonce and insert again, once
+    await insertRow().catch(async (e) => {
+      if (constraintOf(e) !== "relay_log_inflight_nonce_uq" || !(await releaseExpiredNonce(deps, d, chain!.head))) throw e
+      await insertRow()
     })
   } catch (e) {
     if (!isUniqueViolation(e)) throw e
     // a concurrent duplicate (same key or same bytes): return its result
     const other = (await findByKey(db, actor.userId, req.idempotencyKey)) ?? (await findByHash(db, d.hash))
     if (other) return replay(deps, other, req.requestId, other.idempotencyKey === req.idempotencyKey ? req.bodyHash : null)
+    // APP-9: another delegate with the same (sender, key, nonce) went in flight between our read (step 10) and this
+    // insert (relay_log_inflight_nonce_uq): only one of them could ever execute, so this one waits, and the quota
+    // pre-charges are given back.
+    if (constraintOf(e) === "relay_log_inflight_nonce_uq") {
+      await refundCharges(deps, quotaCharges(actor, m, req.ipHash, deps.now?.() ?? Date.now()))
+      const err = new ApiError("nonce_pending", { retryAfterMs: 2_000 })
+      await recordRejected(deps, actor, req, d, m, err)
+      throw err
+    }
     throw e
   }
 
   return submitAndClassify(deps, actor, req, d, m, relayId, chain?.potView ?? null)
+}
+
+/**
+ * APP-9: in-flight rows of this (sender, key, nonce) whose delegate is past its max_block_height at the final head can
+ * never run (the caller saw the key's nonce below it): mark them lost (as reconcileRelayRow would) and give their yocto
+ * pre-charge back. Returns how many were released.
+ */
+async function releaseExpiredNonce(deps: RelayDeps, d: DecodedDelegate, head: number): Promise<number> {
+  const rows = await deps.db
+    .update(relayLog)
+    .set({ status: "failed", reason: "expired", errorText: "lost_broadcast", finishedAt: new Date() })
+    .where(
+      and(
+        eq(relayLog.senderId, d.senderId),
+        eq(relayLog.delegatePublicKey, d.publicKey),
+        eq(relayLog.delegateNonce, d.nonce.toString()),
+        inArray(relayLog.status, ["validated", "signed", "submitted", "pending"]),
+        lt(relayLog.maxBlockHeight, head),
+      ),
+    )
+    .returning({ userId: relayLog.userId, estYocto: relayLog.estYocto })
+  for (const r of rows)
+    if (r.estYocto)
+      await adjustQuota(deps.db, ["global", ...(r.userId ? [`user:${r.userId}`] : [])], "relay_yocto", -BigInt(r.estYocto)).catch(
+        () => undefined,
+      )
+  return rows.length
 }
 
 async function recordRejected(
@@ -585,6 +759,7 @@ async function submitAndClassify(
       txHash: s.r.txHash,
       outcome: s.r.outcome,
       yocto,
+      ipHash: req.ipHash,
     })
     return done
   }
@@ -666,6 +841,8 @@ export interface CompleteInput {
   txHash: string
   outcome: FinalOutcome
   yocto: { action: string; subjects: string[] }
+  /** the request's IP hash (APP-2: the lazy registration after a create/join is charged to it) */
+  ipHash?: string
 }
 
 /** Step 16 (+ 17 in after()): classify, store, correct the yocto pre-charge, write feed rows. */
@@ -752,9 +929,10 @@ export async function followUps(deps: RelayDeps, x: CompleteInput, c: Classified
   // hub 1.1.0: a one-OK approval whose payout failed (the hub's `approved` is optimistic, D7) → sync
   if (c.outcome === "success" && m.rule === "R13" && c.payoutFailed && c.result?.type === "ok" && c.result.proposalId !== null)
     tasks.push(serverSync(deps, m.potId!, c.result.proposalId, x.relayId))
-  // B-05 / D7: a relayed retry_payout whose payout failed again → sync (the hub said `approved` optimistically)
-  if (c.outcome !== "delegate_failed" && m.rule === "R9" && m.retry && c.payoutFailed)
-    tasks.push(serverSync(deps, m.potId!, m.retry.proposalId, x.relayId))
+  // B-05 / D7: a relayed retry_payout → sync. Hub 1.3.0: after ANY retry, not only a failed one: a retried close is
+  // Closed only when sync sees the money out of the DAO (HUB-4), and a spend's `approved` is optimistic (D7).
+  // (Every relayed R11 vote, close approvals included, is already synced above.)
+  if (c.outcome !== "delegate_failed" && m.rule === "R9" && m.retry) tasks.push(serverSync(deps, m.potId!, m.retry.proposalId, x.relayId))
   // B-05: new money may cover an approved payout that failed for lack of balance → retry_payout
   if (c.outcome === "success" && m.rule === "R1" && m.potId) tasks.push(retryFailedPayouts(deps, m.potId, x.relayId))
   // hub 1.2.0: a gift is new money too, and the web app records it (gift row, link uses, push) or marks it failed
@@ -762,6 +940,12 @@ export async function followUps(deps: RelayDeps, x: CompleteInput, c: Classified
     if (c.outcome === "success" && m.potId) tasks.push(retryFailedPayouts(deps, m.potId, x.relayId))
     tasks.push(giftFollowUp(deps, x, c))
   }
+  // APP-2: creating or joining a Pot is when an account first needs to receive money (spends, refunds): register it now
+  // (once ever, per-IP and global budgets), not at sign-in
+  if (c.outcome === "success" && (m.rule === "R2" || m.rule === "R4") && x.actor)
+    tasks.push(ensureRegistered(deps, { account: x.actor.accountId, userId: x.actor.userId, ipHash: x.ipHash, budget: "general" }))
+  // HUB-5: a close was just proposed: register its payees now (close budget), well before the vote that pays them
+  if (c.outcome === "success" && m.rule === "R8" && m.potId) tasks.push(registerProposedClosePayees(deps, c, m.potId))
   tasks.push(checkRelayerBalance(deps))
   // X-06: "money arrived", "needs your approval", "Pot closed" from this tx's trusted hub events
   if (c.outcome !== "delegate_failed" && deps.push) tasks.push(notifyFromEvents(notifyDeps(deps), c.rawEvents, x.txHash))
@@ -798,6 +982,51 @@ export function serverRetryPayout(deps: RelayDeps, pot: string, proposalId: numb
   return serverHubCall(deps, { op: "retry_payout", method: "retry_payout", pot, proposalId, gasTgas: 100n, cause })
 }
 
+/** hub 1.3.0: is `proposalId` the Pot's current close (status closing)? */
+export const isCurrentClose = (v: PotView, proposalId: number): boolean => v.status === "closing" && v.close_proposal_id === proposalId
+
+/** hub 1.3.0 retry_payout on a close: 20 + 6·n Tgas for the payout batch + 20 for the hub (notes/contracts.md). */
+export const closeRetryTgas = (payees: number): bigint => 40n + 6n * BigInt(Math.max(1, payees))
+/** The server's own close retry: the most a tx's single call may use. */
+export const SERVER_CLOSE_RETRY_TGAS = 300n
+
+/**
+ * hub 1.3.0: retry the Pot's current failed close, relayer-signed at 300 Tgas (any close size up to the hub's 40
+ * members), after registering every payee (HUB-5). Bounded by the shared ≤ 3/proposal/day finalize quota; the
+ * follow-up `sync` confirms the money is out (HUB-4). Never throws.
+ */
+export async function serverRetryClose(deps: RelayDeps, pot: string, proposalId: number, cause: string): Promise<"retried" | "skipped"> {
+  try {
+    const q = await chargeQuotas(deps.db, [
+      { subject: `proposal:${pot}:${proposalId}`, action: "finalize", amount: 1n, limit: limit("proposal_finalize") },
+    ])
+    if (!q.ok) return "skipped"
+    const proposal = await deps.hub.getProposal(pot, proposalId).catch(() => null)
+    if (proposal) {
+      const reg = await registerClosePayees(deps, proposal.kind as Record<string, unknown>, pot)
+      if (reg.skipped.length > 0) return "skipped"
+    }
+    await serverHubCall(deps, {
+      op: "retry_payout",
+      method: "retry_payout",
+      pot,
+      proposalId,
+      gasTgas: SERVER_CLOSE_RETRY_TGAS,
+      cause,
+      syncAfter: true,
+    })
+    return "retried"
+  } catch (e) {
+    await logError({ route: "after:retry_close", reason: "retry_close_failed", detail: { pot, proposalId, err: errText(e, 300) } })
+    return "skipped"
+  }
+}
+
+/** In after(): each request gets its own cause (a unique relay_log key); the finalize quota bounds how many run. */
+function scheduleServerCloseRetry(deps: RelayDeps, pot: string, proposalId: number, cause: string): void {
+  deps.defer(async () => void (await serverRetryClose(deps, pot, proposalId, cause)))
+}
+
 /** B-05: after a contribution, retry approved payouts that failed (≤ 3 per proposal per UTC day, shared with Finalize). */
 export async function retryFailedPayouts(deps: RelayDeps, pot: string, cause: string): Promise<void> {
   const v = await deps.hub.getPot(pot, { fresh: true }).catch(() => null)
@@ -814,7 +1043,7 @@ export async function retryFailedPayouts(deps: RelayDeps, pot: string, cause: st
 
 async function serverHubCall(
   deps: RelayDeps,
-  x: { op: "sync" | "retry_payout"; method: string; pot: string; proposalId: number; gasTgas: bigint; cause: string },
+  x: { op: "sync" | "retry_payout"; method: string; pot: string; proposalId: number; gasTgas: bigint; cause: string; syncAfter?: boolean },
 ): Promise<void> {
   const { db, cfg } = deps
   const id = newRelayId()
@@ -873,7 +1102,8 @@ async function serverHubCall(
     // X-06: a sync that settles a vote → "approved" / "not approved" / "expired" to the requester
     if (deps.push) await notifyFromEvents(notifyDeps(deps), events, r.txHash).catch(() => undefined)
     // B-05 / D7: scan the retry's receipts like a vote's; if the payout (or the DAO callback) failed, sync
-    if (x.op === "retry_payout" && retryPayoutFailed(r.outcome, x.pot, cfg.usdcId)) await serverSync(deps, x.pot, x.proposalId, id)
+    if (x.op === "retry_payout" && (x.syncAfter || retryPayoutFailed(r.outcome, x.pot, cfg.usdcId)))
+      await serverSync(deps, x.pot, x.proposalId, id)
   } catch (e) {
     await db.update(relayLog).set({ status: "failed", reason: e instanceof ApiError ? e.reason : "internal", finishedAt: new Date() }).where(eq(relayLog.id, id))
     await logError({ route: `after:${x.op}`, relayId: id, reason: `${x.op}_failed`, detail: { err: errText(e, 300) } })
@@ -881,33 +1111,20 @@ async function serverHubCall(
 }
 
 /**
- * rev4 M-5: before a close's deciding vote or a Finalize, register every payee that isn't registered on the
- * token (registration-only storage_deposit, once per account ever), so a payee who unregistered can't make
- * the atomic close fail and keep the Pot Closing.
+ * rev4 M-5 + HUB-5: before a close's approval or a Finalize, register every payee that isn't registered on the token, so
+ * a payee who unregistered (or never registered) can't make the atomic close fail and keep the Pot Closing. Paid from
+ * the separate close budget (server/features/registration.ts); `skipped` = payees we could not try now.
  */
-export async function registerClosePayees(deps: RelayDeps, kind: Record<string, unknown>): Promise<string[]> {
-  const fc = (kind.FunctionCall ?? {}) as { receiver_id?: string; actions?: { method_name?: string; args?: string }[] }
-  if (fc.receiver_id !== deps.cfg.usdcId) return []
-  const payees = new Set<string>()
-  for (const a of fc.actions ?? []) {
-    if (a.method_name !== "ft_transfer" || !a.args) continue
-    try {
-      const args = JSON.parse(Buffer.from(a.args, "base64").toString("utf8")) as { receiver_id?: string }
-      if (args.receiver_id) payees.add(args.receiver_id)
-    } catch {
-      // not a payout action
-    }
-  }
-  const registered: string[] = []
-  for (const p of [...payees].slice(0, 40)) {
-    const bal = await deps.hub.storageBalanceOf(deps.cfg.usdcId, p).catch(() => ({}) as never)
-    if (bal) continue
-    const q = await chargeQuotas(deps.db, [{ subject: "global", action: "registrations", amount: 1n, limit: limit("global_registrations") }])
-    if (!q.ok) break
-    const r = await registerToken(deps, p).catch(() => ({ ok: false }))
-    if (r.ok) registered.push(p)
-  }
-  return registered
+export async function registerClosePayees(deps: RelayDeps, kind: Record<string, unknown>, potId?: string): Promise<PayeeRegistration> {
+  return registerPayees(deps, closePayees(kind, deps.cfg.usdcId), potId)
+}
+
+/** HUB-5: the payees of a `close_proposed` event this relay produced (hub-trusted), registered ahead of the vote. */
+async function registerProposedClosePayees(deps: RelayDeps, c: Classified, potId: string): Promise<void> {
+  const ev = c.rawEvents.find((e) => e.standard === "pot" && e.event === "close_proposed")
+  const payouts = (ev?.data as { payouts?: { account_id?: unknown }[] } | undefined)?.payouts ?? []
+  const payees = payouts.map((p) => p.account_id).filter((a): a is string => typeof a === "string")
+  if (payees.length) await registerPayees(deps, payees, potId)
 }
 
 async function checkRelayerBalance(deps: RelayDeps): Promise<void> {

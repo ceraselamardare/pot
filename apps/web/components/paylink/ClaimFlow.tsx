@@ -4,7 +4,7 @@
 // the claim is signed here with the #secret (never sent anywhere) → "$84 is yours" with where it went (their Pot
 // dollars) and a receipt. Every other state of the link has its own calm screen (lib/client/paylink/claim.ts).
 //  - The #secret is kept in sessionStorage['pot.claim.<slug>.<id>'] so a sign-in redirect can't lose it, and the
-//    fragment is stripped once the money is claimed.
+//    fragment is stripped as soon as that copy exists (CLI-7; lib/client/fragment-secret.ts).
 //  - The link refreshes by itself while it can change on its own (waiting for the group's OK, a claim in flight).
 import { Check, Clock, Hourglass, ShieldCheck, Undo2, X } from "lucide-react"
 import Link from "next/link"
@@ -27,6 +27,7 @@ import { claimLink, useClaimLink } from "@/lib/client/paylink/actions"
 import { claimReducer, claimScreen, initialClaim, retryable, type ClaimLinkVM, type ClaimScreen, type SecretCheck } from "@/lib/client/paylink/claim"
 import { publicKeyOfSecret } from "@/lib/client/paylink/keys"
 import { secretFromHash } from "@/lib/client/paylink/link"
+import { stripStashedFragment } from "@/lib/client/fragment-secret"
 import { formatDate } from "@/lib/client/time"
 import { cn } from "@/lib/client/cn"
 
@@ -65,6 +66,13 @@ export function ClaimFlow({ slug, id, initial }: { slug: string; id: number; ini
   const meInfo = useMeInfo()
   const me = meInfo === undefined ? undefined : (meInfo?.id ?? null)
   const frag = useFragmentSecret(slug, id)
+  // CLI-7 (security audit 2026-11-04): as on the invite page, the #secret leaves the address bar as soon as the tab has
+  // its copy, not only after the money is claimed
+  useEffect(() => {
+    if (!frag || !("secret" in frag)) return
+    const inUrl = secretFromHash(window.location.hash)
+    stripStashedFragment(stash(slug, id), "secret" in inUrl ? inUrl.secret : null)
+  }, [frag, slug, id])
   const [phase, dispatch] = useReducer(claimReducer, initialClaim)
   const [pkCheck, setPkCheck] = useState<{ secret: string; pk: string; ok: boolean } | null>(null)
   const [txHash, setTxHash] = useState<string | undefined>()

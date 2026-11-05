@@ -1,3 +1,8 @@
+> **Security fixes (2026-11-05): hub 1.3.0** fixes the 2026-11-04 audit's contract findings (policy v3 where members
+> only vote, one-OK hardening, close confirmed by the money leaving, pending links vs the close, minimum link). A plain
+> code deploy from 1.2.0 (no `migrate`). Design, tests and the human's deploy steps: the last section of this file.
+> Not deployed.
+
 # Contracts: progress, deviations, open issues
 
 > **Gifts (2026-11-02): hub 1.2.0** lets anyone send a Pot a gift (group money, shared at close, equal split when
@@ -240,3 +245,123 @@ While a join is pending, the Pot is about to have 2 members, so a sole member ge
   - The Rust twin is `pot_tests::Env::join_sig`.
 - **O6 · The protocol-88 ★ run passes** (see Test results). CI should run it as the
   `contracts-p88` job.
+
+## Hub 1.3.0 security fixes (2026-11-05)
+
+> Owner: the contracts engineer. Sandbox only: **nothing was signed, deployed or committed.** Source:
+> [security-audit-2026-11-04.md](security-audit-2026-11-04.md). Code: `pot-hub/src/security.rs` (new), `policy.rs`,
+> `lib.rs`, `wave4.rs`, `views.rs`, `types.rs`, `errors.rs`. Tests: `pot-hub/src/unit_security.rs`,
+> `tests/tests/t_security.rs`, `t_migrate.rs` m2, updated `t_close` T-92 and `t_wave4` W4. Fixture
+> `tests/fixtures/pot_hub_v1.2.0.wasm` = the 1.2.0 build (sha256 `a78f4fdc…d7335`, 574,805 B).
+
+### What changed, per finding
+
+| ID | Status | Design |
+|---|---|---|
+| **HUB-1, GOV-2 (raw path), GOV-3, GOV-4, W4-7, GOV-9** | fixed for new Pots | **Policy v3**: the member role has only `*:VoteApprove`, `*:VoteReject` (no `AddProposal`, no `Finalize`). Only the hub (rulebot) can create proposals, so a creator alone can't add alts or change the policy, sybils can't file a raw `Transfer`, a majority can only approve or reject what the hub proposed (spend, join, rules change, close; no upgrade, policy change or arbitrary call), nobody can spam the DAO's float, every `call` proposal is the hub's own (so the v4 rulebot's `call` approval can't touch a member-made call), and nobody can be removed in the DAO behind the hub's back. The rulebot gains `call:Finalize` (retry a failed close; Finalize never approves anything). **Policy v4** = v3 + `call:VoteApprove` / `call` 1/1 for all-or-nothing Pots (the goal refund), replacing v2 for new Pots. Helpers `policy_rulebot_approves_call` (v2, v4), `policy_rulebot_finalizes_call` (v2+), `policy_members_propose` (v1, v2). v1 / v2 Pots keep their policy (Sputnik policies live in each DAO). |
+| **HUB-2** | fixed | Instant spends need `contributed ≥ MIN_STAKE` = 1_000_000 ($1 at the token's 6 decimals); below it the reason is `new_member` (the group decides). Applies to every Pot. |
+| **W4-1 (a)** | fixed | A one-OK request needs the requester's stake (≥ $1); a requester without it goes to the group. |
+| **W4-1 (b)** | fixed | The OK-giver must be an Active member ≠ requester, ≠ the payee, `joined_at_ms` < the request's `created_at_ms`, and `contributed ≥ $1` (`ERR_OK_SELF` / `ERR_OK_NOT_ELIGIBLE: receiver \| joined_after \| no_stake`). For a one-OK **link**, the OK-giver can't be the claimer (`claim_link` → `ERR_BAD_RECEIVER`). The tier is **re-checked at OK time** (`ERR_NOT_ONE_OK: <why>`: ceiling, stake, allowance, goal). View `get_ok_check(pot, request_id, account_id)` returns the same answer for the UI. |
+| **W4-1 (c)** | fixed | **A lifetime one-OK allowance per member = the Pot's one-OK ceiling** (`extras.one_ok_cap`). Each one-OK approval is charged to the requester (`OneOkUsed`), reserved synchronously in `ok_request` (two OKs in one block can't both fit) and released exactly once (`OkCharge` marker) if the approval doesn't land (refused, objection, rejected, expired, removed). So two accounts OK-ing each other stop after one ceiling each. Why not the member budget: `member_budget` is a lifetime instant allowance (it never resets; there is no period), and the default ceiling (3 × the cap, $300 on Trip) is above the default budget ($200): sharing it would make "a $300 spend needs one OK" (the product's main story, the landing playground and the /demo tour) impossible. Per member, the most that can move without a group vote over the Pot's life is `member_budget + one_ok_cap`. `MemberView` gains `one_ok_used`, `one_ok_left`. |
+| **HUB-4** | fixed | Sputnik stores `Approved` before its payout callback can set `Failed`. A close is now **Closed only when `sync` sees the money out**: `sync` of a close reads `get_proposal` **and** `usdc.ft_balance_of(dao)`; the payout is one atomic batch paying exactly the balance the close read (Σ payouts = `rec.balance`) and money in is refused while closing, so "DAO balance < rec.balance" means it was paid. Until then the Pot stays `closing` with the record `Approved` (`PotView.close_settling`, goal state `refunding`); `pot_closed` / `goal_refunded` are emitted only on confirmation. A Failed close stays `closing` and is retryable: re-propose (as before), or **`retry_payout(pot, close_id)`**, which now Finalizes the Pot's *current* failed close as rulebot (policy v2+). A Pot confirmed Closed whose close the DAO later reports `Failed` (only possible if a member-approved spend executed during the payout window) reopens as a failed close on the next `sync`. `refund_unfunded` gained a third state: on an approved-but-unconfirmed refund it does the same confirming read (`get_goal.can_refund` stays true until then). |
+| **HUB-6** | fixed for v3 / v4 | Members have no `Finalize` in v3 / v4, and the hub only finalizes the current close (`retry_close` checks `Closing{pid}` + record Failed), so a replaced failed close can never pay out later. v1 / v2: members can still Finalize an old close in the DAO (limitation). |
+| **W4-5** | fixed | Only links holding escrow (Funded / Claiming / Returning) block a close. Instead of voiding pending links at close (which needs iterating requests), **a closing (or closed) Pot refuses to fund a link**: `fund_link` returns the amount, the token refunds the DAO, and the close pays it out with everything else; if the close is rejected, pending links work again. Tracking: per-Pot `LinkTrack {awaiting}` (prefix 0x10). A Pot with open links made before 1.3.0 has no record and keeps the old rule (every open link blocks) until its links settle; tracking starts with the next link requested while none is open. |
+| **W4-8** | fixed | Links under `MIN_LINK_AMOUNT` = $1 are refused (`ERR_LINK_TOO_SMALL`, preview reason `link_too_small`). |
+| **W4-4** | not done | A safe `reap_link` needs to know whether a stuck claim's `ft_transfer` happened; the hub's USDC is shared escrow, so this needs escrow accounting (W4-3's `escrow_total`) first. Callbacks keep ≥ 2× static gas margin. |
+| GOV-1, GOV-5, GOV-6, GOV-8 | out of scope | Custody / testnet stage (decided). |
+
+### State and storage (no migration)
+New records live directly under new prefixes with `LookupMap`'s key layout (like the 1.2.0 gift records); none is a
+field of the root struct, so **1.2.0 → 1.3.0 is a plain DeployContract** (proven by `t_migrate` m2):
+`0x0E (pot idx, account) → u128` one-OK used · `0x0F (pot idx, request id) → u128` one-OK charge · `0x10 pot idx →
+LinkTrack`. No frozen Borsh layout changed (`Pot`, `Member`, `Request`, `PotExt`, `RequestExt`, `CloseRecord` as before;
+`CloseStatus::Approved` now also means "approved, not yet confirmed" while the Pot is Closing). Storage per one-OK
+approval ≈ 2 × ~60 B, paid inside the existing request budget. Review fixes add `0x11 (pot idx, request id) → ()` (pending-link marker), `0x12 pot idx → CloseSeen` and `0x13 pot idx → SweepRecord`.
+Hub code 601,051 B (was 574,805): **+26.2 KB ≈ +0.26 NEAR**.
+
+### Interface changes (all additive)
+- Views: `get_ok_check(pot, request_id, account_id) → {pot, request_id, account_id, can_ok, reason}`; `PotView.close_settling`;
+  `MemberView.one_ok_used`, `one_ok_left`; `preview_spend` reason `link_too_small`; `policy_version` 3 / 4.
+- Errors: `ERR_OK_NOT_ELIGIBLE`, `ERR_LINK_TOO_SMALL`; `ERR_NOT_ONE_OK` may carry a detail (`: one_ok_used_up` …).
+- `retry_payout` accepts the current failed close (gas `20 + 6·n` + 20 Tgas; the relayer's R9 cap of 150 Tgas covers
+  ≤ 17 payees, the server can call it relayer-signed at 300). `sync` of a close reads one more view (+5 Tgas static; 50 Tgas still enough).
+- No new change method, so the relayer allowlist is unchanged. `contracts/abi/pot_hub.json` regenerated.
+- Mirrors: `@pot/sdk` (`security.ts`: `HUB_1_3`, `POLICY`, `okGiverRefusal`; decide twin; parse; `getOkCheck`; error codes;
+  MockChain policy v3; `validateExtras` accepts v4), the app's one-OK copy ("one OK from someone else who has added
+  money"), `approve.ok.not_eligible`, `canGiveOk` hides the OK button from the payee, the regenerated /demo script.
+
+### Tests (2026-11-05)
+- `pot-hub` unit: 44 (9 new: `hub_1_policy_v3_members_only_vote`, `hub_1_policy_v4_is_v3_plus_refund_approval`,
+  `hub_2_one_unit_contribution_is_not_a_stake`, `w4_1_ok_giver_rules`, `w4_1_one_ok_loop_is_bounded_by_the_allowance`,
+  `hub_4_close_waits_for_the_money_to_leave`, `hub_6_only_the_current_failed_close_is_retried`,
+  `w4_5_w4_8_links_and_the_close`, `w4_5_untracked_pots_keep_the_old_rule`; static checks now scan `security.rs`).
+- Sandbox, both Sputnik builds: `t_security` `hub_1_gov_2_raw_proposals_refused`, `w4_1_hub_2_one_ok_sybils`,
+  `w4_5_w4_8_links_and_the_close`; `t_migrate` `m2_upgrade_1_2_to_1_3`; `t_close` T-92 rewritten (member Finalize
+  refused, hub retry, settle, confirm); `t_wave4` W4 (refund: approve → settling → confirm). Tests that need raw member
+  proposals (T-31/T-27/T-28 `t_spend`, T-91/T-62 `t_rules`, T-42 `t_vote`, T-15 `t_contrib`, G6 `t_gifts`) now build
+  their Pots on the 1.2.0 fixture (`Env::legacy`) and upgrade before acting, so they also cover v1 Pots under 1.3.0.
+  `t_gifts` G7 now upgrades to the 1.2.0 fixture (it tests 1.1.0 → 1.2.0).
+
+### Deploy 1.2.0 → 1.3.0 (testnet preview; needs the human's explicit OK; nothing below was run)
+1. Read-only: `scripts/run deploy status` → `version 1.2.0`, code sha256 `a78f4fdc…` (= the fixture). The hub needs
+   ≈ 0.26 NEAR more locked for code above `min_hub_reserve`; check `free_balance` in `get_config` (top up with
+   `scripts/with-testnet-lock.sh scripts/run deploy fund pots.potprev.testnet 1` if it's under ≈ 0.7 NEAR).
+2. Build: `contracts/scripts/build.sh` → `contracts/target/near/pot_hub/pot_hub.wasm` (this build: 601,051 B, sha256
+   `79c94df597972e3ac3690ae9b8196d653272599b727060f1d96a7bf656685992`; another machine may differ, compare the size).
+3. Tests on that wasm: `cd contracts && POT_NO_BUILD=1 cargo test --workspace` (≈ 20 min).
+4. Upgrade, ONE DeployContract, **no** function call: `scripts/with-testnet-lock.sh scripts/run deploy redeploy-hub`
+   (`contract deploy pots.potprev.testnet use-file … without-init-call … sign-with-legacy-keychain send`). **Not
+   `upgrade-hub`** (that calls `migrate`, which is for 1.0.0 state and fails here). Cost ≈ 0.001 NEAR gas + 0.26 NEAR lock.
+5. Smoke (read-only): `get_config.version == "1.3.0"`; `get_pot` of an old Pot → `policy_version 1`, `close_settling false`;
+   `get_members` → `one_ok_used "0"`. Create one Pot through the app → `policy_version 3`, `get_policy` member
+   permissions = `["*:VoteApprove","*:VoteReject"]`.
+6. Deploy the web app (copy, `canGiveOk`, the not-eligible result) after step 4; it works against 1.2.0 too.
+- Rollback: copy `contracts/tests/fixtures/pot_hub_v1.2.0.wasm` to the target path and `redeploy-hub` again. 1.2.0 ignores
+  the new prefixes; Pots created by 1.3.0 keep policy v3 (members still only vote; 1.2.0's flows are all hub-made, so they
+  work); a close left "settling" becomes Closed on 1.2.0's next sync of it.
+- Mainnet clip: a fresh deploy with `new` (1.3.0 from the start).
+
+### Follow-ups for the backend (not done here: other agents own `apps/web/server`)
+- After `refund_unfunded`'s approve step, call `sync(pot, refund_proposal_id)` (or `refund_unfunded` again with a new
+  idempotency key) so the refund is confirmed the same run; today `ops/goals.ts` keys the approve call per day, so the
+  confirmation would wait for the next daily run (the money is already out; only the status lags).
+- The reconcile cron should `sync` Pots whose `close_settling` is true, and the relayer should `sync` after any
+  `retry_payout` on a close (not only when the payout failed).
+- R11 still relays a member `Finalize`; on v3 / v4 Pots it fails with `ERR_PERMISSION_DENIED`. Pre-flight could refuse it
+  when `policy_version ≥ 3` and point to `retry_payout`.
+- The live VM's local preview passes `used` = instant spends only; to mirror the allowance pass
+  `requester.oneOkUsed = MemberView.oneOkUsed` (the hub's `preview_spend` / `request_spend` decide anyway). The app's
+  mock world (`lib/client/mock`) still uses the 1.2.0 one-OK rules.
+
+### Review of the 1.3.0 diff (2026-11-05, second pass)
+An independent review of this diff found five issues; all are fixed and tested (unit tests ported from the
+reviewer's proofs `audit_a1`-`a4`, named after the IDs):
+
+| ID | Fix | Tests |
+|---|---|---|
+| **M-1** money of an approved link still in flight left out of the close | Every open link blocks a close except a **plain pending** request (not approved, no OK in flight). Tracked without iterating: a marker per pending link request (`0x11`) and a count in `LinkTrack.pending`; `ok_request` unmarks, a refused / not-landed OK re-marks, any transition out of Pending unmarks. | `m_1_link_in_transit_blocks_the_close` (unit) |
+| **M-2** money arriving after the payout kept the Pot "settling" forever | A close's `Approved` is final when the DAO's balance shows the payout (fast path, as before) **or** a `sync` sees it Approved ≥ `CLOSE_CONFIRM_BLOCKS` (10) blocks after the first sighting (`CloseSeen`, `0x12`): Sputnik's payout callback has run by then; a `Failed` sighting and every retry restart that clock, and a later `Failed` still reopens a Closed Pot. New **`propose_sweep(pot)`** (anyone; sponsored when a relayer signs, else the caller pays the prepay): on a Closed Pot the hub reads the DAO's USDC and proposes paying it out like the close (pro-rata; equal when nobody contributed); members approve it by majority; one per Pot per day (`ERR_NOT_CLOSED`, `ERR_SWEEP_COOLDOWN`, event `sweep_proposed`, view `get_sweep`; `get_proposal_subject` returns kind `"sweep"`, live during its period, so the relayer's vote pre-flight accepts it). Also covers L-4 (a balance drop from something else marking a close done early: a later `Failed` reopens it, leftovers are swept). | `m_2_settling_confirms_by_age_then_sweep`, `m_2_failed_restarts_the_clock` (unit), `m_2_sweep_after_close` (sandbox) |
+| **L-1** a second OK after an unknown result counted the request's own charge | `one_ok_rules` ignores the request's own `OkCharge`. The marker is deleted once the request is Approved (the optional storage item). | `l_1_reok_after_unknown_status` |
+| **L-2** a rules change between `ok_request` and its callback was ignored | `on_ok_checked` re-runs `ok_giver_rules` and `one_ok_rules` (reasons `not_eligible`, `not_one_ok`; the reservation is released). | `l_2_rules_change_races_ok` |
+| **L-5** a link refused during a close attempt that then failed | `fund_link` refuses only once a close is proposed or done (`status != Open`), not during `closing_until_ms`. | `l_5_link_fundable_during_a_close_attempt` |
+
+Left as is: `refund_unfunded` / `get_goal` still require `open_links == 0` (stricter on purpose: the goal refund must
+not race an escrow payment). Not in this scope: M-3 (per-account limits × invited accounts, documented with the GOV-2
+residual), L-3 (the backend retries big closes server-side at 300 Tgas).
+- **Backend / app:** `propose_sweep` is not in the relayer allowlist (not user-facing): the reconcile cron can call it
+  relayer-signed (sponsored; the close-sized prepay) for Closed Pots whose DAO still holds USDC; members then approve
+  through the existing vote path (kind `"sweep"`, a FunctionCall → 300 Tgas). When the balance can't show the payout, a
+  Pot is confirmed Closed by a `sync` ≥ 10 blocks after the first one that saw it approved.
+
+### Known limitations left (documented, not fixed)
+- **v1 / v2 Pots** (all testnet Pots created before 1.3.0) keep the old policy: HUB-1 / GOV-2 / GOV-3 / HUB-6 still
+  apply to them. The hub has no permission to change their policy; a group could move by closing and re-creating.
+- **HUB-3 / W4-2** (close split by lifetime contributions; gifts / surplus capture), **HUB-5 / W4-6** (one unpayable payee
+  fails the whole atomic close; pull payouts), **GOV-11** (no minority exit), **W4-3** (escrow accounting), **W4-4**
+  (`reap_link`) need larger redesigns.
+- **GOV-2 (sybil majority via invites)** remains for hub-made spends: invited sybils can still out-vote honest members on a
+  group-tier spend. One-OK and instant spends by sybils are now bounded (stake, tenure vs the request, allowance), but
+  $1 per sybil is a low bar; guest joiners / per-inviter quotas are not built.
+- **v3 trade-off:** with members unable to propose, a Pot whose hub is gone can't do anything new in its DAO (votes on
+  existing proposals still work). That is the intended trust model (the hub's rules are the Pot's rules), with GOV-1 open.
+- `ok_in_flight` / a link stuck in Claiming after a lost callback (O3 class) still has no reaper.

@@ -215,8 +215,12 @@ pub struct PotView {
     pub closing_in_flight: bool,
     /// wave 4: trust / one-OK / links / goal (all off for Pots created before hub 1.1.0)
     pub extras: RuleExtras,
-    /// wave 4: 1 = v1 policy; 2 = the rulebot can also approve the goal-refund close
+    /// 1 = v1 policy; 2 = the rulebot can also approve the goal-refund close; hub 1.3.0: 3 = members
+    /// only vote (every proposal is the hub's); 4 = 3 + the goal-refund approval
     pub policy_version: u8,
+    /// hub 1.3.0 (HUB-4): the close was approved but the money isn't confirmed out of the Pot yet
+    /// (status stays "closing" until a `sync` sees it left)
+    pub close_settling: bool,
     /// wave 4: link requests not yet claimed / returned / void (they block closing)
     pub open_links: u32,
     /// wave 4: "none" | "collecting" | "reached" | "missed" | "refundable" | "refunding" | "refunded"
@@ -257,6 +261,10 @@ pub struct MemberView {
     pub spent: U128,
     pub instant_used: U128,
     pub budget_left: U128,
+    /// hub 1.3.0 (W4-1): one-OK spends approved for this member so far (lifetime)
+    pub one_ok_used: U128,
+    /// hub 1.3.0 (W4-1): how much more this member can get approved with one OK (one-OK ceiling − used)
+    pub one_ok_left: U128,
     pub would_get_back: U128,
     pub share_of_spending: U128,
     pub is_last_contributor: bool,
@@ -371,7 +379,7 @@ pub struct InviteView {
 pub struct SubjectView {
     pub pot: AccountId,
     pub proposal_id: u64,
-    /// "spend" | "join" | "close" | "rules"
+    /// "spend" | "join" | "close" | "rules" | "sweep" (hub 1.3.0)
     pub kind: String,
     pub request_id: Option<u32>,
     pub member: Option<AccountId>,
@@ -471,7 +479,8 @@ impl PotHub {
         if p.unpaid_approved > 0 || p.reserved > 0 {
             return Some("payouts_pending");
         }
-        if self.pext(p.idx).open_links > 0 {
+        // W4-5: only links holding escrowed money block a close
+        if self.links_blocking_close(p.idx) > 0 {
             return Some("links_pending");
         }
         let gifts = self.gifts_of(p.idx);
@@ -544,6 +553,8 @@ impl PotHub {
             closing_in_flight: p.closing_until_ms > now_ms(),
             extras: self.pext(p.idx).extras,
             policy_version: self.pext(p.idx).policy_v,
+            close_settling: matches!(p.status, PotStatus::Closing { .. })
+                && self.closes.get(&p.idx).is_some_and(|r| r.status == CloseStatus::Approved),
             open_links: self.pext(p.idx).open_links,
             goal_state: self.goal_state(p).into(),
             gifts_on: !self.gifts_of(p.idx).off,
@@ -604,6 +615,8 @@ impl PotHub {
                 spent: U128(m.spent),
                 instant_used: U128(m.instant_used),
                 budget_left: U128(p.rules.member_budget.0.saturating_sub(m.instant_used)),
+                one_ok_used: U128(self.one_ok_used(p.idx, a)),
+                one_ok_left: U128(self.pext(p.idx).extras.one_ok_cap.0.saturating_sub(self.one_ok_used(p.idx, a))),
                 would_get_back: U128(back),
                 share_of_spending: U128(m.contributed.saturating_sub(back)),
                 is_last_contributor: p.last_contributor.as_ref() == Some(a),
@@ -745,7 +758,19 @@ impl PotHub {
     /// didn't create. The relayer relays votes / Finalize only when non-null and `live` (rev4).
     pub fn get_proposal_subject(&self, pot: AccountId, proposal_id: u64) -> Option<SubjectView> {
         let p = self.pots.get(&pot)?;
-        let s = self.subjects.get(&(p.idx, proposal_id))?;
+        let Some(s) = self.subjects.get(&(p.idx, proposal_id)) else {
+            // hub 1.3.0 (M-2): a sweep of a Closed Pot is hub-made too (votable while in its period)
+            let sw = self.sweep_of(p.idx).filter(|s| s.proposal_id == proposal_id)?;
+            return Some(SubjectView {
+                pot,
+                proposal_id,
+                kind: "sweep".into(),
+                request_id: None,
+                member: None,
+                rules_version: None,
+                live: now_ms() < sw.created_at_ms.saturating_add(PROPOSAL_PERIOD_MS),
+            });
+        };
         let mut v = SubjectView {
             pot: pot.clone(),
             proposal_id,

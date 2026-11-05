@@ -7,6 +7,7 @@ import { MAX_AMOUNT } from "../money.ts"
 import type { RawPreviewReason, RawReason } from "../types/hub-raw.ts"
 import type { RuleExtras, Rules, SpendPath, SpendPreviewReason, Tier } from "../types/hub.ts"
 import { effectiveCap } from "../rules.ts"
+import { HUB_1_3 } from "../security.ts"
 
 export interface DecideInput {
   paused: boolean
@@ -20,8 +21,9 @@ export interface DecideInput {
   requestCount: number
   maxRequestsPerPot: number
   maxPendingPerMember: number
-  /** The requester's hub record when Active, else null. */
-  requester: { instantUsed: Micro; contributed: Micro; pendingVotes: number } | null
+  /** The requester's hub record when Active, else null. `oneOkUsed` (hub 1.3.0, MemberView.oneOkUsed): one-OK
+   * spends already charged to the requester's one-OK allowance (= extras.oneOkCap, lifetime; omitted = 0). */
+  requester: { instantUsed: Micro; contributed: Micro; pendingVotes: number; oneOkUsed?: Micro } | null
   /** Whether the receiver is an Active member of this Pot. */
   receiverIsMember: boolean
   receiverId: string
@@ -51,6 +53,7 @@ export type HubDecideError =
   | "ERR_TOO_MANY_PENDING"
   | "ERR_LINKS_OFF"
   | "ERR_GOAL_NOT_REACHED"
+  | "ERR_LINK_TOO_SMALL"
 
 export type DecideResult =
   | { ok: true; path: SpendPath; reason: RawReason; tier: Tier }
@@ -66,21 +69,27 @@ export function decideSpend(i: DecideInput): DecideResult {
   const isLink = i.isLink ?? false
   if ((i.receiverId === i.hubId) !== isLink || i.receiverId === i.daoId || i.receiverId === i.usdcId) return fail("ERR_BAD_RECEIVER", "bad_receiver")
   if (isLink && !i.extras?.links) return fail("ERR_LINKS_OFF", "links_off")
+  // hub 1.3.0 (W4-8): no link under $1
+  if (isLink && i.amount < HUB_1_3.minLinkAmount) return fail("ERR_LINK_TOO_SMALL", "link_too_small")
   if (i.requestRef !== undefined && !/^[a-z0-9]{8,32}$/.test(i.requestRef)) return fail("ERR_BAD_REQUEST_REF", "bad_request_ref")
   if (i.requestCount >= i.maxRequestsPerPot) return fail("ERR_TOO_MANY_REQUESTS", "too_many_requests")
   if (i.goalBlocksSpends) return fail("ERR_GOAL_NOT_REACHED", "goal_not_reached")
   const r = i.rules
   const receiverOk = isLink || i.receiverIsMember || (r.instantPayees === "members_and_allowlist" && r.payeeAllowlist.includes(i.receiverId as never))
   const cap = i.extras ? effectiveCap(r, i.extras, i.trustLevel ?? 0) : r.instantCap
+  const staked = m.contributed >= HUB_1_3.minStake // hub 1.3.0 (HUB-2): 1 unit is not a stake
   let path: SpendPath = "instant"
   let reason: RawReason = "within_rules"
   if (cap === 0n || i.amount > cap) [path, reason] = ["vote", "over_cap"]
   else if (m.instantUsed + i.amount > r.memberBudget) [path, reason] = ["vote", "over_budget"]
   else if (!receiverOk) [path, reason] = ["vote", "payee_not_allowed"]
-  else if (m.contributed === 0n) [path, reason] = ["vote", "new_member"]
+  else if (!staked) [path, reason] = ["vote", "new_member"]
   if (path === "vote" && m.pendingVotes >= i.maxPendingPerMember) return fail("ERR_TOO_MANY_PENDING", "too_many_pending")
   const oneOk = i.extras?.oneOkCap ?? 0n
-  const tier: Tier = path === "instant" ? "instant" : oneOk > 0n && i.amount <= oneOk && (i.memberCount ?? 0) >= 2 ? "one_ok" : "group"
+  // hub 1.3.0 (W4-1): one OK only for a requester with a stake, within the ceiling and their lifetime one-OK
+  // allowance (= the ceiling); the hub's one_ok_rules
+  const oneOkFits = oneOk > 0n && i.amount <= oneOk && (i.memberCount ?? 0) >= 2 && staked && (m.oneOkUsed ?? 0n) + i.amount <= oneOk
+  const tier: Tier = path === "instant" ? "instant" : oneOkFits ? "one_ok" : "group"
   return { ok: true, path, reason, tier }
 }
 

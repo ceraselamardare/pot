@@ -73,3 +73,16 @@ export function forgetLinkSecret(slug: string, id: number): void {
   delete all[idKey(slug, id)]
   writeAll(all)
 }
+
+/**
+ * CLI-6 (security audit 2026-11-04): sign-out forgets every link secret kept on this device (lib/client/session.ts
+ * signOut). A secret is a bearer claim on the Pot's escrowed money; the next person on this browser must not find it.
+ * The requester can still cancel the link from any device, and it goes back to the Pot by itself after its date.
+ */
+export function forgetAllLinkSecrets(): void {
+  try {
+    localStorage.removeItem(KEY)
+  } catch {
+    /* no storage: nothing was kept */
+  }
+}

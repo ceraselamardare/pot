@@ -23,9 +23,23 @@ async function chainState(account: string) {
 }
 const hint = (page: Page, sub: string) => page.addInitScript((s) => localStorage.setItem("pot.nearauth.loginHint", s), sub)
 
+/** CLI-1 / APP-5 (security audit 2026-11-04): every Content-Security-Policy violation the page reports, from the first script. */
+async function watchCsp(page: Page): Promise<string[]> {
+  const seen: string[] = []
+  await page.exposeFunction("__cspViolation", (v: string) => seen.push(v))
+  await page.addInitScript(() =>
+    document.addEventListener("securitypolicyviolation", (e) =>
+      (window as unknown as { __cspViolation?: (v: string) => void }).__cspViolation?.(`${e.effectiveDirective} ${e.blockedURI}`),
+    ),
+  )
+  page.on("console", (m) => /Content Security Policy|Refused to/i.test(m.text()) && seen.push(m.text()))
+  return seen
+}
+
 test("popup: Continue with Google → a new Pot account with the MPC key and this device's key", async ({ page }) => {
   const sub = `google-oauth2|popup-${RUN}`
   await hint(page, sub)
+  const csp = await watchCsp(page)
   await page.goto("/pots")
   await expect(page.getByRole("heading", { name: "Sign in to Pot" })).toBeVisible()
   const popupP = page.waitForEvent("popup")
@@ -47,6 +61,9 @@ test("popup: Continue with Google → a new Pot account with the MPC key and thi
   expect(st.keys).toContain(st.mpc)
   expect(st.keys).toHaveLength(2)
   await expect.poll(async () => (await chainState(s!.accountId)).registered).toBe(true)
+  // CLI-1: the whole NEAR Auth sign-in (code exchange at the issuer, POST /api/session, GOV-7's key check on the RPC)
+  // ran under the CSP without a single refusal
+  expect(csp).toEqual([])
 })
 
 test("redirect fallback: no window → the issuer redirects back to '/', the callback island finishes the sign-in", async ({ page }) => {

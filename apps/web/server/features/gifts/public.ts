@@ -7,6 +7,7 @@ import "server-only"
 import { and, desc, eq, isNotNull, isNull } from "drizzle-orm"
 import { gift, giftLink } from "@/db/schema"
 import { GIFT_LINK_ID_RE } from "@/lib/gifts"
+import { publicPageRefusal } from "@/lib/reserved-names"
 import type { GiftLandingRes, GiftPageRes, PublicGiftWire } from "@/lib/gifts-api"
 import { ApiError } from "../../http/errors"
 import { resolvePotId } from "../feed"
@@ -22,6 +23,8 @@ export async function resolveGiftLanding(deps: GiftDeps, id: string): Promise<Om
   if (!row) return null
   const info = await potInfo(deps, row.potId)
   if (!info) return null
+  // CLI-4 (security audit 2026-11-04): a link made before the reserved-name check (or a Pot renamed since) shows nothing
+  if (publicPageRefusal({ name: info.name, slug: info.slug, line: row.note })) return null
   const status = linkStatusOf(row, nowOf(deps))
   const taking = await takingOf(deps.chain, row.potId, info.status)
   return {
@@ -45,7 +48,9 @@ export async function resolveGiftPage(deps: GiftDeps, slug: string): Promise<Omi
   const info = await potInfo(deps, potId)
   if (!info) return null
   const page = await pageOf(deps.db, potId)
-  if (!page.on) return { pot: info, page: { on: false, line: null, tone: page.tone } }
+  // CLI-4 (security audit 2026-11-04): a page turned on before the reserved-name check (or a Pot renamed since) reads as off
+  if (!page.on || publicPageRefusal({ name: info.name, slug: info.slug, line: page.line }))
+    return { pot: info, page: { on: false, line: null, tone: page.tone } }
   const [taking, totals, rows] = await Promise.all([
     takingOf(deps.chain, potId, info.status),
     totalsOf(deps, potId),

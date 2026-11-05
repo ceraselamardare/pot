@@ -104,8 +104,14 @@ export async function readJson<T>(req: Request, schema: z.ZodType<T>): Promise<{
   return { value: parseWith(schema, parsed), raw }
 }
 
-/** Client IP: the first x-forwarded-for entry (Vercel sets it), else x-real-ip. */
-export function clientIp(req: Request): string {
+/**
+ * Client IP for rate limits. APP-9 (security audit 2026-11-04): proxy headers are only trusted on Vercel, whose edge
+ * overwrites `x-forwarded-for` / `x-real-ip` with the real client address (or behind a proxy that does the same,
+ * declared with TRUST_PROXY_HEADERS=1). Anywhere else a client could pick any value per request and dodge every per-IP
+ * quota, so all requests share one bucket ("untrusted") instead.
+ */
+export function clientIp(req: Request, env: Record<string, string | undefined> = process.env): string {
+  if (env.VERCEL !== "1" && env.TRUST_PROXY_HEADERS !== "1") return "untrusted"
   const xff = req.headers.get("x-forwarded-for")
   const ip = xff?.split(",")[0]?.trim() || req.headers.get("x-real-ip")?.trim() || "0.0.0.0"
   return ip

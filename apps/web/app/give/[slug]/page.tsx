@@ -8,6 +8,7 @@ import { Suspense } from "react"
 import { Lockup } from "@/components/brand/Lockup"
 import { LiveRegion } from "@/components/app-shell/Shell"
 import { Blank, GiftPageFlow } from "@/components/gifts/GiveFlow"
+import { PublicNotice } from "@/components/public/PublicNotice"
 import { getGiftPagePreview, giftDescription, giftTitle, parseGiftSlug } from "@/app/_lib/gift-preview"
 
 type Props = { params: Promise<{ slug: string }> }
@@ -52,5 +53,11 @@ async function Body({ params }: Pick<Props, "params">) {
   const ok = parseGiftSlug(slug)
   if (!ok) return <Blank kind="not_found" />
   const p = await getGiftPagePreview(ok).catch(() => null)
-  return <GiftPageFlow slug={ok} initial={p} />
+  return (
+    <>
+      <GiftPageFlow slug={ok} initial={p} />
+      {/* CLI-4 (security audit 2026-11-04): "made by people who use Pot, not by Pot" + Report this page */}
+      <PublicNotice page="give" slug={ok} />
+    </>
+  )
 }

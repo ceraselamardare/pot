@@ -150,10 +150,18 @@ export function paidOut(rows: readonly RecordRow[]): Micro {
 
 // ------------------------------------------------------------------------------------------------- CSV
 
-/** One CSV cell: quoted when needed; a leading = + - @ (or tab/CR) is neutralised so a spreadsheet won't run it. */
+// CLI-9 (security audit 2026-11-04): names and notes in the CSV are typed by people, so a cell must never start a
+// formula. Spreadsheets trim leading blanks (spaces, NBSP, zero-width and other format characters) and some read the
+// full-width ＝ ＋ － ＠ as formula starts too, so the guard looks past them. A leading tab or CR is neutralised as well.
+const FORMULA_START = /^[\s\u00a0\u1680\u180e\u2000-\u200f\u2028-\u202f\u205f-\u2064\u3000\ufeff]*[=+\-@\uff1d\uff0b\uff0d\uff20]|^[\t\r]/
+// Quote any cell with a quote, a line break or a separator a spreadsheet may split on: "," (RFC 4180), ";" (the
+// separator Excel uses in comma-decimal locales) and tab; otherwise `x;=cmd` would land "=cmd" in a cell of its own.
+const NEEDS_QUOTES = /[",;\t\r\n]/
+
+/** One CSV cell: quoted when needed; a formula start (also after blanks) is prefixed with ' so a spreadsheet won't run it. */
 export function csvCell(v: string): string {
-  const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v
-  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
+  const safe = FORMULA_START.test(v) ? `'${v}` : v
+  return NEEDS_QUOTES.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
 }
 
 /** yyyy-mm-dd in UTC (unambiguous for an accountant, whatever the viewer's zone). */

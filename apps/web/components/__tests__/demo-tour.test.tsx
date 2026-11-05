@@ -138,7 +138,7 @@ describe("today's rules on the phone (site update)", () => {
 
   it("step 8: the $300 tickets are over the $100 instant limit and within one OK: [Ask for one OK]", () => {
     const s = phoneText(8)
-    expect(s).toContain("This needs one OK from anyone else")
+    expect(s).toContain("This needs one OK from someone else who has added money")
     expect(s).toContain("It's over your $100 instant limit.")
     expect(s).toContain(keys["spend.cta.one_ok"])
     expect(s).not.toContain("approvals")
@@ -152,7 +152,7 @@ describe("today's rules on the phone (site update)", () => {
     expect(s).toContain(paid)
     expect(s).toContain(keys["feed.pending.one_ok"])
     expect(s).toContain("Maya · asked, approval counted")
-    expect(s).toContain("Anyone in Lisbon Trip except Maya can give it.")
+    expect(s).toContain("Anyone in Lisbon Trip who added money before Maya asked can give it, except the person getting paid.")
     expect(s).toContain("$366.00")
     expect(s).not.toMatch(/of 2 approvals|Sent to the group/)
   })
@@ -160,11 +160,11 @@ describe("today's rules on the phone (site update)", () => {
   it("step 10: Leo's push says one OK, then the Approve sheet's one-OK header, who, and [OK $300] → Sending your OK…", () => {
     const push = phoneText(10, "push")
     expect(push).toContain("Maya needs one OK")
-    expect(push).toContain("$300 for tickets · Lisbon Trip · Anyone can OK it")
+    expect(push).toContain("$300 for tickets · Lisbon Trip · Anyone who has added money can OK it")
     const s = phoneText(10)
-    expect(s).toContain("Needs one OK from anyone in the group. It's over Maya's instant limit.")
+    expect(s).toContain("Needs one OK from someone in the group who has added money. It's over Maya's instant limit.")
     expect(s).toContain(keys["approve.one_ok.header"])
-    expect(s).toContain("Anyone in Lisbon Trip except Maya can give it.")
+    expect(s).toContain("Anyone in Lisbon Trip who added money before Maya asked can give it, except the person getting paid.")
     expect(s).toContain("OK $300")
     expect(s).toContain("$66.00")
     expect(s).not.toMatch(/Approve \$300|of 2/)

@@ -25,8 +25,11 @@ export interface NoteBody {
 
 export async function isMember(hub: HubReader, potId: string, account: string): Promise<boolean> {
   try {
-    const members = await hub.getMembers(potId)
-    return members.some((m) => m.account_id === account && m.status === "active")
+    const active = (list: Awaited<ReturnType<HubReader["getMembers"]>>) =>
+      list.some((m) => m.account_id === account && m.status === "active")
+    // APP-9: the cached list (≤ 3 s) may say yes; a "no" is always re-read fresh, so a stale list never refuses
+    // someone who just joined
+    return active(await hub.getMembers(potId)) || active(await hub.getMembers(potId, { fresh: true }))
   } catch (e) {
     if (e instanceof RpcUnavailableError) throw unavailable("rpc", 3_000)
     throw e

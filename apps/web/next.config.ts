@@ -1,4 +1,5 @@
 import type { NextConfig } from "next"
+import { contentSecurityPolicy } from "./lib/security/csp"
 
 // Rev 9: the e2e mock wallet (lib/signing/near-connect/e2e-mock-wallet.ts) signs with a key the test puts in
 // localStorage. It exists for local Playwright builds only: refuse it on any Vercel build (preview or production)
@@ -38,13 +39,12 @@ const nextConfig: NextConfig = {
       // rev4 (review-security M-3): static security headers on every route; no nonce, so Cache Components
       // keeps working. Listed FIRST: for the same key a later matching entry wins (/j/* keeps
       // Referrer-Policy: same-origin, /sw.js its own CSP). Test W-08.
+      // CLI-1 / APP-5 (security audit 2026-11-04): a full policy (script-src, a tight connect-src allowlist, …) built
+      // from this build's env in lib/security/csp.ts; e2e/mock/csp.spec.ts loads every main page with zero violations.
       {
         source: "/:path*",
         headers: [
-          {
-            key: "Content-Security-Policy",
-            value: "frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'",
-          },
+          { key: "Content-Security-Policy", value: contentSecurityPolicy() },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

@@ -1,10 +1,11 @@
 // SEC-1 (test-plan §7 `security` job, review-security M-8): every resolved `next` in pnpm-lock.yaml must be
 // ≥ 16.4.1 (GHSA-673q-mjm6-r5xr, RCE in `use cache`, 16.0.0-16.4.0 — not in the npm advisory DB on 2026-10-21,
-// so `pnpm audit` alone would pass a downgrade) and `react` / `react-dom` ≥ 19.3.1.
+// so `pnpm audit` alone would pass a downgrade) and `react` / `react-dom` ≥ 19.3.1. Raised to 16.4.5, the latest
+// security release, on 2026-11-05 (audit CLI-8).
 //   node scripts/check-pins.ts [path/to/pnpm-lock.yaml]      (Node ≥ 22.18 runs .ts directly)
 import { readFileSync } from "node:fs"
 
-export const MINIMUM: Record<string, string> = { next: "16.4.1", react: "19.3.1", "react-dom": "19.3.1" }
+export const MINIMUM: Record<string, string> = { next: "16.4.5", react: "19.3.1", "react-dom": "19.3.1" }
 
 const cmp = (a: string, b: string): number => {
   const x = a.split(".").map(Number)

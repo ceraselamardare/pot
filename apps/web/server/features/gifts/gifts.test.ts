@@ -310,6 +310,25 @@ describe("starting a gift", () => {
     expect(first.gift.ref).toMatch(GIFT_REF_RE)
   })
 
+  it("APP-6: a one-time link has at most one live ref; the giver's retry supersedes their earlier one", async () => {
+    const l = await linkRow({ reusable: false })
+    const eve = await sessionFor(EVE)
+    const first = await give(eve, { linkId: l.id })
+    const second = await give(eve, { linkId: l.id })
+    // the relayer's pre-flight now passes only the newest ref through this link
+    expect(await validateGiftRef(t.db, { pot: DAO, ref: first.gift.ref, amount: $(5), sender: EVE }, clock)).toEqual({
+      ok: false,
+      why: "not_pending",
+    })
+    expect(await validateGiftRef(t.db, { pot: DAO, ref: second.gift.ref, amount: $(5), sender: EVE }, clock)).toMatchObject({ ok: true })
+    // a reusable link keeps every pending gift
+    const many = await linkRow()
+    const a = await give(eve, { linkId: many.id })
+    const b = await give(eve, { linkId: many.id })
+    for (const r of [a, b])
+      expect(await validateGiftRef(t.db, { pot: DAO, ref: r.gift.ref, amount: $(5), sender: EVE }, clock)).toMatchObject({ ok: true })
+  })
+
   it("name and note are cleaned; too long or control characters → bad_request", async () => {
     const l = await linkRow()
     const eve = await sessionFor(EVE)
@@ -605,5 +624,41 @@ describe("DB CHECKs (migration 0005)", () => {
     expect(await constraintOf(t.db.insert(giftPage).values({ potId: DAO, line: "x".repeat(101) }))).toBe("gift_page_line_ck")
     // 140 code points of emoji fit (char_length counts code points, like the server's cleaning)
     expect(await constraintOf(giftRow({ note: "☕".repeat(140) }))).toBeNull()
+  })
+})
+
+// CLI-4 (security audit 2026-11-04): a Pot whose name reads like an official / brand page gets no public page and no
+// pay-in links (lib/reserved-names.ts), and one made before the check stops showing. Turning a page off still works.
+describe("reserved names on public pages (CLI-4)", () => {
+  const named = (name: string) => chain.view(HUB, "get_pot", (a) => (a.pot === DAO ? { ...potView(), name, status: potStatus } : null))
+
+  it("refuses to turn the page on or make a link for an official-looking name; off is always allowed", async () => {
+    named("NEAR Foundation")
+    const maya = await sessionFor(MAYA)
+    await expect(putGiftPage(deps(), maya, "lisbon-trip", { on: true })).rejects.toMatchObject({
+      reason: "bad_request",
+      detail: { field: "name", why: "reserved_name" },
+    })
+    await expect(mkLink(maya, {})).rejects.toMatchObject({ reason: "bad_request", detail: { why: "reserved_name" } })
+    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: false })).page.on).toBe(false)
+  })
+
+  it("an ordinary name passes, but an official-looking one-liner or link note is refused", async () => {
+    const maya = await sessionFor(MAYA)
+    await expect(putGiftPage(deps(), maya, "lisbon-trip", { on: true, line: "Official Red Cross partner" })).rejects.toMatchObject({
+      detail: { why: "reserved_name" },
+    })
+    await expect(mkLink(maya, { note: "Verified Coinbase refund" })).rejects.toMatchObject({ detail: { why: "reserved_name" } })
+    expect((await putGiftPage(deps(), maya, "lisbon-trip", { on: true, line: "Help us get to Lisbon" })).page.on).toBe(true)
+  })
+
+  it("a page or link made before the check (or a Pot renamed since) stops showing", async () => {
+    await pageOn(true, "Help us get to Lisbon")
+    const l = await linkRow({ amount: $(25) })
+    expect((await resolveGiftPage(deps(), "lisbon-trip"))?.page.on).toBe(true)
+    expect(await resolveGiftLanding(deps(), l.id)).not.toBeNull()
+    named("UNICEF Official")
+    expect((await resolveGiftPage(deps(), "lisbon-trip"))?.page).toEqual({ on: false, line: null, tone: "payment" })
+    expect(await resolveGiftLanding(deps(), l.id)).toBeNull()
   })
 })

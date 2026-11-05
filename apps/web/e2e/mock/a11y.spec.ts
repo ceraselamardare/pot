@@ -119,7 +119,6 @@ test.describe("VoiceOver-style order", () => {
       "Maya invited you to Porto Weekend",
       "Maya and 1 other are in",
       "In the Pot",
-      "$300 of $450 collected",
       "No one can take money out alone.",
       "Join with Google",
     ])

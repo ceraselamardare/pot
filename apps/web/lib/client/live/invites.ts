@@ -52,3 +52,19 @@ export async function loadInvite(pot: string): Promise<StoredInvite | null> {
   db.close()
   return v ?? memory.get(pot) ?? null
 }
+
+/**
+ * CLI-6 (security audit 2026-11-04): sign-out deletes this device's invite secrets (the whole `pot-invites` database
+ * and the in-memory copies). Members make a fresh link from Share on their next visit (add_invite / rotate_invite).
+ */
+export async function forgetAllInvites(): Promise<void> {
+  memory.clear()
+  await new Promise<void>((resolve) => {
+    try {
+      const r = indexedDB.deleteDatabase(DB)
+      r.onsuccess = r.onerror = r.onblocked = () => resolve()
+    } catch {
+      resolve()
+    }
+  })
+}

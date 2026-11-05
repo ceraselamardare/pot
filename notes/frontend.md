@@ -1641,3 +1641,113 @@ First run of `e2e/testnet/paylink.testnet.ts` + `wave4-trust-goal.testnet.ts` ag
 - Testnet `gifts.testnet.ts` 6/6 after one fix: revoking a gift link sent a body-less DELETE, which `checkCsrf` refuses
   (it needs `content-type: application/json`); `revokeGiftLink` now sends `{}` (test: `lib/client/gifts/actions.test.ts`).
 - Product default kept (owner didn't pick): Option A, members who added $0 still can't spend instantly, even from gifts.
+
+## Security fixes (2026-11-05)
+
+Client fixes for notes/security-audit-2026-11-04.md (web agent). Every change carries its audit ID in a comment.
+Out of scope, **known limitations**: the device key is still a full-access key that signs silently (the second half of
+CLI-1: a function-call key for 0-deposit calls) and sign-out doesn't `DeleteKey` it on chain (CLI-2); hub custody
+(GOV-1/5/6/8).
+
+- **CLI-1 / APP-5, CSP** (`lib/security/csp.ts`, sent by `next.config.ts` on every route; the API keeps its own JSON
+  policy, `/sw.js` its own). Built at build time from the same `NEXT_PUBLIC_*` env the bundle inlines (RPC list, NEAR
+  Auth base/domain), so the allowlist follows the build. `CSP_EXTRA_CONNECT_SRC` adds an origin without a code change
+  (a wallet that adds a backend). Vercel previews also allow the preview toolbar. The hosted testnet value:
+  `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://rsms.me
+  https://fonts.cdnfonts.com; font-src 'self' data: https://rsms.me https://fonts.cdnfonts.com; img-src 'self' data:
+  blob: https://raw.githubusercontent.com https://storage.herewallet.app https://evm-on-near.dev https://meteorwallet.app;
+  connect-src 'self' https://rpc.testnet.fastnear.com https://near-testnet.drpc.org https://login.testnet.fast-auth.com
+  https://raw.githubusercontent.com https://cdn.jsdelivr.net https://wallet.intear.tech https://evm-on-near.dev
+  https://mc.meteorwallet.app wss://mc.meteorwallet.app https://test.rpc.fastnear.com
+  wss://logout-bridge-service.intear.tech https://api.testnet.fastnear.com; frame-src 'self' https://wallet.intear.tech;
+  child-src 'self'; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; base-uri 'none';
+  form-action 'self'; frame-ancestors 'none'`.
+  - **Why `'unsafe-inline'` stays in script-src:** Next streams the RSC payload in inline `self.__next_f.push` scripts
+    and the theme script runs before paint; nonces would make every page dynamic (Cache Components/PPR off, D-43),
+    hashes can't cover streamed payloads, and NEAR Connect runs each wallet's code as an inline script in a sandboxed
+    `srcdoc` frame that **inherits this policy**. No `'unsafe-eval'` (only in `next dev`): Zod's eval probe is switched
+    off with jitless mode (`lib/security/zod-jitless.ts`, imported first by `app/providers.tsx`).
+  - **connect-src is the win:** an injected script can't `fetch`/XHR/WebSocket/beacon a signed delegate to its own
+    relayer, and ours only relays the hub/token/Pot calls its policy allows. Not covered: top-level navigation (no CSP
+    directive), hence the function-call-key follow-up above. 1Click, NEAR AI, FX and push are server-side only, so absent.
+  - **Wallet hosts were derived, not guessed:** NEAR Connect 0.11.4's default manifest URLs + the live manifest's
+    `executor` URLs for the `features.testnet` wallets, then grepped from each executor. NEAR Connect now gets our RPCs
+    as `providers` (`lib/signing/near-connect/wallet.ts`), so wallets read through FastNEAR/dRPC, not near.org.
+  - **Checked:** a standalone page serving the real `@hot-labs/near-connect` bundle under this exact header (scratch
+    harness, not committed): the picker (6 testnet wallets, all icons) and each wallet's frame after a pick — Meteor
+    (its Connect panel + QR from its backend), Intear (its approval frame), Ledger, Nightly, Ethereum wallets (opens its
+    window), NEAR CLI — 0 violations; first run found Meteor's loader/fonts, NEAR CLI's font and Intear's frame, now
+    listed. Nothing was signed. The NEAR Auth popup flow ran under the CSP in the integrations tier (fake issuer, 0
+    violations, `e2e/integrations/nearauth.int.ts`). **Not verified:** a real wallet approving in its own window, and
+    WalletConnect (needs a `walletConnect` client we don't pass, so it isn't usable today anyway).
+  - Tests: `lib/security/csp.test.ts` (7); `e2e/mock/csp.spec.ts` (header shape + every main page signed out and in,
+    the sign-in dialog, the Approve sheet, public pages: `securitypolicyviolation` + console, 0 violations).
+- **CLI-3, Approve sheet receiver** (`components/sheets/ApproveReceiver.tsx`, rules in `lib/client/receiver.ts`): a
+  "Goes to" block right under the amount, before the decision. A member: name + UserCheck "In this Pot"; anyone else:
+  the Pot-account hint as the label (never a name they chose) + UserX "Not in this Pot" (declined colour) + "This money
+  would leave the group…". Same name as another member or the requester (NFKC, case, invisible characters folded): the
+  hint "Pot account sam-9z9z" under the name + a line. Hints: our own sign-ups lose `.users.<root>`; other accounts keep
+  both ends when cut. Pay-by-link requests show nothing (the link panel says who). No new marigold.
+- **CLI-4, public pages** — (1) `components/public/PublicNotice.tsx` under `/give`, `/g` and `/c`: "Made by people who
+  use Pot, not by Pot." + "Report this page" (three reasons, secondary buttons) → `POST /api/report`
+  (`app/api/report/{route,service}.ts`, own folder: strict body {page, slug, reason}, CSRF, 3/min + 10/day per IP hash,
+  300/day global; one team alert per page per hour via `server/alerts.ts`, no visitor data). The link preview says
+  "Made by people who use Pot" and falls back to the plain brand image for a reserved name. (2) **Reserved names**
+  (`lib/reserved-names.ts`): our own name as the whole name ("Pot", "Pot Support"…), official words ("Official",
+  "Verified", "Customer support"…), NEAR/ecosystem, payment brands and big charities, after folding look-alikes
+  (0→o, full-width, accents, invisible characters); "NEAR" only in capitals, so "Near the beach", "Pot luck" and
+  "Support Leo's surgery" pass. Enforced on the server where a public page is turned on (name, address, one-liner) and a
+  pay-in link is made (name, note) → 400 `bad_request` `{field: "name", why: "reserved_name"}`; on read, such a page
+  reads as off and such a link as not found (pages made before the check). Mirrored in the mock world; Settings → Public
+  page disables the switch with "Not for this name…" (ShieldX + words); Ask anyone shows the same words. Turning a page
+  off is always allowed. No admin kill switch beyond this (follow-up for the backend).
+- **CLI-6:** sign-out (`lib/client/session.ts signOut`, both data sources) forgets the payment-link secrets
+  (`pot.paylinks.v1`) and deletes the `pot-invites` database. The tab's in-flight stash of an invite/claim being opened
+  stays (the invite page's "Not you? Switch" signs out mid-join), and ends with the tab.
+- **CLI-7:** the invite (and payment-link) `#secret` leaves the address bar as soon as the tab holds its own copy
+  (`lib/client/fragment-secret.ts`), not only after success; a terminal invite error forgets the copy.
+- **CLI-9:** `csvCell` also catches formula starts after blanks/NBSP/zero-width/BOM and full-width ＝＋－＠, and quotes
+  cells with `;` or tab (Excel's separator in comma-decimal locales), so `x;=cmd` can't become a cell of its own.
+- **GOV-7** (`lib/signing/near-auth/verify-keys.ts`, called in `finishLogin`): for a NEW account (`isNew` and the device
+  key on chain) the browser derives the MPC key itself (`derived_public_key` for `jwt#<iss>#<sub>` from its own ID
+  token) and checks `view_access_key_list` on its own RPC is exactly {MPC key, this device's key}; retries ~5 s for
+  lag. Extra/wrong keys → the session is ended, this device's key dropped, "We stopped this sign-in…"
+  (`signin.account_check`). RPC/MPC unreachable → unverified, sign-in goes on (an outage mustn't lock people out).
+  Returning people and resumed creations aren't checked (their account may hold other keys). `NEXT_PUBLIC_MPC_CONTRACT_ID`
+  / `NEXT_PUBLIC_FAST_AUTH_CONTRACT_ID` override the server's defaults if those ever change.
+- **CLI-10** (`lib/deposit/address.ts`): a real deposit address must match the picked network's shape (EVM 0x40,
+  Solana base58, Sui/Aptos 0x hex, TON friendly/raw, Tron T…, XRP r…, BTC bc1/1/3, Doge, Zcash t1/t3), its QR must
+  encode the same address, and a memo must be short (a number on XRP); otherwise the address step shows "Don't send
+  anything here" and the way back, never the address, QR or Copy. Shape only: a well-formed address of an attacker's
+  still needs the server to be honest.
+- **Copy:** 23 new strings (`approve.receiver.*`, `public.*`, `publicpage.reserved.*`, `signin.account_check`,
+  `xc.address_bad.*`), jargon lint 0.
+- **Tests:** unit `lib/security/csp.test.ts`, `lib/client/record.test.ts` (+1), `lib/client/sign-out-secrets.test.ts`,
+  `lib/client/fragment-secret.test.ts`, `lib/reserved-names.test.ts`, `lib/signing/near-auth/verify-keys.test.ts`,
+  `lib/deposit/address.test.ts`, `components/__tests__/security-fixes.test.tsx`, DB `app/api/report/report.test.ts`,
+  `server/features/gifts/gifts.test.ts` (+3). Mock e2e `e2e/mock/csp.spec.ts`, `e2e/mock/security.spec.ts` (CLI-3/4/7).
+  Integrations `nearauth.int.ts` asserts 0 CSP violations. Screenshots of the public pages in `notes/screens/` don't
+  show the new notice line yet (not regenerated).
+
+### Hub 1.3.0 on the client (2026-11-05, web agent)
+
+- **Mock world = 1.3.0** (`lib/client/mock/world.ts`, `wave4.ts`), through the sdk's helpers:
+  - `requestSpend` passes the requester's lifetime one-OK use (`oneOkUsedOf`: their one-OK requests an OK approved,
+    derived from the requests, so older worlds work) to `previewSpend` → `decideSpend`. That gives the $1 stake for
+    instant / one OK (HUB-2, W4-1 a) and the allowance = the ceiling (W4-1 c).
+  - Links under $1 → `ERR_LINK_TOO_SMALL` (`HUB_1_3.minLinkAmount`).
+  - `okRequest` applies `okGiverRefusal`: → `not_eligible` when the OK-giver is the payee, joined at or after the
+    request, or has under $1 in. It also re-checks the requester's stake and allowance at OK time → `not_one_ok`.
+  - `MemberVM.oneOkUsed` (mock: derived; live: `MemberView.oneOkUsed`) feeds the Spend sheet's preview (`rules.ts`
+    `PreviewInput.oneOkUsed`).
+- **Settling close (HUB-4):** `PotVM.closeSettling` (live: `PotView.close_settling`).
+  - The Pot's state card shows Send + "Approved · Everyone's share is on its way back…", with no Review button.
+  - The Close menu rows read "Approved, sending everyone's share" (`pot.settling`, `close.menu.settling`).
+  - The mock pays out at once, so it never settles; covered by `components/__tests__/hub-1-3.test.tsx`.
+- **Showcase seed is unchanged:** Leo's $180 was OK'd by Sam, so Leo has $120 of his $300 allowance left. The trust
+  spec's one-OK ask is now $120 (it was $250, which now goes to the group). `trust-spend-{day,night}.png` were
+  regenerated on purpose.
+- **Tests:**
+  - `lib/client/mock/wave4.test.ts`: +5 tests. The test Pot's members now join a minute before the asks.
+  - `lib/client/rules.test.ts`: +2.
+  - `hub-1-3.test.tsx`: 2.

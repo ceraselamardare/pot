@@ -29,6 +29,8 @@ const env: Record<string, string> = {
   NEAR_AUTH_CLIENT_ID: "e2e-client",
   NEAR_AUTH_JWKS_URL: `http://127.0.0.1:${ISSUER}/.well-known/jwks.json`,
   NEAR_AUTH_REQUIRE_NONCE: "true",
+  // APP-3: `next start` refuses the development HMAC value; a test-only secret (never a deploy's)
+  APP_HMAC_SECRET: "e2e-integrations-only-hmac-secret-0123456789",
   NEXT_PUBLIC_E2E_MOCK_WALLET: "1",
   DATABASE_URL: `postgres://pot:pot@localhost:54329/pot_test?options=-c%20search_path%3D${SCHEMA}`,
   DATABASE_URL_UNPOOLED: `postgres://pot:pot@localhost:54329/pot_test?options=-c%20search_path%3D${SCHEMA}`,

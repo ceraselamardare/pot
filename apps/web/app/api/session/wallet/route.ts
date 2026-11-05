@@ -24,7 +24,8 @@ export const POST = route("POST /api/session/wallet", async (ctx) => {
   const r = await walletLogin(
     { db: getDb(), rpc: getRpc(), submitter: getSubmitter(), cfg: getConfig(), defer },
     value,
-    { ipHash: ipHash(ctx.req), userAgent: ctx.req.headers.get("user-agent") },
+    // APP-7: the Origin (already CSRF-checked) must be the host the NEP-413 message was signed for
+    { ipHash: ipHash(ctx.req), userAgent: ctx.req.headers.get("user-agent"), origin: ctx.req.headers.get("origin") },
   )
   for (const c of r.cookies) ctx.setCookie(c)
   return ctx.json(r.body, r.status)

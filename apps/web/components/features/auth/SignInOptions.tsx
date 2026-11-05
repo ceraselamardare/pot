@@ -27,7 +27,8 @@ import { GoogleMark } from "./GoogleMark"
 type AuthErr = "auth.popup_blocked" | "auth.failed" | "auth.service_down" | null
 
 export type SignInMethod = "google" | "email" | "wallet"
-export type SignInErr = "auth.popup_blocked" | "auth.service_down" | "signin.failed" | "signin.timeout" | "signin.offline" | WalletErr
+export type SignInErr =
+  "auth.popup_blocked" | "auth.service_down" | "signin.failed" | "signin.timeout" | "signin.offline" | "signin.account_check" | WalletErr
 export type SignInPhase = { tag: "idle" } | { tag: "window"; method: SignInMethod } | { tag: "setup"; method: SignInMethod }
 /** What step ③ names: Create (a start CTA) or the person's Pots (the header's "Sign in", the app's routes). */
 export type SignInGoal = "start" | "back"
@@ -147,6 +148,8 @@ function nearAuthErr(e: unknown): Exclude<SignInErr, WalletErr | "signin.offline
     if (e.kind === "blocked") return "auth.popup_blocked"
     if (e.kind === "unavailable") return "auth.service_down"
     if (e.kind === "timeout") return "signin.timeout"
+    // GOV-7: the new account didn't hold exactly the keys it should; the sign-in was refused
+    if (e.kind === "account_check") return "signin.account_check"
     return "signin.failed"
   }
   return (e as { reason?: string })?.reason === "auth_unavailable" ? "auth.service_down" : "signin.failed"

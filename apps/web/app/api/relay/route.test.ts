@@ -12,7 +12,7 @@ vi.mock("@/server/relay/pipeline", () => ({ relay: h.relay }))
 vi.mock("@/server/session/store", () => ({
   requireSession: async () => ({ kind: "near-auth", user: { id: "u1", nearAccount: "eve.testnet", emailVerified: false, emailHash: null }, device: null }),
 }))
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { ipHash } from "@/server/http/context"
 import { testConfig } from "@/server/testing/env"
 import { POST } from "./route"
@@ -29,6 +29,11 @@ describe("POST /api/relay → relay(…, {ipHash})", () => {
   beforeEach(() => {
     testConfig()
     h.relay.mockClear()
+    // APP-9: proxy headers count only on Vercel or behind a declared proxy
+    process.env.TRUST_PROXY_HEADERS = "1"
+  })
+  afterEach(() => {
+    delete process.env.TRUST_PROXY_HEADERS
   })
 
   it("passes ipHash(req) for the per-IP gift quota (never the raw IP)", async () => {
@@ -51,5 +56,14 @@ describe("POST /api/relay → relay(…, {ipHash})", () => {
     const a = (h.relay.mock.calls[0] as unknown as [unknown, unknown, { ipHash: string }])[2].ipHash
     const b = (h.relay.mock.calls[1] as unknown as [unknown, unknown, { ipHash: string }])[2].ipHash
     expect(a).not.toBe(b)
+  })
+
+  it("APP-9: off Vercel, a client-chosen X-Forwarded-For doesn't buy a fresh per-IP bucket", async () => {
+    delete process.env.TRUST_PROXY_HEADERS
+    await POST(req("203.0.113.7"))
+    await POST(req("198.51.100.9"))
+    const a = (h.relay.mock.calls[0] as unknown as [unknown, unknown, { ipHash: string }])[2].ipHash
+    const b = (h.relay.mock.calls[1] as unknown as [unknown, unknown, { ipHash: string }])[2].ipHash
+    expect(a).toBe(b)
   })
 })

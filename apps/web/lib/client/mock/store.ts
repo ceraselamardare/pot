@@ -3,6 +3,7 @@
 // One World per browser profile in localStorage, shared across tabs (storage events), so a persona switch on
 // the DemoBanner sees the same Pot. Actions add deterministic latency like hallway round A, and a test hook
 // (`localStorage['pot.mock.fail'] = 'add' | 'spend' | 'vote' | 'create' | 'join'`) makes the next one fail.
+import { RESERVED_DETAIL } from "@/lib/reserved-names"
 import { useSyncExternalStore } from "react"
 import { ActionError, classOfReason } from "../errors"
 import type { AvatarId } from "@/lib/avatars"
@@ -439,6 +440,8 @@ function giftCall<T>(fn: () => T): T {
   } catch (e) {
     if (e instanceof G.GiftWorldError) {
       const c = e.code
+      // CLI-4: the same machine-readable refusal as our API (400 bad_request, detail {field: "name", why: "reserved_name"})
+      if (c === "reserved") throw new MockRelayError("bad_request", { ...RESERVED_DETAIL })
       throw new MockRelayError(
         c === "not_member"
           ? "not_a_member"

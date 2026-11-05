@@ -28,11 +28,19 @@ const RULES = { instantCap: 100_000_000n, memberBudget: 1_000_000_000n, instantP
 /** A 1.1.0 Pot (defaults: trust on, one OK up to $300) with Maya, Sam and Leo who each put in $500. */
 function threePot(extras?: ExtrasRec): { w: World; slug: string } {
   let w: World = { v: 1, pots: {}, nextRequestId: 1 }
-  const c = createPot(w, "maya", { name: "Trust Test", emoji: "🎿", cover: 0, goalEachCents: null, rules: RULES, invite: INVITE, extras }, NOW, "abcd")
+  // everyone joined and added money a minute before the spends below (hub 1.3.0: an OK-giver must predate the request)
+  const before = NOW - 60_000
+  const c = createPot(
+    w,
+    "maya",
+    { name: "Trust Test", emoji: "🎿", cover: 0, goalEachCents: null, rules: RULES, invite: INVITE, extras },
+    before,
+    "abcd",
+  )
   w = c.world
-  w = joinPot(w, c.slug, "sam", NOW).world
-  w = joinPot(w, c.slug, "leo", NOW).world
-  for (const p of ["maya", "sam", "leo"]) w = addMoney(w, c.slug, p, 50_000, NOW)
+  w = joinPot(w, c.slug, "sam", before).world
+  w = joinPot(w, c.slug, "leo", before).world
+  for (const p of ["maya", "sam", "leo"]) w = addMoney(w, c.slug, p, 50_000, before)
   return { w, slug: c.slug }
 }
 
@@ -272,5 +280,68 @@ describe("the showcase seed", () => {
     expect(potsOf(w, "maya", NOW).map((p) => p.slug)).toEqual(expect.arrayContaining(["ski-chalet", "festival-fund"]))
     expect(Object.keys(seedShowcase(NOW))).toEqual(["ski-chalet", "festival-fund"])
     expect(w.nextRequestId).toBeGreaterThan(105)
+  })
+})
+
+// hub 1.3.0 (notes/contracts.md "Hub 1.3.0 security fixes"): the mock mirrors the hub through the sdk's helpers
+// (decideSpend's stake + allowance, okGiverRefusal, HUB_1_3.minLinkAmount).
+describe("hub 1.3.0: one OK and links", () => {
+  it("HUB-2 / W4-1 a: no $1 added → no instant spend and no one OK; the group decides", () => {
+    const t3 = threePot()
+    const slug = t3.slug
+    const w = joinPot(t3.w, slug, "alex", NOW - 30_000).world
+    const r = spend(w, slug, "alex", 50)
+    expect(r.request).toMatchObject({ path: "vote", reason: "new_member", tier: "group" })
+    expect(spend(w, slug, "alex", 180).request.tier).toBe("group")
+  })
+
+  it("W4-1 b: the OK-giver must predate the request, have added $1, and not be the payee", () => {
+    const t3 = threePot()
+    const slug = t3.slug
+    // Alex joins without adding money, then Maya asks Sam to be paid
+    const w = joinPot(t3.w, slug, "alex", NOW - 30_000).world
+    const forSam = requestSpend(w, slug, "maya", { amountCents: 18_000, category: "food", receiver: "sam" }, NOW)
+    expect(forSam.request.tier).toBe("one_ok")
+    expect(okRequest(forSam.world, slug, forSam.request.id, "sam", NOW + 1).result).toBe("not_eligible") // the payee
+    expect(okRequest(forSam.world, slug, forSam.request.id, "alex", NOW + 1).result).toBe("not_eligible") // no stake
+    // someone who joined after the request was made can't OK it either, even with money in
+    const fresh = threePot()
+    const ask = requestSpend(fresh.w, fresh.slug, "maya", { amountCents: 18_000, category: "food", receiver: "maya" }, NOW)
+    const late = addMoney(joinPot(ask.world, fresh.slug, "alex", NOW + 5).world, fresh.slug, "alex", 5_000, NOW + 6)
+    expect(okRequest(late, fresh.slug, ask.request.id, "alex", NOW + 7).result).toBe("not_eligible")
+    // Leo (before, with money, not the payee) can
+    expect(okRequest(forSam.world, slug, forSam.request.id, "leo", NOW + 1).result).toBe("approved")
+  })
+
+  it("W4-1 c: a lifetime one-OK allowance per member = the one-OK ceiling; then the group decides", () => {
+    const { w, slug } = threePot()
+    const a = spend(w, slug, "maya", 150)
+    const ok = okRequest(a.world, slug, a.request.id, "sam", NOW + 1)
+    expect(ok.result).toBe("approved")
+    expect(potView(ok.world, slug, "maya", NOW + 1)!.me!.oneOkUsed).toBe(cents(15_000))
+    // $150 of $300 used: another $200 doesn't fit → the group; $140 still does
+    expect(spend(ok.world, slug, "maya", 200, NOW + 2).request.tier).toBe("group")
+    expect(spend(ok.world, slug, "maya", 140, NOW + 2).request.tier).toBe("one_ok")
+    // an objection doesn't count against it
+    const b = spend(w, slug, "sam", 250)
+    const no = vote(b.world, slug, b.request.id, "leo", "Reject", NOW + 1)
+    expect(potView(no.world, slug, "sam", NOW + 1)!.me!.oneOkUsed).toBe(0n)
+  })
+
+  it("the tier is re-checked at OK time: two asks can't both use the same allowance", () => {
+    const { w, slug } = threePot()
+    const a = spend(w, slug, "maya", 200)
+    const b = spend(a.world, slug, "maya", 200)
+    expect(b.request.tier).toBe("one_ok")
+    const first = okRequest(b.world, slug, a.request.id, "sam", NOW + 1)
+    expect(first.result).toBe("approved")
+    expect(okRequest(first.world, slug, b.request.id, "leo", NOW + 2).result).toBe("not_one_ok")
+  })
+
+  it("W4-8: no pay-by-link request under $1", () => {
+    const { w, slug } = threePot()
+    expect(() =>
+      requestSpend(w, slug, "maya", { amountCents: 99, category: "food", receiver: "x", link: { pk: "ed25519:x", expiresAt: NOW + 1 } }, NOW),
+    ).toThrow(HubError)
   })
 })

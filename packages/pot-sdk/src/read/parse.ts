@@ -8,6 +8,7 @@ import type {
   RawCloseOutcome,
   RawConfigView,
   RawGiftsView,
+  RawOkCheck,
   RawGoalView,
   RawLinkOutcome,
   RawLinkView,
@@ -34,6 +35,7 @@ import type {
   CloseOutcome,
   ConfigView,
   GiftsView,
+  OkCheck,
   GoalView,
   LinkOutcome,
   LinkView,
@@ -130,6 +132,7 @@ export function parsePotView(r: RawPotView): PotView {
     ...(r.gifts_on !== undefined ? { giftsOn: r.gifts_on } : {}),
     ...(r.gifts_total !== undefined ? { giftsTotal: big(r.gifts_total) } : {}),
     ...(r.gifts_count !== undefined ? { giftsCount: r.gifts_count } : {}),
+    ...(r.close_settling !== undefined ? { closeSettling: r.close_settling } : {}),
   }
 }
 
@@ -160,6 +163,8 @@ export function parseMemberView(r: RawMemberView): MemberView {
     spent: big(r.spent),
     instantUsed: big(r.instant_used),
     budgetLeft: big(r.budget_left),
+    ...(r.one_ok_used !== undefined ? { oneOkUsed: big(r.one_ok_used) } : {}),
+    ...(r.one_ok_left !== undefined ? { oneOkLeft: big(r.one_ok_left) } : {}),
     wouldGetBack: big(r.would_get_back),
     shareOfSpending: big(r.share_of_spending),
     isLastContributor: r.is_last_contributor,
@@ -499,4 +504,8 @@ export function parseGiftsView(r: RawGiftsView): GiftsView {
     refusal: r.refusal ?? null,
     minAmount: big(r.min_amount),
   }
+}
+
+export function parseOkCheck(r: RawOkCheck): OkCheck {
+  return { pot: r.pot as DaoId, requestId: r.request_id, account: r.account_id as AccountId, canOk: r.can_ok, reason: r.reason ?? null }
 }

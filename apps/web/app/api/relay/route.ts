@@ -35,6 +35,9 @@ export const POST = route("POST /api/relay", async (ctx) => {
       kind: s.kind,
       device: s.device ? { publicKey: s.device.publicKey, status: s.device.status } : null,
       emailHash: s.user.emailVerified ? s.user.emailHash : null,
+      // APP-1: the new-account tier; APP-2: lazy registration before a spend to oneself
+      createdAt: s.user.createdAt,
+      usdcRegistered: s.user.usdcRegistered,
     },
     {
       requestId: ctx.requestId,

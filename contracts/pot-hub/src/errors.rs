@@ -84,6 +84,15 @@ pub const ERR_GIFT_REF_INVALID: &str = "ERR_GIFT_REF_INVALID";
 pub const ERR_GIFT_SELF: &str = "ERR_GIFT_SELF";
 pub const ERR_GIFT_IN_FLIGHT: &str = "ERR_GIFT_IN_FLIGHT";
 pub const ERR_GOAL_COLLECTING: &str = "ERR_GOAL_COLLECTING";
+// hub 1.3.0 (security fixes)
+/// W4-1: this member can't give the one OK (`ERR_OK_NOT_ELIGIBLE: receiver | joined_after | no_stake`).
+pub const ERR_OK_NOT_ELIGIBLE: &str = "ERR_OK_NOT_ELIGIBLE";
+/// W4-8: a pay-by-link amount under `MIN_LINK_AMOUNT` ($1).
+pub const ERR_LINK_TOO_SMALL: &str = "ERR_LINK_TOO_SMALL";
+/// M-2: `propose_sweep` on a Pot that isn't Closed.
+pub const ERR_NOT_CLOSED: &str = "ERR_NOT_CLOSED";
+/// M-2: one sweep proposal per Pot per day.
+pub const ERR_SWEEP_COOLDOWN: &str = "ERR_SWEEP_COOLDOWN";
 
 /// Panics with `code`.
 pub fn fail(code: &str) -> ! {

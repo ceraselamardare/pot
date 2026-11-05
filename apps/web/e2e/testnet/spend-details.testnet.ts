@@ -110,7 +110,7 @@ test("Ana scans a receipt and asks for $84.20: the fingerprint rides in the requ
   await expect(sheet.locator("[data-spend-body='2']")).toBeVisible()
   const ask = sheet.getByRole("button", { name: /^(Get \$84\.20 back|Ask the group|Ask for one OK)$/ })
   await ask.click()
-  await expect(sheet.getByText(/\$84\.20 sent to you|Sent to the group|One OK from anyone else/).first()).toBeVisible({ timeout: 60_000 })
+  await expect(sheet.getByText(/\$84\.20 sent to you|Sent to the group|One OK from someone else/).first()).toBeVisible({ timeout: 60_000 })
   await sheet.getByRole("button", { name: "Done" }).click()
 
   // on chain: the request carries OpKey + 16 hex (32 chars, the hub's own limit)

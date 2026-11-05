@@ -127,11 +127,14 @@ describe("spend preview: three tiers", () => {
 
   it("instant up to my raised limit, one OK up to the ceiling, then the group", () => {
     expect(show(15_000)).toMatchObject({ tier: "instant", text: "This will be approved instantlyYou can spend up to $200 without asking." })
-    expect(show(25_000)).toMatchObject({ tier: "one_ok", text: "This needs one OK from anyone elseIt's over your $200 instant limit." })
+    expect(show(25_000)).toMatchObject({ tier: "one_ok", text: "This needs one OK from someone else who has added moneyIt's over your $200 instant limit." })
     expect(show(25_000, { memberCount: 1 }).tier).toBe("group")
     expect(show(30_001)).toMatchObject({ tier: "group" })
     expect(show(30_001).text).toContain("This needs 2 of 3 approvals")
-    expect(show(5_000, { contributed: 0n })).toMatchObject({ tier: "one_ok", text: "This needs one OK from anyone elseAdd money to the Pot first to spend without asking." })
+    // hub 1.3.0 (HUB-2 / W4-1): someone who hasn't added money (≥ $1) can't spend at once or with one OK
+    expect(show(5_000, { contributed: 0n })).toMatchObject({ tier: "group" })
+    expect(show(5_000, { contributed: 999_999n }).tier).toBe("group")
+    expect(show(5_000, { contributed: 1_000_000n }).tier).toBe("instant")
   })
 
   it("without extras (a 1.0.0 Pot) no tier and the old sentences", () => {

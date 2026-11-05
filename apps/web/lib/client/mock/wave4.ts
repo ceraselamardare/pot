@@ -229,7 +229,18 @@ export function refundDue(w: World, now: number): World | null {
 
 // ------------------------------------------------------------------------------------------------- one OK
 
-export type OkResult = "approved" | "failed" | "objection" | "decided" | "expired" | "self" | "not_one_ok" | "not_member"
+export type OkResult = "approved" | "failed" | "objection" | "decided" | "expired" | "self" | "not_one_ok" | "not_member" | "not_eligible"
+
+/**
+ * hub 1.3.0 (W4-1 c): what's charged to `who`'s lifetime one-OK allowance (= the Pot's one-OK ceiling), in cents: their
+ * requests that one OK approved (a payout that failed afterwards still counts: the approval landed). A refused, objected,
+ * declined or expired one never counts (the hub releases its charge). Derived from the requests, so older worlds work.
+ */
+export function oneOkUsedOf(pot: Pick<PotRec, "requests">, who: string): number {
+  return pot.requests
+    .filter((r) => r.requester === who && r.tier === "one_ok" && !!r.okBy && (r.status === "paid" || r.status === "payout_failed"))
+    .reduce((s, r) => s + r.amount, 0)
+}
 
 /** Is `who` allowed to give the OK on this request right now (UI guard; the action re-checks)? */
 export function canOk(r: Pick<RequestRec, "tier" | "status" | "requester" | "votes">, who: string | null): boolean {

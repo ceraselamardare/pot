@@ -226,8 +226,10 @@ async fn t72(build: Build) -> anyhow::Result<()> {
 }
 dual!(t72_failed_close, t72);
 
-/// T-92: a payee unregisters → the atomic close Failed → the Pot stays Closing → re-register →
-/// Finalize (a member, 300 Tgas) → Approved → sync → Closed.
+/// T-92 · HUB-4: a payee unregisters → the atomic close Failed → the Pot stays Closing (never
+/// "closed") → re-register → a member can't Finalize in a v3 Pot, the hub retries the CURRENT close
+/// (`retry_payout`, rulebot Finalize) → its own read is provisional, so the Pot stays closing until
+/// `sync` sees the money out of the DAO → Closed.
 async fn t92(build: Build) -> anyhow::Result<()> {
     let env = Env::new(build).await?;
     let (dao, _, _) = env.pot_with_members(&env.maya, "unreg", &[&env.ana], 100 * USDC).await;
@@ -239,14 +241,35 @@ async fn t92(build: Build) -> anyhow::Result<()> {
     env.vote(&env.maya, &dao, pid, "VoteApprove", 300).await.ok();
     env.vote(&env.ana, &dao, pid, "VoteApprove", 300).await.ok();
     assert_eq!(env.proposal(&dao, pid).await["status"], "Failed");
-    assert_eq!(env.sync(&dao, pid).await.json()["hub_status"], "closing");
+    let s = env.sync(&dao, pid).await.json();
+    assert_eq!((s["dao_status"].as_str(), s["hub_status"].as_str()), (Some("Failed"), Some("closing")));
+    let pot = env.pot(&dao).await;
+    assert_eq!((pot["status"].as_str(), pot["close_settling"].as_bool()), (Some("closing"), Some(false)));
     assert_eq!(env.ft_balance(&dao).await, 200 * USDC);
+    // a retry before the payee can be paid fails again; the Pot stays a failed close
+    let r = env.hub_relay(&env.eve, "retry_payout", json!({"pot": dao, "proposal_id": pid}), 150).await;
+    r.ok();
+    assert_eq!(env.proposal(&dao, pid).await["status"], "Failed");
+    assert_eq!(env.sync(&dao, pid).await.json()["hub_status"], "closing");
     env.register(&env.ana.id).await?;
+    // HUB-6: in a v3 Pot members can't Finalize (only the hub retries, and only the current close)
     let o = env.vote(&env.maya, &dao, pid, "Finalize", 300).await;
-    o.ok();
+    o.expect_err("ERR_PERMISSION_DENIED");
+    // HUB-4: the hub's retry (anyone may ask): its chained read can't see the payout → settling
+    let r = env.hub_relay(&env.eve, "retry_payout", json!({"pot": dao, "proposal_id": pid}), 150).await;
+    println!("[{build:?}] T-92 close retry (2 payees): {:.2} Tgas burnt", r.total_gas_burnt() as f64 / 1e12);
+    assert_eq!(r.json()["hub_status"], "closing", "{}", r.dump());
     assert_eq!(env.proposal(&dao, pid).await["status"], "Approved");
     assert_eq!(env.ft_balance(&env.ana.id).await, 100 * USDC);
-    assert_eq!(env.sync(&dao, pid).await.json()["hub_status"], "closed");
+    assert_eq!(env.ft_balance(&dao).await, 0);
+    let pot = env.pot(&dao).await;
+    assert_eq!((pot["status"].as_str(), pot["close_settling"].as_bool()), (Some("closing"), Some(true)));
+    // sync reads the DAO's balance: the money is out → Closed (pot_closed only now)
+    let s = env.sync(&dao, pid).await;
+    assert_eq!(s.json()["hub_status"], "closed");
+    assert!(s.event_names().contains(&"pot_closed".to_string()));
+    assert_eq!(env.pot(&dao).await["close_settling"], false);
+    env.hub_relay(&env.eve, "retry_payout", json!({"pot": dao, "proposal_id": pid}), 150).await.expect_err("ERR_NOT_RETRYABLE");
     Ok(())
 }
 dual!(t92_close_finalize, t92);

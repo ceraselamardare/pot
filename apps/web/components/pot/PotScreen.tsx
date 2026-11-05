@@ -8,12 +8,13 @@
 // ?tab=settings (the Rules tab until 2026-11-03; ?tab=rules still opens it). A push opens
 // ?pid=<proposal id> (the SW maps the notification's proposal to it); it resolves here to the request, the close
 // or the rules change behind that proposal.
-import { Check, Clock } from "lucide-react"
+import { Check, Clock, Send } from "lucide-react"
 import Link from "next/link"
 import { useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { EmptyState, PotSkeleton } from "@/components/feedback/States"
+import { EachStrip } from "@/components/pot/EachStrip"
 import { BalanceHero } from "@/components/pot/BalanceHero"
 import { ActivityFeed, RequestRow } from "@/components/pot/Feed"
 import { PotHeader } from "@/components/pot/PotParts"
@@ -176,6 +177,11 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
             contributed={me.contributed}
             pendingIn={pendingIn(potOps, pot.slug)}
             goal={pot.goal}
+            eachSlot={
+              pot.goalEachChosen && pot.goalEach ? (
+                <EachStrip each={pot.goalEach} members={pot.members} invite={pot.status === "open" && pot.members.length < 3} />
+              ) : undefined
+            }
             collected={collectedOf(pot)}
             closedAt={pot.status === "closed" ? (pot.closedAt ?? null) : null}
             onShare={() => openSheet("refund")}
@@ -299,7 +305,7 @@ function PotLoaded({ pot: base }: { pot: PotVM }) {
  * Closed: the calm closed card (read-only Pot; the money is in each person's Pot account; no cash-out yet),
  * announced once per device.
  */
-function PotStateCard({ pot }: { pot: PotVM }) {
+export function PotStateCard({ pot }: { pot: PotVM }) {
   const closed = pot.status === "closed"
   const refund = pot.me?.getsBack ?? 0n
   useEffect(() => {
@@ -322,6 +328,14 @@ function PotStateCard({ pot }: { pot: PotVM }) {
           {t("close.summary.cta")}
         </Button>
       </section>
+    )
+  // hub 1.3.0 (HUB-4): approved, the shares are on their way; "closed" once the money has left (icon + words, no action)
+  if (pot.status === "closing" && pot.closeSettling)
+    return (
+      <div role="status" className="flex items-start gap-3 rounded-md bg-surface-sunken p-3" data-pot-closing="settling">
+        <Send aria-hidden className="mt-0.5 size-5 shrink-0 text-approved" strokeWidth={2} />
+        <p className="min-w-0 flex-1 text-body-sm text-ink">{t("pot.settling")}</p>
+      </div>
     )
   if (pot.status === "closing" || pot.closingInFlight)
     return (

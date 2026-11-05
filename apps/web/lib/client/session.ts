@@ -10,6 +10,8 @@ import { avatarOf, initialsOf } from "./mock/world"
 import { avatarOrNull, type AvatarId } from "@/lib/avatars"
 import { useMemo } from "react"
 import { liveSignOut, useLiveSession, type SessionInfo } from "./live/session"
+import { forgetAllInvites } from "./live/invites"
+import { forgetAllLinkSecrets } from "./paylink/secrets"
 import { nameFromAccount } from "./live/vm"
 
 export interface MeInfo {
@@ -62,6 +64,16 @@ export function useMe(): string | null | undefined {
 }
 
 export async function signOut(): Promise<void> {
+  // CLI-6 (security audit 2026-11-04): the bearer secrets this device kept (payment links, invite links) go with the
+  // session. The tab's sessionStorage stash of an invite or claim being opened right now stays (the invite page's
+  // "Not you? Switch" signs out mid-join and must still have the link); it ends with the tab.
+  await forgetLinkSecrets()
   if (!IS_LIVE) return mock.setSession(null)
   await liveSignOut()
+}
+
+/** CLI-6: forget every link secret kept on this device (localStorage payment links + the IndexedDB invites). */
+export async function forgetLinkSecrets(): Promise<void> {
+  forgetAllLinkSecrets()
+  await forgetAllInvites().catch(() => {})
 }

@@ -126,7 +126,7 @@ describe("hub 1.1.0 push copy (lock-screen safe)", () => {
     const s = new Sender()
     await notify(deps(s), { type: "approval_needed", subject: "spend", pot: DAO, proposalId: 4, actor: MAYA, amount: "180000000", category: "stay", tier: "one_ok" })
     expect(s.sent.map((x) => x.endpoint)).toEqual(["https://fcm.googleapis.com/fcm/send/leo"]) // Sam already voted, Maya asked
-    expect(titles(s)[0]).toMatchObject({ title: "Maya needs one OK", body: "$180 for a place to stay · Lisbon Trip · Anyone can OK it" })
+    expect(titles(s)[0]).toMatchObject({ title: "Maya needs one OK", body: "$180 for a place to stay · Lisbon Trip · Anyone who has added money can OK it" })
   })
 
   it("approved by an OK: to the requester, naming who gave it", async () => {

@@ -94,7 +94,7 @@ describe("RulesPlayground", () => {
       "This will be approved instantly",
       "Spend $84",
       "Anyone can spend up to $100 without asking.",
-      "Spends up to $300 need just one OK from anyone else.",
+      "Spends up to $300 need just one OK from someone else who has added money.",
       "Bigger spends need 2 of 3 approvals.",
       "Each person can spend up to $200 in total without asking.",
     ])
@@ -134,17 +134,17 @@ describe("RulesPlayground", () => {
     const ui = setup()
     ui.pick("$300")
     expect(ui.preview().getAttribute("data-tier")).toBe("one_ok")
-    expect(ui.shown("This needs one OK from anyone else")).toBe(true)
+    expect(ui.shown("This needs one OK from someone else who has added money")).toBe(true)
     expect(ui.shown("It's over your $100 instant limit.")).toBe(true)
     expect(ui.active()).toEqual(["oneok"])
     fireEvent.click(ui.spend())
     advance(1200)
     expect(ui.burst()).toBeNull()
     expect(ui.shown("Sent")).toBe(true)
-    expect(ui.shown("One OK from anyone else in the group and it's paid.")).toBe(true)
+    expect(ui.shown("One OK from someone else who has added money and it's paid.")).toBe(true)
     expect(ui.shown("Needs one OK")).toBe(true)
     expect(ui.shown("Leo gets a notification: Maya needs one OK.")).toBe(true)
-    expect(ui.live()).toBe("Sent. It's over your $100 instant limit. Waiting for one OK. Anyone else in the group can OK it.")
+    expect(ui.live()).toBe("Sent. It's over your $100 instant limit. Waiting for one OK. Anyone else in the group who has added money can OK it.")
     // one request at a time: the action button is now Leo's, and nothing can be spent meanwhile
     expect(screen.queryByRole("button", { name: /^Spend/ })).toBeNull()
     fireEvent.click(screen.getByRole("radio", { name: "$20" }))
@@ -453,7 +453,7 @@ describe("RulesPlayground", () => {
     expect(ui.reset()).not.toBeNull()
     expect(ui.stage().getAttribute("data-try-stage")).toBe("result")
     ui.pick("$300")
-    expect(ui.shown("This needs one OK from anyone else")).toBe(true)
+    expect(ui.shown("This needs one OK from someone else who has added money")).toBe(true)
     expect(ui.shown("$84 sent to you")).toBe(false)
     advance(300)
     expect(ui.stage().getAttribute("data-try-stage")).toBe("preview")

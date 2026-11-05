@@ -83,6 +83,11 @@ export const HUB_ERROR_CODES = [
   "ERR_GIFT_SELF",
   "ERR_GIFT_IN_FLIGHT",
   "ERR_GOAL_COLLECTING",
+  // hub 1.3.0 (security fixes)
+  "ERR_OK_NOT_ELIGIBLE",
+  "ERR_LINK_TOO_SMALL",
+  "ERR_NOT_CLOSED",
+  "ERR_SWEEP_COOLDOWN",
 ] as const
 export type HubErrorCode = (typeof HUB_ERROR_CODES)[number]
 

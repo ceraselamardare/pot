@@ -15,7 +15,8 @@ import { actions } from "near-api-js"
 import { ulid } from "ulid"
 import type { Db } from "@/db/client"
 import { adjustQuota, chargeQuotas, nextUtcDay, type QuotaCharge } from "@/db/quota"
-import { depositIntent, relayLog } from "@/db/schema"
+import { appUser, depositIntent, relayLog } from "@/db/schema"
+import { sendAlert } from "../../alerts"
 import type { HubReader } from "../../chain/hub"
 import { viewFunction } from "../../chain/near"
 import { failureText, firstFailure, statusFailure } from "../../chain/outcome"
@@ -765,6 +766,7 @@ export async function deliver(deps: OneClickDeps, id: string): Promise<void> {
   const { db, cfg } = deps
   const row = (await db.select().from(depositIntent).where(eq(depositIntent.id, id)).limit(1))[0]
   if (!row || row.destinationTxHash || row.mode !== "simulated") return
+
   const now = deps.now?.() ?? Date.now()
   const sim = simOf(row)
   const q = quoteNumbersOf(row)
@@ -782,6 +784,14 @@ export async function deliver(deps: OneClickDeps, id: string): Promise<void> {
     now,
   )
   if (v.status !== "SUCCESS" || !v.amountOut) return
+  // APP-8: the delivery boundary checks for itself (never trusting how the row was made)
+  const owner =
+    (await db.select({ account: appUser.nearAccount }).from(appUser).where(eq(appUser.id, row.userId)).limit(1))[0]?.account ?? null
+  const refusal = deliveryRefusal(cfg, { recipient: row.recipient, owner, amountOut: v.amountOut })
+  if (refusal) {
+    await sendAlert(db, `delivery_refused:${id}`, `simulated delivery ${id} refused: ${refusal}`).catch(() => undefined)
+    return
+  }
 
   const rowId = newRelayId()
   const key = `sim:${id}`
@@ -856,6 +866,24 @@ export async function deliver(deps: OneClickDeps, id: string): Promise<void> {
     await db.delete(relayLog).where(eq(relayLog.id, rowId)).catch(() => undefined)
     await logError({ route: "oneclick.deliver", reason: "sim_delivery", detail: { id, err: errText(e, 300) } })
   }
+}
+
+/**
+ * APP-8 (security audit 2026-11-04): the guard of `deliver()` itself. The simulator pays REAL tokens from the treasury,
+ * so it refuses unless: the network is testnet (a mainnet treasury holds real money), the receiver is the deposit's
+ * owner, a testnet account (`*.testnet` or implicit), never one of ours (hub, token, relayer, treasury, a Pot, the
+ * project root), and the amount is within the simulator's cap. Returns why, or null when the delivery may go ahead.
+ */
+export function deliveryRefusal(cfg: Config, x: { recipient: string; owner: string | null; amountOut: bigint }): string | null {
+  if (cfg.network !== "testnet") return "network"
+  const r = x.recipient
+  if (!x.owner || r !== x.owner) return "not_owner"
+  if (!(r.endsWith(".testnet") || /^[0-9a-f]{64}$/.test(r))) return "receiver_network"
+  const root = cfg.hubId.includes(".") ? cfg.hubId.slice(cfg.hubId.indexOf(".") + 1) : cfg.hubId
+  const ours = [cfg.hubId, cfg.usdcId, cfg.relayerAccountId, cfg.treasuryAccountId, root].filter(Boolean)
+  if (ours.includes(r) || daoSlug(r, cfg.hubId)) return "receiver_ours"
+  if (x.amountOut > SIM_MAX * 2n) return "amount"
+  return null
 }
 
 /** ADDED: the member's own relayed contribution for this Pot, after the deposit arrived (api-spec RelayContext). */

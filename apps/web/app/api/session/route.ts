@@ -4,6 +4,7 @@ import { getConfig } from "@/server/config"
 import { getRpc, getSubmitter, defer } from "@/server/deps"
 import { isBot } from "@/server/bot"
 import { checkCsrf, ipHash, readBody, readJson, parseWith, route } from "@/server/http/context"
+import { ApiError } from "@/server/http/errors"
 import { logoutReq, sessionCreateReq } from "@/server/http/schemas"
 import { hintCookie, readCookie } from "@/server/session/cookies"
 import { logout, nearAuthLogin } from "@/server/session/service"
@@ -37,7 +38,16 @@ export const DELETE = route("DELETE /api/session", async (ctx) => {
   const origin = ctx.req.headers.get("origin")
   if (!origin || !getConfig().allowedOrigins.includes(origin)) checkCsrf(ctx.req) // throws forbidden_origin
   const raw = await readBody(ctx.req)
-  const body = raw.trim() ? parseWith(logoutReq, JSON.parse(raw)) : {}
+  // APP-9: a malformed body is the caller's mistake (400), not a server error
+  let parsed: unknown = {}
+  if (raw.trim()) {
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      throw new ApiError("bad_request", { detail: { field: "body", cause: "json" } })
+    }
+  }
+  const body = parseWith(logoutReq, parsed)
   const cfg = getConfig()
   const s = await requireSession(getDb(), ctx.req, cfg)
   for (const c of await logout(getDb(), cfg, s, body)) ctx.setCookie(c)

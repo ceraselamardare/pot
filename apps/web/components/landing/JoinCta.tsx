@@ -2,7 +2,8 @@
 // JoinCta (frontend-architecture §2.5, §5.1; ux-spec §4.1-4.2, §6.1; design-direction 01 §1-2): the invite
 // landing's client island.
 //  - Keeps the #secret in sessionStorage['pot.invite.<slug>'] (survives a redirect sign-in) and strips it from
-//    the URL after a successful join. Never logs, sends or persists it anywhere else.
+//    the URL as soon as that copy exists (CLI-7; lib/client/fragment-secret.ts). Never logs, sends or persists it
+//    anywhere else.
 //  - Pre-generates the device key on idle (D-21), so it's ready before the session call.
 //  - Runs the join machine: [Join with Google] → "Setting up your Pot account…" → "Joining {potName}…" →
 //    "You're in!" (focus on the H1, one polite announcement) → [Add my $150 share] (prefilled Add sheet).
@@ -24,6 +25,7 @@ import { joinPot, mockJoinSession } from "@/lib/client/actions"
 import { IS_LIVE } from "@/lib/client/config"
 import { useMeInfo, usePot } from "@/lib/client/data"
 import { INVITE_SECRET_RE } from "@/lib/client/invite"
+import { forgetStashedSecret, stripStashedFragment } from "@/lib/client/fragment-secret"
 import { rememberEntry } from "@/lib/client/onboarding"
 import { deviceKeys } from "@/lib/client/keys/device-key-store"
 import { initialJoin, joinReducer, joinStep } from "@/lib/client/machines/join"
@@ -81,7 +83,13 @@ export function JoinCta({
   const secretRef = useRef<string | null>(null)
   useEffect(() => {
     if (secret) secretRef.current = secret
-  }, [secret])
+    // CLI-7 (security audit 2026-11-04): once the tab has its own copy, the #secret leaves the address bar right away,
+    // whatever happens next (a failed join used to leave it there)
+    if (secret) {
+      const inUrl = window.location.hash.slice(1)
+      stripStashedFragment(secretKey(slug), INVITE_SECRET_RE.test(inUrl) ? inUrl : null)
+    }
+  }, [secret, slug])
   const pot = usePot(slug)
   const alreadyMember = s.tag === "landing" && !!me && pot.state === "ready"
   const suggestedText = suggested ? formatUsd(BigInt(suggested), "whole") : null
@@ -137,6 +145,11 @@ export function JoinCta({
     rememberEntry({ how: "joined", slug, potName })
     announce(`${t("setup.success.title")} ${suggestedText ? t("setup.success.body", { potName, suggested: suggestedText }) : t("setup.success.body_plain", { potName })}`)
   }, [tag, slug, potName, suggestedText])
+
+  // CLI-7: a terminal answer (used up, expired, invalid, Pot closed) makes the secret worthless here: forget the tab's copy
+  useEffect(() => {
+    if (tag === "inviteError") forgetStashedSecret(secretKey(slug))
+  }, [tag, slug])
 
   const join = () => dispatch({ type: "TAP_JOIN", signedIn: !!me, needsAuth: false })
   const step = joinStep(s)

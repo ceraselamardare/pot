@@ -10,7 +10,7 @@ import "server-only"
 import { invitePkFromParam, type MemberView } from "@pot/sdk"
 import { IS_LIVE } from "@/lib/client/config"
 import { seedWorld, potView, initialsOf } from "@/lib/client/mock/world"
-import { coverOf, DEFAULT_GOAL_EACH, nameFromAccount } from "@/lib/client/live/vm"
+import { coverOf, nameFromAccount } from "@/lib/client/live/vm"
 import { t } from "@/i18n/t"
 import { displayNames, serverChain, serverSdkConfig } from "@/app/_lib/chain"
 
@@ -130,9 +130,8 @@ async function livePreview(slug: string, invitePk: string | null, now: number): 
   // the inviter's chosen name only (never the other members')
   const inviterAccount = active && invite.view ? (invite.view.createdBy as string) : null
   const inviterName = inviterAccount ? ((await displayNames([inviterAccount])).get(inviterAccount) ?? nameFromAccount(inviterAccount) ?? t("person.fallback")) : null
-  // the "$X each" goal is off-chain (the creator's device); a visitor sees Create's suggested $150, like members do
-  // (live/queries goalEachOf). It no longer depends on a preset: every new Pot is "custom" with its own rules.
-  const goalEach = DEFAULT_GOAL_EACH
+  // the "$X each" goal is off-chain (only on the creator's device), so a visitor sees neither a made-up total nor
+  // "Everyone's chipping in $X" (goalEach null below): Create's default isn't what this creator chose
   return {
     slug,
     name: pot.name,
@@ -141,8 +140,8 @@ async function livePreview(slug: string, invitePk: string | null, now: number): 
     status: pot.status,
     balance: balance.toString(),
     totalIn: pot.totalIn.toString(),
-    goal: goalEach === null ? null : (goalEach * BigInt(Math.max(3, pot.memberCount))).toString(),
-    goalEach: goalEach?.toString() ?? null,
+    goal: null,
+    goalEach: null,
     instantCap: pot.rules.instantCap.toString(),
     oneOkCap: pot.extras && pot.extras.oneOkCap > 0n ? pot.extras.oneOkCap.toString() : null,
     memberCount: pot.memberCount,

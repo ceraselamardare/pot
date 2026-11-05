@@ -11,7 +11,7 @@ import { createHubReader } from "../chain/hub"
 import { RpcError } from "../chain/rpc"
 import type { RelayDeps } from "../relay/pipeline"
 import { DAO, HUB, USDC } from "../testing/delegates"
-import { seedChain, testConfig } from "../testing/env"
+import { potView, seedChain, testConfig } from "../testing/env"
 import { event, FakeChain, FakeSubmitter, methodOf, plainOutcome } from "../testing/fakeChain"
 import { MAX_REFUND_PROPOSALS, refundStep, refundUnfundedGoals, type GoalRow } from "./goals"
 import { runReconcile } from "./reconcile"
@@ -99,6 +99,32 @@ describe("refundUnfundedGoals (cron step)", () => {
     expect(sub.submitted).toHaveLength(2)
   })
 
+  it("HUB-5: the refund close's payees are registered before the approval; with no close budget the approval waits", async () => {
+    const payout = (who: string) => ({
+      method_name: "ft_transfer",
+      args: Buffer.from(JSON.stringify({ receiver_id: who, amount: "1" })).toString("base64"),
+      deposit: "1",
+      gas: "5000000000000",
+    })
+    chain.view(DAO, "get_proposal", () => ({
+      id: 12,
+      kind: { FunctionCall: { receiver_id: USDC, actions: [payout("sam.testnet")] } },
+      status: "InProgress",
+      votes: {},
+      submission_time: "0",
+    }))
+    chain.view(USDC, "storage_balance_of", () => null)
+    process.env.QUOTA_GLOBAL_CLOSE_REGISTRATIONS = "0"
+    try {
+      expect(await refundUnfundedGoals(deps, "cron:hub5a", NOW)).toMatchObject({ proposed: 1, approved: 0, waiting: 1 })
+      expect(sub.submitted.map((x) => methodOf(x.spec))).toEqual(["refund_unfunded"])
+    } finally {
+      delete process.env.QUOTA_GLOBAL_CLOSE_REGISTRATIONS
+    }
+    expect(await refundUnfundedGoals(deps, "cron:hub5b", NOW)).toMatchObject({ approved: 1 })
+    expect(sub.submitted.map((x) => methodOf(x.spec))).toEqual(["refund_unfunded", "storage_deposit", "refund_unfunded"])
+  })
+
   it("collecting / reached / soft goals and Pots without a goal are left alone; no Pot is scanned twice a run", async () => {
     goal = { pot: DAO, state: "collecting", refund_proposal_id: null, can_refund: false }
     expect(await refundUnfundedGoals(deps, "c", NOW)).toMatchObject({ scanned: 1, refundable: 0 })
@@ -148,5 +174,81 @@ describe("refundUnfundedGoals (cron step)", () => {
     const r = await runReconcile(deps, { holder: "run1", now: new Date(NOW) })
     expect(r.errors).toEqual([])
     expect(r.goals).toMatchObject({ proposed: 1, approved: 1 })
+  })
+})
+
+describe("hub 1.3.0 (HUB-4): closes and refunds are confirmed once the money is out", () => {
+  const argsOf = (x: (typeof sub.submitted)[number]) =>
+    JSON.parse(Buffer.from((x.spec.actions[0] as unknown as { functionCall: { args: Uint8Array } }).functionCall.args).toString())
+  const gasOf = (x: (typeof sub.submitted)[number]) => (x.spec.actions[0] as unknown as { functionCall: { gas: bigint } }).functionCall.gas
+
+  it("a goal refund: propose → approve (settling) → confirm, all in one run", async () => {
+    sub.script = (spec) => {
+      if (methodOf(spec) !== "refund_unfunded") return plainOutcome("x", spec.signerId, spec.receiverId)
+      if (goal!.state === "refundable") {
+        goal = { ...goal!, state: "refunding", refund_proposal_id: 12 }
+        return plainOutcome("x", spec.signerId, spec.receiverId)
+      }
+      // 1.3.0: the approval pays out but the goal stays `refunding` until a confirming call sees the money gone
+      if (!(goal as GoalRow & { approved?: boolean }).approved) {
+        goal = { ...goal!, approved: true } as GoalRow
+        return plainOutcome("x", spec.signerId, spec.receiverId)
+      }
+      goal = { ...goal!, state: "refunded", can_refund: false }
+      return plainOutcome("x", spec.signerId, spec.receiverId, undefined, [event("pot", "goal_refunded", { pot: DAO, proposal_id: 12 })])
+    }
+    const r = await refundUnfundedGoals(deps, "run-a", NOW)
+    expect(r).toMatchObject({ proposed: 1, approved: 1, confirmed: 1, failed: 0 })
+    expect(sub.submitted.map((x) => methodOf(x.spec))).toEqual(["refund_unfunded", "refund_unfunded", "refund_unfunded"])
+    expect((await refundRows()).map((x) => x.intent).sort()).toEqual(["refund_approve", "refund_confirm", "refund_propose"])
+    expect(goal).toMatchObject({ state: "refunded" })
+  })
+
+  it("on 1.2.0 the approval already settles the refund: no confirming call", async () => {
+    expect(await refundUnfundedGoals(deps, "run-b", NOW)).toMatchObject({ approved: 1, confirmed: 0 })
+    expect(sub.submitted).toHaveLength(2)
+  })
+
+  it("the cron syncs a settling close, and retries a failed close at 300 Tgas (payees registered first), then syncs it", async () => {
+    goal = null
+    chain.view(HUB, "get_requests", () => [])
+    await t.db.update(pot).set({ lastActivityAt: new Date(), status: "closing" })
+    const payout = {
+      method_name: "ft_transfer",
+      args: Buffer.from(JSON.stringify({ receiver_id: "sam.testnet", amount: "1" })).toString("base64"),
+    }
+    chain.view(DAO, "get_proposal", () => ({
+      id: 9,
+      kind: { FunctionCall: { receiver_id: USDC, actions: [payout] } },
+      status: "Failed",
+      votes: {},
+      submission_time: "0",
+    }))
+    const registered = new Set<string>()
+    chain.view(USDC, "storage_balance_of", (a) => (registered.has(String(a.account_id)) ? { total: "1", available: "0" } : null))
+    sub.script = (spec) => {
+      if (methodOf(spec) === "storage_deposit") registered.add("sam.testnet")
+      return plainOutcome("x", spec.signerId, spec.receiverId)
+    }
+
+    // settling: approved, money not yet confirmed out → one sync of the close
+    chain.view(HUB, "get_pot", () => potView({ status: "closing", close_proposal_id: 9, close_settling: true, policy_version: 3 }))
+    let r = await runReconcile(deps, { holder: "c1", now: new Date(NOW) })
+    expect(r.pots).toMatchObject({ closesSynced: 1, closeRetries: 0 })
+    expect(sub.submitted.map((x) => [methodOf(x.spec), argsOf(x)])).toEqual([["sync", { pot: DAO, proposal_id: 9 }]])
+
+    // failed (not settling): the hub retries it as rulebot, server-signed at 300 Tgas, after registering sam; then sync
+    sub.submitted.length = 0
+    chain.view(HUB, "get_pot", () => potView({ status: "closing", close_proposal_id: 9, close_settling: false, policy_version: 3 }))
+    r = await runReconcile(deps, { holder: "c2", now: new Date(NOW) })
+    expect(r.pots).toMatchObject({ closeRetries: 1 })
+    expect(sub.submitted.map((x) => methodOf(x.spec))).toEqual(["storage_deposit", "retry_payout", "sync"])
+    expect(gasOf(sub.submitted[1]!)).toBe(300_000_000_000_000n)
+
+    // a 1.2.0 hub (no close_settling): left alone
+    sub.submitted.length = 0
+    chain.view(HUB, "get_pot", () => potView({ status: "closing", close_proposal_id: 9 }))
+    r = await runReconcile(deps, { holder: "c3", now: new Date(NOW) })
+    expect(r.pots).toMatchObject({ closesSynced: 0, closeRetries: 0 })
   })
 })

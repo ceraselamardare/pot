@@ -477,6 +477,12 @@ export const relayLog = pgTable(
     index("relay_log_inflight_idx")
       .on(t.senderId, t.delegatePublicKey)
       .where(sql`${t.status} in ('validated', 'signed', 'submitted', 'pending')`),
+    // APP-9 (security audit 2026-11-04): one in-flight delegate per (sender, key, nonce), so two delegates that read
+    // "nothing in flight" at the same time can't both be broadcast (only one could ever execute; the relayer would pay
+    // for the other's failure). Migration 0009 marks older duplicates lost before creating it.
+    uniqueIndex("relay_log_inflight_nonce_uq")
+      .on(t.senderId, t.delegatePublicKey, t.delegateNonce)
+      .where(sql`${t.status} in ('validated', 'signed', 'submitted', 'pending') and ${t.delegateNonce} is not null`),
     index("relay_log_pot_idx").on(t.potId, t.createdAt),
     index("relay_log_user_idx").on(t.userId, t.createdAt),
     index("relay_log_created_idx").on(t.createdAt),

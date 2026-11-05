@@ -110,6 +110,8 @@ export function SpendSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; 
       memberCount: pot.members.length,
       used: me.spentInstant,
       contributed: me.contributed,
+      // hub 1.3.0 (W4-1 c): my lifetime one-OK allowance so far
+      oneOkUsed: me.oneOkUsed,
       // a link's payee counts as allowed (the escrow); the rules still decide instant / one OK / the group
       receiverIsMember: isLink || pot.members.some((m) => m.person.id === to),
       // hub 1.1.0: earned trust raises my limit, one OK covers the middle tier, an all-or-nothing goal holds every spend

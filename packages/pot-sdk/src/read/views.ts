@@ -13,6 +13,7 @@ import type {
   InviteView,
   LinkView,
   MemberView,
+  OkCheck,
   PotSummary,
   PotView,
   RecordEntry,
@@ -29,6 +30,7 @@ import type {
   RawConfigView,
   RawGiftsView,
   RawGoalView,
+  RawOkCheck,
   RawInviteView,
   RawLinkView,
   RawRecordEntry,
@@ -50,6 +52,7 @@ import {
   parseGoalView,
   parseInviteView,
   parseLinkView,
+  parseOkCheck,
   parseRecordEntry,
   parseTrustView,
   parseMemberView,
@@ -97,6 +100,9 @@ export interface HubViews {
   // ---- hub 1.2.0 (gifts). Optional like the 1.1.0 views; MethodNotFound on an older hub.
   /** The Pot's gifts: on/off, totals, and whether a gift sent now would be accepted (null: unknown Pot). */
   getGifts?(pot: DaoId): Promise<Viewed<GiftsView | null>>
+  // ---- hub 1.3.0 (security fixes). Optional; MethodNotFound on an older hub.
+  /** W4-1: could `account` give the one OK on this request now (show the "OK it" button)? null: unknown request. */
+  getOkCheck?(pot: DaoId, requestId: number, account: AccountId): Promise<Viewed<OkCheck | null>>
 }
 
 export interface DaoViews {
@@ -174,6 +180,8 @@ export function createChainViews(cfg: SdkConfig, rpc: RpcClient = createRpcClien
       getRecord: (pot, fromIndex, limit) =>
         map(view<RawRecordEntry[]>(hub, "get_record", { pot, from_index: fromIndex, limit: Math.min(limit, 50) }), (r) => r.map(parseRecordEntry)),
       getGifts: (pot) => map(view<RawGiftsView | null>(hub, "get_gifts", { pot }), (r) => (r ? parseGiftsView(r) : null)),
+      getOkCheck: (pot, requestId, account) =>
+        map(view<RawOkCheck | null>(hub, "get_ok_check", { pot, request_id: requestId, account_id: account }), (r) => (r ? parseOkCheck(r) : null)),
     },
     dao: {
       getPolicy: (dao) => map(view<Policy>(dao, "get_policy"), parsePolicy),

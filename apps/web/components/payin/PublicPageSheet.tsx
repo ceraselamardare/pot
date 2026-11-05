@@ -3,7 +3,7 @@
 // gift_page), off until a member turns it on. Any member, right away. With it on: "What's it for?" (the page's tone:
 // A payment · A gift ☕), the members' optional one-liner (≤ 100, [Save line]), and the page's QR + [Share page] (the
 // sheet's one marigold) + [Copy link]. Switches are ink, never marigold.
-import { Check, Copy, Share2 } from "lucide-react"
+import { Check, Copy, Share2, ShieldX } from "lucide-react"
 import { useId, useState } from "react"
 import { toast } from "sonner"
 import { Segmented } from "@/components/pot/Controls"
@@ -17,6 +17,7 @@ import { setGiftPage } from "@/lib/client/gifts/actions"
 import { giftPageUrl, useOrigin, useShareLink } from "@/lib/client/gifts/share"
 import type { PotVM } from "@/lib/client/mock/types"
 import { GIFT_LINE_MAX, giftTextLength, type PayInTone } from "@/lib/gifts"
+import { isReservedNameError, publicPageRefusal } from "@/lib/reserved-names"
 import { payInMessage } from "./PayInSheet"
 
 export function PublicPageSheet({ pot, open, onClose }: { pot: PotVM; open: boolean; onClose: () => void }) {
@@ -28,6 +29,10 @@ export function PublicPageSheet({ pot, open, onClose }: { pot: PotVM; open: bool
   const saved = page?.line ?? ""
   const [line, setLine] = useState(saved)
   const [lineSaved, setLineSaved] = useState(false)
+  // CLI-4 (security audit 2026-11-04): an official-looking name never gets a public page (lib/reserved-names.ts; our
+  // server enforces it too). Known up front for the name; a one-liner is refused when it's saved.
+  const nameRefused = !!publicPageRefusal({ name: pot.name, slug: pot.slug })
+  const [refused, setRefused] = useState<"name" | "line" | null>(null)
   const url = origin ? giftPageUrl(origin, pot.slug) : ""
   const { copy, share, copied } = useShareLink(url, payInMessage(tone, pot.name, url))
   // each opening starts from the saved line (adjusted while rendering, not in an effect)
@@ -37,16 +42,19 @@ export function PublicPageSheet({ pot, open, onClose }: { pot: PotVM; open: bool
     if (open) {
       setLine(saved)
       setLineSaved(false)
+      setRefused(null)
     }
   }
 
   const run = async (what: "on" | "tone" | "line", fn: () => Promise<void>, said?: string) => {
     setBusy(what)
+    setRefused(null)
     try {
       await fn()
       if (said) announce(said)
-    } catch {
-      toast.error(t("payin.error.toggle"))
+    } catch (e) {
+      if (isReservedNameError(e)) setRefused(what === "line" ? "line" : "name")
+      else toast.error(t("payin.error.toggle"))
     } finally {
       setBusy(null)
     }
@@ -88,9 +96,18 @@ export function PublicPageSheet({ pot, open, onClose }: { pot: PotVM; open: bool
           label={t("publicpage.switch")}
           hint={t("publicpage.switch.hint")}
           busy={busy === "on"}
-          disabled={closed}
+          disabled={closed || (nameRefused && !on)}
           data-page-switch
         />
+        {(refused === "name" || (nameRefused && !on)) && (
+          <div role="alert" className="flex items-start gap-3 rounded-md bg-surface-sunken p-3" data-page-reserved="name">
+            <ShieldX aria-hidden className="mt-0.5 size-5 shrink-0 text-declined" strokeWidth={2} />
+            <div>
+              <p className="text-label text-ink">{t("publicpage.reserved.title")}</p>
+              <p className="mt-0.5 text-body-sm text-ink">{t("publicpage.reserved.body")}</p>
+            </div>
+          </div>
+        )}
         {on && pot.gifts?.on === false && <p className="rounded-md bg-surface-sunken p-3 text-body-sm text-ink">{t("publicpage.taking_off")}</p>}
         {on && (
           <>
@@ -143,6 +160,12 @@ export function PublicPageSheet({ pot, open, onClose }: { pot: PotVM; open: bool
                   {lineSaved ? t("gift.sheet.line.saved") : t("gift.sheet.line.save")}
                 </Button>
               </div>
+              {refused === "line" && (
+                <p role="alert" className="flex items-start gap-2 text-body-sm text-ink" data-page-reserved="line">
+                  <ShieldX aria-hidden className="mt-0.5 size-4 shrink-0 text-declined" strokeWidth={2} />
+                  {t("publicpage.reserved.line")}
+                </p>
+              )}
             </div>
             {url ? <QrPlate link={url} alt={t("publicpage.qr.alt", { potName: pot.name })} hint={t("publicpage.qr.hint")} size={168} dataAttr="data-page-url" /> : null}
           </>

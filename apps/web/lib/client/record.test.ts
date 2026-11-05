@@ -94,6 +94,27 @@ describe("the CSV", () => {
     expect(csvCell("@x")).toBe("'@x")
   })
 
+  // CLI-9 (security audit 2026-11-04): the gaps the audit found
+  it("formula starts after blanks, full-width signs, tab/CR, and a ; or tab separator are all neutralised", () => {
+    expect(csvCell(" =1+1")).toBe("' =1+1")
+    expect(csvCell("\u00a0\u200b=HYPERLINK(1)")).toBe("'\u00a0\u200b=HYPERLINK(1)")
+    expect(csvCell("\ufeff+cmd")).toBe("'\ufeff+cmd")
+    expect(csvCell("\uff1dSUM(A1)")).toBe("'\uff1dSUM(A1)")
+    expect(csvCell("\tfoo")).toBe('"\'\tfoo"')
+    expect(csvCell("\rfoo")).toBe('"\'\rfoo"')
+    expect(csvCell("\n=cmd")).toBe('"\'\n=cmd"')
+    // a separator a spreadsheet may split on is quoted, so "=cmd" can't become a cell of its own
+    expect(csvCell("Maya;=cmd|' /C calc'!A0")).toBe("\"Maya;=cmd|' /C calc'!A0\"")
+    expect(csvCell("a\t-1")).toBe('"a\t-1"')
+    expect(csvCell('=A1,"x"')).toBe('"\'=A1,""x"""')
+    // ordinary text is untouched
+    expect(csvCell("Maya Silva")).toBe("Maya Silva")
+    expect(csvCell("Café du Col")).toBe("Café du Col")
+    expect(csvCell("2026-11-05")).toBe("2026-11-05")
+    expect(csvCell("84.00")).toBe("84.00")
+    expect(csvCell("")).toBe("")
+  })
+
   it("amounts are plain dollars with two decimals (floored to the cent)", () => {
     expect(csvAmount(84_000_000n)).toBe("84.00")
     expect(csvAmount(1_234_567_891n)).toBe("1234.56")

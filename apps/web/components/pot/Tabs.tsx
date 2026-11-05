@@ -77,17 +77,29 @@ export function MembersTab({ pot, compact }: { pot: PotVM; compact?: boolean }) 
                 className="flex min-h-16 w-full items-center gap-3 rounded-md bg-surface p-3 text-left hover:bg-surface-sunken"
               >
               <Avatar person={m.person} size="md" />
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label text-ink">
-                  {name}
-                  {trust && <TrustBadge trust={trust} />}
+              {/* Name + badge on one line; then "In · Used" (In − Used = Gets back, on the right); then what they can
+                  spend alone, behind the Zap icon the instant rows use */}
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <p className="flex min-w-0 items-center gap-2 text-label text-ink">
+                  {/* a long name truncates, "(you)" and the badge stay */}
+                  <span className="flex min-w-0 gap-1">
+                    <span className="truncate">{m.person.name}</span>
+                    {m.isMe && <span className="shrink-0">{t("members.you.tag")}</span>}
+                  </span>
+                  {trust && <TrustBadge trust={trust} iconOnly />}
                 </p>
-                <p className="text-body-sm text-ink-muted tabular-nums">
-                  {t("members.row.short", { contributed: formatUsd(m.contributed), spentShare: formatUsd(m.spentShare) })}
+                <p className="flex flex-wrap gap-x-3 text-body-sm tabular-nums" data-member-stats>
+                  <span>
+                    <span className="text-ink-muted">{t("members.stat.in")}</span> <span className="text-ink">{formatUsd(m.contributed)}</span>
+                  </span>
+                  <span>
+                    <span className="text-ink-muted">{t("members.stat.used")}</span> <span className="text-ink">{formatUsd(m.spentShare)}</span>
+                  </span>
                 </p>
                 {trust && (
-                  <p className="text-body-sm text-ink-muted tabular-nums" data-member-up-to>
-                    {t("trust.member.up_to", { amount: formatUsd(trust.instantUpTo, "whole") })}
+                  <p className="flex items-center gap-1 text-body-sm text-ink-muted tabular-nums">
+                    <Zap aria-hidden className="size-3.5 shrink-0" strokeWidth={2} />
+                    <span data-member-up-to>{t("members.up_to", { amount: formatUsd(trust.instantUpTo, "whole") })}</span>
                   </p>
                 )}
               </div>

@@ -146,4 +146,7 @@ pub enum PotEvent {
     /// A member turned gifts on or off.
     #[event_version("1.2.0")]
     GiftsSet { pot: AccountId, on: bool, by: AccountId },
+    /// hub 1.3.0 (M-2): the hub proposed paying out USDC left in a Closed Pot (members approve it)
+    #[event_version("1.3.0")]
+    SweepProposed { pot: AccountId, proposal_id: u64, by: AccountId, balance: U128, payouts: Vec<PayoutView> },
 }

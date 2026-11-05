@@ -6,6 +6,7 @@
 //    is still collecting; our server refuses a link that's revoked, past its date or (one-time) used, a fixed-amount
 //    link's other amounts and the public page while it's off.
 //  - Privacy: members see every gift with its note; the public page lists only givers who chose to be shown.
+import { publicPageRefusal } from "@/lib/reserved-names"
 import { closeSplit } from "@pot/sdk"
 import {
   checkGiftAmount,
@@ -40,6 +41,8 @@ export type GiftError =
   | "too_high"
   | "invalid"
   | "not_giver"
+  /** CLI-4: the Pot's name (or the page's line / the link's note) reads like an official or brand page */
+  | "reserved"
 
 export class GiftWorldError extends Error {
   constructor(readonly code: GiftError) {
@@ -93,6 +96,8 @@ export function createGiftLink(w: World, slug: string, who: string, input: GiftL
   }
   const note = optionalGiftText(input.note, GIFT_NOTE_MAX)
   if (!note.ok) fail("invalid")
+  // CLI-4 (security audit 2026-11-04): as on our server (server/features/gifts/members.ts)
+  if (publicPageRefusal({ name: pot.name, slug, line: note.ok ? note.value : null })) fail("reserved")
   const link: GiftLinkRec = {
     id,
     pot: slug,
@@ -149,6 +154,8 @@ export function setGiftPage(w: World, slug: string, who: string, input: { on: bo
     if (!c.ok) fail("invalid")
     line = c.ok ? c.value : null
   }
+  // CLI-4 (security audit 2026-11-04): as on our server, no public page for an official-looking name; off always works
+  if (input.on && publicPageRefusal({ name: pot.name, slug, line })) fail("reserved")
   // a page that never existed starts as a payment page; one from before the tone keeps reading as a gift page
   const tone = input.tone ?? (pot.giftPage ? toneOf(pot.giftPage.tone) : "payment")
   pot.giftPage = { on: input.on, line, tone }
@@ -284,6 +291,8 @@ export function giftLandingOf(w: World, slug: string, id: string, now: number): 
   const pot = w.pots[slug]
   const l = (w.giftLinks ?? []).find((x) => x.id === id && x.pot === slug)
   if (!pot || !l) return null
+  // CLI-4: a link made before the reserved-name check (or a Pot renamed since) shows nothing
+  if (publicPageRefusal({ name: pot.name, slug, line: l.note ?? null })) return null
   return {
     pot: giftPotOf(pot),
     link: { id: l.id, amount: l.amount === null ? null : cents(l.amount), note: l.note ?? null, status: linkStatusAt(l, now), expiresAt: l.expiresAt, tone: toneOf(l.tone) },
@@ -317,7 +326,9 @@ export function giftPageOf(w: World, slug: string): GiftPageVM | null {
   const pot = w.pots[slug]
   if (!pot) return null
   const page = pot.giftPage
-  if (!page?.on) return { pot: giftPotOf(pot), on: false, line: null, tone: page ? toneOf(page.tone) : "payment" }
+  // CLI-4: an official-looking name reads as off
+  if (!page?.on || publicPageRefusal({ name: pot.name, slug, line: page.line }))
+    return { pot: giftPotOf(pot), on: false, line: null, tone: page ? toneOf(page.tone) : "payment" }
   const list = giftsOf(w, slug)
   return {
     pot: giftPotOf(pot),
