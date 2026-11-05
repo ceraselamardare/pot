@@ -41,7 +41,7 @@ test("(a) invite landing → join → You're in → add $150 → the balance upd
   await expect(page.getByText("Adding $150…")).toBeVisible()
   await expect(page.locator("[data-hero] [data-money]")).toHaveText("$450.00", { timeout: 10_000 })
   await expect(page.getByText("Added. Porto Weekend now has $450.00.")).toBeVisible()
-  await expect(page.locator("[data-goal-each] [data-each-done]")).toHaveText("3 of 3 people there") // $150 each, everyone in
+  await expect(page.locator("[data-goal-each] [data-each-done]")).toHaveText("3 of 3 put in $150") // $150 each, everyone in
   await expect(page.getByRole("button", { name: /^Leo added \$150\. Demo dollars\..*Details$/ }).first()).toBeVisible()
 })
 

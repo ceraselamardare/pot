@@ -1569,7 +1569,7 @@ export interface Messages {
   "pot.closing": undefined
   "pot.cta.add": undefined
   "pot.cta.spend": undefined
-  "pot.each.done": { done: string | number; n: number }
+  "pot.each.done": { done: string | number; n: string | number; each: string | number }
   "pot.each.invite": undefined
   "pot.each.member_done": { each: string | number }
   "pot.each.member_of": { each: string | number }

@@ -49,7 +49,7 @@ export function EachStrip({ each, members, invite }: { each: Micro; members: rea
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-body-sm tabular-nums">
         <p className="text-ink">{t("pot.each.title", { each: formatUsd(each, "whole") })}</p>
         <p className="text-ink-muted" data-each-done>
-          {t("pot.each.done", { done, n: members.length })}
+          {t("pot.each.done", { done, n: members.length, each: formatUsd(each, "whole") })}
         </p>
       </div>
       <ul className="mt-3 flex flex-wrap gap-3">
