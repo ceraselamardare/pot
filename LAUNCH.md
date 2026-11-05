@@ -145,7 +145,7 @@ Order matters (`plan/submission-plan.md` §5). Agents never post, make repos pub
 1. [ ] **[You]** The repo is public and opens logged out.
 2. [ ] **[You]** Post on X with the captioned video. Say "built at NEAR HACKATHON", and include the repo link and the demo link. Copy the public post URL.
 3. [ ] **[You]** Write the `idea` text yourself (20-2,000 chars). It must be human-written; Claude may only draft a starting point.
-4. [ ] **[Claude]** Build the JSON: **exactly 11 fields**, ≤ 12,000 bytes, `size: "2 - 4"`, `tracks: ["social","realworld"]`, a `requestId` UUID generated once. **Never** a `website` field (it's a spam trap).
+4. [ ] **[Claude]** Build the JSON: **exactly 11 fields**, ≤ 12,000 bytes, `size: "1"` (Cerasela Mardare, solo builder), `tracks: ["social","realworld"]`, a `requestId` UUID generated once. **Never** a `website` field (it's a spam trap).
 5. [ ] **[You]** Check every field:
    - `projectName` and `email` are the team's own (an email can carry at most 2 submissions);
    - `projectUrl` is unique, because each repo can be submitted only once;

@@ -37,7 +37,7 @@ A snapshot is in [sources/HACKATHON-2026-10-29.md](sources/HACKATHON-2026-10-29.
 - **Criteria:** no rubric and no weights are published. The FAQ only says "Previous NEAR hackathons evaluated technical implementation, design, impact, originality and sustainability — a good guide to prepare by." 📄 Earlier NEAR Foundation hackathons on Devpost weighted these five **equally** and broke ties on technical implementation. That is a proxy, not this event's rule. ⚠️
 - **Prizes: $250,000 "paid in NEAR".** The grand prize is $55K (×1). Each of the 13 tracks pays 1st $10K, 2nd $3K and 3rd $2K. The payout goes to the mainnet `nearAddress` in the submission. **No KYC, tax-form or eligibility restrictions are stated**, beyond "Developers, designers and people with ideas for the NEAR ecosystem." 📄
 - **Pre-existing code:** HACKATHON.md has no clause on it, but the homepage submission steps start with "01 Build your project during the hackathon". Keep Phase 0 code-free, as already planned. 📄
-- **Team size** must be exactly one of `1`, `2 - 4`, `4 - 6`, `6 - 8`, `8+`. Pot's two people means **`2 - 4`**. 📄
+- **Team size** must be exactly one of `1`, `2 - 4`, `4 - 6`, `6 - 8`, `8+`. Pot is built by Cerasela Mardare alone, so **`1`**. 📄
 - **README for AI judges:** "what the product is, the problem it solves, and how to try it as 'do X - see Y' steps a judge can follow. No marketing." 📄
 
 ## Plan check
@@ -153,7 +153,7 @@ Payload **shape only**. Every value comes from a human; never send placeholders.
   "projectName": "<human: 2-80 chars, unique>",
   "leadName": "<human: 2-80 chars>",
   "email": "<human: unique, ≤160>",
-  "size": "2 - 4",
+  "size": "1",
   "tracks": ["social", "realworld"],
   "nearAddress": "<human-created MAINNET account, lowercase>",
   "projectUrl": "<public GitHub URL>",
@@ -199,7 +199,7 @@ Payload **shape only**. Every value comes from a human; never send placeholders.
 - [ ] No agent pushes, publishes, deploys to mainnet, signs or posts without explicit human confirmation.
 - [ ] README: opens with what it is and the problem (2-3 lines, no marketing); "do X - see Y" steps with a non-UI twin for each; `/demo` server-renders; tests run without keys; names the track hints used; includes Why web-first, Limitations, and Costs/sustainability; 4-6 screenshots with alt text.
 - [ ] Demo video ≤ 2:20 (or length verified in the posting account). The X post says "built at NEAR HACKATHON" and attaches the video (or screenshots). A human posts it.
-- [ ] Payload: `tracks: ["social","realworld"]`, `size: "2 - 4"`, unique `projectName` and `email`, **mainnet** `nearAddress` checked by eye, `projectUrl` = public repo, `demoUrl` = X post, human-written `idea` (20-2000 chars), `consent: true` only after the notice is read verbatim, no `website` field, ≤ 12,000 bytes.
+- [ ] Payload: `tracks: ["social","realworld"]`, `size: "1"`, unique `projectName` and `email`, **mainnet** `nearAddress` checked by eye, `projectUrl` = public repo, `demoUrl` = X post, human-written `idea` (20-2000 chars), `consent: true` only after the notice is read verbatim, no `website` field, ≤ 12,000 bytes.
 - [ ] `requestId` generated once, stored outside git, reused on 400/503. Stop on 403/409.
 - [ ] The JSON is printed and a human says "yes" before the POST. Submit by Nov 13 18:00 UTC. Tell the human about the 201.
 

@@ -212,7 +212,7 @@ Same order, trimmed: problem 0:08; create + share 0:14; Leo joins 0:22; mainnet 
 | `projectName` | 2-80 chars, unique case-insensitive | human (H-06) | not "Pot" alone if that is taken |
 | `leadName` | 2-80 chars | human | — |
 | `email` | valid, ≤ 160 chars, unique; the Pot team email | human (H-14) | — |
-| `size` | exactly `"2 - 4"` (spaces included) | fixed | string compare |
+| `size` | exactly `"1"` (Cerasela Mardare, solo builder) | fixed | string compare |
 | `tracks` | `["social","realworld"]` | fixed | each once, lowercase |
 | `nearAddress` | **mainnet**, lowercase, 2-64, regex in hackathon-rules.md; created by a human in a wallet | human (H-14) | eyeball: ends in `.near` or is a 64-hex implicit id; the regex also passes `.testnet` |
 | `projectUrl` | the **public** repo URL, http(s), ≤ 300 | human | opens logged out |
