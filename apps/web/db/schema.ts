@@ -206,6 +206,8 @@ export const pot = pgTable(
     name: text("name").notNull(),
     emoji: text("emoji"),
     gradient: text("gradient"),
+    /** the group's "about $X each" aim in micro-USD (Create; members change it in Settings); off chain, members only */
+    goalEach: text("goal_each"),
     preset: text("preset", { enum: ["trip", "club", "team", "custom"] }).notNull(),
     creatorAccount: text("creator_account").notNull(),
     status: text("status", { enum: ["open", "closing", "closed"] })

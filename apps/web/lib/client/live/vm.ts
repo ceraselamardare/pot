@@ -258,7 +258,11 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
     feed.push({ key: `rules:${rulesChange.proposalId}`, kind: "rules_requested", at: rulesChange.createdAt, actor: rulesChange.proposer, k: rulesChange.k })
   feed.sort((a, c) => c.at - a.at)
 
-  const goalEach = ctx.goalEach
+  // the group's "about $X each": the server's (members see it on every device), else this browser's own, else
+  // Create's default (prefills Add money only; never shown as the group's aim)
+  const serverEach = b.feed?.pot.goalEach && /^[0-9]{1,15}$/.test(b.feed.pot.goalEach) ? BigInt(b.feed.pot.goalEach) : null
+  const goalEach = serverEach ?? ctx.goalEach
+  const goalEachChosen = serverEach !== null || ctx.goalEachChosen === true
   const spent = v.spentInstant + v.spentVote
   const inviteView = b.invite?.view ?? null
   return {
@@ -274,7 +278,7 @@ export function livePotVM(b: LiveBundle, ctx: LiveContext): PotVM {
     // never multiplied into a made-up total (it was each × max(3, members))
     goal: goalDetail ? goalDetail.amount : null,
     goalEach,
-    goalEachChosen: ctx.goalEachChosen === true && goalEach !== null,
+    goalEachChosen: goalEachChosen && goalEach !== null,
     rules: {
       instantCap: v.rules.instantCap,
       memberBudget: v.rules.memberBudget,

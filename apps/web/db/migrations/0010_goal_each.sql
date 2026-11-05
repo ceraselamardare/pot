@@ -1,0 +1,1 @@
+ALTER TABLE "pot" ADD COLUMN "goal_each" text;

@@ -113,6 +113,8 @@ export async function getFeed(
       name: potRow.name,
       ...(potRow.emoji ? { emoji: potRow.emoji } : {}),
       ...(potRow.gradient ? { gradient: potRow.gradient } : {}),
+      // off-chain group data stays members only (privacy audit 2026-11-02)
+      ...(member && potRow.goalEach ? { goalEach: potRow.goalEach } : {}),
     },
     items,
     profiles: {},

@@ -351,6 +351,15 @@ export async function setRules(slug: string, rules: RulesRec, extras?: ExtrasRec
   commit(w)
 }
 
+/** The group's "about $X each" (the mock's PUT …/goal-each): cents, or null to clear. */
+export async function setGoalEach(slug: string, cents: number | null): Promise<void> {
+  await sleep(LATENCY.relay)
+  const w = ensureWorld()
+  const p = w.pots[slug]
+  if (!p) return
+  commit({ ...w, pots: { ...w.pots, [slug]: { ...p, goalEach: cents } } })
+}
+
 // ---------------------------------------------------------------------------------------------------------
 // comments on requests (the mock's GET/POST/DELETE …/requests/[id]/comments). Fault hook: 'comment' (the next send
 // or delete fails like an unreachable server, so the composer's retry can be tested).

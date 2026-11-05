@@ -382,7 +382,7 @@ export interface RelayContext {
   /** add_money: where the money came from, as the person picked it (web: the money-in details) */
   source?: "demo" | "pot_dollars"
   /** create_pot only; stored off-chain on success (the emoji is a create_pot argument, on chain) */
-  meta?: { gradient?: GradientId }
+  meta?: { gradient?: GradientId; /** "about $X each" in micro-USD (off chain, members only) */ goalEach?: string }
 }
 
 export interface RelaySignedReq {
@@ -551,7 +551,7 @@ export interface FeedApiItem {
   payoutFailed?: boolean
 }
 export interface FeedRes extends Ok {
-  pot: { potId: DaoId; slug: string; name: string; emoji?: string; gradient?: GradientId }
+  pot: { potId: DaoId; slug: string; name: string; emoji?: string; gradient?: GradientId; /** members only: "about $X each" (micro-USD) */ goalEach?: string }
   /** newest first */
   items: FeedApiItem[]
   /** members only (rev4 M-7); others get {} */

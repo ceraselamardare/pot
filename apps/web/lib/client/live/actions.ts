@@ -257,7 +257,14 @@ export async function createPot(input: LiveCreateInput): Promise<string> {
           emoji: input.emoji,
           ...(input.extras ? { extras: input.extras } : {}),
         },
-        { context: { meta: { gradient: String(input.cover) } } },
+        {
+          context: {
+            meta: {
+              gradient: String(input.cover),
+              ...(input.goalEachCents !== null && input.goalEachCents >= 100 ? { goalEach: String(BigInt(input.goalEachCents) * 10_000n) } : {}),
+            },
+          },
+        },
       )
     } catch (e) {
       if (e instanceof ActionError && e.reason === "slug_taken") continue
@@ -426,4 +433,14 @@ export async function setRules(slug: string, rules: Rules, extras?: RuleExtras):
 /** Approve (or decline) the open rules request: a 300 Tgas vote on its FunctionCall kind. */
 export async function voteRules(slug: string, proposalId: number, v: "Approve" | "Reject"): Promise<LiveVoteResult> {
   return castVote(daoOf(slug), proposalId, v)
+}
+
+/** The group's "about $X each" (Settings, or this browser's pre-server value): saved on the Pot's server row. */
+export async function setGoalEach(slug: string, each: Micro | null): Promise<void> {
+  await ensureLiveSession()
+  await api("PUT", `/api/pots/${slug}/goal-each`, { goalEach: each === null ? null : each.toString() })
+  try {
+    localStorage.setItem(`pot.goal.${slug}`, each === null ? "off" : each.toString())
+  } catch {}
+  await invalidatePot(daoOf(slug))
 }

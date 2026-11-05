@@ -51,11 +51,20 @@ export const surveyReq = z.strictObject({
 
 export const logoutReq = z.strictObject({ pushEndpoint: z.string().max(1024).optional(), forgetDevice: z.boolean().optional() })
 
+/** "about $X each" in micro-USD: $1 to $100,000 (a Pot's aim per person, off chain) */
+export const goalEachMicro = z
+  .string()
+  .regex(/^[1-9][0-9]{0,11}$/)
+  .refine((v) => /^[0-9]+$/.test(v) && BigInt(v) >= 1_000_000n && BigInt(v) <= 100_000_000_000n) // zod 4 runs refines after a failed regex
+
+/** PUT /api/pots/[pot]/goal-each: set (micro-USD) or clear (null) the group's "about $X each" */
+export const goalEachPutReq = z.strictObject({ goalEach: goalEachMicro.nullable() })
+
 const relayContext = z.strictObject({
   depositIntentId: z.string().max(64).optional(),
   /** add_money: where the money came from (the money-in details; kept on the add's feed row) */
   source: z.enum(["demo", "pot_dollars"]).optional(),
-  meta: z.strictObject({ gradient: z.string().max(40).optional() }).optional(),
+  meta: z.strictObject({ gradient: z.string().max(40).optional(), goalEach: goalEachMicro.optional() }).optional(),
 })
 
 export const signedRelayReq = z.strictObject({

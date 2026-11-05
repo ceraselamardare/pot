@@ -6,14 +6,16 @@ import { addMoney, createPot, joinPot, potView, requestSpend, requestsOf, seedWo
 const NOW = Date.UTC(2026, 10, 3, 12)
 
 describe("D-61 story", () => {
-  it("Leo joins Porto Weekend from the invite and adds $150 → $450 of $450", () => {
+  it("Leo joins Porto Weekend from the invite and adds $150 → everyone has put in the $150 each", () => {
     let w = seedWorld(NOW)
     const j = joinPot(w, "porto-weekend", "leo", NOW)
     expect(j.result).toBe("joined")
     w = addMoney(j.world, "porto-weekend", "leo", 15_000, NOW + 1)
     const v = potView(w, "porto-weekend", "leo", NOW + 2)!
     expect(v.balance).toBe(dollars(450))
-    expect(v.totalIn).toBe(v.goal)
+    expect(v.goal).toBeNull() // "$150 each" is per person, never a made-up total
+    expect([v.goalEach, v.goalEachChosen]).toEqual([dollars(150), true])
+    expect(v.members.every((m) => m.contributed >= v.goalEach!)).toBe(true)
     expect(v.members.map((m) => [m.person.name, m.person.joinIndex])).toContainEqual(["Leo", 2])
     expect(joinPot(w, "porto-weekend", "leo", NOW).result).toBe("already_member")
   })

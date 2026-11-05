@@ -173,6 +173,15 @@ describe("names and covers", () => {
     expect(nameFromAccount("leo.users.potprev.testnet")).toBe("Leo")
     expect(nameFromAccount("u-z7wm7129.users.potprev.testnet")).toBeNull()
   })
+  it("the group's \"$X each\" comes from the server for every member, else this browser's own, else only a prefill", () => {
+    const fromServer = livePotVM(bundle({ feed: feed({ pot: { potId: D as never, slug: "trip-ab12", name: "Trip", goalEach: "50000000" } }) }), { me: ben, now: NOW, goalEach: usd(150) })
+    expect([fromServer.goalEach, fromServer.goalEachChosen]).toEqual([usd(50), true])
+    const localOnly = livePotVM(bundle(), { me: ben, now: NOW, goalEach: usd(40), goalEachChosen: true })
+    expect([localOnly.goalEach, localOnly.goalEachChosen]).toEqual([usd(40), true])
+    const neither = livePotVM(bundle(), { me: ben, now: NOW, goalEach: usd(150) })
+    expect([neither.goalEach, neither.goalEachChosen, neither.goal]).toEqual([usd(150), false, null])
+  })
+
   it("cover from the stored gradient, else stable from the slug", () => {
     expect(coverOf("x", "5")).toBe(5)
     expect(coverOf("lisbon-trip")).toBe(coverOf("lisbon-trip"))

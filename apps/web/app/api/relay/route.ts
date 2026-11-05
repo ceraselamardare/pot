@@ -52,9 +52,15 @@ export const POST = route("POST /api/relay", async (ctx) => {
   )
   // create_pot: the cover gradient lives off chain (D-61 Rev 1; data-model §8 Q1)
   const result = r.body.result as { type?: string; potId?: string } | null | undefined
+  // and so does the group's "about $X each" (members see it on every device; goal-each route to change it)
   const gradient = body.context?.meta?.gradient
-  if (gradient && result?.type === "create_pot" && result.potId)
-    await getDb().update(pot).set({ gradient }).where(eq(pot.daoId, result.potId)).catch(() => undefined)
+  const goalEach = body.context?.meta?.goalEach
+  if ((gradient || goalEach) && result?.type === "create_pot" && result.potId)
+    await getDb()
+      .update(pot)
+      .set({ ...(gradient ? { gradient } : {}), ...(goalEach ? { goalEach } : {}) })
+      .where(eq(pot.daoId, result.potId))
+      .catch(() => undefined)
   // add_money: where the money came from, kept on the add's feed row for the money-in details (best effort)
   const added = r.body as { relayId?: string; txHash?: string; result?: { type?: string; recorded?: boolean } | null }
   if (added.result?.type === "contribution" && added.result.recorded && added.relayId && added.txHash && (body.context?.source || body.context?.depositIntentId))

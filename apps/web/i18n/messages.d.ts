@@ -1072,6 +1072,16 @@ export interface Messages {
   "goal.soft.note": { date: string | number }
   "goal.spends_paused": undefined
   "goal.title": undefined
+  "goal_each.body": undefined
+  "goal_each.failed": undefined
+  "goal_each.invalid": undefined
+  "goal_each.remove": undefined
+  "goal_each.removed": undefined
+  "goal_each.save": undefined
+  "goal_each.saved": { each: string | number }
+  "goal_each.title": undefined
+  "goal_each.value": { each: string | number }
+  "goal_each.who": undefined
   "home.chat.at.airbnb": undefined
   "home.chat.at.boat": undefined
   "home.chat.at.invite": undefined

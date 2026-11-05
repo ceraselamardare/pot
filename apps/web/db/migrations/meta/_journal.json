@@ -71,6 +71,13 @@
       "when": 1793872144211,
       "tag": "0009_inflight_nonce",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793881911415,
+      "tag": "0010_goal_each",
+      "breakpoints": true
     }
   ]
 }

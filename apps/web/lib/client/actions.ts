@@ -207,6 +207,12 @@ export async function createPot(input: CreateInput): Promise<string> {
   return slug
 }
 
+/** The group's "about $X each" (Settings): every member sees it; null clears it. */
+export async function setGoalEach(slug: string, each: Micro | null): Promise<void> {
+  if (IS_LIVE) return live.setGoalEach(slug, each)
+  return store.setGoalEach(slug, each === null ? null : Number(each / 10_000n))
+}
+
 export async function rotateInvite(slug: string, invite: { pk: string; secret: string }): Promise<void> {
   return IS_LIVE ? live.rotateInvite(slug, invite) : store.rotateInvite(slug, invite)
 }

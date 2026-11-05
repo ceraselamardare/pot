@@ -7,15 +7,16 @@
 //     Pay-in links N active › (?sheet=payinlinks) and [Make a pay-in link] (Ask anyone, ?sheet=payin).
 //   PAYING PEOPLE OUTSIDE · the group decides: Send by link On/Off › (the rules sheet, its switch in view:
 //     ?sheet=rules&rule=links).
-//   PEOPLE: Invite link · until … › (Share) · Who can see what › (Privacy).
+//   PEOPLE: Everyone chips in · $X each › (GoalEachSheet) · Invite link · until … › (Share) · Who can see what › (Privacy).
 //   RECORD: See every spend › (/p/<slug>/record) · On the explorer ↗.
 //   CLOSE POT · the group decides: Close Pot and share out › (CloseSheet, its waiting and closed states).
 // Ink rows on surface, ink-muted values and chevrons; no marigold (the hero's Add money keeps it).
-import { ArrowUpRight, ChevronRight, Eye, Globe, Link2, ListChecks, LogOut, Send, ShieldCheck, UserPlus, type LucideIcon } from "lucide-react"
+import { ArrowUpRight, ChevronRight, Eye, Globe, Link2, ListChecks, LogOut, Send, ShieldCheck, Target, UserPlus, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { SwitchRow } from "@/components/gifts/Switch"
+import { GoalEachSheet } from "@/components/pot/GoalEachSheet"
 import { RulesSection } from "@/components/pot/Tabs"
 import { Button } from "@/components/ui/button"
 import { t } from "@/i18n/t"
@@ -23,6 +24,7 @@ import { announce } from "@/lib/client/browser"
 import { cn } from "@/lib/client/cn"
 import { daoOf } from "@/lib/client/config"
 import { explorerAccountUrl } from "@/lib/client/explorer"
+import { formatUsd } from "@/lib/client/money"
 import { setGiftsOn } from "@/lib/client/gifts/actions"
 import { useGiftLinks } from "@/lib/client/gifts/data"
 import { GIFTS_ON } from "@/lib/client/gifts/flag"
@@ -101,6 +103,7 @@ function Rows({ children, className }: { children: ReactNode; className?: string
 
 export function SettingsTab({ pot }: { pot: PotVM }) {
   const open = pot.status === "open"
+  const [eachOpen, setEachOpen] = useState(false)
   const closeSub =
     pot.status === "closed"
       ? t("close.summary.cta")
@@ -131,6 +134,23 @@ export function SettingsTab({ pot }: { pot: PotVM }) {
 
       <Section id="settings-people" title={t("settings.people.h")}>
         <Rows>
+          <li>
+            {/* the group's "about $X each": the hero's per-person rings, the same for every member */}
+            <Row
+              Icon={Target}
+              label={t("create.goal.inline")}
+              value={pot.goalEachChosen && pot.goalEach ? t("goal_each.value", { each: formatUsd(pot.goalEach, "whole") }) : t("settings.off")}
+              onClick={() => setEachOpen(true)}
+              data-settings-row="goal-each"
+            />
+            <GoalEachSheet
+              key={`${pot.goalEachChosen ? String(pot.goalEach) : "off"}`}
+              open={eachOpen}
+              onClose={() => setEachOpen(false)}
+              slug={pot.slug}
+              each={pot.goalEachChosen ? pot.goalEach : null}
+            />
+          </li>
           <li>
             <Row
               Icon={UserPlus}

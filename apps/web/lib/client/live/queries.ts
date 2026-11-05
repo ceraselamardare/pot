@@ -14,6 +14,7 @@ import { daoOf, sdkConfig } from "../config"
 import { queryClient } from "../query"
 import { useNow } from "../time"
 import type { PotCardVM, PotVM, RequestVM } from "../mock/types"
+import { api } from "./api"
 import { chain, signingChain } from "./chain"
 import { loadInvite } from "./invites"
 import { refreshQuery } from "./refresh"
@@ -158,6 +159,8 @@ export const proposalsQuery = (dao: string, ids: number[]) => ({
 })
 
 /** Off-chain "$X each" goal: the creator's choice on this device, else Create's suggested $150 (D-61). */
+const UPLOADED_EACH = new Set<string>()
+
 /** Did the creator set "$X each" on this device? Other devices only have Create's default. */
 export function goalEachChosenHere(slug: string): boolean {
   try {
@@ -229,6 +232,19 @@ export function useLivePot(slug: string, every: number | false = 3000): LivePotS
     if (!vm.me) return { state: "not_member", name: vm.name }
     return { state: "ready", data: vm }
   }, [session, now, view.isError, view.data, balance.data, pot, bundle.data, proposals.data, dao, me, myName, myAvatar, slug])
+  // The group's "about $X each" used to live only in the creator's browser: a member whose browser still has it and
+  // whose Pot has none on the server saves it once, so every member sees it from now on (goal-each route)
+  const feedEach = bundle.data?.feed?.pot.goalEach
+  const ready = state.state === "ready" && !!bundle.data?.feed
+  useEffect(() => {
+    if (!ready || feedEach || UPLOADED_EACH.has(slug) || !goalEachChosenHere(slug)) return
+    UPLOADED_EACH.add(slug)
+    const each = goalEachOf(slug)
+    if (each === null) return
+    void api("PUT", `/api/pots/${slug}/goal-each`, { goalEach: each.toString() })
+      .then(() => qc.invalidateQueries({ queryKey: qk.bundle(dao) }))
+      .catch(() => undefined)
+  }, [ready, feedEach, slug, dao, qc])
   // Once ready, a transient refetch never drops the screen back to its skeleton (that would unmount open
   // sheets mid-flow); the last ready view stays until fresh data arrives.
   const [last, setLast] = useState<{ slug: string; state: LivePotState } | null>(null)
