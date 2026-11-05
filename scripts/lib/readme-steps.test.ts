@@ -12,7 +12,7 @@ describe("check-readme-steps", () => {
     expect(checkReadmeSteps(readme, read)).toEqual([])
   })
   it("a new step with no test fails", () => {
-    expect(checkReadmeSteps(`${readme}\n<!-- J-9 -->\n`, read)).toContain("J-9: README step without a test mapping in scripts/check-readme-steps.ts")
+    expect(checkReadmeSteps(`${readme}\n<!-- J-99 -->\n`, read)).toContain("J-99: README step without a test mapping in scripts/check-readme-steps.ts")
   })
   it("an edited J-7 command that the CLI check doesn't run fails", () => {
     const edited = readme.replace("get_factory_info json-args '{}'", "get_factory_info json-args '{\"x\":1}'")

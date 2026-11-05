@@ -14,15 +14,19 @@ closes everyone gets back their share of what is left, split by what they put in
 - Pooled-money apps pay out to one owner, so the group has to trust that person with all of it.
 - Split-the-bill apps track debts but hold no money, so nobody can actually pay from the group.
 
-**Network:** everything below runs on NEAR **testnet** with test dollars ("USDC (test)", no value). Nothing is on
-mainnet yet. `<APP_URL>` is the web app's address; it is not deployed yet, so run it locally (see
-[Run it locally](#run-it-locally)) and use `http://localhost:3000` until a URL is filled in here.
+**Live:** https://usepot.xyz, on NEAR **testnet** with test dollars ("USDC (test)", no value). Nothing is on mainnet
+yet. The contracts are under `potprev.testnet`; the Pot Hub `pots.potprev.testnet` runs **v1.3.0**.
+
+**Where NEAR does the work:** each Pot is a Sputnik DAO that holds the money; our Pot Hub contract holds a 1-of-1
+"rulebot" seat in it and approves only what the Pot's rules allow; every action is a gasless NEP-366 meta
+transaction through our relayer; people sign in with a NEAR wallet or with Google through NEAR Auth (MPC). Full
+list with code paths: [NEAR features used](#near-features-used). Security model and audit: [SECURITY.md](SECURITY.md).
 
 ---
 
 ## See how it works in 4 minutes (no install, no login, nothing sent)
 
-`<APP_URL>/demo` is a two-minute guided simulation: Maya, Sam and Leo share the money for a Lisbon trip, in 14 steps
+`https://usepot.xyz/demo` is a two-minute guided simulation: Maya, Sam and Leo share the money for a Lisbon trip, in 14 steps
 over five parts. The phone is the real Pot app, with one short sentence per step. **Nothing is signed or sent.** Each
 part has an **Under the hood** button: what each tap signed, what our relayer sent, every receipt, and the Sputnik DAO
 proposal with its votes; every hash there starts with `sim-`, and each part links to a real equivalent on testnet. The
@@ -32,7 +36,7 @@ Every step has a link (`/demo#step-7` is the $84 approval); `/demo/4` opens part
 that part's Under the hood (`/demo/4#near`).
 
 <!-- J-1 -->
-**J-1. Open `<APP_URL>/demo` and tap "Show me how".**
+**J-1. Open `https://usepot.xyz/demo` and tap "Show me how".**
 Part 1, "Start a Pot": Maya keeps the suggested rules and taps "Create Pot", then gets one link to share. Under the hood: what
 her one tap signed (`create_pot` to `pots.potprev.testnet`, 300 Tgas, deposit 0), the relayer's transaction around it,
 and the receipts that create `lisbon-trip-7k2f.pots.potprev.testnet` as a Sputnik DAO with **no access keys** and two
@@ -69,7 +73,7 @@ ends with the recap: 11 signatures by people, 12 transactions and 0 NEAR paid by
 <!-- J-6 -->
 **J-6. Read it without a browser.** Every tour page is server-rendered with the whole story as an ordered list
 (`<li id="step-1">`…`<li id="step-14">`) and each part's Under the hood in a closed `<details>`, with every decoded card
-and the raw JSON: `curl -s <APP_URL>/demo/4 | grep -c "Approved by Pot rules"`. `<APP_URL>/demo/all` is the full
+and the raw JSON: `curl -s https://usepot.xyz/demo/4 | grep -c "Approved by Pot rules"`. `https://usepot.xyz/demo/all` is the full
 technical read on one page: every step and card, the recap and the glossary.
 
 <!-- J-7 -->
@@ -91,7 +95,9 @@ near account list-keys $HUB network-config testnet now
 What you see (checked on 2026-10-22; `scripts/readme-cli-check.sh` runs exactly these and asserts the values):
 - `get_policy`: a Sputnik DAO with two roles. `member` (Maya, Sam, Leo; majority, `threshold [1, 2]`) and `rulebot`
   (only `pots.potprev.testnet`, which may add and approve transfers and member additions, 1 of 1). `proposal_bond`
-  is `"0"` and `quorum` is `"1"`.
+  is `"0"` and `quorum` is `"1"`. This Pot was created by hub 1.0.0. A Pot created since hub 1.3.0 shows policy v3:
+  the `member` role has only `*:VoteApprove` and `*:VoteReject` (members vote; only the hub files proposals), and
+  `get_pot` shows `policy_version: 3`.
 - `get_pot`: "Lisbon Trip", `status: "open"`, `member_count: 3`, `total_contributed: "450000000"`, rules
   `instant_cap` $100 and `member_budget` $200.
 - `ft_balance_of`: `"450000000"` ($450).
@@ -109,6 +115,16 @@ On a `-429` rate limit, add a FastNEAR network config or retry later; the defaul
 <!-- J-8 -->
 **J-8. Run the tests (no keys, no network):** `pnpm i && pnpm test` and `cd contracts && cargo test`
 (arm64 macOS or Linux). See [Tests](#tests).
+
+<!-- J-9 -->
+**J-9. Try the real thing on testnet (needs a NEAR testnet wallet, e.g. Meteor or Intear; 0 NEAR is fine).**
+Open https://usepot.xyz → "Start a Pot" → "I have a NEAR wallet" and sign the sign-in message (NEP-413; no
+transaction). Name the Pot and tap "Create Pot": the sheet says "Free: we cover the setup.", and a new account
+`<slug>.pots.potprev.testnet` exists (Settings → "On the explorer"). "Add money" → "Demo dollars (test money)" shows
+"+$X on the way", then the balance. "Spend" $20 → "This will be approved instantly" → "Approved by Pot rules" and
+"$20 sent to you": the hub filed and approved the DAO transfer in one call chain, and you paid 0 NEAR. "Invite
+friends" gives a QR and a link; a second wallet that opens it sees "<you> invited you to <Pot>" and joins.
+The same flows run automatically in `apps/web/e2e/testnet/flows.testnet.ts`.
 
 **What a judge can't do from here:** sign in with Google (NEAR Auth's shared testnet client only accepts
 `http://localhost:3000`), receive push notifications (needs an installed phone app), or see real money move (testnet).
@@ -168,12 +184,38 @@ Code map (pnpm workspace):
 
 ## NEAR features used
 
-NEP-366 meta transactions with our own relayer · NEP-448 zero-balance accounts (users hold 0 NEAR) · global
-contracts (each DAO uses the Sputnik code by hash, `UseGlobalContract` in the creation batch) · sub-account factory
-(`<slug>.pots.<root>`) · cross-contract calls with callbacks · NEP-141/NEP-145 token with `ft_transfer_call` /
-`ft_on_transfer` · NEP-297 events · `env::ed25519_verify` for invite signatures · NEAR Auth (Auth0 login + MPC key
-derivation; wired, testable on `localhost:3000`) · NEP-413 sign-in for wallets through NEAR Connect · locked
-accounts (no access keys) · FastNEAR RPC with a dRPC failover.
+| NEAR feature | How Pot uses it | Where | Check it |
+|---|---|---|---|
+| **Sputnik DAO v2** | Every Pot is its own DAO that holds the money. Policy: a `member` role (majority) and a `rulebot` role held only by the Pot Hub (1 of 1). Since hub 1.3.0 (policy v3) members can only vote; every proposal is filed by the hub, so every money move goes through the Pot's rules and shows in the app | `contracts/pot-hub/src/policy.rs` | J-7 `get_policy` |
+| **Global contracts** (NEP-591) | Each DAO is created with `UseGlobalContract` by the hash of the official Sputnik code (0.0121 NEAR per Pot, against about 5.4 NEAR through the old Sputnik factory) | `create_pot` in `contracts/pot-hub/src/lib.rs` | J-7 `view-account-summary` |
+| **Named sub-accounts + locked accounts** | A Pot is `<slug>.pots.potprev.testnet`, a person `u-<8>.users.potprev.testnet`. Pots and the token have **no access keys**: only their code can move money | `lib.rs` (create), `server/features/wallet`, `server/session` | J-7 `list-keys` |
+| **Cross-contract calls and callbacks** | The hub files and approves DAO proposals, forwards money, reads DAO state, and records anything only in `#[private]` callbacks after the call succeeded | `lib.rs`, `wave4.rs`, `security.rs` | `cargo test` (183 tests) |
+| **NEP-141 / NEP-145 token** | Dollars are a 6-decimal USDC-style token. Money comes in with `ft_transfer_call` → the hub's `ft_on_transfer` (only from that token) and is forwarded to the Pot | `contracts/test-usdc`, `ft_on_transfer` in `lib.rs` | J-7 `ft_balance_of` |
+| **NEP-366 meta transactions** | People hold 0 NEAR. They sign delegate actions in the browser; our relayer checks a per-method allowlist (receiver, method, exact args, deposit, gas), per-person and per-IP quotas, then pays gas and deposits | `apps/web/server/relay/` | relayer tests: `pnpm test` |
+| **NEP-448 zero-balance accounts** | New accounts cost ≈ 0.0085 NEAR in total, paid by the relayer | `server/features/wallet`, `registration.ts` | [Costs](#costs-and-sustainability) |
+| **NEAR Auth (MPC)** | "Continue with Google": Auth0 login, the account's key derived by NEAR's MPC network, then a device key so each action doesn't need a popup | `apps/web/lib/signing/near-auth/`, `server/session/` | works on `localhost:3000` only (see Limitations) |
+| **NEAR Connect + NEP-413** | "I have a NEAR wallet": wallet picker, sign-in by a signed message bound to this site's host (no transaction) | `apps/web/lib/signing/near-connect/` | J-9 |
+| **NEAR Intents (1Click API)** | "Add from another app or exchange": 15 networks and any coin, with **real live quotes** from 1Click (`FLEX_INPUT`); on testnet the transfer itself is simulated and labeled "Test" | `apps/web/server/features/oneclick/` | Add money → "Another app or exchange" |
+| **NEAR AI Cloud** | "Scan receipt": a model running in a TEE reads the photo; the reply's signature is checked against our exact request and linked to NEAR's Verification Center. A SHA-256 fingerprint of the saved receipt goes on chain in the spend's `request_ref` | `apps/web/server/features/receipts/` | Spend → "Scan receipt" |
+| **NEP-297 events** | Every hub action emits a `pot` event the app reads for its feed | `contracts/pot-hub/src/events.rs` | any tx on nearblocks |
+| **`env::ed25519_verify`** | Invite links and pay-by-link claims are ed25519 signatures checked on chain (domain-separated; a claim is bound to the account that receives it) | `lib.rs` (join), `wave4.rs` (claim_link) | `cargo test` |
+| **FastNEAR RPC** | All reads, with a dRPC failover | `apps/web/lib/client/config.ts` | — |
+
+### What the Pot Hub enforces (v1.3.0)
+
+- **Three ways a spend gets approved:** instantly within the Pot's limits (per spend and per person); with **one
+  OK** from another member up to the one-OK limit; otherwise by a majority vote. Instant and one-OK spends need the
+  requester to have put in at least $1; the OK must come from someone else who joined before the request and isn't
+  the one being paid.
+- **Earned trust:** a member's instant limit grows (1×, 2×, 3×) after settled spends and drops after a declined one.
+- **Pay by link:** the payee can be "whoever holds this link": the money waits in the hub until claimed, even by a
+  brand-new 0-NEAR account.
+- **Goal with a date:** optional; "all or nothing" locks spending until it's reached and refunds everyone
+  automatically if the date passes (`refund_unfunded`).
+- **Money from outside:** anyone can pay into a Pot that accepts it (pay-in links and a public page); it never makes
+  them a member.
+- **Close:** one proposal pays everyone their share pro rata; the Pot is "Closed" only once the money has left;
+  anything sent later can be shared out with `propose_sweep`.
 
 ## Track hints used
 
@@ -183,7 +225,7 @@ accounts (no access keys) · FastNEAR RPC with a dRPC failover.
 | TREZU (social) | not used on testnet: Trezu is mainnet-only. The app's Advanced screen shows the "On-chain rules" panel from `get_policy`, plus explorer links |
 | NAMED ACCOUNTS (social) | readable ids: `<slug>.pots.<root>` for Pots, `u-<8>.users.<root>` for people |
 | STABLECOINS (realworld) | every amount is in dollars, held as a 6-decimal USDC-style token |
-| NEAR INTENTS (realworld) | "Add money from another app or exchange": a 1Click `FLEX_INPUT` deposit flow; **simulated on testnet** (labeled "do not send"), with real 1Click dry quotes |
+| NEAR INTENTS (realworld) | "Add money from another app or exchange": 15 networks and any coin through the 1Click API (`FLEX_INPUT`), with real live quotes; the transfer is **simulated on testnet** (labeled "Test"); each deposit has a details sheet (coin, rate, timeline) |
 | META TRANSACTIONS (realworld) | every user action is a relayed NEP-366 delegate |
 
 For `realworld`: the Club and Team presets (club dues, a team's offsite budget) use the same contracts with
@@ -211,9 +253,9 @@ daily budgets. Two ways to pay for it without new contracts: a small app fee on 
 
 ## Limitations
 
-- **Testnet only.** Test dollars, test NEAR, a preview deployment under `potprev.testnet`. The hub still has its key
-  until the planned lock (J-7); until then, whoever holds it could approve transfers through the rulebot seat or push
-  DAO code. The token and every Pot are already keyless.
+- **Testnet only.** Test dollars, test NEAR, contracts under `potprev.testnet`, the app at https://usepot.xyz. The hub
+  still has its key until the planned lock (J-7); until then, whoever holds it could approve transfers through the
+  rulebot seat or push DAO code. The token and every Pot are already keyless. See [SECURITY.md](SECURITY.md).
 - **NEAR Auth origin.** The shared testnet NEAR Auth client only accepts `http://localhost:3000`, so Google sign-in
   works only on a local run. A hosted build offers "I have a NEAR wallet" (NEAR Connect).
 - **Trezu is mainnet-only**, so testnet Pots can't be opened there. On mainnet, Trezu's approval count would be wrong
@@ -237,6 +279,15 @@ daily budgets. Two ways to pay for it without new contracts: a small app fee on 
 - Members can't leave before close. At most 40 members. Requests expire after 7 days.
 
 ---
+
+## Built with
+
+Contracts: Rust 1.93, `near-sdk` 5.29.1, `cargo-near`, `near-workspaces` 0.23 (sandbox tests), the official Sputnik
+DAO v2 code (testnet global contract). App: Next.js 16.4.5, React 19.3, TypeScript 5.9, Tailwind CSS 4.3, Base UI +
+shadcn, TanStack Query, Zod 4, Drizzle ORM on Neon Postgres, Vercel (functions, cron, Workflow). NEAR libraries:
+`near-api-js` 7.3, `@hot-labs/near-connect` 0.11.4, `@auth0/auth0-spa-js` (NEAR Auth), NEAR Intents 1Click API,
+NEAR AI Cloud. Also `web-push`, `qrcode.react`, `lucide-react`, Playwright + axe, Vitest, Remotion (the video).
+Much of the code was written with AI assistance (Claude Code), reviewed and tested by the team.
 
 ## Run it locally
 

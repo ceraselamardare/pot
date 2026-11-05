@@ -15,6 +15,8 @@ export const STEP_TESTS: Record<string, { file: string; pattern: RegExp } | { cl
   "J-6": { file: "apps/web/e2e/mock/demo-explainer-nojs.spec.ts", pattern: /test\("J-6\b/ },
   "J-7": { cli: true },
   "J-8": { ci: true },
+  // the live app on testnet, signed with throwaway wallets (scripts/with-testnet-lock.sh; E-a create, E-c instant spend)
+  "J-9": { file: "apps/web/e2e/testnet/flows.testnet.ts", pattern: /test\("E-c\b/ },
 }
 
 export function readmeMarkers(readme: string): string[] {
