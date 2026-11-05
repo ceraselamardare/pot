@@ -1,5 +1,5 @@
 // The group's "about $X each" (2026-11-05): saved with the Pot, so every member sees the same per-person rings; any
-// member changes or removes it in Settings → People → Everyone chips in.
+// member changes or removes it in Settings → People → Suggested amount.
 import { expect, test } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet } from "../fixtures/pot"
 
@@ -9,13 +9,13 @@ test("a member changes the amount each in Settings; another member sees it; remo
   await asPerson(page, "maya")
   await page.goto("/p/lisbon-trip")
   const strip = page.locator("[data-hero] [data-goal-each]")
-  await expect(strip).toContainText("Aiming for $150 each")
+  await expect(strip).toContainText("Suggested amount: $150 each")
 
   await page.goto("/p/lisbon-trip?tab=settings")
   const row = page.locator("[data-settings-row='goal-each']")
   await expect(row).toContainText("$150 each")
   await row.click()
-  const sheet = await openedSheet(page, "Everyone chips in")
+  const sheet = await openedSheet(page, "Suggested amount each")
   await brandChecks(page, { marigold: "none" })
   await axe(page)
   const input = sheet.locator("[data-goal-each-input]")
@@ -32,12 +32,12 @@ test("a member changes the amount each in Settings; another member sees it; remo
   // another member sees the same aim
   await becomePerson(page, "sam")
   await page.goto("/p/lisbon-trip")
-  await expect(strip).toContainText("Aiming for $80 each")
+  await expect(strip).toContainText("Suggested amount: $80 each")
 
   // removing it: no rings for anyone
   await page.goto("/p/lisbon-trip?tab=settings")
   await row.click()
-  const again = await openedSheet(page, "Everyone chips in")
+  const again = await openedSheet(page, "Suggested amount each")
   await again.locator("[data-goal-each-remove]").click()
   await expect(row).toContainText("Off")
   await page.goto("/p/lisbon-trip")

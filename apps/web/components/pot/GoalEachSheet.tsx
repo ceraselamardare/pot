@@ -1,5 +1,5 @@
 "use client"
-// Settings → People → "Everyone chips in": the group's "about $X each" (Create's optional aim). Saved with the Pot on
+// Settings → People → "Suggested amount": the group's "about $X each" (Create's optional aim). Saved with the Pot on
 // our server, so every member sees the same rings in the hero (components/pot/EachStrip); any member can change or
 // remove it. Off chain and members only; no vote (it's an aim, not a rule: nobody is charged).
 import { useId, useState } from "react"

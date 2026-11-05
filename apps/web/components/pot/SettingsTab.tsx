@@ -7,7 +7,7 @@
 //     Pay-in links N active › (?sheet=payinlinks) and [Make a pay-in link] (Ask anyone, ?sheet=payin).
 //   PAYING PEOPLE OUTSIDE · the group decides: Send by link On/Off › (the rules sheet, its switch in view:
 //     ?sheet=rules&rule=links).
-//   PEOPLE: Everyone chips in · $X each › (GoalEachSheet) · Invite link · until … › (Share) · Who can see what › (Privacy).
+//   PEOPLE: Suggested amount · $X each › (GoalEachSheet) · Invite link · until … › (Share) · Who can see what › (Privacy).
 //   RECORD: See every spend › (/p/<slug>/record) · On the explorer ↗.
 //   CLOSE POT · the group decides: Close Pot and share out › (CloseSheet, its waiting and closed states).
 // Ink rows on surface, ink-muted values and chevrons; no marigold (the hero's Add money keeps it).

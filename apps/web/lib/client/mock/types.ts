@@ -573,7 +573,7 @@ export interface PotVM {
   goal: Micro | null
   /** "$X each": the creator's choice, or Create's default (prefills Add money) */
   goalEach: Micro | null
-  /** `goalEach` is the creator's real choice, so the hero may say "Aiming for $X each" (never Create's default) */
+  /** `goalEach` is the creator's real choice, so the hero may say "Suggested amount: $X each" (never Create's default) */
   goalEachChosen?: boolean
   rules: Rules
   k: number

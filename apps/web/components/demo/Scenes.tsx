@@ -251,7 +251,7 @@ export function Scene(props: SceneProps) {
 
 /**
  * Create, as the app has it now (components/sheets/CreatePotSheet.tsx, the lean one-screen "Start a Pot" of
- * 2026-11-02), same markup and classes: the cover preview with its pencil badge, the name, "Everyone chips in $150
+ * 2026-11-02), same markup and classes: the cover preview with its pencil badge, the name, "Suggested amount $150
  * each" with its switch, the one rules line with [Change], and [Create Pot]. Maya keeps the suggested rules, so
  * [Change] stays shut. Right after the tap the sheet shows its progress step ("Creating Lisbon Trip…").
  */
@@ -312,7 +312,7 @@ function CreatePot({ story, tapped, active, onPrimary }: SceneProps) {
           <p className="flex h-13 items-center rounded-sm border border-line-strong bg-surface-sunken px-3 text-body text-ink">{story.potName}</p>
         </div>
         <div className="flex flex-col divide-y divide-line rounded-md border border-line-strong">
-          {/* "Everyone chips in $[150] each" with its switch (on), as the sheet's EachRow. The phone's screen is a
+          {/* "Suggested amount $[150] each" with its switch (on), as the sheet's EachRow. The phone's screen is a
               little narrower than a 390 px phone, so the field is a touch narrower and the switch (only a picture
               here) has no 44 px hit box: the row stays on one line, as it does in the app at 390 */}
           <div className="flex items-center gap-2 px-3 py-1.5" data-phone-each>

@@ -1,7 +1,7 @@
 "use client"
 // Create Pot (ux-spec §4.12, design-direction 01 §3, frontend-architecture §5.10): a Pot in under a minute.
 // Lean create (notes/gifts-plan.md "Lean create flow", 2026-11-02): ONE screen. The cover preview (tap it for a
-// small emoji + colour picker), the name, "Everyone chips in $150 each" inline (amount editable, switch off), one
+// small emoji + colour picker), the name, "Suggested amount $150 each" inline (amount editable, switch off), one
 // rules summary line ("Small spends up to $100 go through on their own; bigger ones go to the group · [Change]")
 // and [Create Pot], the one marigold. Default path: Start a Pot → name → Create Pot, no scrolling at 390×844.
 // [Change] opens the full "Pot rules" step unchanged: every editable rule is a sentence with an inline amount
@@ -327,7 +327,7 @@ function CoverPicker({ emoji, cover, dispatch, onDone }: { emoji: string; cover:
   )
 }
 
-/** "Everyone chips in $[150] each" with its switch (on by default; off = no per-person amount). */
+/** "Suggested amount $[150] each" with its switch (on by default; off = no per-person amount). */
 function EachRow({ s, error, dispatch, touch }: { s: CreateState; error: boolean; dispatch: Dispatch<CreateEvent>; touch: () => void }) {
   return (
     <div className="flex flex-col px-3 py-1.5" data-create-each>
@@ -680,7 +680,7 @@ function RulesStep({
 
 // ------------------------------------------------------------------------------------------------- hub 1.1.0
 
-/** A labelled switch (the same look as "Everyone chips in"): ink when on, never marigold. */
+/** A labelled switch (the same look as "Suggested amount"): ink when on, never marigold. */
 function Toggle({
   id,
   label,
