@@ -1,5 +1,6 @@
-// README drift check (test-plan §5.3): every "do X → see Y" step marker <!-- J-n --> in README.md has the test that
-// runs it, and the J-7 command block appears verbatim in scripts/readme-cli-check.sh (E-11).
+// README drift check (test-plan §5.3): every "do X → see Y" step marker <!-- J-n --> in the judging guide
+// (docs/judging-guide.md, linked from README.md) has the test that runs it, and the J-7 command block appears verbatim in
+// scripts/readme-cli-check.sh (E-11). The README itself must link to the guide.
 //   node scripts/check-readme-steps.ts
 import { readFileSync } from "node:fs"
 
@@ -31,17 +32,20 @@ export function j7Commands(readme: string): string[] {
   return (block?.[1] ?? "").split("\n").filter((l) => l.startsWith("near "))
 }
 
-export function checkReadmeSteps(readme: string, read: (path: string) => string): string[] {
+export const GUIDE = "docs/judging-guide.md"
+
+export function checkReadmeSteps(readme: string, read: (path: string) => string, guide: string = read(GUIDE)): string[] {
   const problems: string[] = []
-  const markers = readmeMarkers(readme)
-  for (const id of Object.keys(STEP_TESTS)) if (!markers.includes(id)) problems.push(`${id}: no <!-- ${id} --> marker in README.md`)
+  if (!readme.includes(`(${GUIDE})`)) problems.push(`README.md doesn't link to ${GUIDE}`)
+  const markers = readmeMarkers(guide)
+  for (const id of Object.keys(STEP_TESTS)) if (!markers.includes(id)) problems.push(`${id}: no <!-- ${id} --> marker in ${GUIDE}`)
   for (const id of markers) {
     const t = STEP_TESTS[id]
-    if (!t) problems.push(`${id}: README step without a test mapping in scripts/check-readme-steps.ts`)
+    if (!t) problems.push(`${id}: guide step without a test mapping in scripts/check-readme-steps.ts`)
     else if ("file" in t && !t.pattern.test(read(t.file))) problems.push(`${id}: ${t.file} has no test matching ${t.pattern}`)
   }
   const cli = read("scripts/readme-cli-check.sh")
-  const cmds = j7Commands(readme)
+  const cmds = j7Commands(guide)
   if (!cmds.length) problems.push("J-7: no near command block")
   for (const c of cmds) if (!cli.includes(c)) problems.push(`J-7: not run verbatim by scripts/readme-cli-check.sh: ${c}`)
   return problems
@@ -53,5 +57,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const problems = checkReadmeSteps(read("README.md"), read)
   for (const p of problems) console.error(`README drift: ${p}`)
   if (problems.length) process.exit(1)
-  console.log(`README steps ok: ${readmeMarkers(read("README.md")).join(" ")}; J-7 ${j7Commands(read("README.md")).length} commands`)
+  console.log(`README steps ok: ${readmeMarkers(read(GUIDE)).join(" ")} in ${GUIDE}; J-7 ${j7Commands(read(GUIDE)).length} commands`)
 }

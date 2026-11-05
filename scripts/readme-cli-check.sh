@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# E-11 (test-plan §5.3): the README's J-7 read-only commands, run as written, with the values the README promises.
+# E-11 (test-plan §5.3): the judging guide's J-7 read-only commands (docs/judging-guide.md, linked from the README),
+# run as written, with the values the guide promises.
 # No keys, no signing, read-only RPC (near-cli-rs's default testnet config is FastNEAR's archival RPC).
 #   scripts/readme-cli-check.sh                         # against the preview root potprev.testnet
 #   ROOT=<root>.testnet scripts/readme-cli-check.sh     # another deployment
 #   EXPECT_HUB_LOCKED=1 scripts/readme-cli-check.sh     # after the hub's key is deleted (D-13 lock)
-# Every `near …` line of the README's J-7 block must appear verbatim below (scripts/check-readme-steps.mjs).
+# Every `near …` line of the guide's J-7 block must appear verbatim below (scripts/check-readme-steps.ts).
 set -uo pipefail
 near() { npx -y near-cli-rs@0.30.1 "$@"; }
 ROOT=${ROOT:-potprev.testnet}; HUB=pots.$ROOT; POT=lisbon-trip.$HUB
