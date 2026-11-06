@@ -78,7 +78,7 @@ test("scan a dollar receipt on step 1: filled in, announced, on to step 2 with a
   await expect(summary.locator("[data-receipt-items] li")).toHaveCount(8)
   await summary.getByRole("button", { name: "Read privately: what this means" }).click()
   await expect(summary.getByText(/goes to a sealed computer that reads it/)).toBeVisible()
-  await expect(summary.getByText("This test version shows a sample reading. Your photo stays on your device.")).toBeVisible()
+  await expect(summary.getByText("This is a sample reading, not one of your photo. Your photo stays on your device.")).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
 
@@ -109,7 +109,7 @@ test("a euro receipt converts at the day's rate: '€42.50 ≈ $46.12 · rate 1.
   await expect(sheet.getByRole("button", { name: "Get $46.12 back" })).toBeEnabled()
   if (info.project.name !== "desktop") await page.screenshot({ path: shotName("receipt-fx", info.project.name) })
   await details(summary)
-  await expect(summary.getByText("Sample rate: this test version doesn't look up today's rate.")).toBeVisible()
+  await expect(summary.getByText("Sample rate, not today's.")).toBeVisible()
   await expect(summary.getByText(/Your bank's rate may differ a little/)).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)

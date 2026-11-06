@@ -422,7 +422,7 @@ function Refund({ person }: { person: (typeof CAST)[number] }) {
 
 // 3 ------------------------------------------------------------------------------------------------------
 
-const FREE_POINTS: MessageKey[] = ["onboarding.free.point.free", "onboarding.free.point.test", "onboarding.free.point.setup"]
+const FREE_POINTS: MessageKey[] = ["onboarding.free.point.free", "onboarding.free.point.setup"]
 
 function FreeStep() {
   const id = useId()

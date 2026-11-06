@@ -65,7 +65,7 @@ describe("DepositStepper", () => {
     const onClose = vi.fn()
     renderStepper(view({ status: "PROCESSING", step: 3, processingSince: new Date().toISOString() }), { onClose })
     expect(document.querySelector("[data-status-word]")!.textContent).toBe("On its way")
-    expect(screen.getByText("Testnet demo: simulated transfer, no real money")).toBeTruthy()
+    expect(screen.getByText("Test only · Simulated transfer: do not send real coins")).toBeTruthy()
     const current = document.querySelector('[aria-current="step"]')!
     expect(current.textContent).toContain("Converting to Pot dollars")
     expect(current.textContent).toContain("Usually under a minute.")

@@ -1,7 +1,7 @@
 "use client"
 // You → "Your Pot dollars": the person's own money outside every Pot (refunds after a close, spends paid to them,
-// unused demo dollars), read from the token's ft_balance_of(me) on the chain heartbeat (10 s while visible).
-// No cash-out button: the MVP has none, and the card says so.
+// unused test dollars), read from the token's ft_balance_of(me) on the chain heartbeat (10 s while visible).
+// No cash-out button: the MVP has none, and the card doesn't announce one.
 import { Bone, Delayed } from "@/components/feedback/States"
 import { MoneyText } from "@/components/money/MoneyText"
 import { t } from "@/i18n/t"
@@ -24,7 +24,6 @@ export function YourBalance({ account }: { account: string }) {
         )}
       </p>
       <p className="mt-1 text-body-sm text-ink-muted">{t("you.balance.helper")}</p>
-      <p className="text-body-sm text-ink-muted">{t("you.balance.no_cashout")}</p>
     </section>
   )
 }

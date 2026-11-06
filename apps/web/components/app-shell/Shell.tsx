@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation"
 import { useEffect, useRef, type ReactNode } from "react"
 import { toast } from "sonner"
 import { Lockup } from "@/components/brand/Lockup"
+import { NetworkBadge } from "@/components/brand/NetworkBadge"
 import { Glyph } from "@/components/brand/Glyph"
 import { buttonVariants } from "@/components/ui/button"
 import { t } from "@/i18n/t"
@@ -110,9 +111,13 @@ export function TopBar() {
   return (
     <header className="hidden border-b border-line bg-ground lg:block">
       <div className="mx-auto flex h-16 max-w-app items-center justify-between px-6">
-        <Link href="/pots" aria-label={t("app.name")} className="rounded-sm">
-          <Lockup className="h-8 w-auto" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/pots" aria-label={t("app.name")} className="rounded-sm">
+            <Lockup className="h-8 w-auto" />
+          </Link>
+          {/* the Testnet badge (testnet builds only); phones have it in the layout's row above each screen */}
+          <NetworkBadge place="app-top" />
+        </div>
         {me && (
           <nav aria-label={t("a11y.tabs.nav")}>
             <ul className="flex items-center gap-1">

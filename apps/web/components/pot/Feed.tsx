@@ -204,7 +204,7 @@ function FeedItem({ item, now, sentKeys, potName }: { item: FeedItemVM; now: num
   }
 }
 
-/** The small source mark on a money-in row's meta line ("Demo dollars", "ETH on Base"), icon + words. */
+/** The small source mark on a money-in row's meta line ("Test dollars", "ETH on Base"), icon + words. */
 export function SourceMark({ source }: { source: AddSourceVM | undefined }) {
   const w = rowSourceWords(source, networkLabel)
   if (!w || !source) return null

@@ -67,7 +67,7 @@ test("simulate a deposit → it arrives on chain → one tap adds it to the Pot 
     await sheet.getByRole("radio", { name: /^USDC/ }).click()
     await sheet.getByRole("button", { name: "Get address" }).click()
     await expect(sheet.locator("[data-qr]")).toHaveAttribute("data-qr-text", "POT TESTNET DEMO - DO NOT SEND FUNDS", { timeout: 20_000 })
-    await expect(sheet.getByText("Testnet demo: simulated transfer, no real money")).toBeVisible()
+    await expect(sheet.getByText("Test only · Simulated transfer: do not send real coins")).toBeVisible()
     const depositId = new URL(page.url()).searchParams.get("d")!
     expect(depositId).toMatch(/^dp_/)
 

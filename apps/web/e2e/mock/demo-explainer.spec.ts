@@ -80,7 +80,10 @@ async function forward(page: Page, how: "next" | "phone" = "next") {
 async function jargonFree(page: Page, label: string) {
   const text = await stage(page).evaluate((el) => {
     const names = [...el.querySelectorAll("[aria-label]")].map((e) => e.getAttribute("aria-label"))
-    return [(el as HTMLElement).innerText, ...names].join("\n")
+    // the Testnet badge is the one exempt word (banned.mjs ALLOW_KEYS: network.badge*): it names the network on purpose
+    const badge = el.querySelector<HTMLElement>("[data-network-badge]")
+    const text = (el as HTMLElement).innerText.replace(badge?.innerText ?? "\u0000", "")
+    return [text, ...names].join("\n")
   })
   expect(findBanned(text), `${label}: a banned word on the main path`).toBeNull()
 }
@@ -549,10 +552,12 @@ test("the burst never replays: not on a deep link, not after Back + Next, not un
 
 test("Back, Skip and the keyboard; focus stays where the visitor is", async ({ page }) => {
   await open(page, "/demo", TOUR_COVER)
-  // Tab order: skip link → home → [Skip to the end] → [Show me how], with the brand's 2 px ring
+  // Tab order: skip link → home → the Testnet badge → [Skip to the end] → [Show me how], with the brand's 2 px ring
   await page.keyboard.press("Tab")
   await page.keyboard.press("Tab")
   await expect(page.getByRole("link", { name: "Pot, home" })).toBeFocused()
+  await page.keyboard.press("Tab")
+  await expect(page.locator("button[data-network-badge='demo']")).toBeFocused()
   await page.keyboard.press("Tab")
   await expect(page.locator("[data-tour-skip]")).toBeFocused()
   await page.keyboard.press("Tab")

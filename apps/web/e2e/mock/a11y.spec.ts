@@ -179,7 +179,7 @@ test.describe("keyboard only (desktop)", () => {
     await expect(add.getByRole("heading", { name: "How do you want to add it?" })).toBeFocused()
     await expect(add.locator("[data-step-live]")).toHaveText("How do you want to add it?")
     await expect(page).toHaveURL(/step=source/)
-    const demo = add.getByRole("radio", { name: /^Demo dollars/ })
+    const demo = add.getByRole("radio", { name: /^Free test dollars/ })
     for (let i = 0; i < 6 && !(await demo.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab")
     await expect(demo).toBeFocused()
     await expect(demo).toHaveAttribute("aria-checked", "true")

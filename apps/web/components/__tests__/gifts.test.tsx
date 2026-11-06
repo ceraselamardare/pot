@@ -6,15 +6,21 @@
 // "Money from outside" are in payin.test.tsx.
 import { act, cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { QueryClientProvider } from "@tanstack/react-query"
+import type { ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { DepositDetailsSheet } from "@/components/deposits/DepositDetailsSheet"
 import { GiftRow } from "@/components/gifts/GiftRow"
 import { GiftLinkFlow, GiftPageFlow, blockedOf } from "@/components/gifts/GiveFlow"
 import { findBanned } from "@/i18n/banned.mjs"
+import { queryClient } from "@/lib/client/query"
 import { BIRTHDAY_LINKS } from "@/lib/client/mock/gifts"
 import * as store from "@/lib/client/mock/store"
 import type { GiftVM, World } from "@/lib/client/mock/types"
 import * as W from "@/lib/client/mock/world"
+
+/** GiveFlow reads the any-coin mode (useXcChains) to offer "Another app or exchange" only where it works. */
+const withQuery = { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient()}>{children}</QueryClientProvider> }
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ push: () => {} }) }))
 
@@ -76,7 +82,7 @@ describe("the members' side", () => {
 describe("the giver's page", () => {
   it("a gift link: the Pot, its people count, the group's note; presets; the note; Send → Thank you (the gift lands with its note)", async () => {
     const user = userEvent.setup()
-    render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />)
+    render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />, withQuery)
     expect(await screen.findByRole("heading", { level: 1, name: "Send Leo's Birthday a gift" })).toBeTruthy()
     expect(screen.getByText("2 people are in this Pot")).toBeTruthy()
     expect(screen.getByText("Leo turns 30 on Saturday 🎉")).toBeTruthy()
@@ -98,7 +104,7 @@ describe("the giver's page", () => {
 
   it("another amount: prefilled with the middle preset ($10), at least $1", async () => {
     const user = userEvent.setup()
-    render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />)
+    render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />, withQuery)
     await user.click(await screen.findByRole("radio", { name: "Other amount" }))
     const input = screen.getByRole("textbox", { name: "Amount in dollars" }) as HTMLInputElement
     expect(input.value).toBe("10")
@@ -112,7 +118,7 @@ describe("the giver's page", () => {
   })
 
   it("a fixed-amount link: one button 'Send $25 ☕'", async () => {
-    render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.fixed} initial={null} />)
+    render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.fixed} initial={null} />, withQuery)
     expect(await screen.findByText("This link is for a $25 gift.")).toBeTruthy()
     expect(screen.queryByRole("radio", { name: /coffee/ })).toBeNull()
     expect(screen.getByRole("button", { name: "Send $25 ☕" })).toBeTruthy()
@@ -121,7 +127,7 @@ describe("the giver's page", () => {
   it("signed out: Send → sign in inline (the mock signs the guest in as Alex) → sent", async () => {
     store.setSession(null)
     const user = userEvent.setup()
-    render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />)
+    render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />, withQuery)
     await user.click(await screen.findByRole("button", { name: "Send $10 ☕" }))
     expect(screen.getByRole("heading", { name: "Sign in to send your $10 gift" })).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Continue with Google" }))
@@ -130,7 +136,7 @@ describe("the giver's page", () => {
   }, 10_000)
 
   it("the public page: totals and only the givers who chose to be shown; 'Show my name on this page' is offered", async () => {
-    render(<GiftPageFlow slug="leos-birthday" initial={null} />)
+    render(<GiftPageFlow slug="leos-birthday" initial={null} />, withQuery)
     expect(await screen.findByText("$40 from 3 gifts so far")).toBeTruthy()
     expect(screen.getByText("Help us throw Leo the best birthday ☕")).toBeTruthy()
     const givers = screen.getByRole("region", { name: "Thanks to" })
@@ -143,19 +149,19 @@ describe("the giver's page", () => {
 
   it("every state that stops a gift has its own screen", async () => {
     // the public page is off until a member turns it on
-    const { unmount } = render(<GiftPageFlow slug="lisbon-trip" initial={null} />)
+    const { unmount } = render(<GiftPageFlow slug="lisbon-trip" initial={null} />, withQuery)
     expect(await screen.findByRole("heading", { name: "This page isn't open" })).toBeTruthy()
     unmount()
     // gifts off
     store.setSession("maya")
     await act(() => store.setGiftsOn("leos-birthday", false))
     store.setSession("alex")
-    const r2 = render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />)
+    const r2 = render(<GiftLinkFlow slug="leos-birthday" id={BIRTHDAY_LINKS.open} initial={null} />, withQuery)
     expect(await screen.findByRole("heading", { name: "Leo's Birthday isn't taking gifts right now" })).toBeTruthy()
     expect(screen.queryByRole("button", { name: /Send/ })).toBeNull()
     r2.unmount()
     // an unknown link
-    render(<GiftLinkFlow slug="leos-birthday" id={"z".repeat(22)} initial={null} />)
+    render(<GiftLinkFlow slug="leos-birthday" id={"z".repeat(22)} initial={null} />, withQuery)
     expect(await screen.findByRole("heading", { name: "This link doesn't exist" })).toBeTruthy()
     // the pure rule
     expect(blockedOf({ id: "x", amount: null, note: null, status: "revoked", expiresAt: 0, tone: "gift" }, "yes")).toBe("revoked")

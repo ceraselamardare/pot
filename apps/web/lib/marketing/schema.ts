@@ -3,7 +3,7 @@
 // Rules (technical SEO notes, 2026-11-06):
 //  - the markup says only what the page shows: descriptions come from the same en.json strings as the visible copy;
 //  - no ratings or reviews, ever (Pot has none; inventing them breaks Google's spam policy and this project's rules);
-//  - Pot is a preview on NEAR testnet with test dollars: never describe real money or mainnet;
+//  - no network: the Testnet badge (and /llms.txt's status line) says where Pot runs; never claim real money or mainnet;
 //  - FAQPage only mirrors a FAQ that is visible on the same page (Google shows no FAQ result any more; Bing and AI
 //    answer engines still read it).
 import { t } from "@/i18n/t"
@@ -58,7 +58,7 @@ export function website(): JsonLdNode {
 
 /**
  * The app itself. For entity understanding only: without ratings it earns no rich result, and that's fine.
- * `free`: free to use today (the testnet preview, where Pot covers every cost); adds a $0 offer.
+ * `free`: free to use (Pot covers the running costs); adds a $0 offer.
  */
 export function webApplication(o: { description: string; free: boolean }): JsonLdNode {
   return {

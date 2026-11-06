@@ -2,7 +2,7 @@
 // (lib/marketing/schema.ts faqPage), so the markup always mirrors what's on the page. Every answer is open: no
 // accordions (answer engines may skip hidden text). Each question is an H3; each answer a standalone 1-3 sentence
 // paragraph that still makes sense when quoted alone. Build items with faqItem() so a composed answer (an extra
-// shared sentence, like uc.common.signin_today) is the same string in both places. An item may carry a `link` (a
+// shared sentence) is the same string in both places. An item may carry a `link` (a
 // related page, such as the trip cost calculator): it shows under the answer and stays out of the JSON-LD.
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"

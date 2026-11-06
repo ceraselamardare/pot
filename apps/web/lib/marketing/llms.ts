@@ -1,13 +1,18 @@
 // /llms.txt (llmstxt.org): a short, factual Markdown summary of Pot for AI assistants and agents. Its page list comes
 // from the marketing registry (lib/marketing/pages.ts), so it can't drift from the sitemap. It isn't UI copy (no t()),
-// and it may name the tech plainly. Keep every claim inside the product's limits (docs/limitations.md): a testnet
-// preview with test dollars, no cash-out, Google sign-in only on local builds, other networks simulated.
+// and it may name the tech plainly. Keep every claim inside the product's limits (docs/limitations.md): no cash-out,
+// Google sign-in only on local builds, other networks simulated on testnet. Which network this build runs on is one
+// neutral status line (testnet builds only), the machine-readable twin of the Testnet badge.
 import { t } from "@/i18n/t"
+import { isTestnetBuild } from "@/lib/network"
 import { MARKETING_PAGES } from "./pages"
 import { absoluteUrl, SITE } from "./site"
 
 /** A link-list line; `path` is a site path or an absolute URL (kept as is). */
 const link = (name: string, path: string, note: string) => `- [${name}](${absoluteUrl(path)}): ${note}`
+
+/** The status line on a testnet build (the Testnet badge, for machines). */
+export const LLMS_TESTNET_STATUS = "Status: currently running on NEAR testnet; mainnet is next."
 
 export function llmsTxt(): string {
   const pages = (where: "main" | "optional") =>
@@ -17,8 +22,9 @@ export function llmsTxt(): string {
   return [
     `# ${SITE.name}`,
     "",
-    "> Pot is a phone web app for money a group shares: a trip, a club or a team. Everyone adds dollars to one Pot. Small spends that fit the group's rules go through on their own; bigger ones need an OK from another member or a majority of the group. When the Pot closes, everyone gets back their share of what's left. Pot is a preview on NEAR testnet with test dollars: no real money moves.",
+    "> Pot is a phone web app for money a group shares: a trip, a club or a team. Everyone adds dollars to one Pot. Small spends that fit the group's rules go through on their own; bigger ones need an OK from another member or a majority of the group. When the Pot closes, everyone gets back their share of what's left.",
     "",
+    ...(isTestnetBuild() ? [LLMS_TESTNET_STATUS, ""] : []),
     `Tagline: "${t("app.description")}" Website: ${absoluteUrl("/")} (also called usepot).`,
     "",
     "## How it works",
@@ -35,18 +41,17 @@ export function llmsTxt(): string {
     "",
     "- Each Pot is its own Sputnik DAO on NEAR Protocol. The Pot Hub contract holds the rules and approves small spends on its own; bigger ones need members' approvals.",
     "- People hold 0 NEAR: Pot relays their actions as NEP-366 meta transactions and pays the network costs.",
-    "- Money is a USDC-style test token, shown as dollars.",
+    "- Money is held in USDC and shown as dollars; on testnet it is a test token.",
     "- Sign-in on the live site: a NEAR wallet (NEAR Connect). Google and email sign-in (NEAR Auth) are built but work only on a local build for now.",
     "- Adding money from other networks (NEAR Intents 1Click) is simulated on testnet; only the price quotes are real.",
     "- Receipts are read privately by NEAR AI Cloud, in a secure enclave.",
     "",
     "## Limits",
     "",
-    "- Testnet preview with test dollars (\"demo dollars\"). Nothing runs on mainnet and no real money is involved.",
-    "- No cash-out yet: after a close, each person's share stays in their Pot balance.",
+    "- No cash-out: after a close, each person's share stays in their Pot balance.",
     "- Not available: card top-ups, Apple sign-in, email or Telegram notifications, a store app.",
     "- Pot names, amounts, members and requests are public on chain. People's display names and pictures, notes, comments and receipts are for members only.",
-    "- Free for users during the preview, with daily limits on free actions. There is no pricing.",
+    "- Free for users: Pot covers the running costs, with daily limits on free actions.",
     "",
     "## Pages",
     "",

@@ -44,7 +44,9 @@ test("llms.txt: a Markdown summary with the key pages, the limits and the source
   const md = await res.text()
   expect(md.startsWith("# Pot\n\n> ")).toBe(true)
   for (const p of ["/demo", "/demo/all"]) expect(md).toMatch(new RegExp(`\\]\\(https?://[^)\\s]+${p}\\)`))
-  expect(md).toContain("test dollars")
+  // the Testnet badge's machine-readable twin: one neutral status line, no preview framing
+  expect(md).toContain("Status: currently running on NEAR testnet; mainnet is next.")
+  expect(md).not.toMatch(/preview|demo dollars/i)
   expect(md).toContain("https://github.com/ceraselamardare/pot")
 })
 
@@ -61,7 +63,9 @@ test("home: canonical, og:url and one parseable JSON-LD graph (Organization, Web
   expect(data["@graph"][0]!.alternateName).toEqual(["usepot", "Pot money app"])
   const app = data["@graph"][2]!
   expect(app).toMatchObject({ name: "Pot", applicationCategory: "FinanceApplication", operatingSystem: "Web" })
-  expect(String(app.description)).toContain(m["home.footer.preview"])
+  // the visible meta description only: the network is the Testnet badge's job, never the structured data's
+  expect(app.description).toBe(m["home.meta.description"])
+  expect(JSON.stringify(data)).not.toMatch(/testnet|test money|demo dollars|preview/i)
   expect(JSON.stringify(data)).not.toMatch(/aggregateRating|"review"/)
   // the marketing page is indexable
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /^index, follow/)

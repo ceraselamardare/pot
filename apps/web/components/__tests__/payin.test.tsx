@@ -5,6 +5,8 @@
 // (who decides; Money from outside drills into Public page and Pay-in links), and the Share sheet being invites only.
 import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { QueryClientProvider } from "@tanstack/react-query"
+import type { ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { GiftLinkFlow } from "@/components/gifts/GiveFlow"
 import { GiftRow } from "@/components/gifts/GiftRow"
@@ -15,9 +17,13 @@ import { PublicPageSheet } from "@/components/payin/PublicPageSheet"
 import { SettingsTab } from "@/components/pot/SettingsTab"
 import { ShareSheet } from "@/components/sheets/ShareSheet"
 import { findBanned } from "@/i18n/banned.mjs"
+import { queryClient } from "@/lib/client/query"
 import * as store from "@/lib/client/mock/store"
 import type { GiftVM, PotVM, World } from "@/lib/client/mock/types"
 import * as W from "@/lib/client/mock/world"
+
+/** GiveFlow reads the any-coin mode (useXcChains) to offer "Another app or exchange" only where it works. */
+const withQuery = { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient()}>{children}</QueryClientProvider> }
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ push: () => {}, replace: () => {} }) }))
 
@@ -136,7 +142,7 @@ describe("the outsider's page, payment tone", () => {
   it("'Pay Lisbon Trip', presets $10 / $25 / $50 (the middle one picked), [Pay $25] → thank you", async () => {
     const user = userEvent.setup()
     const id = await makeLink(null)
-    render(<GiftLinkFlow slug="lisbon-trip" id={id} initial={null} />)
+    render(<GiftLinkFlow slug="lisbon-trip" id={id} initial={null} />, withQuery)
     expect(await screen.findByRole("heading", { level: 1, name: "Pay Lisbon Trip" })).toBeTruthy()
     expect(screen.getByText("3 people are in this Pot")).toBeTruthy()
     const amounts = screen.getByRole("radiogroup", { name: "How much?" })
@@ -155,7 +161,7 @@ describe("the outsider's page, payment tone", () => {
 
   it("a fixed link: 'This link is for $25.' and one button [Pay $25]; turned off: 'not taking payments right now'", async () => {
     const id = await makeLink(2_500)
-    const r = render(<GiftLinkFlow slug="lisbon-trip" id={id} initial={null} />)
+    const r = render(<GiftLinkFlow slug="lisbon-trip" id={id} initial={null} />, withQuery)
     expect(await screen.findByText("This link is for $25.")).toBeTruthy()
     expect(screen.queryByRole("radiogroup", { name: "How much?" })).toBeNull()
     expect(screen.getByRole("button", { name: "Pay $25" })).toBeTruthy()
@@ -163,7 +169,7 @@ describe("the outsider's page, payment tone", () => {
     store.setSession("maya")
     await act(() => store.setGiftsOn("lisbon-trip", false))
     store.setSession("alex")
-    render(<GiftLinkFlow slug="lisbon-trip" id={id} initial={null} />)
+    render(<GiftLinkFlow slug="lisbon-trip" id={id} initial={null} />, withQuery)
     expect(await screen.findByRole("heading", { name: "Lisbon Trip isn't taking payments right now" })).toBeTruthy()
     expect(screen.queryByRole("button", { name: /Pay/ })).toBeNull()
   })

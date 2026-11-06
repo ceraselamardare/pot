@@ -26,7 +26,7 @@ export function UseCaseHero({
   title: string
   /** the answer-first paragraph */
   subhead: string
-  /** the short honest line under the buttons (default: no app · free in preview · test money) */
+  /** the short honest line under the buttons (default: no app to download · free to start, join and spend) */
   note?: string | null
   /** the page's own picture (a role="img" with its own label) */
   visual: React.ReactNode

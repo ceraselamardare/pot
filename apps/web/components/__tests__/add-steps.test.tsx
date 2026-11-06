@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // The Add money sheet in two steps (2026-11-03, like Spend): 1 "How much?" = the amount, the keypad, the Pot's
 // suggestion chips, the $10,000 limit, [Next] (the one marigold); 2 "How do you want to add it?" (&step=source, its own
-// history entry) = the amount (+ Change), the source list (Demo dollars · Pot dollars + Use all · Another app or
+// history entry) = the amount (+ Change), the source list (Free test dollars · Pot dollars + Use all · Another app or
 // exchange), "Pot will have" + "you'd get back" pinned over [Add $X] / [Continue], [Back]. A linked amount opens
 // straight on step 2; a cold &step=source with nothing to add is corrected to step 1.
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"

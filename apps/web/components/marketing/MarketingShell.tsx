@@ -15,7 +15,7 @@
 //       <RulesFit items />                                                   recommended settings and why
 //       <Faq title items />  + faqPage({ path, items }) in the JSON-LD      the same items, so they can't drift
 //       <RelatedLinks current="/<path>" />                                   registered pages only, then home and /demo
-//       <UseCaseFinal title body />                                          secondary CTAs + the preview note
+//       <UseCaseFinal title body />                                          secondary CTAs
 //     and render `<JsonLd data={graph(webPage(…), breadcrumbs(…), faqPage(…))} />` once.
 //  4. Tests: e2e/mock/marketing.spec.ts (one entry per page), a11y 320 px reflow, screens public screens, csp lists.
 //

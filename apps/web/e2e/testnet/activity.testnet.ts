@@ -64,7 +64,7 @@ test("add money → You shows the activity row with a real receipt, and the bala
   const row = A.locator("[data-you-activity] [data-activity='added']").first()
   await expect(row).toContainText("You added $60", { timeout: 60_000 })
   await expect(row).toContainText(POT_NAME)
-  // money in opens its details on the Pot (2026-11-04): the receipt is there, "Demo dollars" its source
+  // money in opens its details on the Pot (2026-11-04): the receipt is there, "Test dollars" its source
   const open = row.getByRole("link", { name: /^You added \$60\./ })
   await expect(open).toHaveAttribute("href", /\?sheet=deposit&d=[1-9A-HJ-NP-Za-km-z]{43,44}$/, { timeout: 60_000 })
   await open.click()

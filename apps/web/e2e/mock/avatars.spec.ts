@@ -51,8 +51,8 @@ test("choose an avatar → it shows in seats, feed, Members, Requests and Approv
   // the default is initials, and the profile card shows them
   await expect(picker.getByRole("radio", { name: "Use my initials" })).toBeChecked()
   await expect(picker.getByRole("radio")).toHaveCount(11)
-  // the profile card (name + the mock's "Demo · test money" line), wherever it sits on You
-  const profile = page.locator("main section:not([data-you-avatar])").filter({ has: page.getByText("Demo · test money") })
+  // the profile card (name + the mock's "Sample profile" line), wherever it sits on You
+  const profile = page.locator("main section:not([data-you-avatar])").filter({ has: page.getByText("Sample profile") })
   await expect(profile.locator('[data-avatar="initials"]')).toHaveText("M")
   // every option is at least 44 px (tap-min)
   for (const box of await picker.locator("label").evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect()))) {

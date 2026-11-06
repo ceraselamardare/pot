@@ -1,7 +1,7 @@
 // A use-case page's last call to action (page-plan "Structure" 9), in the home page's FinalCta look: a `surface`
-// card, [Start a Pot →] and [See how it works], both SECONDARY (the hero's is the page's one marigold), then the
-// preview note (test money; the same words as the site footer). An optional sticker peeks from the card's corner.
-import { ArrowRight, Info } from "lucide-react"
+// card, [Start a Pot →] and [See how it works], both SECONDARY (the hero's is the page's one marigold). An optional
+// sticker peeks from the card's corner.
+import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { SignInLink } from "@/components/features/auth/SignInLink"
 import { Section, SectionHead } from "@/components/landing/home/Section"
@@ -31,10 +31,6 @@ export function UseCaseFinal({ title, body, sticker }: { title: string; body: st
             {t("uc.common.cta.demo")}
           </Link>
         </div>
-        <p className="mx-auto mt-6 flex max-w-flow items-start justify-center gap-2 text-left text-body-sm text-ink-muted" data-preview-note>
-          <Info aria-hidden className="size-5 shrink-0" strokeWidth={2} />
-          <span className="min-w-0">{t("home.footer.preview")}</span>
-        </p>
         {sticker ? (
           <Sticker
             name={sticker}

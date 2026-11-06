@@ -51,8 +51,7 @@ const FAQ = [
   faqItem("leftover", t("uc.trip.faq.leftover.q"), t("uc.trip.faq.leftover.a")),
   faqItem("kitty", t("uc.trip.faq.kitty.q"), t("uc.trip.faq.kitty.a")),
   faqItem("free", t("uc.trip.faq.free.q"), t("uc.trip.faq.free.a")),
-  faqItem("app", t("uc.trip.faq.app.q"), t("uc.trip.faq.app.a"), t("uc.common.signin_today")),
-  faqItem("real", t("uc.trip.faq.real.q"), t("uc.trip.faq.real.a")),
+  faqItem("app", t("uc.trip.faq.app.q"), t("uc.trip.faq.app.a")),
 ]
 
 const page = marketingPage(PATH)

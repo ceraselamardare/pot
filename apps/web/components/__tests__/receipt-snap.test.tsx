@@ -114,7 +114,7 @@ describe("Scan receipt", () => {
     expect(badge.getAttribute("aria-expanded")).toBe("true")
     expect(within(d).getByText(/goes to a sealed computer that reads it/)).toBeTruthy()
     expect(within(d).getByText(/Pot doesn't keep the photo/)).toBeTruthy()
-    expect(within(d).getByText("This test version shows a sample reading. Your photo stays on your device.")).toBeTruthy()
+    expect(within(d).getByText("This is a sample reading, not one of your photo. Your photo stays on your device.")).toBeTruthy()
     expect(d.querySelector("[data-receipt-verify]")).toBeNull()
     cleanup()
 

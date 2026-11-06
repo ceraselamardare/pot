@@ -1,6 +1,6 @@
 // /shared-account-with-friends: "shared account with friends" (page-plan; copy uc.shared.*). The trend closest to
 // what Pot is: one shared pot of money the group controls with rules, without a joint bank account. Said plainly and
-// early: Pot is not a bank account, and for now it runs on test money.
+// early: Pot is not a bank account.
 // Hero (The Crew's Pot with its rules, and a request waiting for the group) → the problem and a question-by-question
 // comparison (joint bank account / one friend holds it / a Pot; the joint-account claim cited to the CFPB) → what
 // Pot is and isn't → five steps beside "Who can see what" (product.md §1.20, in plain words) → The Crew worked
@@ -57,13 +57,12 @@ const LAKE = spend("house")
 
 const FAQ = [
   faqItem("joint", t("uc.shared.faq.joint.q"), t("uc.shared.faq.joint.a")),
-  faqItem("bank", t("uc.shared.faq.bank.q"), t("uc.shared.faq.bank.a"), t("uc.common.signin_today")),
+  faqItem("bank", t("uc.shared.faq.bank.q"), t("uc.shared.faq.bank.a")),
   faqItem("control", t("uc.shared.faq.control.q"), t("uc.shared.faq.control.a", { instant: INSTANT, perPerson: PER_PERSON, oneOk: ONE_OK })),
   faqItem("takeall", t("uc.shared.faq.takeall.q"), t("uc.shared.faq.takeall.a", { perPerson: PER_PERSON })),
   faqItem("done", t("uc.shared.faq.done.q"), t("uc.shared.faq.done.a")),
   faqItem("private", t("uc.shared.faq.private.q"), t("uc.shared.faq.private.a")),
   faqItem("free", t("uc.shared.faq.free.q"), t("uc.shared.faq.free.a")),
-  faqItem("real", t("uc.shared.faq.real.q"), t("uc.shared.faq.real.a")),
 ]
 
 const page = marketingPage(PATH)
@@ -138,7 +137,7 @@ function Problem() {
 
 function WhatItIs() {
   const is = ["rules", "web", "free"] as const
-  const isnt = ["bank", "real", "out"] as const
+  const isnt = ["bank", "credit", "solo"] as const
   return (
     <Section id="what" labelledBy="what-title" band="sunken" className="dark:bg-ground">
       <SectionHead id="what-title" eyebrow={t("uc.shared.isnt.eyebrow")} title={t("uc.shared.isnt.title")} />

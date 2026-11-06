@@ -88,7 +88,7 @@ describe("the sheet", () => {
     expect(card.textContent).toContain("From another app")
     expect(card.textContent).toContain("0.1293 ETH → $300.00")
     expect(card.textContent).toContain("About $2,320.18 per ETH · 58 s")
-    expect(card.querySelector("[data-deposit-sim]")!.textContent).toBe("TestTestnet demo: simulated transfer")
+    expect(card.querySelector("[data-deposit-sim]")!.textContent).toBe("TestTest only: simulated transfer")
     const steps = within(d.querySelector("[data-deposit-timeline]") as HTMLElement).getAllByRole("listitem")
     expect(steps.map((s) => s.querySelector("span.text-ink")!.textContent)).toEqual(["Address shown", "Sent from Base", "Converted to Pot dollars", "Arrived", "Added to the Pot"])
     for (const s of steps) expect(s.textContent).toMatch(/\d{1,2}:\d{2}:\d{2} [AP]M$/)
@@ -101,7 +101,7 @@ describe("the sheet", () => {
 
   it("demo dollars and Pot dollars: their card, one quiet Receipt ↗, no timeline; the main copy is free of jargon", () => {
     let d = open("ski-chalet", addKey("ski-chalet", "s2"))
-    expect(d.querySelector("[data-deposit-source='demo']")!.textContent).toContain("Demo dollars")
+    expect(d.querySelector("[data-deposit-source='demo']")!.textContent).toContain("Test dollars")
     expect(d.querySelector("[data-deposit-timeline]")).toBeNull()
     expect(d.querySelectorAll("[data-receipt]")).toHaveLength(1)
     expect(findBanned(d.querySelector("[data-deposit-details]")!.textContent!.replace("Receipt", ""))).toBeNull()

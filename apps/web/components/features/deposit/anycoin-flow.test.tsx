@@ -124,7 +124,7 @@ describe("network → coin → address (mock data source)", () => {
     expect(document.querySelector("[data-send-only]")!.textContent).toContain("Send only ETH on Base")
     expect(screen.getByText(/We'll accept 0\.0083\d* ETH or more\./)).toBeTruthy()
     expect(screen.getByRole("button", { name: "Simulate sending 0.008625 ETH" })).toBeTruthy()
-    expect(screen.getByText("Testnet demo: simulated transfer, no real money")).toBeTruthy()
+    expect(screen.getByText("Test only · Simulated transfer: do not send real coins")).toBeTruthy()
   })
 
   it("Bitcoin: flagged slow on the address with the real time, and that the demo is sped up", async () => {
@@ -135,7 +135,7 @@ describe("network → coin → address (mock data source)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Get address" }))
     expect(await screen.findByText(/^Send 0\.000\d+ BTC on Bitcoin$/)).toBeTruthy()
     expect(document.querySelector("[data-slow-network]")!.textContent).toBe("Bitcoin is slow: it usually takes about 20 minutes after you send.")
-    expect(screen.getByText("In this demo it arrives in under 30 seconds.")).toBeTruthy()
+    expect(screen.getByText("This test transfer arrives in under 30 seconds.")).toBeTruthy()
   })
 
   it("a coin marked unavailable can't be picked; the network's next coin is", async () => {

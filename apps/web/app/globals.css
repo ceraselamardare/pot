@@ -188,6 +188,49 @@
   }
 }
 
+/* The Testnet badge's explanation (components/brand/NetworkBadge.tsx): a native popover, no JS. Without anchor
+   positioning it stays the browser's centred top-layer card; with it, it sits under its badge, kept 1rem inside the
+   screen, and flips above the badge when there is no room below (the footer). A 120 ms fade, none when reduced. */
+.pot-netpop {
+  color: var(--pot-ink);
+}
+.pot-netbadge:has(+ .pot-netpop:popover-open) {
+  background: var(--pot-surface-sunken);
+}
+@supports (anchor-name: --a) {
+  .pot-netbadge {
+    anchor-name: var(--pot-netpop-anchor);
+  }
+  .pot-netpop {
+    position-anchor: var(--pot-netpop-anchor);
+    inset: auto;
+    margin: 0;
+    top: calc(anchor(bottom) + 0.75rem);
+    left: clamp(1rem, anchor(left), 100vw - 1rem - min(20rem, 100vw - 2rem));
+    position-try-fallbacks: --pot-netpop-above;
+  }
+}
+@position-try --pot-netpop-above {
+  top: auto;
+  bottom: calc(anchor(top) + 0.75rem);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pot-netpop {
+    transition:
+      opacity 120ms var(--ease-standard),
+      display 120ms allow-discrete,
+      overlay 120ms allow-discrete;
+  }
+  .pot-netpop:not(:popover-open) {
+    opacity: 0;
+  }
+  @starting-style {
+    .pot-netpop:popover-open {
+      opacity: 0;
+    }
+  }
+}
+
 /* ---------------------------------------------------------------------------------------------------------
    F-04/F-06 (frontend): brand motion and helpers. Durations from ux-spec §7.6 / brand README §8. */
 

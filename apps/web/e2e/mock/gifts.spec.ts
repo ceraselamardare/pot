@@ -332,14 +332,14 @@ const BDAY_OPEN = "/g/leos-birthday/bdayOpenGiftLink000001"
 
 test("Pay with: Pot dollars, the default when they cover the gift; never offered to someone without any", async ({ page }) => {
   await showcase(page)
-  // someone with no Pot dollars (Sam, in the showcase world): Demo dollars | Another app or exchange, as before
+  // someone with no Pot dollars (Sam, in the showcase world): Test dollars | Another app or exchange, as before
   await asPerson(page, "sam")
   await page.goto("/you")
   await expect(page.locator("[data-you-balance] [data-money]")).toHaveText("$0.00")
   await page.goto(BDAY_OPEN)
   const payWith = page.getByRole("radiogroup", { name: "Pay with" })
   await expect(payWith.getByRole("radio")).toHaveCount(2)
-  await expect(payWith.getByRole("radio", { name: "Demo dollars" })).toHaveAttribute("aria-checked", "true")
+  await expect(payWith.getByRole("radio", { name: "Test dollars" })).toHaveAttribute("aria-checked", "true")
   await expect(payWith.getByRole("radio", { name: "Pot dollars" })).toHaveCount(0)
 
   // Maya has Pot dollars (Pots paid her in the showcase world)
@@ -369,7 +369,7 @@ test("Pay with: Pot dollars, the default when they cover the gift; never offered
   // more than they have: not chosen yet → demo dollars; chosen → "not enough", Send waits
   await page.getByRole("radio", { name: "Other amount" }).click()
   await page.getByRole("textbox", { name: "Amount in dollars" }).fill(String(Math.floor(own) + 1))
-  await expect(payWith.getByRole("radio", { name: "Demo dollars" })).toHaveAttribute("aria-checked", "true")
+  await expect(payWith.getByRole("radio", { name: "Test dollars" })).toHaveAttribute("aria-checked", "true")
   await payWith.getByRole("radio", { name: "Pot dollars" }).click()
   await expect(page.locator("[data-give-source-hint='own']")).toContainText(`You have ${ownText} in Pot dollars, not enough for`)
   await expect(page.locator("[data-give-send]")).toBeDisabled()

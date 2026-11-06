@@ -52,12 +52,11 @@ const OUTSIDE_IN = GIFT_OUTSIDE.map((g, i) => ({
 const FAQ = [
   faqItem("best", t("uc.gift.faq.best.q"), t("uc.gift.faq.best.a")),
   faqItem("much", t("uc.gift.faq.much.q"), t("uc.gift.faq.much.a")),
-  faqItem("outside", t("uc.gift.faq.outside.q"), t("uc.gift.faq.outside.a", PAYIN), t("uc.common.signin_today")),
+  faqItem("outside", t("uc.gift.faq.outside.q"), t("uc.gift.faq.outside.a", PAYIN)),
   faqItem("see", t("uc.gift.faq.see.q"), t("uc.gift.faq.see.a")),
   faqItem("over", t("uc.gift.faq.over.q"), t("uc.gift.faq.over.a")),
   faqItem("card", t("uc.gift.faq.card.q"), t("uc.gift.faq.card.a")),
   faqItem("free", t("uc.gift.faq.free.q"), t("uc.gift.faq.free.a")),
-  faqItem("real", t("uc.gift.faq.real.q"), t("uc.gift.faq.real.a")),
 ]
 
 const page = marketingPage(PATH)

@@ -123,7 +123,7 @@ describe("the feed", () => {
     expect(added.querySelector("[data-row-source='xc']")!.textContent).toBe("ETH on Base")
     expect(added.querySelector("[data-receipt]")).toBeNull()
     // Sam's add: demo dollars
-    const sam = screen.getByRole("button", { name: /^Sam added \$300\. Demo dollars\..*Details$/ })
+    const sam = screen.getByRole("button", { name: /^Sam added \$300\. Test dollars\..*Details$/ })
     expect(sam.querySelector("[data-row-source='demo'] svg")!.getAttribute("stroke-width")).toBe("2")
     // system events stay quiet centred lines
     expect(screen.getByText("Leo joined")).toBeTruthy()

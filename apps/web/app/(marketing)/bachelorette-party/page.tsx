@@ -44,14 +44,13 @@ const DECORATIONS = spend("decorations")
 const DINNER = spend("dinner")
 
 const FAQ = [
-  faqItem("collect", t("uc.party.faq.collect.q"), t("uc.party.faq.collect.a"), t("uc.common.signin_today")),
+  faqItem("collect", t("uc.party.faq.collect.q"), t("uc.party.faq.collect.a")),
   faqItem("honour", t("uc.party.faq.honour.q"), t("uc.party.faq.honour.a")),
   faqItem("much", t("uc.party.faq.much.q"), t("uc.party.faq.much.a")),
   faqItem("short", t("uc.party.faq.short.q"), t("uc.party.faq.short.a")),
   faqItem("before", t("uc.party.faq.before.q"), t("uc.party.faq.before.a")),
   faqItem("kitty", t("uc.party.faq.kitty.q"), t("uc.party.faq.kitty.a", { instant: INSTANT })),
   faqItem("free", t("uc.party.faq.free.q"), t("uc.party.faq.free.a")),
-  faqItem("real", t("uc.party.faq.real.q"), t("uc.party.faq.real.a")),
 ]
 
 const page = marketingPage(PATH)

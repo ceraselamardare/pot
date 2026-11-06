@@ -173,7 +173,7 @@ test.describe("close (P-9)", () => {
     // the calm closed moment (no burst) and the honest copy: the money is in your Pot account
     const done = page.getByRole("dialog", { name: "Pot closed" })
     await expect(done.locator("[data-close-refund]")).toHaveText("$150.00 is in your Pot account.")
-    await expect(done.getByText("Taking money out of Pot isn't available yet.", { exact: false })).toBeVisible()
+    await expect(done.getByText("It stays in your Pot dollars, ready for your next Pot.", { exact: true })).toBeVisible()
     await expect(done.getByRole("table", { name: "Who got what back" })).toBeVisible()
     await expect(page.locator("[data-celebration]")).toHaveCount(0)
     await expect(page.locator("[data-live-region]")).toHaveText(/Pot closed\. \$150\.00 is in your Pot account\./)

@@ -121,7 +121,6 @@ describe("live build, NEAR Auth on (localhost:3000 today, mainnet later)", () =>
     expect(screen.getByText(tx("signin.or"))).toBeTruthy()
     expect(screen.getByText(tx("signin.fine"))).toBeTruthy()
     expect(screen.getByRole("link", { name: tx("signin.demo.quick") }).getAttribute("href")).toBe("/demo")
-    expect(screen.queryByText(tx("signin.google_later"))).toBeNull()
     expect(document.querySelector("[data-signin-panel]")).not.toBeNull()
   })
 
@@ -284,7 +283,6 @@ describe("live build, NEAR Auth on (localhost:3000 today, mainnet later)", () =>
     expect(screen.getByText(tx("signin.unsupported_browser"))).toBeTruthy()
     expect(names(options())).toEqual([tx("signin.wallet.only")])
     expect(options()[0]!.getAttribute("data-variant")).toBe("primary")
-    expect(screen.queryByText(tx("signin.google_later"))).toBeNull() // Google is on; this browser can't
   })
 
   it("the app's signed-out screen: the same options, [See a demo] secondary, 'What is Pot?' a quiet link", () => {
@@ -301,16 +299,16 @@ describe("live build, NEAR Auth on (localhost:3000 today, mainnet later)", () =>
 describe("live build, NEAR Auth off (today's hosted testnet)", () => {
   beforeEach(() => live({ nearAuth: false }))
 
-  it("dialog: the wallet alone, as the marigold 'Continue with a NEAR wallet', and why there's no Google", () => {
+  it("dialog: the wallet alone, as the marigold 'Continue with a NEAR wallet', with no note about what's left out", () => {
     render(<SignInPanel layout="dialog" next={DEFAULT_NEXT} />)
     expect(names(options())).toEqual([tx("signin.wallet.only")])
     expect(options()[0]!.getAttribute("data-variant")).toBe("primary")
-    expect(screen.getByText(tx("signin.google_later"))).toBeTruthy()
     expect(screen.queryByText(tx("signin.or"))).toBeNull()
     expect(primaries()).toHaveLength(1)
-    // the wallet opens NEAR Connect's own picker, not a sign-in window: no "opens in a new window" line
+    // the wallet opens NEAR Connect's own picker, not a sign-in window: no "opens in a new window" line; and no
+    // preview copy (the Testnet badge is the one place the site names its network)
     expect(screen.queryByText(tx("signin.fine"))).toBeNull()
-    expect(screen.getByText(tx("signin.fine.wallet"))).toBeTruthy()
+    expect(document.querySelector("[data-signin-panel]")!.textContent).not.toMatch(/test version|test money|demo dollars|isn't on|coming/i)
   })
 
   it("page: the same marigold keeps the name the suites press, 'I have a NEAR wallet'", () => {

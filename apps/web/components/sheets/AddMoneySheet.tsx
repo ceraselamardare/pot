@@ -5,7 +5,7 @@
 //    "Someone else paying? Send them a link" (→ Ask anyone, ?sheet=payin; "pay in" 2026-11-03), [Next] (the one
 //    marigold) over the keypad; Enter on the keypad = Next.
 //  2 "How do you want to add it?" (?sheet=add&step=source, its own history entry): the amount (with [Change]), the
-//    top-up line, the source (Demo dollars · Your Pot dollars (Use all) · Another app or exchange), the first-time
+//    top-up line, the source (Free test dollars · Your Pot dollars (Use all) · Another app or exchange), the first-time
 //    note, and pinned over the ask: "Pot will have $X" + "After this, you'd get back $Y", [Add $X] (or [Continue]
 //    into the deposit's network step for another app), [‹ Back].
 // A deep link with an amount ("Add my $150 share", a top-up card's [Add $50]) opens straight on step 2; Back or
@@ -265,7 +265,7 @@ export function AddMoneySheet({
               {t("add.source.title")}
             </h3>
             <div role="radiogroup" aria-labelledby="add-source-label" className="flex flex-col overflow-hidden rounded-md border border-line">
-              <SourceRow checked={source === "demo"} onSelect={() => setSource("demo")} label={t("add.source.demo")} pill={t("add.source.test_pill")} />
+              <SourceRow checked={source === "demo"} onSelect={() => setSource("demo")} label={t("add.source.demo")} />
               <SourceRow
                 checked={source === "pot_dollars"}
                 onSelect={() => setSource("pot_dollars")}
@@ -322,14 +322,12 @@ function SourceRow({
   onSelect,
   label,
   sub,
-  pill,
   disabled,
 }: {
   checked: boolean
   onSelect?: () => void
   label: string
   sub?: string
-  pill?: string
   disabled?: boolean
 }) {
   return (
@@ -358,7 +356,6 @@ function SourceRow({
         <span className={cn("block text-label tabular-nums", disabled ? "text-ink-muted" : "text-ink")}>{label}</span>
         {sub && <span className="block text-body-sm text-ink-muted">{sub}</span>}
       </span>
-      {pill && <span className="rounded-pill bg-surface px-2 py-0.5 text-body-sm font-semibold text-ink-muted ring-1 ring-line">{pill}</span>}
     </button>
   )
 }

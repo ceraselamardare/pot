@@ -6,7 +6,7 @@
 // another amount from $1, or a fixed-amount link's one button) → optional name + 140-character note (+ "Show my name
 // on this page" on the public page) → [Pay $25] (the one marigold; signs in inline first when needed: the mock signs
 // the guest in as Alex) → demo dollars are claimed and sent behind that one button → "Thank you!" with [Start your own Pot].
-// "Another app or exchange" is the simulated 1Click path (no real money moves in the test version): after [Pay $25] (and
+// "Another app or exchange" is the simulated 1Click path (testnet; not offered in real mode): after [Pay $25] (and
 // signing in) the same network → coin (+ live quote) → address steps as a member's Add flow (components/features/deposit/
 // GiverDeposit.tsx), a simulated transfer timed like that network, then the payment is sent. A signed-in giver
 // with Pot dollars also gets "Pot dollars" (their own balance, no demo top-up), picked by default when it covers the gift.
@@ -36,6 +36,7 @@ import { useGiftLanding, useGiftPage, type GiftLandingVM, type GiftPageVM } from
 import type { GiftPotVM } from "@/lib/client/mock/gifts"
 import { formatUsd, type Micro } from "@/lib/client/money"
 import { formatDate } from "@/lib/client/time"
+import { useXcChains } from "@/lib/deposit"
 import { checkGiftAmount, GIFT_NAME_MAX, GIFT_NOTE_MAX, giftTextLength, PAYMENT_PRESETS, type GiftTaking, type PayInTone } from "@/lib/gifts"
 import { newOpKey } from "@pot/sdk"
 import { SwitchRow } from "./Switch"
@@ -140,12 +141,15 @@ function GiveScreen({
   const name = typedName ?? me?.name.slice(0, GIFT_NAME_MAX) ?? ""
   const [note, setNote] = useState("")
   const [shown, setShown] = useState(false)
-  // null = not chosen yet: their own Pot dollars when those cover the gift, else demo dollars
+  // null = not chosen yet: their own Pot dollars when those cover the gift, else test dollars
   const [picked, setSource] = useState<Source | null>(null)
   const ownRead = useOwnDollars(me?.id ?? null, signedIn)
   const own: Micro = ownRead ?? 0n
   const hasOwn = signedIn && own > 0n
   const [error, setError] = useState<MessageKey | null>(null)
+  // "Another app or exchange" for people outside the Pot is the simulated transfer (testnet); when the server moves
+  // money for real it isn't offered at all (the same cached read GiverDeposit makes)
+  const xcOffered = useXcChains(true).data?.mode !== "real"
   const key = useRef(newOpKey())
   const doneRef = useRef<HTMLHeadingElement>(null)
 
@@ -157,7 +161,8 @@ function GiveScreen({
   const textOk = noteLen <= GIFT_NOTE_MAX && nameLen <= GIFT_NAME_MAX
   const whole = amount !== null ? formatUsd(amount, amount % 1_000_000n === 0n ? "whole" : "fixed") : ""
   const isPage = linkId === null
-  const source: Source = picked === "own" && !hasOwn ? "demo" : (picked ?? (hasOwn && amount !== null && own >= amount ? "own" : "demo"))
+  const usable = (picked === "own" && !hasOwn) || (picked === "other" && !xcOffered) ? null : picked
+  const source: Source = usable ?? (hasOwn && amount !== null && own >= amount ? "own" : "demo")
   const ownShort = source === "own" && amount !== null && own < amount
   const w = words(tone, pot.name, whole)
 
@@ -409,7 +414,7 @@ function GiveScreen({
               options={[
                 ...(hasOwn ? [{ value: "own" as const, label: t("gift.source.own") }] : []),
                 { value: "demo", label: t("gift.source.demo") },
-                { value: "other", label: t("gift.source.other") },
+                ...(xcOffered ? [{ value: "other" as const, label: t("gift.source.other") }] : []),
               ]}
             />
             <p className={cn("text-body-sm", ownShort ? "text-ink" : "text-ink-muted")} {...(ownShort ? { role: "alert" } : {})} data-give-source-hint={source}>

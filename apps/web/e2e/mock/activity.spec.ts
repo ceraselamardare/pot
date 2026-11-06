@@ -39,7 +39,7 @@ test("You: your Pot dollars and your activity across Pots, newest first, with re
   await expect(balance.getByRole("heading", { name: "Your Pot dollars" })).toBeVisible()
   await expect(balance.locator("[data-money]")).toHaveText("$0.00")
   await expect(balance).toContainText("Money paid to you or refunded lands here.")
-  await expect(balance).toContainText("Taking money out isn't available yet.")
+  await expect(balance).not.toContainText("isn't available yet")
   await expect(balance.getByRole("button")).toHaveCount(0) // no cash-out in the MVP
   // the nav carries the same number: the You tab's label on phones, a pill in the top bar on desktop
   const navBalance = page.getByRole("link", { name: /Your Pot dollars \$0\.00$/ })
@@ -100,7 +100,7 @@ test("Members: tap a person → their activity in this Pot (a sheet in the URL),
   const rows = sheet.locator("[data-activity-list] li")
   await expect(rows).toHaveCount(2)
   // money in opens its details (2026-11-04): the receipt moved there
-  await expect(rows.nth(0).getByRole("button")).toHaveAccessibleName(/^Sam added \$150\. Demo dollars\..*Details$/)
+  await expect(rows.nth(0).getByRole("button")).toHaveAccessibleName(/^Sam added \$150\. Test dollars\..*Details$/)
   await expect(rows.nth(0).locator("[data-row-title]")).toHaveText("Added money")
   await expect(rows.nth(0).locator("[data-receipt]")).toHaveCount(0)
   await expect(rows.nth(1).getByRole("group")).toHaveAccessibleName(/^Sam joined\./)

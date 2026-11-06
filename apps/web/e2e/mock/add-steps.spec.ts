@@ -65,7 +65,7 @@ test("two steps: $50 → [Next] → how to add it → [Add $50]; nothing scrolls
   await expect(sheet.getByRole("heading", { name: "How do you want to add it?" })).toBeFocused()
   await expect(sheet.locator("[data-step-live]")).toHaveText("How do you want to add it?")
   await expect(sheet.locator("[data-add-amount]")).toHaveText("How much? $50")
-  await expect(sheet.getByRole("radio", { name: /^Demo dollars/ })).toHaveAttribute("aria-checked", "true")
+  await expect(sheet.getByRole("radio", { name: /^Free test dollars/ })).toHaveAttribute("aria-checked", "true")
   await expect(sheet.locator("[data-add-after]")).toHaveText("Lisbon Trip will have $500.00.")
   await expect(sheet.locator("[data-add-refund]")).toHaveText(/^After this, you'd get back \$[\d,.]+ if the Pot closed\.$/)
   await expect(sheet.getByText("Pot keeps money in USDC, a digital dollar.", { exact: false })).toBeVisible()
@@ -80,7 +80,7 @@ test("two steps: $50 → [Next] → how to add it → [Add $50]; nothing scrolls
   await expect(sheet.getByRole("button", { name: "Continue", exact: true })).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   if (mobile) await noScroll(sheet, `step 2 another app ${info.project.name}`)
-  await sheet.getByRole("radio", { name: /^Demo dollars/ }).click()
+  await sheet.getByRole("radio", { name: /^Free test dollars/ }).click()
 
   // the browser's Back → step 1 with $50; Forward → step 2 again
   await page.goBack()

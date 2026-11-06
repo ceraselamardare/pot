@@ -4,8 +4,8 @@
 // inline in SessionGate's SignedOutScreen), so both have the same options and states.
 //  - It offers only what this build has (lib/client/signin.ts `signInMethods`): NEAR Auth's Google (the marigold, the
 //    app's own G) and email, then "or" and the NEAR wallet as a quiet row; the wallet alone becomes the marigold
-//    ("Continue with a NEAR wallet" in the dialog) with "Google sign-in isn't on in this test version yet."; an
-//    in-app browser leads with "Open in Safari/Chrome"; a build with no way in leads with the demo.
+//    ("Continue with a NEAR wallet" in the dialog), with no note about what this build leaves out; an in-app browser
+//    leads with "Open in Safari/Chrome"; a build with no way in leads with the demo.
 //  - Mock builds simulate the full set (like the invite landing): every option signs in as the mock newcomer Alex,
 //    so Start → the first-run intro → Create can be walked and tested. Mock only: `?signin_preview=wallet|none`
 //    shows the hosted build's wallet-only variant and the nothing-available one, for design review.
@@ -67,8 +67,6 @@ export function SignInPanel({
   const [busy, setBusy] = useState(false)
   const dialog = layout === "dialog"
   const none = !m.google && !m.email && !m.wallet
-  // NEAR Auth is off on this build (today's hosted testnet): the site still tells the Google story, so say why
-  const googleLater = !inApp && !none && !m.email
   const walletOnlyLabel = dialog ? "signin.wallet.only" : "landing.more.wallet"
   const demoRow = dialog && goal === "start" && source !== "tour" && !none
   const options = {
@@ -99,8 +97,9 @@ export function SignInPanel({
       ) : (
         <SignInOptions layout="direct" returnTo={next} hideGoogle={!!inApp} onSignedIn={onDone} {...options} />
       )}
-      {!busy && googleLater && <p className="mt-3 text-body-sm text-ink-muted">{t("signin.google_later")}</p>}
-      {!busy && !none && <p className={cn("mt-4 text-body-sm text-ink-muted", dialog && "text-left")}>{m.mock ? t("claim.signin.mock") : m.email ? t("signin.fine") : t("signin.fine.wallet")}</p>}
+      {!busy && !none && (m.mock || m.email) && (
+        <p className={cn("mt-4 text-body-sm text-ink-muted", dialog && "text-left")}>{m.mock ? t("claim.signin.mock") : t("signin.fine")}</p>
+      )}
       {!busy && demoRow && <DemoRow />}
       {!busy && !dialog && (
         <div className="mt-6 flex w-full flex-col items-center gap-2" data-signin-links>

@@ -44,7 +44,7 @@ test("Add $20 → Another app → Optimism → USDC: 'Send only USDC on Optimism
   const sheet = await openDeposit(page, "20")
   await expect(sheet.getByText("Which network are you sending from?")).toBeVisible()
   await expect(sheet.getByRole("radio", { name: /^Optimism.*USDC, USDT, ETH.*Usually under a minute/ })).toBeVisible()
-  await expect(sheet.getByText("Testnet demo: simulated transfer, no real money")).toBeVisible()
+  await expect(sheet.getByText("Test only · Simulated transfer: do not send real coins")).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
   await shot(page, "network", info.project.name)
@@ -139,7 +139,7 @@ test("the network list: Tron explains its $101 minimum (and opens at $150); Bitc
   await sheet.getByRole("button", { name: "Get address" }).click()
   await expect(sheet.getByRole("heading", { name: /^Send 0\.000\d+ BTC on Bitcoin$/ })).toBeVisible()
   await expect(sheet.locator("[data-slow-network]")).toHaveText("Bitcoin is slow: it usually takes about 20 minutes after you send.")
-  await expect(sheet.getByText("In this demo it arrives in under 30 seconds.")).toBeVisible()
+  await expect(sheet.getByText("This test transfer arrives in under 30 seconds.")).toBeVisible()
   await axe(page)
 
   // $150: Tron's USDT can be used
@@ -169,7 +169,7 @@ test("a pay-in link paid from another app: network → coin (+ live quote) → s
   await expect(xc).toHaveAttribute("data-give-xc", "network")
   await expect(xc.getByRole("heading", { name: "Pay from another app or exchange" })).toBeVisible()
   await expect(xc.getByText("Sending $25 to Lisbon Trip")).toBeVisible()
-  await expect(xc.getByText("Testnet demo: simulated transfer, no real money")).toBeVisible()
+  await expect(xc.getByText("Test only · Simulated transfer: do not send real coins")).toBeVisible()
   await brandChecks(page, { marigold: "one" })
   await axe(page)
   await xc.getByRole("radio", { name: /^Solana/ }).click()

@@ -181,12 +181,12 @@ export async function addNext(page: Page) {
 /**
  * The Add money sheet in its two steps (open it first): type `amount` on step 1 and press [Next] (omit `amount` when
  * the sheet already shows step 2, e.g. a link with ?amount=, or when the amount on step 1 is fine as it is: then
- * `next: true`), pick `source` on step 2 ("Demo dollars" | "Pot dollars" | "Another app or exchange"), and press
+ * `next: true`), pick `source` on step 2 ("Free test dollars" | "Pot dollars" | "Another app or exchange"), and press
  * `submit` when given (e.g. "Add $50", or "Continue" for another app). Returns the dialog.
  */
 export async function addFlow(
   page: Page,
-  o: { amount?: string; next?: boolean; source?: "Demo dollars" | "Pot dollars" | "Another app or exchange"; submit?: string | RegExp },
+  o: { amount?: string; next?: boolean; source?: "Free test dollars" | "Pot dollars" | "Another app or exchange"; submit?: string | RegExp },
 ) {
   const dialog = page.getByRole("dialog")
   if (o.amount) await typeAmount(page, o.amount)

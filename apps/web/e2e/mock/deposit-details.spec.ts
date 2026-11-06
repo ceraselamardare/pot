@@ -60,7 +60,7 @@ test("each source kind opens with its details (showcase): another app, demo doll
   const card = sheet.locator("[data-deposit-source='xc']")
   await expect(card.locator("[data-deposit-pair]")).toHaveText("ETH on Base")
   for (const line of ["From another app", "0.1293 ETH → $300.00", "About $2,320.18 per ETH · 58 s"]) await expect(card).toContainText(line)
-  await expect(card.locator("[data-deposit-sim]")).toContainText("Testnet demo: simulated transfer")
+  await expect(card.locator("[data-deposit-sim]")).toContainText("Test only: simulated transfer")
   await expect(sheet.locator("[data-deposit-timeline] li")).toHaveCount(5)
   await expect(sheet.locator("[data-deposit-timeline]")).toContainText("Sent from Base")
   // a simulated transfer: only the receipt on NEAR (no fake origin-network link, no NEAR Intents page)
@@ -80,9 +80,9 @@ test("each source kind opens with its details (showcase): another app, demo doll
   await expect(page).not.toHaveURL(/sheet=deposit/)
 
   // demo dollars
-  await page.getByRole("button", { name: /^Sam added \$300\. Demo dollars\..*Details$/ }).click()
+  await page.getByRole("button", { name: /^Sam added \$300\. Test dollars\..*Details$/ }).click()
   sheet = await openedSheet(page, "Sam added $300")
-  await expect(sheet.locator("[data-deposit-source='demo']")).toContainText("Test money for trying Pot. No real money moved.")
+  await expect(sheet.locator("[data-deposit-source='demo']")).toContainText("Free test dollars from Pot.")
   await expect(sheet.locator("[data-deposit-timeline]")).toHaveCount(0)
   await expect(sheet.locator("[data-receipt]")).toHaveCount(1)
   await checkSheet(page, sheet)

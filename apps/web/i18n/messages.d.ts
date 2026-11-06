@@ -77,8 +77,6 @@ export interface Messages {
   "add.source.pot_dollars": { available: string | number }
   "add.source.pot_dollars.none": undefined
   "add.source.short": { amount: string | number }
-  "add.source.soon": undefined
-  "add.source.test_pill": undefined
   "add.source.title": undefined
   "add.step.amount": undefined
   "add.success": { potName: string | number; balance: string | number }
@@ -283,7 +281,6 @@ export interface Messages {
   "close.cta": undefined
   "close.decline.cta": undefined
   "close.declined.self": undefined
-  "close.disabled": undefined
   "close.done.amount": { refund: string | number }
   "close.done.feed": { date: string | number }
   "close.done.none": undefined
@@ -1109,7 +1106,6 @@ export interface Messages {
   "home.features.trust": undefined
   "home.final.body": undefined
   "home.final.title": undefined
-  "home.footer.preview": undefined
   "home.footer.top": undefined
   "home.hero.eyebrow": undefined
   "home.hero.reassure": undefined
@@ -1354,6 +1350,9 @@ export interface Messages {
   "moneyin.topup.mine": { amount: string | number }
   "moneyin.when": undefined
   "nav.balance.a11y": { amount: string | number }
+  "network.badge": undefined
+  "network.badge.body": undefined
+  "network.badge.title": undefined
   "notif.approval.body": { amount: string | number; reason: string | number; potName: string | number }
   "notif.approval.title": { name: string | number }
   "notif.approved.body": { names: string | number; reason: string | number }
@@ -1425,7 +1424,6 @@ export interface Messages {
   "onboarding.free.body": undefined
   "onboarding.free.point.free": undefined
   "onboarding.free.point.setup": undefined
-  "onboarding.free.point.test": undefined
   "onboarding.free.title": undefined
   "onboarding.next": undefined
   "onboarding.progress.label": undefined
@@ -1961,9 +1959,7 @@ export interface Messages {
   "signin.demo.quick": undefined
   "signin.failed": undefined
   "signin.fine": undefined
-  "signin.fine.wallet": undefined
   "signin.google": undefined
-  "signin.google_later": undefined
   "signin.home": undefined
   "signin.inapp.body": { appName: string | number }
   "signin.inapp.body_any": { browser: string | number; appName: string | number }
@@ -2302,8 +2298,6 @@ export interface Messages {
   "uc.calc.faq.nights.q": undefined
   "uc.calc.faq.party.a": undefined
   "uc.calc.faq.party.q": undefined
-  "uc.calc.faq.real.a": undefined
-  "uc.calc.faq.real.q": undefined
   "uc.calc.faq.rounding.a": undefined
   "uc.calc.faq.rounding.q": undefined
   "uc.calc.faq.title": undefined
@@ -2385,7 +2379,6 @@ export interface Messages {
   "uc.common.related.home.body": undefined
   "uc.common.related.home.label": undefined
   "uc.common.related.title": undefined
-  "uc.common.signin_today": undefined
   "uc.common.updated": { date: string | number }
   "uc.gift.card.body": undefined
   "uc.gift.card.label": undefined
@@ -2425,8 +2418,6 @@ export interface Messages {
   "uc.gift.faq.outside.q": undefined
   "uc.gift.faq.over.a": undefined
   "uc.gift.faq.over.q": undefined
-  "uc.gift.faq.real.a": undefined
-  "uc.gift.faq.real.q": undefined
   "uc.gift.faq.see.a": undefined
   "uc.gift.faq.see.q": undefined
   "uc.gift.faq.title": undefined
@@ -2557,8 +2548,6 @@ export interface Messages {
   "uc.party.faq.kitty.q": undefined
   "uc.party.faq.much.a": undefined
   "uc.party.faq.much.q": undefined
-  "uc.party.faq.real.a": undefined
-  "uc.party.faq.real.q": undefined
   "uc.party.faq.short.a": undefined
   "uc.party.faq.short.q": undefined
   "uc.party.faq.title": undefined
@@ -2687,8 +2676,6 @@ export interface Messages {
   "uc.shared.faq.joint.q": undefined
   "uc.shared.faq.private.a": undefined
   "uc.shared.faq.private.q": undefined
-  "uc.shared.faq.real.a": undefined
-  "uc.shared.faq.real.q": undefined
   "uc.shared.faq.takeall.a": { perPerson: string | number }
   "uc.shared.faq.takeall.q": undefined
   "uc.shared.faq.title": undefined
@@ -2717,8 +2704,8 @@ export interface Messages {
   "uc.shared.isnt.is.title": undefined
   "uc.shared.isnt.is.web": undefined
   "uc.shared.isnt.not.bank": undefined
-  "uc.shared.isnt.not.out": undefined
-  "uc.shared.isnt.not.real": undefined
+  "uc.shared.isnt.not.credit": undefined
+  "uc.shared.isnt.not.solo": undefined
   "uc.shared.isnt.not.title": undefined
   "uc.shared.isnt.title": undefined
   "uc.shared.meta.description": undefined
@@ -2834,8 +2821,6 @@ export interface Messages {
   "uc.trip.faq.leftover.q": undefined
   "uc.trip.faq.much.a": undefined
   "uc.trip.faq.much.q": undefined
-  "uc.trip.faq.real.a": undefined
-  "uc.trip.faq.real.q": undefined
   "uc.trip.faq.title": undefined
   "uc.trip.final.body": undefined
   "uc.trip.final.title": undefined
@@ -2946,9 +2931,9 @@ export interface Messages {
   "xc.expired": undefined
   "xc.failed": undefined
   "xc.giver.converting": undefined
-  "xc.giver.real_soon": undefined
   "xc.giver.subtitle": { amount: string | number; potName: string | number }
   "xc.giver.title": undefined
+  "xc.giver.unavailable": undefined
   "xc.giver.waiting": { token: string | number; network: string | number }
   "xc.incomplete": { missing: string | number; deadline: string | number }
   "xc.incomplete.rest_sent": { network: string | number }
@@ -3032,7 +3017,6 @@ export interface Messages {
   "you.avatar.saving": undefined
   "you.balance.error": undefined
   "you.balance.helper": undefined
-  "you.balance.no_cashout": undefined
   "you.balance.title": undefined
   "you.email": undefined
   "you.help": undefined
@@ -3044,6 +3028,5 @@ export interface Messages {
   "you.push": undefined
   "you.settings": undefined
   "you.signout": undefined
-  "you.soon": undefined
   "you.title": undefined
 }

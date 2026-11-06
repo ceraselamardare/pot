@@ -4,7 +4,8 @@
 // simulated transfer timed like that network (capped at 30 s) and the page goes on to send the payment. Testnet only:
 // the address is a labelled fake ("Test only · Do not send"), the numbers are the real dry quote's (POST
 // /api/oneclick/price), and what the Pot receives is the dollar amount the person picked, which is what the page
-// promised ("About $25.00 arrives"). There is no real mode for people outside the Pot yet: it says so and goes back.
+// promised ("About $25.00 arrives"). There is no real mode for people outside the Pot: GiveFlow doesn't offer this
+// way to pay when the server is in real mode, and if one gets here anyway it says so and goes back.
 import { useEffect, useRef, useState } from "react"
 import { ProgressSteps, type StepState } from "@/components/feedback/States"
 import { TypingDots } from "@/components/feedback/TypingDots"
@@ -63,7 +64,7 @@ export function GiverDeposit({ potName, amount, onArrived, onCancel }: { potName
   if (real)
     return (
       <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 shadow-card" data-give-xc="real">
-        <p className="text-body text-ink">{t("xc.giver.real_soon")}</p>
+        <p className="text-body text-ink">{t("xc.giver.unavailable")}</p>
         <Button className="w-full" onClick={onCancel}>
           {t("gift.signin.back")}
         </Button>

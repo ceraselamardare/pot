@@ -104,8 +104,7 @@ const FAQ = [
   faqItem("party", t("uc.calc.faq.party.q"), t("uc.calc.faq.party.a")),
   faqItem("rounding", t("uc.calc.faq.rounding.q"), t("uc.calc.faq.rounding.a")),
   faqItem("leftover", t("uc.calc.faq.leftover.q"), t("uc.calc.faq.leftover.a")),
-  faqItem("free", t("uc.calc.faq.free.q"), t("uc.calc.faq.free.a"), t("uc.common.signin_today")),
-  faqItem("real", t("uc.calc.faq.real.q"), t("uc.calc.faq.real.a")),
+  faqItem("free", t("uc.calc.faq.free.q"), t("uc.calc.faq.free.a")),
 ]
 
 const page = marketingPage(PATH)

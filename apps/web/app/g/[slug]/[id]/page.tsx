@@ -6,6 +6,7 @@ import type { Metadata } from "next"
 import { connection } from "next/server"
 import { Suspense } from "react"
 import { Lockup } from "@/components/brand/Lockup"
+import { NetworkBadge } from "@/components/brand/NetworkBadge"
 import { LiveRegion } from "@/components/app-shell/Shell"
 import { Blank, GiftLinkFlow } from "@/components/gifts/GiveFlow"
 import { PublicNotice } from "@/components/public/PublicNotice"
@@ -26,7 +27,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default function GiftLinkPage({ params }: Props) {
   return (
-    <main id="main" className="mx-auto flex min-h-dvh w-full max-w-flow flex-col px-4 pt-12 pb-[calc(16px+env(safe-area-inset-bottom))] md:px-6">
+    <main id="main" className="relative mx-auto flex min-h-dvh w-full max-w-flow flex-col px-4 pt-12 pb-[calc(16px+env(safe-area-inset-bottom))] md:px-6">
+      {/* the Testnet badge (testnet builds only) in the top corner, clear of the centred lockup */}
+      <NetworkBadge place="page" className="absolute top-3 right-4 md:right-6" />
       <div className="mb-6 flex justify-center">
         <Lockup className="h-10 w-auto" />
       </div>

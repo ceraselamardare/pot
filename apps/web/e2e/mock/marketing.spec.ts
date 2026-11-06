@@ -1,7 +1,8 @@
 // The use-case pages (components/marketing, lib/marketing/pages.ts), smoke-style: each one is up and static, has one
 // H1, the brand checks (exactly one marigold button: the hero's [Start a Pot]), no axe violations at all, its own
 // canonical and share card, one JSON-LD graph (WebPage, BreadcrumbList, FAQPage mirroring the visible FAQ), a place
-// in the sitemap, and the honest preview note near its last call to action. A new page adds one entry to PAGES.
+// in the sitemap, and the Testnet badge in its header and footer (the one place the site names its network). A new
+// page adds one entry to PAGES.
 import { readFileSync } from "node:fs"
 import { AxeBuilder } from "@axe-core/playwright"
 import { expect, test } from "@playwright/test"
@@ -61,7 +62,7 @@ const PAGES = [
 
 for (const p of PAGES) {
   test.describe(p.path, () => {
-    test("200, one H1, one marigold, the CTAs, the preview note", async ({ page }) => {
+    test("200, one H1, one marigold, the CTAs, the Testnet badge", async ({ page }) => {
       const res = await page.goto(p.path)
       expect(res?.status()).toBe(200)
       expect(res?.headers()["x-robots-tag"]).toBeUndefined()
@@ -74,7 +75,12 @@ for (const p of PAGES) {
       await expect(hero.getByRole("link", { name: m["uc.common.cta.demo"]! })).toHaveAttribute("href", "/demo")
       const final = page.locator("[data-final-cta]")
       await expect(final.getByRole("link", { name: "Start a Pot" })).toHaveAttribute("href", "/pots?sheet=create")
-      await expect(final.locator("[data-preview-note]")).toHaveText(m["home.footer.preview"]!)
+      // no preview notes or "Is this real money?" any more: the Testnet badge in the header and the footer says it
+      await expect(final.locator("[data-preview-note]")).toHaveCount(0)
+      await expect(page.locator('[data-faq-item="real"]')).toHaveCount(0)
+      // in the header row from 448 px; on narrower phones in the strip right under the header
+      await expect(page.locator("button[data-network-badge^='header']:visible")).toHaveCount(1)
+      await expect(page.locator("footer").getByRole("button", { name: m["network.badge"]! })).toBeVisible()
       // the header has no in-page anchors here (they're the home page's sections)
       await expect(page.getByRole("banner").getByRole("navigation")).toHaveCount(0)
       for (const text of p.shows) await expect(page.getByText(text, { exact: false }).first()).toBeAttached()

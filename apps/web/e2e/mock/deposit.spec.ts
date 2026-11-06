@@ -51,7 +51,7 @@ test("ok: network → simulated address (DO NOT SEND) → 5 steps → arrived �
   await brandChecks(page, { marigold: "one" })
 
   await getAddress(page, "Base")
-  await expect(sheet.getByText("Testnet demo: simulated transfer, no real money")).toBeVisible()
+  await expect(sheet.getByText("Test only · Simulated transfer: do not send real coins")).toBeVisible()
   await expect(sheet.getByText("Send 150 USDC on Base")).toBeVisible()
   await expect(sheet.getByText("We'll accept 148.50 USDC or more.")).toBeVisible()
   // the QR encodes a warning, never an address; a band says so on top of it

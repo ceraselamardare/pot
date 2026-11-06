@@ -35,12 +35,12 @@ import { graph, organization, webApplication, website } from "@/lib/marketing/sc
 export const metadata: Metadata = pageMeta("/", { absoluteTitle: true })
 
 // Pot as an entity for search and AI answer engines: Organization + WebSite + WebApplication in one @graph. The
-// description is the visible copy (the meta description and the footer's preview line), so the markup says only what
-// the page says: test money, no ratings.
+// description is the visible copy (the meta description), so the markup says only what the page says: no ratings,
+// and no network (the Testnet badge in the header and footer is the one place that names it).
 const STRUCTURED_DATA = graph(
   organization(),
   website(),
-  webApplication({ description: `${t("home.meta.description")} ${t("home.footer.preview")}`, free: true }),
+  webApplication({ description: t("home.meta.description"), free: true }),
 )
 
 export default function Home() {

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import robots from "@/app/robots"
 import sitemap from "@/app/sitemap"
 import { hasKey, t } from "@/i18n/t"
-import { llmsTxt } from "./llms"
+import { LLMS_TESTNET_STATUS, llmsTxt } from "./llms"
 import { pageMeta } from "./meta"
 import { MARKETING_PAGES, PRIVATE_PATHS, useCasePages } from "./pages"
 import { breadcrumbs, faqPage, graph, organization, serializeJsonLd, webApplication, website } from "./schema"
@@ -141,11 +141,18 @@ describe("llms.txt", () => {
     for (const p of MARKETING_PAGES.filter((x) => x.llms === "main")) expect(md).toContain(`](https://usepot.xyz${p.path === "/" ? "/" : p.path})`)
     expect(md).toContain("(https://github.com/ceraselamardare/pot)")
   })
-  it("stays inside the product's claims: testnet and test dollars, no real money", () => {
+  it("stays inside the product's claims, with one neutral status line on a testnet build", () => {
+    env({ NEXT_PUBLIC_NETWORK: "testnet" })
     const md = llmsTxt()
-    expect(md).toMatch(/testnet/i)
-    expect(md).toMatch(/test dollars/)
-    expect(md).toMatch(/no real money/i)
-    for (const claim of [/trustless/i, /audited/i, /insured/i, /card top-ups? (is|are) (live|available)/i, /\bmainnet\b(?! and no real)/i]) expect(md).not.toMatch(claim)
+    expect(md.split("\n").filter((l) => l === LLMS_TESTNET_STATUS)).toHaveLength(1)
+    expect(md).toMatch(/No cash-out/)
+    // no preview framing; mainnet only in the status line ("mainnet is next"), never as a claim that Pot runs there
+    for (const claim of [/preview/i, /demo dollars/i, /trustless/i, /audited/i, /insured/i, /card top-ups? (is|are) (live|available)/i])
+      expect(md).not.toMatch(claim)
+    expect(md.replace(LLMS_TESTNET_STATUS, "")).not.toMatch(/\bmainnet\b/i)
+  })
+  it("drops the status line on any other build", () => {
+    env({ NEXT_PUBLIC_NETWORK: "mainnet" })
+    expect(llmsTxt()).not.toContain(LLMS_TESTNET_STATUS)
   })
 })

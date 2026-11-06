@@ -90,7 +90,7 @@ test("instant spend with a scanned receipt: the row says Receipt attached and op
   await expect(card.locator("[data-saved-receipt-items]")).toContainText("Bacalhau à Brás")
   await expect(card.locator("[data-saved-receipt-items]")).toContainText("Tip")
   await expect(card.locator("[data-saved-receipt-private]")).toContainText("Read privately")
-  await expect(card.locator("[data-saved-receipt-private]")).toContainText("Sample reading: this test version didn't read a real photo.")
+  await expect(card.locator("[data-saved-receipt-private]")).toContainText("Sample reading, not one of a real photo.")
   await expect(card.locator("img")).toHaveCount(0)
 
   // the fingerprint check: icon + word, and how it works

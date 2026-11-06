@@ -135,7 +135,7 @@ export function detailsFromWire(d: DepositDetailsWire, profiles: Record<string, 
   }
 }
 
-/** The row's short source words ("Demo dollars", "ETH on Base") and the phrase its accessible name uses. */
+/** The row's short source words ("Test dollars", "ETH on Base") and the phrase its accessible name uses. */
 export function rowSourceWords(src: AddSourceVM | undefined, network: (chain: string) => string = networkLabel): { short: string; said: string } | null {
   if (!src) return null
   if (src.kind === "xc") {

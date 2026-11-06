@@ -536,7 +536,6 @@ function AddMoney({ story, people: all, you, active, onPrimary }: SceneProps) {
               <span className="size-2.5 rounded-pill bg-ink" />
             </span>
             <span className="min-w-0 flex-1 text-body text-ink">{t("add.source.demo")}</span>
-            <span className="rounded-pill bg-surface-sunken px-2 py-0.5 text-body-sm font-semibold text-ink">{t("add.source.test_pill")}</span>
           </div>
         </div>
         <p className="text-body-sm text-ink tabular-nums" data-phone-outcome>

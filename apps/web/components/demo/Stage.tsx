@@ -18,6 +18,7 @@ import { ArrowLeft, ArrowRight, Check, ChevronRight, FlaskConical, Layers, Point
 import Link from "next/link"
 import type { Persona } from "@/app/demo/_data/types"
 import { Lockup } from "@/components/brand/Lockup"
+import { NetworkBadge } from "@/components/brand/NetworkBadge"
 import { SignInLink } from "@/components/features/auth/SignInLink"
 import { Avatar } from "@/components/pot/Avatar"
 import { buttonVariants } from "@/components/ui/button"
@@ -60,9 +61,13 @@ export function Stage({ phones, people }: { phones: TourPhones; people: Record<P
     >
       <header className="shrink-0 border-b border-line bg-ground">
         <div className="mx-auto flex h-14 w-full max-w-app items-center justify-between gap-3 px-4 md:px-6 lg:h-16 max-md:[@media(max-height:44.99rem)]:h-11">
-          <Link href="/" aria-label={t("home.nav.home")} className="-ml-1 inline-flex min-h-11 shrink-0 items-center rounded-md px-1">
-            <Lockup className="h-9 w-auto lg:h-10 max-md:[@media(max-height:44.99rem)]:h-8" />
-          </Link>
+          <div className="flex min-w-0 items-center gap-2">
+            <Link href="/" aria-label={t("home.nav.home")} className="-ml-1 inline-flex min-h-11 shrink-0 items-center rounded-md px-1">
+              <Lockup className="h-9 w-auto lg:h-10 max-md:[@media(max-height:44.99rem)]:h-8" />
+            </Link>
+            {/* the Testnet badge (testnet builds only), like the site header's; below 360 px the row needs its room for Skip */}
+            <NetworkBadge place="demo" className="max-xs:hidden" />
+          </div>
           {mode === "end" ? null : p.hydrated ? (
             <button type="button" onClick={p.skip} className="-mr-2 inline-flex min-h-11 items-center rounded-md px-2 text-label text-ink hover:bg-surface-sunken" data-tour-skip>
               {t("tour.skip")}

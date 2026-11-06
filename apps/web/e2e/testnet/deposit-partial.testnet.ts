@@ -68,7 +68,7 @@ test("an underpaid simulated deposit → 'send more' twice → it arrives → $3
 
     // like the owner: $150 of demo dollars first
     const first = await openAdd(page, "150")
-    await first.getByRole("radio", { name: /Demo dollars/ }).click()
+    await first.getByRole("radio", { name: /Free test dollars/ }).click()
     await first.getByRole("button", { name: "Add $150" }).click()
     await expect(page.getByRole("dialog")).toBeHidden()
     await eventually(() => potBalance(slug), (v) => v === usd(150), 60_000)
