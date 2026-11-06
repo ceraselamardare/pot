@@ -1,26 +1,17 @@
 "use client"
-// "/" sends a signed-in visitor to their Pots (frontend-architecture §2.1): the session from useMe (testnet:
-// GET /api/session; mock: its persona).
-// Except during a hand-off (lib/client/signin.ts): a sign-in that just finished on this page navigates to its own
-// destination (the sign-in dialog's /pots?sheet=create → the intro → Create; the NEAR Auth callback's returnTo), and
-// "/pots" must not win that race (scratchpad auth-map §5 risk 1: the session query notifies its observers a task
-// after the sign-in's own callback runs, so a redirect fired then would drop ?sheet=create). The check waits one
-// task, so a hand-off started in the same turn as the session (the mock's store notifies synchronously) is seen.
-import { useRouter } from "next/navigation"
-import { useEffect, useSyncExternalStore } from "react"
-import { useMe } from "@/lib/client/data"
-import { handoffActive, subscribeHandoff } from "@/lib/client/signin"
+// "/" sends a signed-in visitor to their Pots (frontend-architecture §2.1), without putting the data layer on the
+// landing's first load: a signed-out visitor (most of them) only reads the cheap session hint (lib/client/signin.ts
+// hasSessionHint: testnet's JS-readable `pot_hint` cookie, the mock's persona in localStorage) and loads nothing else.
+// With a hint, <HomeRedirectSession /> is loaded on demand and confirms the session (useMe: GET /api/session on
+// testnet) before redirecting, as before, so a stale hint never redirects. The hint is read again when a hand-off
+// starts or ends (a sign-in finished on this page), and the session check then stands down until it's over.
+import dynamic from "next/dynamic"
+import { useSyncExternalStore } from "react"
+import { hasSessionHint, subscribeHandoff } from "@/lib/client/signin"
+
+const HomeRedirectSession = dynamic(() => import("./HomeRedirectSession").then((m) => m.HomeRedirectSession), { ssr: false })
 
 export function HomeRedirect() {
-  const me = useMe()
-  const router = useRouter()
-  const handingOff = useSyncExternalStore(subscribeHandoff, handoffActive, () => false)
-  useEffect(() => {
-    if (!me || handingOff) return
-    const id = setTimeout(() => {
-      if (!handoffActive()) router.replace("/pots")
-    }, 0)
-    return () => clearTimeout(id)
-  }, [me, handingOff, router])
-  return null
+  const hinted = useSyncExternalStore(subscribeHandoff, hasSessionHint, () => false)
+  return hinted ? <HomeRedirectSession /> : null
 }

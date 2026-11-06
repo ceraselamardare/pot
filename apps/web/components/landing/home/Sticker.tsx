@@ -1,8 +1,9 @@
-// A decorative die-cut sticker (tram, pastel de nata, groceries…): a plain <img> with a 256/512 px WebP srcSet.
+// A decorative die-cut sticker (tram, pastel de nata, groceries…): a plain <img> with a 128-512 px WebP srcSet.
 // Always decorative (alt="" + aria-hidden). `width` is the rendered CSS width in px: it sets the width/height
 // attributes (the intrinsic ratio, so nothing shifts while the file loads) and the default `sizes`. To size it
 // responsively, pass width classes (e.g. "w-24 md:w-36") plus a matching `sizes`; height stays auto.
-// Lazy by default; `priority` for an above-the-fold sticker (eager + high fetch priority).
+// Lazy by default; `priority` for an above-the-fold sticker: eager, but never high fetch priority (stickers are
+// decoration, not the LCP element; the fonts, the CSS and the H1 come first).
 // Any other attribute goes to the <img> (e.g. a landing sequence's `data-seq="settle"` + `style={seqVars(…)}`);
 // the tilt is the CSS `rotate` property, so a motion `transform` composes with it.
 import { cn } from "@/lib/client/cn"
@@ -28,7 +29,7 @@ export function Sticker({
   width?: number
   /** the `sizes` attribute; defaults to `${width}px` */
   sizes?: string
-  /** above the fold: load eagerly with high priority */
+  /** above the fold: load eagerly (at the default priority) */
   priority?: boolean
   /** a slight tilt in degrees (CSS `rotate`, so it composes with a motion `transform`) */
   rotate?: number
@@ -50,7 +51,6 @@ export function Sticker({
       aria-hidden
       decoding="async"
       loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : undefined}
       draggable={false}
       data-sticker={name}
       className={cn("pointer-events-none block h-auto max-w-full select-none", className)}

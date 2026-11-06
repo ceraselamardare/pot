@@ -3,7 +3,8 @@
 // build's flags stubbed: the live variants (NEAR Auth on: Google marigold · email · or · wallet row; NEAR Auth off:
 // the wallet alone as the marigold + "Google sign-in isn't on…"; an in-app browser; a browser that can't hold a key),
 // the mock's simulated set, the stepper with Cancel / Escape / "Open it again", errors in the app's words, the
-// hand-off (SignInDialog), SignInLink's interception, and HomeRedirect standing down in both orderings of the race
+// hand-off (SignInDialog), SignInLink's interception, HomeRedirect's session-hint gate, and its session check standing
+// down in both orderings of the race
 // (auth-map §5 risk 1: live builds see the session a task after the sign-in's callback; the mock sees it first).
 import { act, cleanup, createEvent, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -30,6 +31,7 @@ const mockJoin = vi.fn()
 vi.mock("@/lib/client/actions", () => ({ mockJoinSession: (p: string) => mockJoin(p) }))
 const me = { current: null as string | null | undefined }
 vi.mock("@/lib/client/data", () => ({ useMe: () => me.current }))
+vi.mock("@/lib/client/session", async (orig) => ({ ...(await orig<typeof import("@/lib/client/session")>()), useMe: () => me.current }))
 const install = { app: null as string | null }
 const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 390.0"
 vi.mock("@/lib/client/pwa/platform", async (orig) => ({
@@ -50,6 +52,7 @@ import { SignInLink } from "@/components/features/auth/SignInLink"
 import { MOCK_WINDOW_MS, SignInPanel } from "@/components/features/auth/SignInPanel"
 import { NearAuthCallback } from "@/components/features/auth/NearAuthCallback"
 import { HomeRedirect } from "@/components/landing/HomeRedirect"
+import { HomeRedirectSession } from "@/components/landing/HomeRedirectSession"
 import { beginHandoff, DEFAULT_NEXT, endHandoff, handoffActive, openSignIn, resetSignInMemory } from "@/lib/client/signin"
 
 const ISSUER = "https://login.auth.example"
@@ -474,28 +477,29 @@ describe("SignInDialog under NEAR Connect's picker (a stand-in; the real one is 
   })
 })
 
-describe("HomeRedirect", () => {
+// the session check behind the hint (it was HomeRedirect itself before the landing stopped loading the data layer)
+describe("HomeRedirectSession", () => {
   it("signed in, no hand-off: /pots", async () => {
     me.current = "maya"
-    render(<HomeRedirect />)
+    render(<HomeRedirectSession />)
     await tick()
     expect(nav.replace).toHaveBeenCalledWith("/pots")
   })
 
   it("live ordering: the hand-off starts, then the session shows up a task later → it stands down", async () => {
-    const { rerender } = render(<HomeRedirect />)
+    const { rerender } = render(<HomeRedirectSession />)
     beginHandoff()
     me.current = "u-1"
-    rerender(<HomeRedirect />)
+    rerender(<HomeRedirectSession />)
     await tick()
     expect(nav.replace).not.toHaveBeenCalled()
   })
 
   it("mock ordering: the session shows up first, the hand-off a microtask later → it still stands down", async () => {
-    const { rerender } = render(<HomeRedirect />)
+    const { rerender } = render(<HomeRedirectSession />)
     act(() => {
       me.current = "alex"
-      rerender(<HomeRedirect />)
+      rerender(<HomeRedirectSession />)
       queueMicrotask(beginHandoff)
     })
     await tick()
@@ -505,12 +509,52 @@ describe("HomeRedirect", () => {
   it("a hand-off that lets go (a callback that wasn't ours) → the redirect resumes", async () => {
     beginHandoff()
     me.current = "u-1"
-    render(<HomeRedirect />)
+    render(<HomeRedirectSession />)
     await tick()
     expect(nav.replace).not.toHaveBeenCalled()
     act(() => endHandoff())
     await tick()
     expect(nav.replace).toHaveBeenCalledWith("/pots")
+  })
+})
+
+// "/"'s gate: without a session hint nothing loads and nothing redirects; with one, the session check takes over
+const hint = (persona: string) => localStorage.setItem("pot.mock.session", JSON.stringify({ persona, kind: "mock" }))
+describe("HomeRedirect", () => {
+  it("no session hint: no session check at all, so no redirect (even if a session would say signed in)", async () => {
+    me.current = "maya"
+    render(<HomeRedirect />)
+    await tick(50)
+    expect(nav.replace).not.toHaveBeenCalled()
+  })
+
+  it("a session hint: the session check loads and sends a signed-in visitor to /pots", async () => {
+    hint("maya")
+    me.current = "maya"
+    render(<HomeRedirect />)
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/pots"))
+  })
+
+  it("a hint but no session (a stale cookie): it stays", async () => {
+    hint("maya")
+    me.current = null
+    render(<HomeRedirect />)
+    await tick(50)
+    expect(nav.replace).not.toHaveBeenCalled()
+  })
+
+  it("a sign-in that finishes here: the hint is read again when the hand-off starts, and the check stands down", async () => {
+    render(<HomeRedirect />)
+    act(() => {
+      hint("alex")
+      me.current = "alex"
+      beginHandoff()
+    })
+    await tick(50)
+    expect(nav.replace).not.toHaveBeenCalled()
+    // the hand-off lets go without navigating (a callback that wasn't ours): the redirect resumes
+    act(() => endHandoff())
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/pots"))
   })
 })
 

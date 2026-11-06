@@ -163,6 +163,7 @@ export function UnderTheHood() {
         {/* a real link styled as a secondary button (buttonVariants), never role="button" */}
         <Link
           href="/demo/4"
+          prefetch={false} // the tour is heavy and static: no download until the click (as the hero's demo link)
           // its arrow nudges 3 px on hover, like the final card's [Start a Pot →] (04 catalogue: links that carry an arrow)
           className={cn(buttonVariants({ variant: "secondary" }), "l-nudge w-full shrink-0 md:w-auto md:self-start lg:self-auto", PAGE_NIGHT.hover)}
         >

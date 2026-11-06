@@ -4,8 +4,9 @@
 // <NearAuthCallback /> finishes a NEAR Auth redirect sign-in (the shared testnet client returns to "/").
 // [Start a Pot] in the hero is the page's only marigold button; every other button is secondary. Every start CTA is a
 // <SignInLink> (a real link to /pots?sheet=create; with JS and no session it opens the sign-in dialog).
-import type { Metadata, ResolvingMetadata } from "next"
+import type { Metadata } from "next"
 import { NearAuthCallback } from "@/components/features/auth/NearAuthCallback"
+import { JsonLd } from "@/components/seo/JsonLd"
 import { HomeRedirect } from "@/components/landing/HomeRedirect"
 // the landing's motion + interaction stylesheet; every rule is scoped under [data-landing] (Next keeps a page's CSS
 // loaded after a client navigation away, so it must not reach other routes)
@@ -16,6 +17,7 @@ import { Features } from "@/components/landing/home/Features"
 import { FinalCta } from "@/components/landing/home/FinalCta"
 import { Hero } from "@/components/landing/home/Hero"
 import { HowItWorks } from "@/components/landing/home/HowItWorks"
+import { MadeFor } from "@/components/landing/home/MadeFor"
 import { SmoothAnchors } from "@/components/landing/home/motion/ScrollMarkers"
 import { Problem } from "@/components/landing/home/Problem"
 import { RulesPlayground } from "@/components/landing/home/RulesPlayground"
@@ -24,33 +26,28 @@ import { SiteHeader } from "@/components/landing/home/SiteHeader"
 import { Trust } from "@/components/landing/home/Trust"
 import { UnderTheHood } from "@/components/landing/home/UnderTheHood"
 import { t } from "@/i18n/t"
+import { pageMeta } from "@/lib/marketing/meta"
+import { graph, organization, webApplication, website } from "@/lib/marketing/schema"
 
-// The root layout owns the Open Graph image; this page only swaps the title and the description, so it extends
-// the layout's openGraph (a page's openGraph would otherwise replace it whole, image included). The share card's
-// title is the page title (home.meta.title), not the layout's bare "Pot". twitter is a whole object too, so it
-// restates the card type; X's image still falls back to og:image (Next fills twitter:image from openGraph).
-export async function generateMetadata(_props: PageProps<"/">, parent: ResolvingMetadata): Promise<Metadata> {
-  const og = (await parent).openGraph
-  const title = t("home.meta.title")
-  const description = t("home.meta.description")
-  return {
-    title: { absolute: title },
-    description,
-    openGraph: {
-      type: "website",
-      siteName: og?.siteName ?? t("app.name"),
-      title,
-      description,
-      images: og?.images,
-    },
-    twitter: { card: "summary_large_image", title, description },
-  }
-}
+// Metadata from the marketing registry (lib/marketing/pages.ts → pageMeta): the title (absolute: it already starts
+// with "Pot"), the description, the canonical "/", og:url and the shared share image, restated because a page's
+// openGraph replaces the layout's whole object. The share card's title is the page title, not the layout's bare "Pot".
+export const metadata: Metadata = pageMeta("/", { absoluteTitle: true })
+
+// Pot as an entity for search and AI answer engines: Organization + WebSite + WebApplication in one @graph. The
+// description is the visible copy (the meta description and the footer's preview line), so the markup says only what
+// the page says: test money, no ratings.
+const STRUCTURED_DATA = graph(
+  organization(),
+  website(),
+  webApplication({ description: `${t("home.meta.description")} ${t("home.footer.preview")}`, free: true }),
+)
 
 export default function Home() {
   return (
     // data-landing scopes landing-motion.css; display:contents, so the layout is exactly as without it
     <div data-landing className="contents">
+      <JsonLd data={STRUCTURED_DATA} />
       {/* smooth in-page jumps once loaded, and only while this page is on screen (motion/ScrollMarkers.tsx) */}
       <SmoothAnchors />
       <HomeRedirect />
@@ -65,6 +62,8 @@ export default function Home() {
         <Features />
         <Trust />
         <UnderTheHood />
+        {/* the use-case pages from the marketing registry (only registered pages, so never a dead link) */}
+        <MadeFor />
         <FinalCta />
       </main>
       <SiteFooter />

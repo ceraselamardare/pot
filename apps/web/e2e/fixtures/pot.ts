@@ -18,6 +18,15 @@ export async function asPerson(page: Page, person: MockPerson) {
   }, person)
 }
 
+/**
+ * Wait until the mock data layer has written its world to localStorage. It does that when it first loads, which can
+ * be after the page's load event (the landing no longer pulls the data layer in, so its chunk isn't always warm), so a
+ * spec that edits the world right after a goto waits for it first.
+ */
+export async function mockWorldReady(page: Page) {
+  await page.waitForFunction(() => !!localStorage.getItem("pot.mock.world.v1"))
+}
+
 /** Become another of the mock world's people on the same page (the app has no person switcher since Rev 9). */
 export async function becomePerson(page: Page, person: MockPerson) {
   await page.evaluate((p) => localStorage.setItem("pot.mock.session", JSON.stringify({ persona: p, kind: "mock" })), person)

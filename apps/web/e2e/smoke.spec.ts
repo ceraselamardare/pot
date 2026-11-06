@@ -94,8 +94,13 @@ test("one main action everywhere, the demo second, and What else a Pot can do (0
   await expect(more.getByRole("heading", { level: 3 })).toHaveText(["Trust grows", "All or nothing", "Ask anyone to pay in", "Send by link"])
   await expect(more.getByRole("button")).toHaveCount(0)
   await expect(more.getByRole("link")).toHaveCount(0)
-  const order = await page.evaluate(() => ["#rules", "#more", "section[aria-labelledby='trust-title']"].map((s) => document.querySelector(s)!.getBoundingClientRect().top))
+  const order = await page.evaluate(() =>
+    ["#rules", "#more", "section[aria-labelledby='trust-title']", "#tech", "#made-for", "[data-final-cta]"].map((s) => document.querySelector(s)!.getBoundingClientRect().top),
+  )
   expect(order).toEqual([...order].sort((a, b) => a - b))
+  // Made for (just before the final card): the use-case pages, with descriptive link text
+  const madeFor = page.getByRole("region", { name: "Made for the plans your group chat makes" })
+  await expect(madeFor.getByRole("link", { name: /Collect money for a group trip/ })).toHaveAttribute("href", "/group-trip")
 })
 
 test.describe("without JS", () => {

@@ -5,18 +5,14 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { TourPage } from "@/components/demo/TourPage"
 import { TOUR_CHAPTER_START, type TourChapter } from "@/components/demo/tour"
-import { t } from "@/i18n/t"
+import { pageMeta } from "@/lib/marketing/meta"
 
 export function generateStaticParams() {
   return ["1", "2", "3", "4", "5", "6"].map((chapter) => ({ chapter }))
 }
 
-export const metadata: Metadata = {
-  title: t("tour.meta.title"),
-  description: t("tour.meta.description"),
-  alternates: { canonical: "/demo" },
-  robots: { index: true, follow: true },
-}
+// the tour's own metadata (pageMeta("/demo")): the same title and share card, and /demo as the canonical
+export const metadata: Metadata = pageMeta("/demo")
 
 export default async function DemoChapterPage({ params }: PageProps<"/demo/[chapter]">) {
   const { chapter } = await params

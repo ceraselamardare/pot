@@ -84,7 +84,9 @@ export function Hero() {
             <SignInLink source="hero" className={cn(buttonVariants({ variant: "primary" }), CTA, PRIMARY_HOVER)}>
               {t("home.cta.start")}
             </SignInLink>
-            <Link href="/demo" className={cn(buttonVariants({ size: "lg" }), CTA)}>
+            {/* no prefetch: the whole static tour (its RSC payload and route JS) would download on every landing view; its
+                HTML is CDN-cached, so the click is still quick */}
+            <Link href="/demo" prefetch={false} className={cn(buttonVariants({ size: "lg" }), CTA)}>
               {t("home.cta.demo")}
             </Link>
           </div>

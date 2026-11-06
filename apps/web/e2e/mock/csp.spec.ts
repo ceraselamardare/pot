@@ -44,7 +44,7 @@ async function visit(page: Page, seen: Seen, path: string, ready?: (page: Page) 
 }
 
 test("the header: a full policy on every page, no eval, a tight connect-src", async ({ request }) => {
-  for (const path of ["/", "/pots", "/p/lisbon-trip", "/give/lisbon-trip", "/j/porto-weekend"]) {
+  for (const path of ["/", "/group-trip", "/bachelorette-party", "/group-gift", "/shared-account-with-friends", "/tools/group-trip-cost-calculator", "/pots", "/p/lisbon-trip", "/give/lisbon-trip", "/j/porto-weekend"]) {
     const csp = (await request.get(path)).headers()["content-security-policy"]!
     expect(csp, path).toContain("default-src 'self'")
     expect(csp, path).toMatch(/script-src 'self' 'unsafe-inline'(;|$)/)
@@ -67,6 +67,11 @@ test("signed out: the landing, the demo, the invite page, the public pages and t
   await visit(page, seen, "/demo")
   for (const ch of [1, 2, 3, 4, 5, 6]) await visit(page, seen, `/demo/${ch}`)
   await visit(page, seen, "/demo/all")
+  await visit(page, seen, "/group-trip")
+  await visit(page, seen, "/bachelorette-party")
+  await visit(page, seen, "/group-gift")
+  await visit(page, seen, "/shared-account-with-friends")
+  await visit(page, seen, "/tools/group-trip-cost-calculator")
   await visit(page, seen, PORTO_INVITE_URL, (p) => expect(p.locator("[data-join-cta]")).toBeVisible())
   await visit(page, seen, "/give/lisbon-trip")
   await visit(page, seen, "/g/lisbon-trip/AAAAAAAAAAAAAAAAAAAAAA")

@@ -385,7 +385,7 @@ function ShareBubble({ inSoFar, potName }: { inSoFar: PersonVM[]; potName: strin
 
 function Share({ story, people: all, you, active, onPrimary }: SceneProps) {
   // the secret after # never reaches a server: shown masked, as on a real phone
-  const link = `pot.app/j/${story.potName.toLowerCase().replace(/ /g, "-")}-7k2f?i=…#•••••`
+  const link = `usepot.xyz/j/${story.potName.toLowerCase().replace(/ /g, "-")}-7k2f?i=…#•••••`
   return (
     <PhoneSheet
       title={t("share.title", { potName: story.potName })}

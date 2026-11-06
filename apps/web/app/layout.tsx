@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { t } from "@/i18n/t"
+import { OG_IMAGE } from "@/lib/marketing/meta"
+import { appUrl } from "@/lib/marketing/site"
 import { THEME_SCRIPT } from "@/lib/theme/script"
 import { display, sans } from "./fonts"
 import { Providers } from "./providers"
@@ -8,16 +10,10 @@ import "./globals.css"
 // Tagline = en.json app.description (brand README §9).
 const DESCRIPTION = t("app.description")
 
-function appUrl(): URL {
-  if (process.env.NEXT_PUBLIC_APP_URL) return new URL(process.env.NEXT_PUBLIC_APP_URL)
-  // on Vercel without a custom domain: the project's production URL, else this deployment's URL
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return new URL(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
-  if (process.env.VERCEL_URL) return new URL(`https://${process.env.VERCEL_URL}`)
-  return new URL("http://localhost:3000")
-}
-
 // brand README §11, frontend-architecture §2.7 / §8.1. Icons come from public/ (copied byte-identical from
 // brand/web); there are deliberately no app/icon.* or app/apple-icon.* file conventions.
+// metadataBase is the canonical origin (lib/marketing/site.ts: NEXT_PUBLIC_APP_URL, else Vercel's production domain).
+// No canonical and no og:url here: every page would inherit them. The marketing pages set their own (pageMeta).
 export const metadata: Metadata = {
   metadataBase: appUrl(),
   title: { default: "Pot", template: "%s · Pot" },
@@ -36,14 +32,7 @@ export const metadata: Metadata = {
     siteName: "Pot",
     title: "Pot",
     description: DESCRIPTION,
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Pot: group chat money that follows its own rules",
-      },
-    ],
+    images: [OG_IMAGE],
   },
   twitter: { card: "summary_large_image" }, // no twitter.images: X falls back to og:image
   formatDetection: { telephone: false },

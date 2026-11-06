@@ -8,7 +8,7 @@
 import { expect, test, type Page } from "@playwright/test"
 import { NO_STATE } from "../fixtures/onboarding"
 import type { World } from "../../lib/client/mock/types"
-import { asPerson, axe, brandChecks, openedSheet, PORTO_INVITE_URL, settingsTab } from "../fixtures/pot"
+import { asPerson, axe, brandChecks, mockWorldReady, openedSheet, PORTO_INVITE_URL, settingsTab } from "../fixtures/pot"
 
 test.use({ reducedMotion: "reduce" })
 
@@ -16,6 +16,7 @@ const WORLD_KEY = "pot.mock.world.v1"
 
 /** Change the mock world (edited here in Node, as another tab would write it) and reload so every screen reads it. */
 async function editWorld(page: Page, edit: (w: World) => void) {
+  await mockWorldReady(page)
   const w = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!) as World, WORLD_KEY)
   edit(w)
   await page.evaluate(([key, json]) => localStorage.setItem(key!, json!), [WORLD_KEY, JSON.stringify(w)])

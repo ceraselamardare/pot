@@ -31,7 +31,8 @@ const IDS = NAV.map((item) => item.id)
 const TEXT_LINK =
   "inline-flex min-h-11 items-center rounded-md px-3 text-label text-ink transition-[background-color] duration-120 ease-standard hover:bg-surface-sunken"
 
-export function SiteHeader() {
+/** `nav={false}`: no in-page anchors (the use-case pages, components/marketing: their sections aren't the home's). */
+export function SiteHeader({ nav = true }: { nav?: boolean } = {}) {
   return (
     <header className="l-hairline sticky top-0 z-40 border-b border-line bg-ground">
       <div className="mx-auto flex h-14 w-full max-w-app items-center justify-between gap-4 px-4 md:px-6 lg:h-16">
@@ -45,18 +46,20 @@ export function SiteHeader() {
           <Lockup className="h-10 w-auto" />
         </Link>
         <div className="flex items-center gap-2">
-          <nav aria-label={t("home.nav.label")} className="relative hidden lg:block">
-            <ul className="flex items-center gap-1">
-              {NAV.map((item) => (
-                <li key={item.id}>
-                  <a href={`#${item.id}`} className={TEXT_LINK}>
-                    <span data-nav-text>{t(item.label)}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-            <SiteHeaderNav ids={IDS} />
-          </nav>
+          {nav ? (
+            <nav aria-label={t("home.nav.label")} className="relative hidden lg:block">
+              <ul className="flex items-center gap-1">
+                {NAV.map((item) => (
+                  <li key={item.id}>
+                    <a href={`#${item.id}`} className={TEXT_LINK}>
+                      <span data-nav-text>{t(item.label)}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <SiteHeaderNav ids={IDS} />
+            </nav>
+          ) : null}
           {/* for people who come back: the same dialog, then their Pots (07 §2.5's sign-in mode) */}
           <SignInLink next="/pots" source="header" data-header-signin className={cn(TEXT_LINK, "max-xs:hidden lg:ml-2")}>
             {t("home.nav.signin")}

@@ -53,7 +53,7 @@ export function FinalCta() {
             {t("home.cta.start")}
             <ArrowRight aria-hidden strokeWidth={2} />
           </SignInLink>
-          <Link href="/demo" className={cn(buttonVariants({ variant: "secondary", size: "lg" }), "sm:min-w-44")}>
+          <Link href="/demo" prefetch={false} className={cn(buttonVariants({ variant: "secondary", size: "lg" }), "sm:min-w-44")}>
             {t("home.cta.demo")}
           </Link>
         </div>

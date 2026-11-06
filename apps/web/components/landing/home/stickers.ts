@@ -1,9 +1,10 @@
 // The landing page's die-cut stickers (the video's set, marketing/video/public/images/stickers/*.png), converted to
-// transparent WebP at 256 and 512 px wide in public/landing/stickers/<name>-<w>.webp (sharp, lossy colour at
-// q74-90 with lossless alpha; every 512 px file ≤ 40 KB). `width`/`height` are the 512 px file's pixels, so
+// transparent WebP at 128, 160, 256 and 512 px wide in public/landing/stickers/<name>-<w>.webp (sharp, lossy colour
+// at q74-90 with lossless alpha; every 512 px file ≤ 40 KB). The small two serve the 64-80 px stickers on phones
+// (64-80 CSS px at 1.75-2× density) without fetching the 256. `width`/`height` are the 512 px file's pixels, so
 // `width / height` is the intrinsic aspect ratio the <Sticker> reserves before the file loads.
 
-export const STICKER_WIDTHS = [256, 512] as const
+export const STICKER_WIDTHS = [128, 160, 256, 512] as const
 
 export const STICKERS = {
   tram: { width: 512, height: 434 },
@@ -31,7 +32,7 @@ export function stickerSrc(name: StickerName, width: (typeof STICKER_WIDTHS)[num
   return `/landing/stickers/${name}-${width}.webp`
 }
 
-/** "…/tram-256.webp 256w, …/tram-512.webp 512w" */
+/** "…/tram-128.webp 128w, …/tram-160.webp 160w, …/tram-256.webp 256w, …/tram-512.webp 512w" */
 export function stickerSrcSet(name: StickerName): string {
   return STICKER_WIDTHS.map((w) => `${stickerSrc(name, w)} ${w}w`).join(", ")
 }

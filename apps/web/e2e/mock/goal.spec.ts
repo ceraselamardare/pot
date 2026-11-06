@@ -3,7 +3,7 @@
 // refunds everyone in two steps (the mock's stand-in for the server cron), and Create sets a goal with a date.
 // Every screen: axe 0 serious + the brand checks; mobile projects save notes/screens/goal-*-{day,night}.png.
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, createPot, openedSheet } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, createPot, mockWorldReady, openedSheet } from "../fixtures/pot"
 import { screensDir } from "../fixtures/screens"
 
 const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
@@ -76,6 +76,7 @@ test("missed: 'Refunding everyone…' → 'Everyone got their money back'; the P
   await showcase(page)
   await asPerson(page, "leo")
   await page.goto("/pots")
+  await mockWorldReady(page)
   // the goal date passes (a mock world edit), then the mock cron refunds in its two steps
   await page.evaluate(() => {
     const w = JSON.parse(localStorage.getItem("pot.mock.world.v1")!)

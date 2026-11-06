@@ -4,6 +4,8 @@
 // (whose signed-out screen shows the sign-in inline). After hydration, a plain click with no session hint opens the
 // sign-in dialog in place instead (`?signin=1`, lib/client/signin.ts); a signed-in browser just navigates; a
 // modified click (new tab/window) is left to the browser. The dialog's code starts loading on intent.
+// No prefetch by default: a signed-out click opens the dialog in place, so prefetching the app route would only put the
+// whole signed-in app (its data layer included) on the landing's first load. A caller can still pass `prefetch`.
 import Link from "next/link"
 import { useSyncExternalStore, type ComponentPropsWithoutRef, type ReactNode } from "react"
 import { DEFAULT_NEXT, hasSessionHint, openSignIn, safeNext, type SignInSource } from "@/lib/client/signin"
@@ -36,6 +38,7 @@ export function SignInLink({
   return (
     <Link
       href={href}
+      prefetch={false}
       data-signin-source={source}
       data-opens-dialog={opensDialog || undefined}
       onClick={(e) => {

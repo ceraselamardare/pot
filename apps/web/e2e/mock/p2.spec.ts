@@ -3,7 +3,7 @@
 // Every new sheet: axe 0 serious + the one-marigold rule + marigold never text + tabular figures.
 // The mobile projects save review screenshots to notes/screens/p2-*.png (Day and Night).
 import { expect, test, type Page } from "@playwright/test"
-import { asPerson, axe, becomePerson, brandChecks, type MockPerson, openedSheet, potMore, spendWhy, typeAmount } from "../fixtures/pot"
+import { asPerson, axe, becomePerson, brandChecks, type MockPerson, mockWorldReady, openedSheet, potMore, spendWhy, typeAmount } from "../fixtures/pot"
 import { screensDir } from "../fixtures/screens"
 
 const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
@@ -84,6 +84,7 @@ test.describe("rules change (P-8)", () => {
   test("a sole member changes the rules directly", async ({ page }) => {
     await asPerson(page, "maya")
     await page.goto("/pots")
+    await mockWorldReady(page)
     // make Porto Weekend Maya's alone (mock world edit), then reload
     await page.evaluate(() => {
       const w = JSON.parse(localStorage.getItem("pot.mock.world.v1")!)

@@ -33,6 +33,18 @@ test("public screens: home, invite landing, demo", async ({ page }, info) => {
   await page.goto("/demo")
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
   await check(page, "one")
+
+  // the use-case pages: the hero's [Start a Pot] is the one marigold
+  await page.goto("/group-trip")
+  await expect(page.locator("[data-marketing-hero]").getByRole("link", { name: "Start a Pot" })).toBeVisible()
+  await check(page, "one")
+  await shot(page, "group-trip", info.project.name)
+  for (const path of ["/bachelorette-party", "/group-gift", "/shared-account-with-friends", "/tools/group-trip-cost-calculator"]) {
+    await page.goto(path)
+    await expect(page.locator("[data-marketing-hero]").getByRole("link", { name: "Start a Pot" })).toBeVisible()
+    await check(page, "one")
+    await shot(page, path.slice(1).replaceAll("/", "-"), info.project.name)
+  }
 })
 
 test("the Pot: activity, members, rules, and its sheets", async ({ page }, info) => {

@@ -60,6 +60,12 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
         ],
       },
+      // the signed-in app (app/(app)): never indexed, also when a crawler gets its empty shell (/pots, /p/<slug>); the
+      // layout's robots metadata says the same in the HTML, and robots.txt keeps crawlers out (app/robots.ts)
+      ...["/pots/:path*", "/requests/:path*", "/you/:path*", "/p/:path*"].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
       {
         source: "/j/:path*",
         headers: [
