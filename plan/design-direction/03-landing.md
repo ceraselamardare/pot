@@ -352,6 +352,7 @@ Written 2026-10-22 for Cerasela (P2, design lead) and the landing builder.
      - `home.tech.built` "Built at NEAR HACKATHON 2026" (allowed: it's a `home.tech.` key).
      - `home.footer.top` "Back to top" as a 44 px text link to `#main`.
 - **Pot version, lg:** the card is `p-12` inside `max-w-app`, with two stickers (tram top-left, sunglasses bottom-right) overlapping its corners and the avatars possibly joined by a dotted `line-strong` connector (decorative, as in Circle). The footer is one row: lockup and tagline left; preview note, credit and Back to top right.
+- **Superseded (2026-11-06), now that the marketing pages exist:** the footer (`SiteFooter.tsx`, on `/` and every marketing page) has the brand block (lockup, tagline, Testnet badge), then four labelled link groups as plain `ink-muted` text links: Product (the home's anchors, /demo, Start a Pot and Sign in as text links), Use cases and Free tools (from the page registry, so new pages appear on their own), and How it's built (#tech, /demo/all, the repo and its SECURITY.md). Then a hairline row: "© 2026 Pot · Made by Cerasela Mardare" and Back to top. It is 2 columns on phones, 3 from md, and sits beside the brand from lg. There are no accordions, no legal pages, no social icons and no marigold. The preview note was replaced by the badge, and the hackathon credit stays in #tech.
 - **Watch-outs:**
   - **Don't make this band marigold.** It's tempting (the video's "marigold flood"), but:
     - Night secondary buttons are transparent with light `ink` text: about 1.6:1 on marigold.

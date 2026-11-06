@@ -1,8 +1,9 @@
 // /llms.txt (llmstxt.org): a short, factual Markdown summary of Pot for AI assistants and agents. Its page list comes
 // from the marketing registry (lib/marketing/pages.ts), so it can't drift from the sitemap. It isn't UI copy (no t()),
-// and it may name the tech plainly. Keep every claim inside the product's limits (docs/limitations.md): no cash-out,
-// Google sign-in only on local builds, other networks simulated on testnet. Which network this build runs on is one
-// neutral status line (testnet builds only), the machine-readable twin of the Testnet badge.
+// and it may name the tech plainly. It describes the full product; keep every claim inside the product's limits
+// (docs/limitations.md): no cash-out, Google sign-in only on local builds. Which network this build runs on is one
+// neutral status line (testnet builds only), the machine-readable twin of the Testnet badge, and nothing else says
+// "testnet" except the contract addresses, which are literal names on that network.
 import { t } from "@/i18n/t"
 import { isTestnetBuild } from "@/lib/network"
 import { MARKETING_PAGES } from "./pages"
@@ -41,9 +42,9 @@ export function llmsTxt(): string {
     "",
     "- Each Pot is its own Sputnik DAO on NEAR Protocol. The Pot Hub contract holds the rules and approves small spends on its own; bigger ones need members' approvals.",
     "- People hold 0 NEAR: Pot relays their actions as NEP-366 meta transactions and pays the network costs.",
-    "- Money is held in USDC and shown as dollars; on testnet it is a test token.",
+    "- Money is held in USDC and shown as dollars.",
     "- Sign-in on the live site: a NEAR wallet (NEAR Connect). Google and email sign-in (NEAR Auth) are built but work only on a local build for now.",
-    "- Adding money from other networks (NEAR Intents 1Click) is simulated on testnet; only the price quotes are real.",
+    "- People can also add money from other networks, through NEAR Intents 1Click.",
     "- Receipts are read privately by NEAR AI Cloud, in a secure enclave.",
     "",
     "## Limits",

@@ -256,7 +256,8 @@ test("NEAR Connect's picker on top (a stand-in; the real one is never opened): p
   expect(await pressed()).toBe(1)
   // keyboard: Tab from inside the dialog reaches it, and Enter presses it
   await d.getByRole("heading", { name: START }).focus()
-  for (let i = 0; i < 40 && !(await standIn.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab")
+  // (non-modal now, so Tab walks the page too, the site footer's links included, before the root at the end of body)
+  for (let i = 0; i < 80 && !(await standIn.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab")
   await expect(standIn).toBeFocused()
   await page.keyboard.press("Enter")
   expect(await pressed()).toBe(2)

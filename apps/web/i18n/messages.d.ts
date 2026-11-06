@@ -951,6 +951,22 @@ export interface Messages {
   "feed.topup": { name: string | number; amount: string | number }
   "feed.withdrawn": { name: string | number; amount: string | number }
   "feed.you": undefined
+  "footer.built.decoded": undefined
+  "footer.built.hood": undefined
+  "footer.built.security": undefined
+  "footer.built.source": undefined
+  "footer.built.title": undefined
+  "footer.copyright": undefined
+  "footer.external": undefined
+  "footer.maker": undefined
+  "footer.product.demo": undefined
+  "footer.product.how": undefined
+  "footer.product.rules": undefined
+  "footer.product.signin": undefined
+  "footer.product.start": undefined
+  "footer.product.title": undefined
+  "footer.tools.title": undefined
+  "footer.usecases.title": undefined
   "generic.checking": undefined
   "generic.error": undefined
   "gift.amount": undefined
@@ -2340,6 +2356,7 @@ export interface Messages {
   "uc.calc.method.s4.body": undefined
   "uc.calc.method.s4.title": undefined
   "uc.calc.method.title": undefined
+  "uc.calc.nav": undefined
   "uc.calc.paid.activities": undefined
   "uc.calc.paid.food": { daily: string | number }
   "uc.calc.paid.stay": undefined
@@ -2443,6 +2460,7 @@ export interface Messages {
   "uc.gift.how.title": undefined
   "uc.gift.meta.description": undefined
   "uc.gift.meta.title": undefined
+  "uc.gift.nav": undefined
   "uc.gift.outside.ruth": undefined
   "uc.gift.outside.ruth.who": undefined
   "uc.gift.outside.theo": undefined
@@ -2578,6 +2596,7 @@ export interface Messages {
   "uc.party.how.title": undefined
   "uc.party.meta.description": undefined
   "uc.party.meta.title": undefined
+  "uc.party.nav": undefined
   "uc.party.pot": undefined
   "uc.party.problem.body": undefined
   "uc.party.problem.chase.body": undefined
@@ -2710,6 +2729,7 @@ export interface Messages {
   "uc.shared.isnt.title": undefined
   "uc.shared.meta.description": undefined
   "uc.shared.meta.title": undefined
+  "uc.shared.nav": undefined
   "uc.shared.pot": undefined
   "uc.shared.privacy.intro": undefined
   "uc.shared.privacy.members.body": undefined
@@ -2843,6 +2863,7 @@ export interface Messages {
   "uc.trip.how.title": undefined
   "uc.trip.meta.description": undefined
   "uc.trip.meta.title": undefined
+  "uc.trip.nav": undefined
   "uc.trip.pot": undefined
   "uc.trip.problem.body": undefined
   "uc.trip.problem.eyebrow": undefined

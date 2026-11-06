@@ -134,3 +134,38 @@ test("the home page's Made for section links every use-case page, and only regis
   await expect(section.getByRole("link", { name: new RegExp(m["uc.trip.card.label"]!) })).toHaveAttribute("href", "/group-trip")
   for (const href of hrefs) expect((await page.request.get(href!)).status(), href!).toBe(200)
 })
+
+// The site footer (components/landing/home/SiteFooter.tsx) on the home page and a use-case page: its four groups, the
+// registry's pages listed on their own, every internal link answering 200 (no dead links), the Testnet badge, and
+// 44 px tap targets on phones. One marigold, axe and 320 px reflow cover the footer through the page tests above and
+// a11y.spec.ts.
+for (const path of ["/", "/group-trip"]) {
+  test(`${path}: the footer's groups, its registry links, no dead links, 44 px targets`, async ({ page }, info) => {
+    await page.goto(path)
+    const footer = page.getByRole("contentinfo")
+    for (const key of ["footer.product.title", "footer.usecases.title", "footer.tools.title", "footer.built.title"])
+      await expect(footer.getByRole("navigation", { name: m[key]! })).toBeVisible()
+    const uc = await footer.getByRole("navigation", { name: m["footer.usecases.title"]! }).getByRole("link").evaluateAll((els) => els.map((e) => e.getAttribute("href")))
+    const tools = await footer.getByRole("navigation", { name: m["footer.tools.title"]! }).getByRole("link").evaluateAll((els) => els.map((e) => e.getAttribute("href")))
+    expect([...uc, ...tools]).toEqual(PAGES.map((p) => p.path))
+    await expect(footer.getByRole("button", { name: m["network.badge"]! })).toBeVisible()
+    // the hidden ", on GitHub" says where it goes (the accessible name may gain a space before it: inline-flex items)
+    const source = footer.getByRole("link", { name: new RegExp(`^${m["footer.built.source"]}\\s*, on GitHub$`) })
+    await expect(source).toHaveAttribute("rel", "noopener")
+    await expect(source).toHaveAttribute("href", "https://github.com/ceraselamardare/pot")
+    await brandChecks(page, { marigold: "one" })
+
+    const hrefs = await footer.getByRole("link").evaluateAll((els) => els.map((e) => e.getAttribute("href")!))
+    for (const href of new Set(hrefs)) {
+      if (href.startsWith("http") || href.startsWith("#")) continue
+      expect((await page.request.get(href.split("#")[0] || "/")).status(), href).toBe(200)
+    }
+    // the home's anchors exist on the home page
+    if (path === "/") for (const id of ["how", "rules", "tech"]) await expect(page.locator(`#${id}`)).toHaveCount(1)
+
+    if (info.project.name !== "desktop") {
+      const heights = await footer.getByRole("link").evaluateAll((els) => els.map((e) => [e.textContent, e.getBoundingClientRect().height] as const))
+      for (const [text, h] of heights) expect(h, text ?? "").toBeGreaterThanOrEqual(44)
+    }
+  })
+}

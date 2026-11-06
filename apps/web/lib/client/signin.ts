@@ -17,7 +17,7 @@ export const SIGNIN_PARAM = "signin"
 /** The app shell's routes: there the signed-out screen shows the same panel inline, so the dialog never opens. */
 const APP_ROUTE = /^\/(?:pots|requests|you|p)(?:\/|$)/
 
-export type SignInSource = "hero" | "final" | "header" | "tour" | "deeplink"
+export type SignInSource = "hero" | "final" | "header" | "footer" | "tour" | "deeplink"
 export interface SignInRequest {
   next: string
   source: SignInSource
@@ -27,7 +27,7 @@ export type SignInMode = "start" | "back"
 
 const REQUEST_KEY = "pot.signin"
 const MOCK_SESSION_KEY = "pot.mock.session"
-const SOURCES: readonly SignInSource[] = ["hero", "final", "header", "tour", "deeplink"]
+const SOURCES: readonly SignInSource[] = ["hero", "final", "header", "footer", "tour", "deeplink"]
 
 const isLive = () => process.env.NEXT_PUBLIC_DATA_SOURCE === "testnet"
 

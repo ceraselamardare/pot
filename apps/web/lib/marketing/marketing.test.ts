@@ -58,6 +58,12 @@ describe("the registry", () => {
     expect(useCasePages().map((p) => p.path)).toContain("/group-trip")
     for (const p of useCasePages()) expect(hasKey(p.useCase.labelKey) && hasKey(p.useCase.bodyKey), p.path).toBe(true)
   })
+  it("use-case pages carry a short, unique name for the site footer's columns", () => {
+    const names = useCasePages().map((p) => t(p.useCase.navKey))
+    for (const p of useCasePages()) expect(hasKey(p.useCase.navKey), p.path).toBe(true)
+    expect(new Set(names).size).toBe(names.length)
+    for (const n of names) expect(n.length, n).toBeLessThanOrEqual(30)
+  })
   it("no marketing page sits under a private prefix", () => {
     for (const p of MARKETING_PAGES) for (const x of PRIVATE_PATHS) expect(p.path.startsWith(x), `${p.path} vs ${x}`).toBe(false)
   })
@@ -150,6 +156,12 @@ describe("llms.txt", () => {
     for (const claim of [/preview/i, /demo dollars/i, /trustless/i, /audited/i, /insured/i, /card top-ups? (is|are) (live|available)/i])
       expect(md).not.toMatch(claim)
     expect(md.replace(LLMS_TESTNET_STATUS, "")).not.toMatch(/\bmainnet\b/i)
+    // it describes the full product: "testnet" only in the status line and the contract addresses' line, never as a
+    // qualifier on a feature ("a test token", "simulated on testnet")
+    const rest = md.split("\n").filter((l) => l !== LLMS_TESTNET_STATUS && !l.startsWith("- Contracts on NEAR testnet:"))
+    expect(rest.join("\n")).not.toMatch(/testnet|test token|simulated on/i)
+    expect(md).toContain("- Money is held in USDC and shown as dollars.")
+    expect(md).toMatch(/other networks, through NEAR Intents 1Click/)
   })
   it("drops the status line on any other build", () => {
     env({ NEXT_PUBLIC_NETWORK: "mainnet" })

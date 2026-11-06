@@ -27,8 +27,10 @@ export interface MarketingPage {
    * text ("Collect money for a group trip"), `bodyKey` one line under it. Only registered pages are ever linked.
    * `tagKey`: a small label above the link for what isn't a use case (the calculator: "Free tool"); register those
    * last, so the use cases come first.
+   * `navKey`: its short name in the site footer's columns ("Group trips"; components/landing/home/SiteFooter.tsx):
+   * a page without a tag goes under "Use cases", one with a tag under "Free tools".
    */
-  useCase?: { labelKey: PlainKey; bodyKey: PlainKey; tagKey?: PlainKey }
+  useCase?: { labelKey: PlainKey; bodyKey: PlainKey; navKey: PlainKey; tagKey?: PlainKey }
 }
 
 export const MARKETING_PAGES = [
@@ -41,7 +43,7 @@ export const MARKETING_PAGES = [
     titleKey: "uc.trip.meta.title",
     descriptionKey: "uc.trip.meta.description",
     llms: "main",
-    useCase: { labelKey: "uc.trip.card.label", bodyKey: "uc.trip.card.body" },
+    useCase: { labelKey: "uc.trip.card.label", bodyKey: "uc.trip.card.body", navKey: "uc.trip.nav" },
   },
   {
     path: "/bachelorette-party",
@@ -49,7 +51,7 @@ export const MARKETING_PAGES = [
     titleKey: "uc.party.meta.title",
     descriptionKey: "uc.party.meta.description",
     llms: "main",
-    useCase: { labelKey: "uc.party.card.label", bodyKey: "uc.party.card.body" },
+    useCase: { labelKey: "uc.party.card.label", bodyKey: "uc.party.card.body", navKey: "uc.party.nav" },
   },
   {
     path: "/group-gift",
@@ -57,7 +59,7 @@ export const MARKETING_PAGES = [
     titleKey: "uc.gift.meta.title",
     descriptionKey: "uc.gift.meta.description",
     llms: "main",
-    useCase: { labelKey: "uc.gift.card.label", bodyKey: "uc.gift.card.body" },
+    useCase: { labelKey: "uc.gift.card.label", bodyKey: "uc.gift.card.body", navKey: "uc.gift.nav" },
   },
   {
     path: "/shared-account-with-friends",
@@ -65,7 +67,7 @@ export const MARKETING_PAGES = [
     titleKey: "uc.shared.meta.title",
     descriptionKey: "uc.shared.meta.description",
     llms: "main",
-    useCase: { labelKey: "uc.shared.card.label", bodyKey: "uc.shared.card.body" },
+    useCase: { labelKey: "uc.shared.card.label", bodyKey: "uc.shared.card.body", navKey: "uc.shared.nav" },
   },
   {
     path: "/tools/group-trip-cost-calculator",
@@ -73,7 +75,7 @@ export const MARKETING_PAGES = [
     titleKey: "uc.calc.meta.title",
     descriptionKey: "uc.calc.meta.description",
     llms: "main",
-    useCase: { labelKey: "uc.calc.card.label", bodyKey: "uc.calc.card.body", tagKey: "uc.calc.card.tag" },
+    useCase: { labelKey: "uc.calc.card.label", bodyKey: "uc.calc.card.body", navKey: "uc.calc.nav", tagKey: "uc.calc.card.tag" },
   },
 ] as const satisfies readonly MarketingPage[]
 
@@ -82,6 +84,13 @@ export type MarketingPath = (typeof MARKETING_PAGES)[number]["path"]
 /** The registered use-case pages, in registry order (the home page's "Made for" cards; related links). */
 export function useCasePages(): (MarketingPage & { useCase: NonNullable<MarketingPage["useCase"]> })[] {
   return (MARKETING_PAGES as readonly MarketingPage[]).filter((p): p is MarketingPage & { useCase: NonNullable<MarketingPage["useCase"]> } => !!p.useCase)
+}
+
+/** The site footer's two registry columns: the use cases, then the free tools (the pages with a `tagKey`). */
+export function footerPages() {
+  // (not via useCasePages(): its `use` prefix reads as a hook to the linter outside a component)
+  const pages = (MARKETING_PAGES as readonly MarketingPage[]).filter((p): p is MarketingPage & { useCase: NonNullable<MarketingPage["useCase"]> } => !!p.useCase)
+  return { useCases: pages.filter((p) => !p.useCase.tagKey), tools: pages.filter((p) => !!p.useCase.tagKey) }
 }
 
 export function marketingPage(path: MarketingPath): MarketingPage {
