@@ -2,11 +2,11 @@
 // 2 "How do you want to add it?" (&step=source: the source, "will have" + "you'd get back", [Add $X] / [Continue],
 // [Back]). Neither step scrolls on a 390 × 844 phone, Day and Night; one marigold per step; Back (in the sheet and the
 // browser's) keeps the amount; a linked amount opens straight on step 2. Screens: notes/screens/add-step{1,2}-*.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Locator, type Page } from "@playwright/test"
 import { addFlow, addNext, asPerson, axe, brandChecks, openedSheet, typeAmount } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const shotName = (name: string, project: string) => `${SCREENS}${name}-${project === "mobile-night" ? "night" : "day"}.png`
 test.use({ reducedMotion: "reduce" })
 

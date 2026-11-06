@@ -9,11 +9,11 @@
 //     outside has "See details" for members only (a visitor keeps the public receipt); a person's activity and
 //     You → Your activity open it too. 320 px: no sideways scroll.
 // The mobile projects save notes/screens/deposit-details-{xc,demo,pot-dollars,payin}-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Locator, type Page } from "@playwright/test"
 import { addFlow, asPerson, axe, becomePerson, brandChecks, openedSheet } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const TX = /[?&]sheet=deposit&d=[1-9A-HJ-NP-Za-km-z]{43,44}(&|$)/
 
 test.use({ reducedMotion: "reduce" })

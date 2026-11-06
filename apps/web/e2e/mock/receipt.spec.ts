@@ -10,8 +10,9 @@
 import { fileURLToPath } from "node:url"
 import { expect, test, type Locator, type Page } from "@playwright/test"
 import { asPerson, axe, brandChecks, openedSheet, spendNext, typeAmount } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const FIXTURE = (name: string) => fileURLToPath(new URL(`../fixtures/receipts/${name}`, import.meta.url))
 test.use({ reducedMotion: "reduce" })
 

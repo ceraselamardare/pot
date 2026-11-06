@@ -16,11 +16,11 @@
 //  9. Pay with "Pot dollars" (a signed-in giver with a balance; picked by default when it covers the gift).
 // 10. The record: members see every gift's name and note, visitors only opted-in givers; the CSV lists the gifts.
 // axe 0 serious + the brand checks on every screen; the mobile projects save notes/screens/gifts-*-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, potAsk, settingsTab } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const LINK_RE = /\/g\/lisbon-trip\/[A-Za-z0-9_-]{22}$/
 
 test.use({ reducedMotion: "reduce" })

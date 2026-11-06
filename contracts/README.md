@@ -32,12 +32,10 @@ cd contracts
 (cd pot-hub && cargo near build non-reproducible-wasm)   # → target/near/pot_hub/pot_hub.wasm (+ embedded ABI)
 ```
 
-Current sizes:
+Sizes change with every release; `ls -l target/near/*/*.wasm` after a build shows the current ones (each 100 KB of
+code costs about 1 NEAR of storage on its account).
 
-- `pot_hub.wasm`: 463.6 KB, ≈ 4.64 NEAR of storage on the hub account.
-- `test_usdc.wasm`: 168.7 KB.
-
-The ABI for `packages/pot-sdk` is at **`abi/pot_hub.json`** (NEAR ABI schema 0.4.0, 38 functions). A
+The ABI for `packages/pot-sdk` is at **`abi/pot_hub.json`** (NEAR ABI schema 0.4.0). A
 promise-returning method (`create_pot`, `request_spend`, `join`, `sync`, `retry_payout`,
 `propose_rules`, `propose_close`, `ft_on_transfer`) has no result type in the ABI. Its final value is
 the return type of its last callback:
@@ -68,7 +66,7 @@ cargo test -p pot-hub            # unit only: ledger PR-03, pro-rata P-01 + V1-V
 cargo test -p pot-tests --test t_spend -- --nocapture   # one sandbox file
 ```
 
-- The first run downloads the nearcore 2.13.4 sandbox (≈ 29 MB, protocol 86 = mainnet parity) and
+- The first run downloads the nearcore 2.13.4 sandbox (protocol 86 = mainnet parity) and
   the crates.
 - The sandbox harness rebuilds the wasm with `cargo near` when the contract sources are newer than
   `target/near`. Set `POT_NO_BUILD=1` to skip that (CI builds first).

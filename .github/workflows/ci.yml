@@ -1,4 +1,4 @@
-# X-02 CI (plan/test-plan.md §7). Written 2026-10-22 by QA; never run on GitHub yet (no repository exists).
+# X-02 CI (plan/test-plan.md §7). Written 2026-10-22 by QA; runs on every push to main on GitHub.
 # Pinned: ubuntu-24.04 (never ubuntu-latest), Rust 1.93.0 from contracts/rust-toolchain.toml, cargo-near 0.22.0,
 # Node 22.22.x, pnpm 11 (packageManager in package.json), Postgres 17 (same major as infra/docker-compose.yml).
 # No NEAR keys live in GitHub: the testnet job only drives an already deployed preview through its own relayer.

@@ -2,11 +2,11 @@
 // $300 of a $1,200 goal with 3 days left: spending waits (Spend says why), reaching the goal opens it, a missed date
 // refunds everyone in two steps (the mock's stand-in for the server cron), and Create sets a goal with a date.
 // Every screen: axe 0 serious + the brand checks; mobile projects save notes/screens/goal-*-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, createPot, openedSheet } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 
 async function shot(page: Page, name: string, project: string) {
   if (project === "desktop") return

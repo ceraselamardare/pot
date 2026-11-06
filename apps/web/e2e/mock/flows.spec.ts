@@ -1,10 +1,10 @@
 // The big flows end to end on the mock data source (test-plan M-01, M-02, M-03, M-04/05, M-06), in every
 // Playwright project: mobile Day, mobile Night (390×844) and desktop (1280×800, the bp-lg two-column Pot).
-import { fileURLToPath } from "node:url"
 import { expect, test } from "@playwright/test"
 import { asPerson, becomePerson, brandChecks, createPot, openedSheet, PORTO_INVITE_URL, spendFlow, spendWhy, typeAmount } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 
 test("(a) invite landing → join → You're in → add $150 → the balance updates", async ({ page }) => {
   await page.goto(PORTO_INVITE_URL)

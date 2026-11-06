@@ -2,11 +2,11 @@
 // (mobile Day, mobile Night, desktop). The showcase seed (lib/client/mock/wave4.ts): Ski Chalet, where Maya is
 // Trusted ($200 without asking), Leo's $180 was approved by Sam's OK, and Sam's $250 lift passes wait for one OK.
 // Every screen: axe 0 serious + the brand checks; mobile projects save notes/screens/trust-*-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, spendFlow, spendWhy, typeAmount } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 
 async function shot(page: Page, name: string, project: string) {
   if (project === "desktop") return

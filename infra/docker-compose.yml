@@ -1,12 +1,14 @@
 # Local Postgres for Pot dev and API tests. Start: `pnpm db:up`; stop: `pnpm db:down`.
-# Host port 54329 and the container name `pot-postgres` avoid clashes with other local compose projects.
+# Host port 54329 and the container name `pot-postgres` avoid clashes with other local compose projects. If they are
+# taken (another checkout), override them: POT_DB_PORT=54339 POT_DB_NAME=pot2 pnpm db:up, and point
+# DATABASE_URL / DATABASE_URL_TEST at the new port (docs/testing.md).
 # Production uses Neon (D-31); this only mirrors it closely enough for Drizzle migrations and tests.
-name: pot
+name: ${POT_DB_NAME:-pot}
 
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: pot-postgres
+    container_name: ${POT_DB_NAME:-pot}-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: pot
@@ -16,7 +18,7 @@ services:
       PGTZ: UTC
     command: ["postgres", "-c", "timezone=UTC"] # Neon's session time zone is UTC (data-model §3)
     ports:
-      - "127.0.0.1:54329:5432"
+      - "127.0.0.1:${POT_DB_PORT:-54329}:5432"
     volumes:
       - pot-pgdata:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro

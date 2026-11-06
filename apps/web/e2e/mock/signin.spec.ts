@@ -15,12 +15,12 @@
 //  - the app's signed-out screen: the same panel inline; no JS: the CTA's link and the <noscript> line;
 //  - 320 px and reduced motion.
 // Mobile projects save notes/screens/signin-*-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { NO_STATE } from "../fixtures/onboarding"
 import { asPerson, axe, brandChecks, openedSheet } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const START = "Sign in to start your Pot"
 const BACK = "Sign in to Pot"
 

@@ -125,6 +125,15 @@ Goal by end of day: the app runs at `https://<project>.vercel.app` on testnet, `
 ## Days 11-12 (Nov 11-12): release and lock
 
 - [ ] **[Claude] Final regression** on the live URL: contracts, unit, mock e2e, integrations tier, the live backend suite, `scripts/e2e-chain.ts`, every testnet suite, the README CLI check.
+- [ ] **Final testnet deploy, before the lock.** Found by the blind AI-judge run on Nov 6 and held back until now on purpose: editing `Cargo.toml` changes the compiled wasm, and the deployed hub must stay identical to the source build until this redeploy.
+  - **[Claude]** Fix the hub's on-chain build info (NEP-330, the `contract_source_metadata` view). It reports `version: "1.0.0"` and `link: https://github.com/pot-app/pot`.
+    - Set `contracts/pot-hub/Cargo.toml` `version` to the hub's real version (the `version` that `get_config` returns).
+    - Point the repository at `https://github.com/ceraselamardare/pot`. The workspace `contracts/Cargo.toml` `repository` is inherited by `test-usdc` too. Change it there and redeploy the test token as well, or override `repository` in `pot-hub/Cargo.toml` only.
+    - Build without local file paths. A plain build embeds the builder's home-folder paths in panic messages. Use `--remap-path-prefix` in the rustc flags, or the Docker `reproducible-wasm` build, which also lets anyone reproduce the hash. Check that `strings target/near/pot_hub/pot_hub.wasm | grep /Users/` prints nothing.
+    - Rebuild (`./scripts/build.sh`). Run the contract tests. Then **[You]** approve the redeploy. Check with `contract_source_metadata`, and check that the deployed code hash equals the local build's.
+  - **[Claude]** Make a small public example Pot under the current rules (members only give OKs; the hub files every request), with one approved spend. Add it to J-7 in `docs/judging-guide.md` so judges can verify the members-only voting on chain. The guide's current example Pot predates that rule. **[You]** approve the transactions.
+  - **[Claude]** Re-run `scripts/readme-cli-check.sh` and the README drift check, and update any account names or outputs in the guide that changed.
+  - **[You]** Check that CI (GitHub Actions) is green on the final `main`. The blind judge couldn't see it while the repo was private.
 - [ ] **[You] Lock the hub** (`pots.potprev.testnet`): delete its full-access key per `plan/accounts-and-deploy.md`.
   - After the lock nobody can fix the contract; the fallback is a redeploy as `pots-v2`.
   - **[Claude]** then runs `EXPECT_HUB_LOCKED=1 scripts/readme-cli-check.sh` and updates the README line about keys.

@@ -3,11 +3,11 @@
 // sheets say what you'd get back after that action. The numbers agree with the Members tab ("Gets back") and with
 // the world after the action lands. Day, Night and desktop; axe 0 serious and the brand checks on each screen; 320 px.
 // The mobile projects save notes/screens/refund-preview-{day,night}.png (the explainer sheet).
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { addNext, asPerson, axe, brandChecks, openedSheet, spendFlow, spendNext, spendWhy, typeAmount } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 
 /** Maya's instant $84 (Pot rules): Lisbon Trip goes from $450 to $366, so everyone's part is $122. */
 async function instantSpend(page: Page) {

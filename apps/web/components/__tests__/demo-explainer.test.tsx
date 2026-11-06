@@ -96,9 +96,9 @@ describe("copy", () => {
     expect([...missing]).toEqual([])
   })
 
-  it("keeps the recap's CLI block verbatim in README J-7", () => {
-    const readme = readFileSync(resolve(__dirname, "../../../../README.md"), "utf8")
-    for (const line of CLI_COMMANDS) expect(readme).toContain(line)
+  it("keeps the recap's CLI block verbatim in the judging guide's J-7 (docs/judging-guide.md, linked from the README)", () => {
+    const guide = readFileSync(resolve(__dirname, "../../../../docs/judging-guide.md"), "utf8")
+    for (const line of CLI_COMMANDS) expect(guide).toContain(line)
   })
 })
 

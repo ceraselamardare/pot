@@ -2,11 +2,11 @@
 // Chrome's prompt, an in-app browser), the push pre-prompt after install (granted, denied, not now) against a
 // mocked POST /api/push/subscription, the app badge, the service worker file, and the per-invite link preview.
 import { skipOnboarding } from "../fixtures/onboarding"
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, PORTO_INVITE_URL, spendFlow, addFlow } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const UA = {
   ios26: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1",
   ios27: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1",

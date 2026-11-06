@@ -2,6 +2,9 @@ import { fileURLToPath } from "node:url"
 import { defineConfig, devices } from "@playwright/test"
 import { onboardedState } from "../fixtures/onboarding"
 
+/** the local Postgres port (infra/docker-compose.yml; POT_DB_PORT overrides it there and here) */
+const DB_PORT = process.env.POT_DB_PORT ?? "54329"
+
 // Integrations tier (notes/integrations.md): the REAL app in testnet mode (live data source, real API routes, real
 // session cookies) against local fakes only — a fake NEAR RPC, the fake NEAR Auth issuer (JWKS), a build-flagged
 // mock wallet, and a fresh pot_test schema. Nothing touches testnet. It exercises the full NEAR Auth path (popup →
@@ -32,8 +35,8 @@ const env: Record<string, string> = {
   // APP-3: `next start` refuses the development HMAC value; a test-only secret (never a deploy's)
   APP_HMAC_SECRET: "e2e-integrations-only-hmac-secret-0123456789",
   NEXT_PUBLIC_E2E_MOCK_WALLET: "1",
-  DATABASE_URL: `postgres://pot:pot@localhost:54329/pot_test?options=-c%20search_path%3D${SCHEMA}`,
-  DATABASE_URL_UNPOOLED: `postgres://pot:pot@localhost:54329/pot_test?options=-c%20search_path%3D${SCHEMA}`,
+  DATABASE_URL: `postgres://pot:pot@localhost:${DB_PORT}/pot_test?options=-c%20search_path%3D${SCHEMA}`,
+  DATABASE_URL_UNPOOLED: `postgres://pot:pot@localhost:${DB_PORT}/pot_test?options=-c%20search_path%3D${SCHEMA}`,
   FAKE_RPC_PORT: String(RPC),
   FAKE_ISSUER_PORT: String(ISSUER),
   FAKE_DB_SCHEMA: SCHEMA,

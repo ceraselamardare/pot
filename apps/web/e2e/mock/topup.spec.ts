@@ -10,11 +10,11 @@
 //     You → Your activity lists the ask.
 //  5. 320 px: the sheet and the card reflow without a sideways scroll.
 // axe 0 serious + the brand checks on every screen; the mobile projects save notes/screens/topup-*-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, potAsk } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 
 test.use({ reducedMotion: "reduce" })
 

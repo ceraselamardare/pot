@@ -1,11 +1,11 @@
 // Every screen and open sheet, in Day, Night and desktop: axe 0 serious (M-13), at most one marigold button and
 // exactly one where the screen has a primary action, marigold never text (M-20), tabular figures (M-22).
 // The mobile projects also save review screenshots for Cerasela to notes/screens/.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, createPot, openedSheet, potMore, PORTO_INVITE_URL, spendFlow } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 test.use({ reducedMotion: "reduce" })
 
 async function check(page: Page, marigold: "one" | "at-most-one" | "none") {

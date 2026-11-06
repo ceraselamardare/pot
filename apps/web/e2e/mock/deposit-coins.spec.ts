@@ -9,11 +9,11 @@
 //     "Thank you!".
 // One marigold and axe on every step; the mobile projects save notes/screens/xc-{network,coin,address}-{day,night}.png.
 // The page clock is faked (Playwright clock) so the simulator's timings run in seconds.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { addFlow, asPerson, axe, becomePerson, brandChecks, openedSheet, potAsk } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const TITLE = "Add from another app or exchange"
 
 async function shot(page: Page, name: string, project: string) {

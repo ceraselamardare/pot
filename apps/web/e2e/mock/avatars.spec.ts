@@ -2,11 +2,11 @@
 // person appears (You, Pot seats, feed, Members, Requests, the Approve sheet), for everyone on the phone, then go back
 // to initials. axe 0 serious, no marigold on You (the picker saves itself), and every text on an avatar (initials on
 // the member colours) passes 4.5:1. The mobile projects save review screenshots to notes/screens/avatars-*.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, spendFlow } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 test.use({ reducedMotion: "reduce" })
 
 async function shot(page: Page, name: string, project: string) {

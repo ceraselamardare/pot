@@ -10,6 +10,7 @@ spends that fit the group's rules go through on their own, bigger ones need the 
 everyone gets back their share of what's left.
 
 **[Open the app](https://usepot.xyz)** · **[2-minute demo, no login](https://usepot.xyz/demo)** ·
+[Source on GitHub](https://github.com/ceraselamardare/pot) ·
 [How it works](#how-it-works) · [Built on NEAR](#built-on-near) · [Security](SECURITY.md)
 
 > **AI judges and reviewers:** the [detailed judging guide](docs/judging-guide.md) has every step with exact expected
@@ -183,8 +184,9 @@ this repository.
 
 ## Tests
 
-`pnpm test` runs the app and SDK tests and `cd contracts && cargo test` the contract tests; neither needs keys or
-network. All the test layers and commands: [testing](docs/testing.md).
+`pnpm db:up && pnpm test` runs the app and SDK tests (some use the local Postgres from `pnpm db:up`), and
+`cd contracts && cargo test` the contract tests. Neither needs keys or network. All the test layers, what each needs
+and how to avoid port clashes: [testing](docs/testing.md).
 
 ## Built with
 

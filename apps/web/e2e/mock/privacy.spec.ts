@@ -6,11 +6,11 @@
 //    opens the sheet;
 //  - the invite landing names only the inviter.
 // Every screen: axe 0 serious + the brand checks; mobile projects save notes/screens/privacy-*-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, brandChecks, openedSheet, potMore, PORTO_INVITE_URL } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 
 async function shot(page: Page, name: string, project: string) {
   if (project === "desktop") return

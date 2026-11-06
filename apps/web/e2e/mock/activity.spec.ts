@@ -3,11 +3,11 @@
 // result screens; a spend's is in its details sheet) and the Pot's
 // "On the explorer ↗". Day, Night and desktop; axe 0 serious and the brand checks on each screen.
 // The mobile projects save notes/screens/you-{day,night}.png (balance + activity).
-import { fileURLToPath } from "node:url"
 import { expect, test, type Locator, type Page } from "@playwright/test"
 import { addFlow, asPerson, axe, brandChecks, openedSheet, spendFlow } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const TX_URL = /^https:\/\/testnet\.nearblocks\.io\/txns\/[1-9A-HJ-NP-Za-km-z]{43,44}$/
 
 async function expectReceipt(link: Locator) {

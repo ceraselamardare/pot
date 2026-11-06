@@ -2,11 +2,11 @@
 // sole member's direct change, and a close end to end (busy → try again → the group approves → read-only).
 // Every new sheet: axe 0 serious + the one-marigold rule + marigold never text + tabular figures.
 // The mobile projects save review screenshots to notes/screens/p2-*.png (Day and Night).
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, type MockPerson, openedSheet, potMore, spendWhy, typeAmount } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 
 async function shot(page: Page, name: string, project: string) {
   if (project === "desktop") return

@@ -10,11 +10,11 @@
 //  5. 320 px: the Spend sheet's link option and the claim page reflow without a sideways scroll.
 // Day, Night and desktop; axe 0 serious and the brand checks on every screen. The mobile projects save
 // notes/screens/paylink-*.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, spendFlow } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const SURF = {
   open: { id: 113, secret: "BRgrPlFkd4qdsMPW6fwPIjVIW26BlKe6zeDzBhksP1I" },
   claimed: { id: 111, secret: "BRIfLDlGU2BteoeUoa67yNXi7_wJFiMwPUpXZHF-i5g" },

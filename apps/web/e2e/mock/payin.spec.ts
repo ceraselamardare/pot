@@ -10,11 +10,11 @@
 //  6. The Share sheet is invites only (no gift tab); More has Settings, not Gifts.
 // axe 0 serious + the brand checks on every screen; the mobile projects save notes/screens/payin-*-{day,night}.png and
 // settings-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, potAsk, potMore, settingsTab } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const LINK_RE = /\/g\/lisbon-trip\/[A-Za-z0-9_-]{22}$/
 
 test.use({ reducedMotion: "reduce" })

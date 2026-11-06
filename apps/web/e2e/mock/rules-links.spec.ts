@@ -9,11 +9,11 @@
 //  3. 320 px: Settings and the change sheet reflow without a sideways scroll.
 // Day, Night and desktop; axe 0 serious and the brand checks on every screen. The mobile projects save
 // notes/screens/rules-tab-{day,night}.png and rules-change-links-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, spendFlow } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const shot = (info: { project: { name: string } }, name: string) =>
   info.project.name === "desktop" ? null : `${SCREENS}${name}-${info.project.name === "mobile-night" ? "night" : "day"}.png`
 

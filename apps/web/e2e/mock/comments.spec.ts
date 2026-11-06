@@ -3,11 +3,11 @@
 // Also the seeded Porto thread on a settled request, a failed send + Try again, and 320 px reflow. Day, Night and
 // desktop; axe 0 serious and the brand checks on the sheet (Approve stays the one marigold; Send is always secondary).
 // The mobile projects save notes/screens/comments-{day,night}.png (the sheet with the thread).
-import { fileURLToPath } from "node:url"
 import { expect, test, type Locator, type Page } from "@playwright/test"
 import { asPerson, axe, becomePerson, brandChecks, openedSheet, spendFlow } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 test.use({ reducedMotion: "reduce" })
 
 /** Maya: $300 for tickets in Lisbon Trip (over the $100 instant limit → the group decides). */

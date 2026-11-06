@@ -8,13 +8,13 @@
 //   E-f  A asks to close → B approves → pro-rata refunds, Pot balance 0 on chain
 // Every UI claim is checked against the chain through @pot/sdk views (e2e/testnet/chain.ts).
 import { skipOnboarding } from "../fixtures/onboarding"
-import { fileURLToPath } from "node:url"
 import { expect, test, type BrowserContext, type Page } from "@playwright/test"
 import { addFlow, createPot, potMore, spendFlow, typeAmount } from "../fixtures/pot"
 import { createTestAccounts, type TestAccounts } from "./accounts"
 import { accountOf, chain, dao, eventually, nearBalance, potBalance, usd, usdcOf, useWallet, walletSignIn } from "./chain"
+import { screensDir } from "../fixtures/screens"
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const RUN = Math.random().toString(36).slice(2, 6)
 const POT_NAME = `Testnet Trip ${RUN}`
 

@@ -8,7 +8,7 @@ For AI judges and reviewers who want to check every claim. People new to Pot sho
 - J-1 to J-6 use `/demo`, a simulation: nothing is signed or sent, and it needs no login or JavaScript for the
   server-rendered read (J-6).
 - J-7 reads the live contracts with near-cli-rs: read-only, no keys.
-- J-8 runs the tests: no keys, no network.
+- J-8 runs the tests: no keys, no network; the app tests use a local Postgres (`pnpm db:up`).
 - J-9 uses the live app with a NEAR testnet wallet.
 - Every step is executed by an automated test; `scripts/check-readme-steps.ts` keeps this file and those tests in
   step (it runs in CI).
@@ -69,7 +69,7 @@ ends with the recap: 11 signatures by people, 12 transactions and 0 NEAR paid by
 <!-- J-6 -->
 **J-6. Read it without a browser.** Every tour page is server-rendered with the whole story as an ordered list
 (`<li id="step-1">`…`<li id="step-14">`) and each part's Under the hood in a closed `<details>`, with every decoded card
-and the raw JSON: `curl -s https://usepot.xyz/demo/4 | grep -c "Approved by Pot rules"`. `https://usepot.xyz/demo/all` is the full
+and the raw JSON: `curl -s https://usepot.xyz/demo/4 | grep -c "Approved by Pot rules"` prints `1` (the page is one line of HTML, so this counts lines, not matches). `https://usepot.xyz/demo/all` is the full
 technical read on one page: every step and card, the recap and the glossary.
 
 ## The contracts, the tests and the live app (J-7 to J-9)
@@ -112,7 +112,8 @@ On a `-429` rate limit, add a FastNEAR network config or retry later; the defaul
 0.30.1 already uses FastNEAR's RPC.
 
 <!-- J-8 -->
-**J-8. Run the tests (no keys, no network):** `pnpm i && pnpm test` and `cd contracts && cargo test`
+**J-8. Run the tests (no keys, no network):** `pnpm i && pnpm db:up && pnpm test` (Docker; the local Postgres on
+port 54329, see [testing](testing.md) if that port is taken) and `cd contracts && cargo test`
 (arm64 macOS or Linux). See [testing](testing.md).
 
 <!-- J-9 -->

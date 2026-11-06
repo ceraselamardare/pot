@@ -11,14 +11,14 @@
 //  - 320 px (mobile-day).
 // Every screen: axe 0 serious + the brand checks (one marigold); mobile projects save
 // notes/screens/onboarding-*-{day,night}.png.
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 import { NO_STATE, ONBOARDING_KEY } from "../fixtures/onboarding"
 import { asPerson, axe, brandChecks, openedSheet, PORTO_INVITE_URL } from "../fixtures/pot"
+import { screensDir } from "../fixtures/screens"
 
 test.use({ storageState: NO_STATE })
 
-const SCREENS = fileURLToPath(new URL("../../../../notes/screens/", import.meta.url))
+const SCREENS = screensDir() // notes/screens/ only with SAVE_SCREENS=1 (e2e/fixtures/screens.ts)
 const INTRO = "Welcome to Pot"
 
 async function shot(page: Page, name: string, project: string) {

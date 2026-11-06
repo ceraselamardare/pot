@@ -6,7 +6,8 @@ Pot is group-chat money that follows its own rules. It is a mobile-first PWA, an
 - Everything is gasless through our own NEP-366 relayer.
 - When a Pot closes, everyone gets their pro-rata share back.
 
-It is being built for NEAR HACKATHON (Nov 1-14, 2026; tracks `social` + `realworld`) by two people:
+It is being built for NEAR HACKATHON (Nov 1-14, 2026; tracks `social` + `realworld`) by **Cerasela Mardare, solo
+builder**. The older docs split the work into two roles; both are hers:
 - **P1**: contracts and backend.
 - **P2**: frontend, UX and design lead.
 
