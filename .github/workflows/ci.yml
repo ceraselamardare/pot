@@ -264,3 +264,5 @@ jobs:
       # they run locally only (notes/deploy.md). Against a deployed preview, CI runs the read-only checks.
       - name: README CLI twins (E-11, read-only)
         run: scripts/readme-cli-check.sh
+      - name: Live proofs (J-10, read-only)
+        run: node scripts/verify-proofs.mjs

@@ -1,5 +1,9 @@
 # Pot: guide for Claude
 
+> **Reviewing or judging Pot?** This file is the builder's working guide. Start with [README.md](README.md) and
+> [docs/judging-guide.md](docs/judging-guide.md); [AGENTS.md](AGENTS.md) lists the read-only commands that check most
+> claims without keys (`node scripts/verify-proofs.mjs`, `scripts/judge-check.sh`).
+
 Pot is group-chat money that follows its own rules. It is a mobile-first PWA, and each Pot is a **Sputnik DAO** on NEAR.
 - The **Pot Hub** contract (`pots.<root>`) holds the 1-of-1 `rulebot` role, so it auto-approves small spends and invite joins.
 - Members approve bigger spends by majority.
@@ -17,7 +21,7 @@ builder**. The older docs split the work into two roles; both are hers:
   - **The git repo is `ceraselamardare/pot` on GitHub (branch `main`).** Read-only git (status, diff, log, grep) is fine. Commit only when the user asks, and always ask before you push.
 - **No wallet-less real accounts** (user decision, 2026-11-01): there is no test-account login and no custodial live persona demo. Sign-in is a NEAR wallet (NEAR Connect) or Google/email (NEAR Auth) only. Fake, no-network content is fine: the simulated `/demo` tour and the landing's "Try the rules".
 - **Built and tested:**
-  - `contracts/`: Pot Hub + test USDC, 120 sandbox tests.
+  - `contracts/`: Pot Hub + test USDC, with sandbox tests.
   - `packages/pot-sdk`.
   - `apps/web`: UI + API + relayer, in the pnpm workspace layout of D-64.
   - The preview deployment on testnet under `potprev.testnet` (see notes/deploy.md).

@@ -4,7 +4,7 @@
   keeps its key while we iterate on testnet and is locked before mainnet ([judging guide](judging-guide.md), J-7); until then, whoever holds it could
   approve transfers through the rulebot seat or push DAO code. The token and every Pot are already keyless. See [SECURITY.md](../SECURITY.md).
 - **NEAR Auth origin.** The shared testnet NEAR Auth client only accepts `http://localhost:3000`, so Google sign-in
-  works only on a local run. A hosted build offers "I have a NEAR wallet" (NEAR Connect).
+  works only on a local run. A hosted build offers "Continue with a NEAR wallet" (NEAR Connect).
 - **Trezu is mainnet-only**, so testnet Pots can't be opened there. On mainnet, Trezu's approval count would be wrong
   for Pot's two-role policy and its balance view stays empty for DAOs outside `*.sputnik-dao.near`.
 - **`/demo` is a simulation.** It signs and sends nothing; its ids, keys and hashes are made up (generated from the
@@ -21,6 +21,6 @@
 - Refunds are pro rata to everything a member ever put in, so money added late subsidizes earlier spending.
 - There is no cash-out from Pot dollars yet: after a close, refunds stay in the member's Pot account.
 - Pot names, amounts, members and requests are public on chain.
-- A device key is a full-access key; "Forget this device" deletes it in the browser but not on chain.
+- A device key is a full-access key; "Sign out" deletes it in the browser but not on chain.
 - A web app trusts the JavaScript it is served; the hub's rules cap what a compromised page could do.
 - Members can't leave before close. At most 40 members. Requests expire after 7 days.

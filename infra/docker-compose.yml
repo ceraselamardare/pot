@@ -30,4 +30,4 @@ services:
 
 volumes:
   pot-pgdata:
-    name: pot-pgdata
+    name: ${POT_DB_NAME:-pot}-pgdata

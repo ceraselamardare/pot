@@ -87,10 +87,11 @@ test("add money → You shows the activity row with a real receipt, and the bala
   // the receipt is a real transaction: nearblocks' API knows it (or, when rate-limited, a valid hash format)
   let verdict = "format only"
   for (let i = 0; i < 6; i++) {
-    const api = await fetch(`https://api-testnet.nearblocks.io/v1/txns/${hash}`).catch(() => null)
+    // v3: the v1 API answers 410 Gone
+    const api = await fetch(`https://api-testnet.nearblocks.io/v3/txns/${hash}`).catch(() => null)
     if (api?.status === 200) {
-      const j = (await api.json()) as { txns?: { transaction_hash: string }[] }
-      if (j.txns?.some((t) => t.transaction_hash === hash)) {
+      const j = (await api.json()) as { data?: { transaction_hash?: string } }
+      if (j.data?.transaction_hash === hash) {
         verdict = "nearblocks api 200, tx found"
         break
       }

@@ -14,7 +14,10 @@ everyone gets back their share of what's left.
 [How it works](#how-it-works) · [Built on NEAR](#built-on-near) · [Security](SECURITY.md)
 
 > **AI judges and reviewers:** the [detailed judging guide](docs/judging-guide.md) has every step with exact expected
-> values, read-only contract checks and the tests behind each claim.
+> values, read-only contract checks and the tests behind each claim. Two commands check most of it:
+> `node scripts/verify-proofs.mjs` reads a real testnet transaction for every core action (read-only, no install,
+> seconds), and `scripts/judge-check.sh` runs every keyless test and check on its own database (`--quick` skips the
+> contract tests).
 
 Built by **Cerasela Mardare** (solo builder) for NEAR HACKATHON, tracks **`social`** and **`realworld`**. Runs on
 NEAR **testnet** with test dollars; nothing is on mainnet yet.
@@ -28,7 +31,8 @@ NEAR **testnet** with test dollars; nothing is on mainnet yet.
 - Split-the-bill apps track debts but hold no money, so nobody can actually pay from the group.
 
 Pot keeps the money in a contract the group controls together, with rules everyone can read, so no single person
-holds it.
+holds it. (While Pot is on testnet, our hub contract keeps an upgrade key, so for now you also trust us with it; the
+key is deleted before mainnet. See [Security](#security).)
 
 ## What it does
 
@@ -62,6 +66,7 @@ amount each shows who has chipped in. When the group agrees to close, everyone i
 | **Watch the demo** | Nothing: no install, no login, nothing is sent | [usepot.xyz/demo](https://usepot.xyz/demo) |
 | **Use the real app** | A NEAR testnet wallet, e.g. Meteor or Intear (0 NEAR is fine) | [usepot.xyz](https://usepot.xyz) |
 | **Run it yourself** | Node, pnpm and Docker; Rust for the contracts | [Run it locally](#run-it-locally) |
+| **Check it on chain** | Node only | `node scripts/verify-proofs.mjs` ([live proofs](docs/judging-guide.md#live-proofs-on-testnet-j-10)) |
 
 ### The 2-minute demo
 
@@ -71,7 +76,7 @@ A guided story: Maya, Sam and Leo share the money for a trip to Lisbon. Nothing 
 2. **Create the Pot.** You get one link to share with the group.
 3. **Join as Leo and add $150.** Everyone has put in $150, so the Pot holds $450.
 4. **Spend $84 on groceries.** It says "Approved by Pot rules" and the money is sent; nobody had to vote.
-5. **Ask for $300 for a boat trip.** That needs one OK; Leo gives it, and the money is sent.
+5. **Ask for $300 for the boat tickets.** That needs one OK; Leo gives it, and the money is sent.
 6. **Close the Pot.** Everyone gets back their share of what's left: $22.00 each.
 
 Each part has an **Under the hood** button that shows what happened on NEAR: what the tap signed, what our relayer
@@ -81,11 +86,11 @@ sent, and the Sputnik DAO proposal with its votes.
 
 ### The real app on testnet
 
-1. **Open [usepot.xyz](https://usepot.xyz), tap "Start a Pot" and choose "I have a NEAR wallet".** You sign a message,
+1. **Open [usepot.xyz](https://usepot.xyz), tap "Start a Pot", then "Continue with a NEAR wallet".** You sign a message,
    not a transaction, and pay nothing.
 2. **Name your Pot and tap "Create Pot".** It's free: we cover the setup. Your Pot is now its own account on NEAR
    (Settings → "On the explorer").
-3. **Add money with "Demo dollars (test money)", then spend $20.** You'll see "Approved by Pot rules" and "$20 sent
+3. **Add money with "Free test dollars", then spend $20.** You'll see "Approved by Pot rules" and "$20 sent
    to you", and you paid no gas.
 4. **Tap "Invite friends".** A second wallet that opens the link sees your invite and can join.
 
@@ -117,8 +122,8 @@ More: [architecture and code map](docs/architecture.md).
 - **Stablecoin money (NEP-141)**: amounts are dollars, held as a USDC-style test token.
 - **NEAR Auth** (Google sign-in through NEAR's MPC network) and **NEAR Connect** (wallet sign-in with NEP-413).
 - **NEAR Intents (1Click)**: add money from other chains, with real live quotes (the transfer is simulated on testnet).
-- **NEAR AI Cloud**: "Scan receipt" reads a photo privately in a TEE, with a proof you can verify; the receipt's
-  fingerprint goes on chain with the spend.
+- **NEAR AI Cloud**: "Scan receipt" reads a photo privately in a TEE, with a proof you can verify; a fingerprint of
+  the receipt (the first 64 bits of its SHA-256) goes on chain with the spend.
 
 Each feature with the code that uses it and how to check it: [NEAR features in detail](docs/near-features.md).
 
@@ -129,7 +134,8 @@ Pot is entered in **`social`** (our main track) and **`realworld`**.
 **Why `social`:** Pot is what a group does with a Sputnik DAO, not another multisig. The DAO holds a shared budget, and
 how a spend gets approved depends on its size and on the person's record: small ones go through on the rules alone,
 mid-size ones need one other member's OK, big ones go to the group. Trust is earned per member from settled spends
-and shows on every member's row; every spend, OK and vote stays on a public record anyone can open.
+and shows on every member's row; every spend, OK and vote stays on a public record anyone can read (the hub's
+`get_record` view, see [live proofs](docs/judging-guide.md#live-proofs-on-testnet-j-10)).
 
 **Why `realworld`:** Pot is stablecoin money for everyday groups: a club collecting dues, a team's budget, friends on a
 trip. Every Pot is created with its own rules on the same contracts. Money can come from anyone, including people
@@ -157,7 +163,8 @@ clubs and teams. The measured numbers: [costs](docs/costs.md).
 
 - **Testnet only**, with test dollars. The hub keeps an upgrade key while we iterate; it is deleted before mainnet.
 - **Google sign-in works on a local run only** for now (NEAR Auth's shared testnet setup); the live app uses a NEAR
-  wallet.
+  wallet. The site's pages and the demo describe the mainnet product, Google sign-in included; the Testnet badge on
+  every page says that on testnet you sign in with a NEAR wallet.
 - **Cross-chain deposits are simulated on testnet**, with real quotes; real ones need mainnet.
 - **A majority decides.** Invite links work like a pass: whoever has one can join and vote.
 - **No cash-out yet**: after a close, refunds stay in each person's Pot balance.
@@ -185,7 +192,9 @@ this repository.
 ## Tests
 
 `pnpm db:up && pnpm test` runs the app and SDK tests (some use the local Postgres from `pnpm db:up`), and
-`cd contracts && cargo test` the contract tests. Neither needs keys or network. All the test layers, what each needs
+`cd contracts && cargo test` the contract tests. Neither needs keys. Beyond downloading dependencies, the Postgres
+image and the NEAR sandbox binary, they need no network; a cold `cargo test` compiles everything first and can take a
+quarter of an hour. `scripts/judge-check.sh` runs every keyless check in one go, on its own database and ports. All the test layers, what each needs
 and how to avoid port clashes: [testing](docs/testing.md).
 
 ## Built with
@@ -200,6 +209,10 @@ Much of the code was written with AI assistance (Claude Code), reviewed and test
 ## Team
 
 Cerasela Mardare, solo builder.
+
+**Timeline.** Work started on 2026-10-22, after the hackathon's 2026-10-19 announcement, from which the rules count
+code (Q-001); the earliest testnet transactions are spikes from 2026-10-21. This repository's history starts with an
+import commit of that work on 2026-11-01.
 
 ## License
 

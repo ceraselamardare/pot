@@ -87,7 +87,7 @@ test("Spend: the preview names the tier (instant with my raised limit, one OK, t
   await axe(page)
   await shot(page, "spend", info.project.name)
   await sheet.getByRole("button", { name: "Ask for one OK" }).click()
-  await expect(sheet.getByText("Sent", { exact: true })).toBeVisible()
+  await expect(sheet.getByText("Request sent", { exact: true })).toBeVisible()
   await expect(sheet.getByText("One OK from someone else who has added money and it's paid.")).toBeVisible()
   await expect(sheet.getByRole("region", { name: /Approvals/ })).toHaveCount(0) // no k-of-n timeline for one OK
   await brandChecks(page, { marigold: "one" })

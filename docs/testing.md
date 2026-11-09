@@ -12,9 +12,14 @@
 
 **If port 54329 or the container name is taken** (another checkout, another Postgres): start a second database
 with `POT_DB_PORT=54339 POT_DB_NAME=pot2 pnpm db:up`, then run the tests with
-`POT_DB_PORT=54339 DATABASE_URL_TEST=postgres://pot:pot@localhost:54339/pot_test pnpm test`. The integrations tier
-reads `POT_DB_PORT` too. The test helpers create and drop their own schemas, so don't point them at a database you
-care about.
+`POT_DB_PORT=54339 DATABASE_URL_TEST=postgres://pot:pot@localhost:54339/pot_test pnpm test`. The second database
+gets its own container (`pot2-postgres`) and its own volume (`pot2-pgdata`); `POT_DB_NAME=pot2 docker compose -f
+infra/docker-compose.yml config` shows both before you start it, and
+`POT_DB_NAME=pot2 docker compose -f infra/docker-compose.yml down -v` removes them afterwards. For `pnpm dev` on that database, change the port in `DATABASE_URL` and `DATABASE_URL_UNPOOLED` in
+`apps/web/.env.local` too. The integrations tier reads `POT_DB_PORT` too. The test helpers create and drop their own
+schemas, so don't point them at a database you care about.
+
+**All keyless checks in one command:** `scripts/judge-check.sh` (see its header for options).
 
 **Screenshots:** the mocked e2e suite saves review screenshots to `apps/web/test-results/screens/` (gitignored).
 `SAVE_SCREENS=1` writes them to the tracked `notes/screens/` instead.

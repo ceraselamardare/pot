@@ -893,7 +893,7 @@ function Approve({ story, people: all, you, tapped, active, onPrimary, done }: S
           </div>
         </div>
       }
-      peek={<PotPeek story={story} members={people(story.membersBefore, all)} balance={micro(story.potBefore)} />}
+      peek={<PotPeek story={story} members={people(story.membersBefore, all)} balance={done ? balanceAfter : micro(story.potBefore)} />}
       footer={
         done ? (
           <Primary active={active} onPrimary={onPrimary}>

@@ -23,7 +23,7 @@
     "check:demo-real": "scripts/run check-demo-real",
     "db:up": "docker compose -f infra/docker-compose.yml up -d --wait",
     "db:down": "docker compose -f infra/docker-compose.yml down",
-    "db:psql": "docker exec -it pot-postgres psql -U pot -d pot"
+    "db:psql": "docker exec -it ${POT_DB_NAME:-pot}-postgres psql -U pot -d pot"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

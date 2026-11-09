@@ -350,6 +350,8 @@ test("J-4: part 4, the $300 boat tickets need one OK: Leo's push and his OK on s
   await forward(page, "phone") // [OK $300]
   for (const s of [fill(en["approve.ok.done"]!, { amount: "$300", name: "Maya" }), fill(en["approve.timeline.ok"]!, { name: "You" }), "$66.00"])
     await expect(phone(page)).toContainText(s)
+  // the Pot behind the sheet has paid too: no $366.00 left over from before the OK
+  await expect(phone(page)).not.toContainText("$366.00")
   await expect(page.locator("[data-phone-push]")).toHaveCount(0)
   // Back into step 10 shows the sheet straight away: the push is for stepping forward only
   await page.locator("[data-tour-back]").click()

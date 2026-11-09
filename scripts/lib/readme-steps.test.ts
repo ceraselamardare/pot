@@ -23,6 +23,22 @@ describe("check-readme-steps", () => {
   it("a removed marker fails", () => {
     expect(checkReadmeSteps(readme, read, guide.replace("<!-- J-3 -->", ""))).toContain(`J-3: no <!-- J-3 --> marker in ${GUIDE}`)
   })
+  it("a proof dropped from the J-10 table, or a hash that isn't in docs/proofs.json, fails", () => {
+    const hash = "Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk"
+    expect(checkReadmeSteps(readme, read, guide.replaceAll(`txns/${hash}`, "txns/x"))).toContain(
+      `J-10: proof ${hash} from docs/proofs.json is not in the guide`,
+    )
+    const extra = "11111111111111111111111111111111111111111111"
+    expect(checkReadmeSteps(readme, read, `${guide}\n[x](https://testnet.nearblocks.io/txns/${extra})\n`)).toContain(
+      `J-10: ${extra} is in the guide but not in docs/proofs.json`,
+    )
+  })
+  it("a quoted UI label that the app no longer has fails; templates and non-UI quotes pass", () => {
+    const stale = `${guide}\nTap "Demo dollars (test money)".\n`
+    expect(checkReadmeSteps(readme, read, stale)).toContain(`${GUIDE}: "Demo dollars (test money)" is not a UI label in apps/web/i18n/en.json`)
+    const fine = `${guide}\nTap "OK $300", then "Join Lisbon Trip"; see "Try it".\n`
+    expect(checkReadmeSteps(readme, read, fine)).toEqual([])
+  })
   it("a README that no longer links the guide fails", () => {
     expect(checkReadmeSteps(readme.replaceAll(`(${GUIDE})`, "(x.md)"), read, guide)).toContain(`README.md doesn't link to ${GUIDE}`)
   })

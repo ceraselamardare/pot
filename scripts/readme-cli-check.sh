@@ -40,7 +40,7 @@ out=$(near account list-keys $POT network-config testnet now 2>&1 | strip)
 expect_no_keys "list-keys reference Pot" "$out"
 out=$(near account list-keys $HUB network-config testnet now 2>&1 | strip)
 if [ "${EXPECT_HUB_LOCKED:-0}" = "1" ]; then expect_no_keys "list-keys hub (locked)" "$out"
-else echo "info list-keys hub: $(grep -c 'ed25519:' <<<"$out") key(s) (locked on Nov 12, D-13; set EXPECT_HUB_LOCKED=1 after)"; fi
+else echo "info list-keys hub: $(grep -c 'ed25519:' <<<"$out") key(s) (kept while Pot is on testnet, deleted before mainnet; set EXPECT_HUB_LOCKED=1 once it is)"; fi
 
 [ $fail -eq 0 ] && echo "README CLI twins: PASS" || echo "README CLI twins: FAIL"
 exit $fail
