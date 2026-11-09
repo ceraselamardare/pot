@@ -4,7 +4,7 @@ members = ["pot-hub", "test-usdc", "tests"]
 
 [workspace.package]
 rust-version = "1.93"
-repository = "https://github.com/pot-app/pot"
+repository = "https://github.com/ceraselamardare/pot"
 license = "MIT"
 
 # cargo-near template profile; overflow-checks matters for money math (INV-13).

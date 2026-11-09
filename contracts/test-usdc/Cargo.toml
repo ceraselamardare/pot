@@ -3,7 +3,9 @@ name = "test-usdc"
 version = "1.0.0"
 edition = "2018"   # upstream edition kept to avoid edition churn (contracts-spec §1.1)
 publish = false
-repository.workspace = true
+# The token is locked (no access keys), so it can never be redeployed: keep the link it was built with, or its source
+# would stop building the deployed code (its NEP-330 metadata embeds this field).
+repository = "https://github.com/pot-app/pot"
 license.workspace = true
 
 [lib]
