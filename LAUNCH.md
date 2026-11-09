@@ -5,7 +5,7 @@
 > **Decisions this assumes:**
 > - **Testnet only**; no mainnet contracts.
 > - **Vercel Hobby.**
-> - **No custom domain** (`<project>.vercel.app`).
+> - **Custom domain:** https://usepot.xyz (Vercel, production on every push to `main`).
 > - **Repo:** `github.com/ceraselamardare/pot` (branch `main`; created Nov 1). Commits only when asked, and always confirm before a push.
 > - **No wallet-less real accounts** (Rev 9): sign-in is NEAR wallet or Google (NEAR Auth) only. The simulated `/demo` tour stays.
 >
@@ -20,10 +20,20 @@
 > - A LICENSE file is required (Q-014).
 > - Claude Code and Codex screen for reproducibility (Q-017).
 
-## Where things stand
+## Where things stand (updated 2026-11-09)
 
 | Area | State | Where |
 |---|---|---|
+| Contracts | Pot Hub 1.3.0 + test USDC, sandbox tests on both Sputnik builds. Deployed on testnet under `potprev.testnet` and rebuilt byte for byte from `main` (`contracts/scripts/build.sh`). Token locked; **hub key still held** (lock decision below) | `contracts/`, `notes/contracts.md`, `notes/deploy.md` |
+| App (UI + API + relayer) | Live at https://usepot.xyz on testnet; every flow passes the unit, mock e2e, integrations and testnet suites | `apps/web/`, `docs/testing.md` |
+| Marketing site | Landing, use-case pages, the trip cost calculator, search and AI-answer basics | `apps/web/app/(marketing)/` |
+| Live proofs | The reference story ran in `reference-trip-2gzw.pots.potprev.testnet`; `node scripts/verify-proofs.mjs` checks every transaction | `docs/proofs.json`, `docs/judging-guide.md` J-10 |
+| Judge README | Written for people and AI judges, with the judging guide (J-1 to J-10) and `scripts/judge-check.sh` | `README.md`, `docs/`, `AGENTS.md` |
+| Demo video | 82 s, v3 (copy matches the app, Testnet badge, usepot.xyz on the end card) | `marketing/video/out/final/`, `notes/video.md` |
+| CI | `.github/workflows/ci.yml`; runs on push once the repo is public | — |
+| Repo visibility | **Private**: must be public before submitting (Q-014) | GitHub settings |
+
+---|---|---|
 | Contracts | Pot Hub + test USDC, 120 sandbox tests, both Sputnik builds. Deployed on testnet under `potprev.testnet`; token locked, **hub key still held** | `contracts/`, `notes/contracts.md`, `notes/deploy.md` |
 | App (UI + API + relayer) | Every MVP and Phase-2 flow works on testnet. 770 unit, 164 mock e2e and the testnet e2e suites all pass | `apps/web/`, `notes/qa-report.md` |
 | Landing page `/` | Built (two rounds, motion) | `notes/landing.md` |

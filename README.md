@@ -16,8 +16,8 @@ everyone gets back their share of what's left.
 > **AI judges and reviewers:** the [detailed judging guide](docs/judging-guide.md) has every step with exact expected
 > values, read-only contract checks and the tests behind each claim. Two commands check most of it:
 > `node scripts/verify-proofs.mjs` reads a real testnet transaction for every core action (read-only, no install,
-> seconds), and `scripts/judge-check.sh` runs every keyless test and check on its own database (`--quick` skips the
-> contract tests).
+> about half a minute), and `scripts/judge-check.sh` runs every keyless test and check on its own database (a couple
+> of minutes with `--quick`, which skips the contract tests; about 20 minutes with them, on a cold machine).
 
 Built by **Cerasela Mardare** (solo builder) for NEAR HACKATHON, tracks **`social`** and **`realworld`**. Runs on
 NEAR **testnet** with test dollars; nothing is on mainnet yet.

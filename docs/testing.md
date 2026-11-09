@@ -24,5 +24,6 @@ schemas, so don't point them at a database you care about.
 **Screenshots:** the mocked e2e suite saves review screenshots to `apps/web/test-results/screens/` (gitignored).
 `SAVE_SCREENS=1` writes them to the tracked `notes/screens/` instead.
 
-The latest full run, with outputs and the bugs it found, is in `notes/qa-report.md`. CI is
-`.github/workflows/ci.yml`.
+`scripts/judge-check.sh` runs every keyless tier in one go and prints a summary (`--quick` skips the contract tests,
+the slow part: a cold `cargo test` takes about a quarter of an hour). The first full QA pass, from 2026-10-22, with the
+bugs it found, is in `notes/qa-report.md`. CI is `.github/workflows/ci.yml`.
