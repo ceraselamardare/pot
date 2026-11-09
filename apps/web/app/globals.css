@@ -198,7 +198,8 @@
   background: var(--pot-surface-sunken);
 }
 @supports (anchor-name: --a) {
-  .pot-netbadge {
+  .pot-netbadge,
+  .pot-anchor {
     anchor-name: var(--pot-netpop-anchor);
   }
   .pot-netpop {

@@ -85,8 +85,19 @@ export function hasSessionHint(): boolean {
  */
 export function signInMethods(inApp: string | null): { google: boolean; email: boolean; wallet: boolean; mock: boolean } {
   if (!isLive()) return { google: !inApp, email: true, wallet: true, mock: true }
-  const nearAuth = process.env.NEXT_PUBLIC_FLAG_NEAR_AUTH === "true" && !!process.env.NEXT_PUBLIC_NEAR_AUTH_CLIENT_ID
+  const nearAuth = nearAuthOn()
   return { google: nearAuth && !inApp, email: nearAuth, wallet: true, mock: false }
+}
+
+const nearAuthOn = () => process.env.NEXT_PUBLIC_FLAG_NEAR_AUTH === "true" && !!process.env.NEXT_PUBLIC_NEAR_AUTH_CLIENT_ID
+
+/**
+ * A live build without NEAR Auth, opened anywhere but on this computer (the hosted app today): Google still shows,
+ * switched off, with a "!" that says it only works on a local run for now (GoogleLocalOnly). Never inside an in-app
+ * browser, where Google is hidden anyway. `local`: lib/client/host.ts isLocalHost().
+ */
+export function googleLocalOnly(inApp: string | null, local: boolean): boolean {
+  return isLive() && !nearAuthOn() && !inApp && !local
 }
 
 // ---------------------------------------------------------------------------------------------------------

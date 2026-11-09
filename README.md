@@ -163,7 +163,7 @@ clubs and teams. The measured numbers: [costs](docs/costs.md).
 
 - **Testnet only**, with test dollars. The hub keeps an upgrade key while we iterate; it is deleted before mainnet.
 - **Google sign-in works on a local run only** for now (NEAR Auth's shared testnet setup); the live app uses a NEAR
-  wallet. The site's pages and the demo describe the mainnet product, Google sign-in included; the Testnet badge on
+  wallet and shows Google switched off, with a "!" that says why. The site's pages and the demo describe the mainnet product, Google sign-in included; the Testnet badge on
   every page says that on testnet you sign in with a NEAR wallet.
 - **Cross-chain deposits are simulated on testnet**, with real quotes; real ones need mainnet.
 - **A majority decides.** Invite links work like a pass: whoever has one can join and vote.

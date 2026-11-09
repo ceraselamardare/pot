@@ -26,6 +26,9 @@ vi.mock("@/components/features/wallet/WalletSignIn", async (orig) => ({
   walletSignIn: () => walletRun(),
 }))
 const keys = { ok: true }
+// jsdom serves from localhost; `host.local = false` stands in for the hosted app (usepot.xyz)
+const host = { local: true }
+vi.mock("@/lib/client/host", () => ({ isLocalHost: () => host.local }))
 vi.mock("@/lib/client/keys/device-key-store", () => ({ deviceKeys: () => (keys.ok ? {} : null) }))
 const mockJoin = vi.fn()
 vi.mock("@/lib/client/actions", () => ({ mockJoinSession: (p: string) => mockJoin(p) }))
@@ -50,6 +53,7 @@ vi.mock("next/navigation", () => ({
 import SignInDialog from "@/components/features/auth/SignInDialog"
 import { SignInLink } from "@/components/features/auth/SignInLink"
 import { MOCK_WINDOW_MS, SignInPanel } from "@/components/features/auth/SignInPanel"
+import { SignInOptions } from "@/components/features/auth/SignInOptions"
 import { NearAuthCallback } from "@/components/features/auth/NearAuthCallback"
 import { HomeRedirect } from "@/components/landing/HomeRedirect"
 import { HomeRedirectSession } from "@/components/landing/HomeRedirectSession"
@@ -96,6 +100,7 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/")
   ;[start, complete, walletRun, mockJoin, nav.replace, nav.push].forEach((f) => f.mockReset())
   keys.ok = true
+  host.local = true
   me.current = null
   install.app = null
 })
@@ -355,6 +360,70 @@ describe("live build, NEAR Auth off (today's hosted testnet)", () => {
     expect(screen.queryByRole("alert")).toBeNull()
     expect(screen.getByRole("button", { name: tx("signin.wallet.only") })).toBeTruthy()
     picker.remove()
+  })
+})
+
+describe("live build, NEAR Auth off, hosted (usepot.xyz until NEAR Auth allows it)", () => {
+  beforeEach(() => {
+    live({ nearAuth: false })
+    host.local = false
+  })
+  const why = () => screen.getByRole("button", { name: tx("signin.google.local_only.why") })
+  const pop = () => document.getElementById(why().getAttribute("popovertarget")!)!
+
+  it("dialog: Google stays, switched off, with a '!' that explains; the wallet is the one marigold", () => {
+    render(<SignInPanel layout="dialog" next={DEFAULT_NEXT} />)
+    expect(names(options())).toEqual([tx("signin.google"), "", tx("signin.wallet.only")])
+    const google = screen.getByRole("button", { name: tx("signin.google") })
+    expect(google.hasAttribute("disabled")).toBe(true)
+    expect(google.getAttribute("data-variant")).not.toBe("primary")
+    expect(screen.getByRole("button", { name: tx("signin.wallet.only") }).getAttribute("data-variant")).toBe("primary")
+    expect(primaries()).toHaveLength(1)
+    expect(screen.getByText(tx("signin.or"))).toBeTruthy()
+    // the "!" opens a popover (shown on a tap, never toggled shut by it); the disabled button is described by it too
+    expect(why().getAttribute("popovertargetaction")).toBe("show")
+    expect(pop().getAttribute("popover")).toBe("auto")
+    expect(pop().textContent).toContain(tx("signin.google.local_only.title"))
+    expect(pop().textContent).toContain(tx("signin.google.local_only.body"))
+    expect(document.getElementById(google.getAttribute("aria-describedby")!)!.textContent).toBe(tx("signin.google.local_only.body"))
+    // tapping the switched-off button starts nothing
+    fireEvent.click(google)
+    expect(start).not.toHaveBeenCalled()
+    expect(walletRun).not.toHaveBeenCalled()
+  })
+
+  it("page: the same switched-off Google above the wallet", () => {
+    render(<SignInPanel layout="page" goal="start" />)
+    expect(names(options())).toEqual([tx("signin.google"), "", tx("landing.more.wallet")])
+    expect(primaries()).toHaveLength(1)
+  })
+
+  it("invite, claim and gift pages: 'Join with Google' switched off, then the wallet link", () => {
+    render(<SignInOptions join onSignedIn={() => {}} />)
+    const google = screen.getByRole("button", { name: tx("landing.cta.google") })
+    expect(google.hasAttribute("disabled")).toBe(true)
+    expect(why()).toBeTruthy()
+    expect(screen.getByRole("button", { name: tx("landing.more.wallet") })).toBeTruthy()
+  })
+
+  it("inside an in-app browser Google stays hidden, as before", () => {
+    install.app = "Instagram"
+    render(<SignInPanel layout="dialog" next={DEFAULT_NEXT} />)
+    expect(screen.queryByRole("button", { name: tx("signin.google") })).toBeNull()
+    expect(screen.queryByRole("button", { name: tx("signin.google.local_only.why") })).toBeNull()
+  })
+
+  it("on this computer (localhost) the wallet stands alone, as in the tests above", () => {
+    host.local = true
+    render(<SignInPanel layout="dialog" next={DEFAULT_NEXT} />)
+    expect(names(options())).toEqual([tx("signin.wallet.only")])
+  })
+
+  it("with NEAR Auth on, a hosted build gets the real Google button", () => {
+    live({ nearAuth: true })
+    render(<SignInPanel layout="dialog" next={DEFAULT_NEXT} />)
+    expect(screen.getByRole("button", { name: tx("signin.google") }).hasAttribute("disabled")).toBe(false)
+    expect(screen.queryByRole("button", { name: tx("signin.google.local_only.why") })).toBeNull()
   })
 })
 

@@ -22,6 +22,7 @@ import { deviceKeys } from "@/lib/client/keys/device-key-store"
 import { prepareNearAuthLogin, startNearAuthLogin } from "@/lib/signing/near-auth/client"
 import { NearAuthError, nearAuthConfig, nearAuthEnabled } from "@/lib/signing/near-auth/oidc"
 import { dismissWalletPicker, walletPickerUp, walletSignIn, WalletSignIn, type WalletErr } from "@/components/features/wallet/WalletSignIn"
+import { GoogleLocalOnly, useGoogleLocalOnly } from "./GoogleLocalOnly"
 import { GoogleMark } from "./GoogleMark"
 
 type AuthErr = "auth.popup_blocked" | "auth.failed" | "auth.service_down" | null
@@ -76,6 +77,7 @@ export function SignInOptions({ layout = "disclosure", ...props }: Props) {
 
 function DisclosureOptions({ onSignedIn, primary = false, join, className, returnTo }: Omit<Props, "layout">) {
   const enabled = nearAuthEnabled()
+  const googleOff = useGoogleLocalOnly(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<AuthErr>(null)
   const [more, setMore] = useState(false)
@@ -136,6 +138,7 @@ function DisclosureOptions({ onSignedIn, primary = false, join, className, retur
           )}
         </>
       )}
+      {!enabled && googleOff && <GoogleLocalOnly label={join ? "landing.cta.google" : "signin.google"} />}
       <WalletSignIn onSignedIn={onSignedIn} />
     </div>
   )
@@ -305,10 +308,12 @@ function DirectOptions({
   const online = useOnline()
   usePrepare(nearAuth && keysOk)
   const s = useLiveSignIn({ returnTo, onSignedIn })
+  const googleOff = useGoogleLocalOnly(hideGoogle ? "in-app" : null)
   return (
     <SignInFlow
       className={className}
       google={nearAuth && keysOk && !hideGoogle}
+      googleOff={!nearAuth && googleOff}
       email={nearAuth && keysOk}
       wallet
       unsupported={nearAuth && !keysOk}
@@ -329,6 +334,7 @@ function DirectOptions({
 export function SignInFlow({
   className,
   google,
+  googleOff = false,
   email,
   wallet,
   unsupported = false,
@@ -345,6 +351,8 @@ export function SignInFlow({
 }: {
   className?: string
   google: boolean
+  /** a hosted build without NEAR Auth: Google shows switched off, with why (GoogleLocalOnly) */
+  googleOff?: boolean
   email: boolean
   wallet: boolean
   /** NEAR Auth is on, but this browser can't hold its key: Google and email give way to one line */
@@ -414,6 +422,7 @@ export function SignInFlow({
       ) : (
         <ChoiceStack
           google={google}
+          googleOff={googleOff}
           email={email}
           wallet={wallet}
           unsupported={unsupported}
@@ -432,6 +441,7 @@ export function SignInFlow({
 /** The options in 07 §2.4's order. The first one shown takes `primary`; the wallet is a quiet row beside NEAR Auth. */
 function ChoiceStack({
   google,
+  googleOff,
   email,
   wallet,
   unsupported,
@@ -452,6 +462,7 @@ function ChoiceStack({
   disabled: boolean
   onPick: (m: SignInMethod) => void
   buttonRef: (m: SignInMethod) => (el: HTMLButtonElement | null) => void
+  googleOff: boolean
 }) {
   const first: SignInMethod | null = google ? "google" : email ? "email" : wallet ? "wallet" : null
   const variant = (m: SignInMethod) => (primary && first === m ? "primary" : "secondary")
@@ -472,13 +483,14 @@ function ChoiceStack({
           {t("signin.google")}
         </Button>
       )}
+      {!google && googleOff && <GoogleLocalOnly />}
       {email && (
         <Button ref={buttonRef("email")} variant={variant("email")} className="w-full" onClick={() => onPick("email")} data-near-auth="email" {...off}>
           <Mail aria-hidden strokeWidth={2} />
           {t("landing.more.email")}
         </Button>
       )}
-      {auth && wallet && (
+      {(auth || googleOff) && wallet && (
         <p className="flex items-center gap-3 text-body-sm text-ink-muted" data-signin-or>
           <span aria-hidden className="h-px flex-1 bg-line" />
           {t("signin.or")}

@@ -87,6 +87,8 @@ export const ALLOW_PREFIXES = [
  * exemption D-20 gave `landing.more.wallet` for the same option. `network.badge`, `network.badge.title` and
  * `network.badge.body` (the Testnet badge, 2026-11-06): the one place the site says it runs on NEAR testnet
  * (components/brand/NetworkBadge.tsx, shown on testnet builds only), so it has to name the network.
+ * `signin.google.local_only.body` (2026-11-09): why the hosted app's Google button is switched off, pointing to the
+ * way in that works there, the same option `signin.wallet.only` names.
  */
 export const ALLOW_KEYS = [
   "add.usdc_note",
@@ -96,6 +98,7 @@ export const ALLOW_KEYS = [
   "network.badge",
   "network.badge.title",
   "network.badge.body",
+  "signin.google.local_only.body",
 ]
 
 export const BANNED_CI_RE = new RegExp(`\\b(?:${BANNED_CI.join("|")})\\b`, "i")

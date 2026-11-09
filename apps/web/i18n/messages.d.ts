@@ -1976,6 +1976,9 @@ export interface Messages {
   "signin.failed": undefined
   "signin.fine": undefined
   "signin.google": undefined
+  "signin.google.local_only.body": undefined
+  "signin.google.local_only.title": undefined
+  "signin.google.local_only.why": undefined
   "signin.home": undefined
   "signin.inapp.body": { appName: string | number }
   "signin.inapp.body_any": { browser: string | number; appName: string | number }
