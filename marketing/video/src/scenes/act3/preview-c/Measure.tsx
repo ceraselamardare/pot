@@ -87,11 +87,11 @@ export const CMeasure: React.FC = () => (
     <Screen name="create2" targets={[btn("create", "Create Pot"), { key: "title", text: "Pot rules" }]}>
       <CreatePotSheet step={2} />
     </Screen>
-    <Screen name="create2s400" targets={[]}>
-      <CreatePotSheet step={2} bodyScroll={400} />
+    <Screen name="create2s412" targets={[]}>
+      <CreatePotSheet step={2} bodyScroll={412} />
     </Screen>
-    <Screen name="create2s690" targets={[{ key: "majority", text: "Bigger spends need more than half the group" }, { key: "fixedTitle", text: "Every Pot works like this" }]}>
-      <CreatePotSheet step={2} bodyScroll={690} />
+    <Screen name="create2s714" targets={[{ key: "majority", text: "Bigger spends need more than half the group" }, { key: "fixedTitle", text: "Every Pot works like this" }]}>
+      <CreatePotSheet step={2} bodyScroll={714} />
     </Screen>
     <Screen name="create3" targets={[{ key: "title", text: "Creating Lisbon Trip…" }, { key: "free", text: "Free: we cover the setup." }]}>
       <CreatePotSheet step={3} />

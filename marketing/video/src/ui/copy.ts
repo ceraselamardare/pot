@@ -1,4 +1,4 @@
-// The app's real UI strings (apps/web/i18n/en.json, 2026-11-03), keyed by their en.json names. Only what the kit
+// The app's real UI strings (apps/web/i18n/en.json, 2026-11-03; one-OK, add-money and suggested-amount lines re-synced 2026-11-09), keyed by their en.json names. Only what the kit
 // renders. Money arguments are already formatted strings ("$150", "$450.00"). Entries marked LEGACY are gone from
 // today's app (kept so older scene code still compiles; don't show them in new shots).
 
@@ -11,6 +11,7 @@ export const copy = {
   "pots.title": "Pots",
   "requests.title": "Requests",
   "you.title": "You",
+  "network.badge": "Testnet",
 
   // Pot screen
   "pot.hero.label": "In the Pot",
@@ -158,7 +159,7 @@ export const copy = {
   "rules.instant": (instantLimit: string) => `Anyone can spend up to ${instantLimit} without asking.`,
   "rules.trust": (step: number, instantLimit: string, max: string) =>
     `Trust grows: every ${step} paid spends raise someone's instant limit by ${instantLimit}, up to ${max}.`,
-  "rules.one_ok": (oneOk: string) => `Spends up to ${oneOk} need just one OK from anyone else.`,
+  "rules.one_ok": (oneOk: string) => `Spends up to ${oneOk} need just one OK from someone else who has added money.`,
   "rules.threshold": (k: number, n: number) => `Bigger spends need ${k} of ${n} approvals.`,
   "rules.budget": (memberBudget: string) => `Each person can spend up to ${memberBudget} in total without asking.`,
   "rules.budget.used": (used: string) => `You've used ${used} of it.`,
@@ -207,7 +208,7 @@ export const copy = {
     "This will be approved instantly",
     `Anyone can spend up to ${instantLimit} without asking.`,
   ],
-  "preview.one_ok.over_cap": (limit: string): [string, string] => ["This needs one OK from anyone else", `It's over your ${limit} instant limit.`],
+  "preview.one_ok.over_cap": (limit: string): [string, string] => ["This needs one OK from someone else who has added money", `It's over your ${limit} instant limit.`],
   "preview.vote.over_cap": (k: number, n: number, instantLimit: string): [string, string] => [
     `This needs ${k} of ${n} approvals`,
     `It's over the ${instantLimit} instant limit.`,
@@ -221,7 +222,7 @@ export const copy = {
   "spend.approved": "Approved by Pot rules",
   "spend.sending": (amount: string) => `Sending ${amount} to you…`,
   "spend.sent": (amount: string) => `${amount} sent to you`,
-  "spend.one_ok_sent": (): [string, string] => ["Sent", "One OK from anyone else in the group and it's paid."],
+  "spend.one_ok_sent": (): [string, string] => ["Request sent", "One OK from someone else who has added money and it's paid."],
   "spend.vote_sent": (k: number, n: number): [string, string] => [
     "Sent to the group",
     `Needs ${k} of ${n} approvals. We'll tell you when it's decided.`,
@@ -235,7 +236,7 @@ export const copy = {
   "paylink.label.placeholder": "Casa Lisboa host",
   "paylink.label.hint": (potName: string) => `Only people in ${potName} see this.`,
   "paylink.checking": "Making your link…",
-  "paylink.one_ok_sent": (): [string, string] => ["Sent to the group", "One OK from someone else and you'll get the link to send."],
+  "paylink.one_ok_sent": (): [string, string] => ["Sent to the group", "One OK from someone else who has added money and you'll get the link to send."],
   "spend.refund_after": (refund: string) =>
     `Once it's paid, you'd get back ${refund} if the Pot closed. It comes out of everyone's part, by what each person put in.`,
   "spend.cta.pay_member": (amount: string, name: string) => `Send ${amount} to ${name}`,
@@ -280,9 +281,9 @@ export const copy = {
   "approve.meta": (potName: string, time: string) => `${potName} · ${time}`,
   "approve.reason": (reason: string) => `For ${reason}`,
   "approve.why.cap": (instantLimit: string) => `Needs approval because it's over the ${instantLimit} instant limit.`,
-  "approve.why.one_ok": (name: string) => `Needs one OK from anyone in the group. It's over ${name}'s instant limit.`,
+  "approve.why.one_ok": (name: string) => `Needs one OK from someone in the group who has added money. It's over ${name}'s instant limit.`,
   "approve.one_ok.header": "One OK needed",
-  "approve.one_ok.who": (potName: string, name: string) => `Anyone in ${potName} except ${name} can give it.`,
+  "approve.one_ok.who": (potName: string, name: string) => `Anyone in ${potName} who added money before ${name} asked can give it, except the person getting paid.`,
   "approve.progress": (count: number, k: number) => `${count} of ${k} approvals`,
   "approve.timeline.header": (count: number, k: number) => `Approvals · ${count} of ${k}`,
   "approve.timeline.asked": (name: string) => `${name} · asked, approval counted`,
@@ -300,8 +301,8 @@ export const copy = {
   "approve.cta.review": "Review",
   "approve.undo.label": "Approved",
   "approve.undo.cta": "Undo",
-  "approve.ok.own": ["Waiting for one OK", "Anyone else in the group can OK it."] as [string, string],
-  "approve.timeline.ok_waiting": "One OK from anyone else",
+  "approve.ok.own": ["Waiting for one OK", "Anyone else in the group who has added money can OK it."] as [string, string],
+  "approve.timeline.ok_waiting": "One OK from someone else who has added money",
   "approve.cta.approving": "Approving…",
   "approve.cta.oking": "Sending your OK…",
   "approve.optimistic": (count: number, k: number) => `Approved. ${count} of ${k}.`,
@@ -342,7 +343,7 @@ export const copy = {
   "close.done.title": "Pot closed",
   "close.done.self": (refund: string) => `Pot closed. ${refund} is in your Pot account.`,
   "close.done.amount": (refund: string) => `${refund} is in your Pot account.`,
-  "close.done.where": "It stays in your Pot dollars, ready for your next Pot. Taking money out of Pot isn't available yet.",
+  "close.done.where": "It stays in your Pot dollars, ready for your next Pot.",
   "close.done.none": "Pot closed. You didn't put money in, so nothing comes back to you.",
   "close.declined.self": "You said no to closing.",
   "close.summary.cta": "See who got what",
@@ -358,12 +359,13 @@ export const copy = {
   "add.amount.change": "Change",
   /** LEGACY (one-screen Add money): step 2 says "How do you want to add it?". */
   "add.source.label": "From",
-  "add.source.demo": "Demo dollars (test money)",
+  "add.source.demo": "Free test dollars",
+  /** LEGACY: the app dropped the "Test" pill on the test-dollars row (2026-11-09 audit). */
   "add.source.test_pill": "Test",
   "add.source.pot_dollars": (available: string) => `Pot dollars you have · ${available}`,
   "add.source.pot_dollars.none": "You don't have any yet",
   "add.source.other_wallet": "Another app or exchange",
-  "add.source.other_hint": "Base, Arbitrum, Solana or Ethereum",
+  "add.source.other_hint": "Base, Solana, Ethereum, Bitcoin and more",
   "add.usdc_note": "Pot keeps money in USDC, a digital dollar. 1 USDC is always worth $1.",
   "add.usdc_note.ok": "Got it",
   "add.after": (potName: string, balance: string) => `${potName} will have ${balance}.`,
@@ -387,7 +389,7 @@ export const copy = {
   "landing.members.with": (name: string, n: number) => (n === 1 ? `${name} and 1 other are in` : `${name} and ${n} others are in`),
   "landing.members.count": (n: number) => (n === 1 ? `${n} person is in` : `${n} people are in`),
   "landing.balance.zero": (potName: string) => `${potName} is just getting started`,
-  "landing.share": (suggested: string) => `Everyone's chipping in ${suggested}`,
+  "landing.share": (suggested: string) => `Suggested amount: ${suggested} each`,
   "landing.trust": "No one can take money out alone. Small spends follow the Pot's rules; bigger ones need the group.",
   "landing.rules_peek": (instantLimit: string) => `Up to ${instantLimit} without asking · bigger spends need most of the group`,
   "landing.rules_peek.one_ok": (instantLimit: string, oneOk: string) =>
@@ -405,7 +407,7 @@ export const copy = {
   "setup.progress.3": "You're in",
   "setup.time": "Usually under 10 seconds",
   "setup.success.title": "You're in!",
-  "setup.success.body": (potName: string, suggested: string) => `Welcome to ${potName}. Everyone's chipping in ${suggested}.`,
+  "setup.success.body": (potName: string, suggested: string) => `Welcome to ${potName}. The suggested amount is ${suggested} each.`,
   "setup.success.cta": (suggested: string) => `Add my ${suggested} share`,
   "setup.success.later": "Not now",
 
@@ -424,7 +426,7 @@ export const copy = {
   "create.cover.done": "Done",
   "create.preview_hint": "This is what friends see in the chat.",
   "create.preview.members": "Just you so far",
-  "create.goal.inline": "Everyone chips in",
+  "create.goal.inline": "Suggested amount",
   "create.goal.each.after": "each",
   "create.summary.instant": (instantLimit: string) => `Small spends up to ${instantLimit} go through on their own; bigger ones go to the group`,
   "create.summary.change": "Change",
@@ -439,7 +441,7 @@ export const copy = {
   "create.trust.detail": (step: number, instantLimit: string, max: string) =>
     `Every ${step} paid spends raise someone's limit by ${instantLimit}, up to ${max}. A declined request lowers it.`,
   "create.oneok.before": "Spends up to",
-  "create.oneok.after": "need just one OK from anyone else.",
+  "create.oneok.after": "need just one OK from someone else who has added money.",
   "create.oneok.hint": "Bigger ones need most of the group. $0 turns this off.",
   "create.rules.payees.legend": "Instant payments can go to:",
   "create.rules.payees.members": "Members only",
@@ -464,7 +466,7 @@ export const copy = {
   "create.preset.team": "Team · coming soon",
   /** LEGACY */
   "create.preset.soon": "Coming soon",
-  "create.goal.label": "Everyone chips in (optional)",
+  "create.goal.label": "Suggested amount each (optional)",
   "create.goal.each": (amount: string) => `${amount} each`,
   /** LEGACY: the lean Create has one [Create Pot]. */
   "create.cta.next": "Next",
@@ -478,7 +480,7 @@ export const copy = {
   "notif.approval.title": (name: string) => `${name} needs your OK`,
   "notif.approval.body": (amount: string, reason: string, potName: string) => `${amount} for ${reason} · ${potName}`,
   "notif.one_ok.title": (name: string) => `${name} needs one OK`,
-  "notif.one_ok.body": (amount: string, reason: string, potName: string) => `${amount} for ${reason} · ${potName} · Anyone can OK it`,
+  "notif.one_ok.body": (amount: string, reason: string, potName: string) => `${amount} for ${reason} · ${potName} · Anyone who has added money can OK it`,
   "notif.ok_approved.body": (name: string, reason: string) => `${name} gave the OK for ${reason}.`,
   "notif.goal.reached.title": (potName: string) => `${potName} reached its goal`,
   "notif.goal.reached.body": (goal: string) => `${goal} collected. Spending is open.`,

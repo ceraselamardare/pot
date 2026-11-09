@@ -25,6 +25,24 @@ Brought up to the Nov 3 app and website. The brief is `marketing/video/brief/06-
   - The dollars slab says "testnet today".
 - **The UI kit matches today's app:** the round action row, Settings tab, compact feed, two-step Spend and Add money, the one-OK sheet and push, the lean Create and the Pot rules screen, the private invite landing, and the trust, goal, pay-in and send-by-link pieces.
 
+## Update v3 (2026-11-09)
+On-screen text only, after a truth audit against `apps/web/i18n/en.json`. Same length (82.0 s), same timeline, same audio. The v2 renders are kept in `marketing/video/out/final/v2/`.
+- **UI copy re-synced** (`src/ui/copy.ts`). The one-OK lines now read "someone else who has added money": the Pot rules card, the spend preview, the sent result ("Request sent"), the approve sheet, the push ("Anyone who has added money can OK it"), and the Create one-OK card. Other lines:
+  - "Suggested amount" (Create, the invite landing and You're in);
+  - "Free test dollars" with no "Test" pill, and "Base, Solana, Ethereum, Bitcoin and more";
+  - the closed Pot drops "Taking money out of Pot isn't available yet."
+- **s07:** on Create, "each" now wraps under "Suggested amount" (as at the app's width), and the one-OK rule card is one line taller. The [Change] tap point and the rule-card lift points were re-measured, and the rules scroll was adjusted (412 / 714), so the shots frame as before.
+- **s12:** the App plate now says "Sign in with Google (NEAR Auth) or a NEAR wallet".
+- **The Testnet badge:** a dashed pill with a flask icon, drawn as an overlay. It is never a new row, so the layout doesn't move.
+  - On the Pot screen it sits in the band between the status bar and the header, over the avatars. It is 22 px there, smaller than the app's 28 px, because of the space.
+  - On the invite landing it sits top-right above the lockup, at full size.
+- **The end card shows `usepot.xyz`.** Re-render with `bash scripts/render-final.sh --repo "usepot.xyz"`.
+- **Unchanged:**
+  - **The voice-over.** This includes s08's "Friends join with Google… No wallet. No seed phrase." and the matching big type and captions. It describes the mainnet product. Re-recording it is a human decision and costs ElevenLabs credits.
+  - The music, the SFX and the timeline.
+  - The Pot hero's goal bar. Per-person rings are out of scope; the website hero still shows the bar.
+- **Open:** on the hosted testnet app, Google sign-in is switched off (`signin.google.local_only.*`: "sign in with a NEAR wallet"). So the film's "Join with Google" landing button and the s08 VO describe the product as built (and local or mainnet runs), not today's hosted testnet.
+
 ## Deviation from the submission plan
 `plan/submission-plan.md` §2 said "real footage only (no mock-ups)". This film is motion graphics instead: the real app's screens rebuilt in code, with exact copy and numbers.
 - A real screen-recording segment can still be cut in later. `Phone` renders any React content, and the timeline makes room per scene.
@@ -35,4 +53,4 @@ Brought up to the Nov 3 app and website. The brief is `marketing/video/brief/06-
   - upgrade to Starter;
   - or credit ElevenLabs, e.g. in the X post or the README.
 - **AI voice-over.** It is allowed: the NEAR rules say nothing about it. ETHGlobal bans AI voice-overs, so a human take is optional. `marketing/video/README.md` explains how to drop one in.
-- **Repo URL on the end card.** Pass `repoUrl` once the repo is public.
+- **Repo URL on the end card.** It shows `usepot.xyz` since v3. Pass `--repo github.com/<org>/<repo>` instead once the repo is public.
