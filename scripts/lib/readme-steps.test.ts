@@ -24,7 +24,8 @@ describe("check-readme-steps", () => {
     expect(checkReadmeSteps(readme, read, guide.replace("<!-- J-3 -->", ""))).toContain(`J-3: no <!-- J-3 --> marker in ${GUIDE}`)
   })
   it("a proof dropped from the J-10 table, or a hash that isn't in docs/proofs.json, fails", () => {
-    const hash = "Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk"
+    // any proof of today's file (the reference story replaces them all)
+    const hash = (JSON.parse(read("docs/proofs.json")) as { txs: { hash: string }[] }).txs[0]!.hash
     expect(checkReadmeSteps(readme, read, guide.replaceAll(`txns/${hash}`, "txns/x"))).toContain(
       `J-10: proof ${hash} from docs/proofs.json is not in the guide`,
     )

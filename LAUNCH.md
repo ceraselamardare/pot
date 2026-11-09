@@ -148,7 +148,7 @@ Goal by end of day: the app runs at `https://<project>.vercel.app` on testnet, `
   - a **reproducibility path** an AI judge can run on a clean machine with no secrets or keys (Q-017). Make sure `pnpm i && pnpm test` passes or skips cleanly without Postgres or testnet credentials, and say exactly what Docker or Rust adds;
   - track hints used: SPUTNIK DAO, NAMED ACCOUNTS, STABLECOINS, NEAR INTENTS, META TRANSACTIONS;
   - 4-6 screenshots.
-- [ ] **[Claude]** Make sure `CLAUDE.md` and the notes contain no secrets, and run a secret scan over the full git history (`gitleaks`).
+- [x] **[Claude]** Make sure `CLAUDE.md` and the notes contain no secrets, and run a secret scan over the full git history (`gitleaks`). Done 2026-11-09 on every commit: gitleaks v8.30.1 found only false positives (the public testnet NEAR Auth client id, mock-world fixtures, test constants, an `sk-test` placeholder); a NEAR-specific search found no private keys (every long `ed25519:` value is a `"signature"`), no database passwords and no PEM keys. Re-run it if secrets-adjacent files change before the repo goes public: `docker run --rm -v "$PWD":/repo:ro ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact`.
 
 ## Day 13 (Fri Nov 13): submit
 

@@ -5,12 +5,15 @@
 //                                                 RPC couldn't be reached (rate limit: run it again in a minute)
 //   node scripts/verify-proofs.mjs --markdown   → the J-10 table (scripts/check-readme-steps.ts keeps the guide in step)
 //   node scripts/verify-proofs.mjs --rpc <url>  → another archival RPC
+//   node scripts/verify-proofs.mjs --file <path> → check another proofs file (the reference story checks its candidate)
 // For each tx it checks: the relayer sent it (or the entry's `sender`); inside is one NEP-366 delegate to the expected contract and method;
 // no receipt failed (a relayed tx's top-level status hides inner failures); the expected events and logs appear.
 import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 
-const proofs = JSON.parse(readFileSync(new URL("../docs/proofs.json", import.meta.url), "utf8"))
 const argv = process.argv.slice(2)
+const FILE = argv.includes("--file") ? resolve(argv[argv.indexOf("--file") + 1]) : new URL("../docs/proofs.json", import.meta.url)
+const proofs = JSON.parse(readFileSync(FILE, "utf8"))
 const RPC = argv.includes("--rpc") ? argv[argv.indexOf("--rpc") + 1] : proofs.rpc
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms))
 
