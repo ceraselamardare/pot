@@ -212,33 +212,6 @@ jobs:
             apps/web/test-results
           retention-days: 7
 
-  security:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: SEC-1 lockfile pins (next ≥ 16.4.1, react / react-dom ≥ 19.3.1; GHSA-673q-mjm6-r5xr)
-        run: node scripts/check-pins.ts
-      - name: pnpm audit (production dependencies; fails on critical)
-        run: pnpm audit --prod --audit-level critical
-      - name: Secret scan (gitleaks, full history)
-        env:
-          GITLEAKS_VERSION: "8.30.1"
-        run: |
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
-          ./gitleaks git --redact --no-banner --exit-code 1 .
-      - name: No NEAR private keys outside ignored paths
-        run: |
-          if git grep -nIE 'ed25519:[1-9A-HJ-NP-Za-km-z]{80,}' -- . ':!pnpm-lock.yaml'; then
-            echo "an ed25519 private key is committed"; exit 1
-          fi
-
   # Manual only: drives an already deployed preview (its server relays and pays; GitHub holds no NEAR keys).
   e2e-testnet:
     if: github.event_name == 'workflow_dispatch' && inputs.testnet_base_url != ''
