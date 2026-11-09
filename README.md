@@ -1,6 +1,6 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/banner-dark.png">
-  <img src="docs/readme/banner-light.png" alt="The Pot logo with the headline &quot;Group money that follows its own rules&quot; and the line &quot;Each Pot is a Sputnik DAO on NEAR · small spends approve themselves · everyone gets their share back&quot;, next to three real app screens: Sam asking for $250, Lisbon Trip's $450.00 balance with a suggested amount ring per person, and the invite &quot;Maya invited you to Porto Weekend&quot;.">
+  <img src="docs/readme/banner-light.png" alt="The Pot logo with the headline &quot;Group money that follows its own rules&quot; and the line &quot;Each Pot is a Sputnik DAO on NEAR · small spends approve themselves · everyone gets their share back&quot;, next to three real app screens: Sam asking for $250, Lisbon Trip's $450.00 balance with a suggested amount ring per person, and the invite &quot;Maya invited you to Porto Weekend&quot;, each with the small &quot;Testnet&quot; badge at the top.">
 </picture>
 
 # Pot: group money that follows its own rules, on NEAR
@@ -40,24 +40,24 @@ key is deleted before mainnet. See [Security](#security).)
 code. Friends see the Pot before they sign in, then join with a NEAR wallet (Google sign-in works on a local run for
 now). Nobody pays gas.
 
-![Three Pot screens: the "Start a Pot" sheet for "Ski Weekend" with a $150 suggested amount and the rule that small spends up to $100 go through on their own; the "Invite friends to Ski Weekend" sheet with a QR code and Share link; and the page a friend sees before signing in, "Maya invited you to Porto Weekend".](docs/readme/strip-start.png)
+![Three Pot screens: the "Start a Pot" sheet for "Ski Weekend" with a $150 suggested amount and the rule that small spends up to $100 go through on their own; the "Invite friends to Ski Weekend" sheet with a QR code and Share link; and the page a friend sees before signing in, "Maya invited you to Porto Weekend". Each screen shows the small "Testnet" badge at the top.](docs/readme/strip-start.png)
 
 **Spend with rules, not with permission.** A small spend within the limits is approved instantly by the contract.
 A bigger one needs one OK from another member; anything bigger goes to a group vote. Everyone sees who the money goes
 to before they approve, and each person's limit grows as they build a track record.
 
-![Three Pot screens: an $84 groceries spend from Lisbon Trip marked "Approved by Pot rules" and "Sent"; Sam asking for $250 for lift passes, with a "Goes to Sam, In this Pot" block, "One OK needed" and an "OK $250" button; and an activity feed where each spend carries its approval: Needs one OK, One OK or Instant.](docs/readme/strip-spend.png)
+![Three Pot screens: an $84 groceries spend from Lisbon Trip marked "Approved by Pot rules" and "Sent"; Sam asking for $250 for lift passes, with a "Goes to Sam, In this Pot" block, "One OK needed" and an "OK $250" button; and an activity feed where each spend carries its approval: Needs one OK, One OK or Instant. The first two show the small "Testnet" badge at the top.](docs/readme/strip-spend.png)
 
 **Money in from anywhere.** Members add money from their Pot balance or from another app or exchange on another
 chain, through NEAR Intents (simulated on testnet, with real live quotes). People outside the group can chip in too, through a pay-in link or a public
 page.
 
-![Three Pot screens: Add money to Lisbon Trip with three ways to add $50 (demo dollars, Pot dollars, another app or exchange); the details of Leo's $300 that arrived as 0.1293 ETH from Base, with a five-step timeline; and the "Pay Lisbon Trip" page of a $25 pay-in link for someone outside the Pot.](docs/readme/strip-money-in.png)
+![Three Pot screens: Add money to Lisbon Trip with three ways to add $50 ("Free test dollars", Pot dollars, another app or exchange); the details of Leo's $300 that arrived as 0.1293 ETH from Base, with a five-step timeline; and the "Pay Lisbon Trip" page of a $25 pay-in link for someone outside the Pot. The first and last show the small "Testnet" badge at the top.](docs/readme/strip-money-in.png)
 
 **See the group, then share it back.** Each member's row shows what they put in and what they'd get back. A suggested
 amount each shows who has chipped in. When the group agrees to close, everyone is paid their share in one go.
 
-![Three Pot screens: Lisbon Trip's $450.00 balance with "Suggested amount: $150 each" and a filled ring for each of Maya, Sam and Leo; the Members tab, where each put in $150.00, used $0.00 and gets back $150.00; and the "Close Lisbon Trip?" sheet with who gets what back and "Ask the group to close".](docs/readme/strip-group.png)
+![Three Pot screens: Lisbon Trip's $450.00 balance with "Suggested amount: $150 each" and a filled ring for each of Maya, Sam and Leo; the Members tab, where each put in $150.00, used $0.00 and gets back $150.00; and the "Close Lisbon Trip?" sheet with who gets what back and "Ask the group to close". The first and last show the small "Testnet" badge at the top.](docs/readme/strip-group.png)
 
 ## Try it
 

@@ -125,17 +125,26 @@ Goal by end of day: the app runs at `https://<project>.vercel.app` on testnet, `
 ## Days 11-12 (Nov 11-12): release and lock
 
 - [ ] **[Claude] Final regression** on the live URL: contracts, unit, mock e2e, integrations tier, the live backend suite, `scripts/e2e-chain.ts`, every testnet suite, the README CLI check.
-- [ ] **Final testnet deploy, before the lock.** Found by the blind AI-judge run on Nov 6 and held back until now on purpose: editing `Cargo.toml` changes the compiled wasm, and the deployed hub must stay identical to the source build until this redeploy.
-  - **[Claude]** Fix the hub's on-chain build info (NEP-330, the `contract_source_metadata` view). It reports `version: "1.0.0"` and `link: https://github.com/pot-app/pot`.
-    - Set `contracts/pot-hub/Cargo.toml` `version` to the hub's real version (the `version` that `get_config` returns).
-    - Point the repository at `https://github.com/ceraselamardare/pot`. The workspace `contracts/Cargo.toml` `repository` is inherited by `test-usdc` too. Change it there and redeploy the test token as well, or override `repository` in `pot-hub/Cargo.toml` only.
-    - Build without local file paths. A plain build embeds the builder's home-folder paths in panic messages. Use `--remap-path-prefix` in the rustc flags, or the Docker `reproducible-wasm` build, which also lets anyone reproduce the hash. Check that `strings target/near/pot_hub/pot_hub.wasm | grep /Users/` prints nothing.
-    - Rebuild (`./scripts/build.sh`). Run the contract tests. Then **[You]** approve the redeploy. Check with `contract_source_metadata`, and check that the deployed code hash equals the local build's.
-  - **[Claude]** Make a public reference Pot under the current rules (members only give OKs; the hub files every request) and run the whole story in it on the final hub: create, two joins, adds, an instant spend, a one-OK spend, a group vote, a gift, a pay link, a spend with a scanned receipt, a simulated cross-chain add, and the close with refunds. Extend `scripts/e2e-chain.ts` to print `docs/proofs.json` entries. **[You]** approve the transactions.
-    - Point J-7 in `docs/judging-guide.md` at it (the current example `lisbon-trip` is policy v1), and replace the interim hashes in `docs/proofs.json` (J-10), which today come from earlier test runs and from people trying the app.
-    - Run `node scripts/verify-proofs.mjs` and `node scripts/check-readme-steps.ts`.
-  - **[Claude]** Re-run `scripts/readme-cli-check.sh` and the README drift check, and update any account names or outputs in the guide that changed.
-  - **[You]** Check that CI (GitHub Actions) is green on the final `main`. The blind judge couldn't see it while the repo was private.
+- [ ] **Final testnet deploy, before the lock: go live from RC-1.** Found by the blind AI-judge run on Nov 6 and held back on purpose: editing `Cargo.toml` changes the compiled wasm, and `main` must keep building the deployed hub until the redeploy.
+  - [x] **[Claude] Prepared on Nov 9 (nothing signed):**
+    - Branch `final-deploy` (`39123cf`): `pot-hub` version 1.3.0 (and `get_config` reads it from `Cargo.toml`), the repository `https://github.com/ceraselamardare/pot`; the locked test token keeps its old link so its source still builds its deployed code (`8253d223…`, unchanged). `contracts/scripts/build.sh` and the test harness build the hub with the home folder remapped: 0 local paths in the wasm.
+    - The hub build: sha256 `fa7af2fb7f612acd8d114a791aa9c670cad5e3baeb756f78937aa8df71d5d984`, which the chain shows as code hash `HrmfMaz3CPm5U7uZrBgffngTmHdNPKpmMwX4jt1RDw8w` (today's hub: `9CQNEp6MEpNocr4wMCPRhYgYHKuEVRP6NPBPFbFSPXhB`). Contract tests on it: all pass. A copy for the account that holds the hub key: `/Users/Shared/pot-hub-1.3.0-fa7af2fb.wasm`.
+    - Branch `rc-1` = `main` + `final-deploy` (local, not pushed).
+    - The reference story (`scripts/run e2e-chain --reference`, on `main` since `9035ab6`), the secret scan, and the full regression of the app on `main`.
+  - **Go-live runbook (in this order):**
+    1. **[You]** Push `main` (the app; it doesn't touch the hub). Wait for Vercel; **[Claude]** checks `/api/health`.
+    2. **[You]** On the account that holds the hub key, check the file and deploy it, as ONE DeployContract with no init call (1.3.0 → 1.3.0: the state is unchanged, so no `migrate`):
+       ```bash
+       shasum -a 256 /Users/Shared/pot-hub-1.3.0-fa7af2fb.wasm   # must print fa7af2fb7f612acd…d5d984
+       npx -y near-cli-rs@0.30.1 contract deploy pots.potprev.testnet use-file /Users/Shared/pot-hub-1.3.0-fa7af2fb.wasm without-init-call network-config testnet sign-with-legacy-keychain send
+       ```
+       Rollback: the same command with `/Users/Shared/pot-hub-1.3.0-rollback-79c94df5.wasm` (today's hub, sha256 `79c94df5…`, on chain `9CQNEp6…`).
+    3. **[Claude]** Read-only checks: the hub's code hash is `HrmfMaz3…`; `contract_source_metadata` shows version 1.3.0 and the real repository; `get_config.version` is 1.3.0; an old Pot still reads (`get_pot`), and `node scripts/verify-proofs.mjs` still holds.
+    4. **[Claude]** Fast-forward `main` to `rc-1`; **[You]** push. Source and deployment match again (a judge can rebuild the hub and get `fa7af2fb…`).
+    5. **[You]** Approve the reference story; **[Claude]** runs it (about 0.23 NEAR and $650 of test dollars, $600 of it from the faucet's $1,000-a-day limit): `scripts/with-testnet-lock.sh scripts/run e2e-chain --reference --proofs docs/proofs.json` against a local `next start` with `FLAG_GIFTS=true`. It writes `docs/proofs.json` only if every proof holds on chain.
+    6. **[Claude]** Then: regenerate J-10 (`node scripts/verify-proofs.mjs --markdown`), point J-7 and `scripts/readme-cli-check.sh` at the new Pot (it ends closed: `status: "closed"`, balance 0, `policy_version: 3`), update the reference Pot in `apps/web/lib/marketing/llms.ts`, and run `scripts/judge-check.sh`. Optional: re-point the demo's Part 4 "real equivalent" at the new one-OK transaction. **[You]** push.
+    7. **[Claude]** A last blind AI-judge run on a fresh clone; fix what it finds.
+    8. **[You]** Check that CI (GitHub Actions) is green on the final `main` once the repo is public.
 - [ ] **[You] Lock the hub** (`pots.potprev.testnet`): delete its full-access key per `plan/accounts-and-deploy.md`.
   - After the lock nobody can fix the contract; the fallback is a redeploy as `pots-v2`.
   - **[Claude]** then runs `EXPECT_HUB_LOCKED=1 scripts/readme-cli-check.sh` and updates the README line about keys.
