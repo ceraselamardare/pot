@@ -122,8 +122,16 @@ fn build_if_stale(crate_dir: &str, wasm: &str) {
         return;
     }
     eprintln!("[harness] building {crate_dir} with cargo near …");
+    let mut args = vec!["near".to_string(), "build".into(), "non-reproducible-wasm".into()];
+    // the same build as contracts/scripts/build.sh: the hub with the home folder remapped (no local paths in the
+    // wasm); the locked test token as it was deployed
+    if crate_dir == "pot-hub" {
+        if let Ok(home) = std::env::var("HOME") {
+            args.extend(["--env".into(), format!("RUSTFLAGS=--remap-path-prefix={home}=/home")]);
+        }
+    }
     let status = std::process::Command::new("cargo")
-        .args(["near", "build", "non-reproducible-wasm"])
+        .args(&args)
         .current_dir(root.join(crate_dir))
         .env_remove("CARGO_TARGET_DIR")
         .env_remove("RUSTFLAGS")
