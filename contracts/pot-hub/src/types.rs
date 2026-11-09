@@ -9,7 +9,8 @@ use near_sdk::{near, AccountId, BorshStorageKey, NearToken};
 // Constants (contracts-spec §2.3)
 // ---------------------------------------------------------------------------------------------
 
-pub const VERSION: &str = "1.3.0";
+/// The hub's version, as `get_config` reports it: the crate version, so it always equals the NEP-330 build info.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const ROLE_MEMBER: &str = "member";
 pub const ROLE_RULEBOT: &str = "rulebot";
 pub const PROPOSAL_PERIOD_NS: u64 = 604_800_000_000_000; // 7 days (D-04)

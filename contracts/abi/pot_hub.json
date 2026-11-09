@@ -2,12 +2,12 @@
   "schema_version": "0.4.0",
   "metadata": {
     "name": "pot-hub",
-    "version": "1.0.0",
+    "version": "1.3.0",
     "build": {
       "compiler": "rustc 1.93.0",
       "builder": "cargo-near cargo-near-build 0.11.5"
     },
-    "wasm_hash": "9CQNEp6MEpNocr4wMCPRhYgYHKuEVRP6NPBPFbFSPXhB"
+    "wasm_hash": "HrmfMaz3CPm5U7uZrBgffngTmHdNPKpmMwX4jt1RDw8w"
   },
   "body": {
     "functions": [

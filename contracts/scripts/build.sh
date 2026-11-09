@@ -6,7 +6,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 CARGO_NEAR=${CARGO_NEAR:-"cargo near"}   # or: CARGO_NEAR="npx -y cargo-near@0.22.0 near"
-(cd pot-hub && $CARGO_NEAR build non-reproducible-wasm)
+# The hub is built with this machine's home folder remapped, so no local paths end up in the wasm and the hash doesn't
+# depend on who builds it (check: strings target/near/pot_hub/pot_hub.wasm | grep /Users/ prints nothing). The test
+# token keeps its original build: it is locked and can't be redeployed, so its source must keep building its code.
+(cd pot-hub && $CARGO_NEAR build non-reproducible-wasm --env "RUSTFLAGS=--remap-path-prefix=$HOME=/home")
 (cd test-usdc && $CARGO_NEAR build non-reproducible-wasm)
 mkdir -p abi
 cp target/near/pot_hub/pot_hub_abi.json abi/pot_hub.json
