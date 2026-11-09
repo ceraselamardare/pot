@@ -1112,7 +1112,7 @@
   "demo.recap.decided.rules": "Pot rules (the Hub's seat)",
   "demo.recap.decided.group": "The group, by majority",
   "demo.recap.cli": "Check the real thing yourself (read-only, no keys)",
-  "demo.recap.cli.body": "These commands read the real reference Lisbon Trip on testnet with near-cli-rs. They sign nothing.",
+  "demo.recap.cli.body": "These commands read the real reference Pot on testnet with near-cli-rs: the same story ran there, from the first invite to the close. They sign nothing.",
   "demo.recap.restart": "Start again",
   "demo.recap.all": "The whole story on one page",
   "demo.chapter.of": "Chapter {n} of 6",

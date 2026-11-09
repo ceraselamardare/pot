@@ -62,7 +62,7 @@ export function llmsTxt(): string {
     "",
     link("Source code", SITE.repo, "the app, API, relayer and SDK (AGPL-3.0) and the contracts (MIT)"),
     `- Made by ${SITE.founder}, solo builder, for NEAR HACKATHON 2026 (tracks: social, realworld).`,
-    "- Contracts on NEAR testnet: the hub `pots.potprev.testnet`; a reference Pot `lisbon-trip.pots.potprev.testnet`.",
+    "- Contracts on NEAR testnet: the hub `pots.potprev.testnet`; a reference Pot `reference-trip-2gzw.pots.potprev.testnet`, where the whole story ran on chain (live proofs: `node scripts/verify-proofs.mjs` in the repository).",
     ...(optional.length ? ["", "## Optional", "", ...optional] : []),
     "",
   ].join("\n")

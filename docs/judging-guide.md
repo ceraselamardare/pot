@@ -80,7 +80,7 @@ technical read on one page: every step and card, the recap and the glossary.
 
 ```bash
 near() { npx -y near-cli-rs@0.30.1 "$@"; }
-ROOT=potprev.testnet; HUB=pots.$ROOT; POT=lisbon-trip.$HUB
+ROOT=potprev.testnet; HUB=pots.$ROOT; POT=reference-trip-2gzw.$HUB
 near contract call-function as-read-only $POT get_policy json-args '{}' network-config testnet now
 near contract call-function as-read-only $HUB get_pot json-args "{\"pot\":\"$POT\"}" network-config testnet now
 near contract call-function as-read-only usdc.$ROOT ft_balance_of json-args "{\"account_id\":\"$POT\"}" network-config testnet now
@@ -89,18 +89,22 @@ near contract call-function as-read-only $POT get_factory_info json-args '{}' ne
 near account list-keys usdc.$ROOT network-config testnet now
 near account list-keys $POT network-config testnet now
 near account list-keys $HUB network-config testnet now
+near contract call-function as-read-only $HUB contract_source_metadata json-args '{}' network-config testnet now
+near account view-account-summary $HUB network-config testnet now
 ```
 
 What you see (`scripts/readme-cli-check.sh` runs exactly these and asserts the values):
-- `get_policy`: a Sputnik DAO with two roles. `member` (Maya, Sam, Leo; majority, `threshold [1, 2]`) and `rulebot`
-  (only `pots.potprev.testnet`, 1 of 1: it may file and approve transfers and member additions, finalize transfers,
-  and file function calls such as the close, which only members can approve). `proposal_bond`
-  is `"0"` and `quorum` is `"1"`. `lisbon-trip` is an early Pot (policy v1). A Pot created now shows policy v3:
-  the `member` role has only `*:VoteApprove` and `*:VoteReject` (members vote; only the hub files proposals), and
-  `get_pot` shows `policy_version: 3`.
-- `get_pot`: "Lisbon Trip", `status: "open"`, `member_count: 3`, `total_contributed: "450000000"`, rules
-  `instant_cap` $100 and `member_budget` $200.
-- `ft_balance_of`: `"450000000"` ($450).
+`reference-trip-2gzw` is the reference Pot: the whole story ran in it on testnet (J-10 lists every transaction), and it
+ended with the close, so it reads as a finished Pot.
+- `get_policy`: a Sputnik DAO with two roles. `member` (Maya, Sam and Leo, three test accounts; majority, default
+  `threshold [1, 2]`) has only `*:VoteApprove` and `*:VoteReject`: members vote, and only the hub files proposals.
+  `rulebot` (only `pots.potprev.testnet`, 1 of 1) may file and approve transfers and member additions, finalize
+  transfers and function calls, and file function calls such as the close, which only members can approve.
+  `proposal_bond` is `"0"` and `quorum` is `"1"`. (Pots made before hub 1.3.0, such as `lisbon-trip.$HUB`, keep
+  their policy v1, where members may also file proposals.)
+- `get_pot`: `"name": "Reference Trip"`, `status: "closed"`, `member_count: 3`, `policy_version: 3`,
+  `total_contributed: "599990400"` ($599.99 put in over its life), rules `instant_cap` $100 and `member_budget` $200.
+- `ft_balance_of`: `"0"`: the close paid everything back.
 - `view-account-summary`: the Pot runs the global contract with SHA-256
   `c9a502ef08a06cef04e2fce82da60b1fbc78db3066ff41416110f4292fca39ce` (Sputnik DAO v2, testnet global code
   `Ea8tHXFSQVszVwGASyzAfLq65DjcRDhkfab4FcPaRpgD`) and "Account is locked (no access keys)".
@@ -109,6 +113,11 @@ What you see (`scripts/readme-cli-check.sh` runs exactly these and asserts the v
 - `list-keys` on the hub: **one full-access key today.** It stays while Pot is on testnet so we can keep improving
   the hub, and it is deleted before mainnet, after which this table is empty too. Until then, whoever holds it could
   approve transfers through the rulebot seat (see [limitations](limitations.md)).
+- `contract_source_metadata` on the hub (NEP-330): `version` `"1.3.0"` and `link`
+  `https://github.com/ceraselamardare/pot`.
+- `view-account-summary` on the hub: the code's SHA-256 is
+  `fa7af2fb7f612acd8d114a791aa9c670cad5e3baeb756f78937aa8df71d5d984`. `contracts/scripts/build.sh` on this repo
+  builds the same bytes (arm64 macOS or Linux, the pinned toolchain): the deployed hub is this source.
 
 On a `-429` rate limit, add a FastNEAR network config or retry later; the default testnet config of near-cli-rs
 0.30.1 already uses FastNEAR's RPC.
@@ -152,25 +161,27 @@ free tier rate-limits bursts; run it again in a minute). The list itself is `doc
 
 | Action | Transaction | What it shows |
 |---|---|---|
-| Start a Pot under the current rules (policy v3) | [`Hj4yX2Q1…`](https://testnet.nearblocks.io/txns/Hj4yX2Q1qch7C2ZYqamzHJLui9oy5XAKbTxRFEDa4ZCw) | The hub creates test-gktq.pots.potprev.testnet as a Sputnik DAO from the global code and stores its rules and its first invite, in one signed call. |
-| Join with an invite link | [`FtREMaHX…`](https://testnet.nearblocks.io/txns/FtREMaHX9qLizU7EnUFS7B6gBdGp1XNeEBaiSUqEPDNt) | The hub checks the invite's ed25519 signature, files AddMemberToRole in the DAO and approves it with its 1-of-1 rulebot seat. |
-| Put money in | [`JDKXDF3D…`](https://testnet.nearblocks.io/txns/JDKXDF3DBhdPQy4FRGL2dzxAYPCFC9iTBBppfw3NtMba) | An ft_transfer_call to the hub moves test dollars into the Pot's DAO and records the contribution (the relayer pays the 1 yoctoNEAR deposit). |
-| A small spend approved by the rules alone | [`Gmoey4Le…`](https://testnet.nearblocks.io/txns/Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk) | The hub checks the Pot's rules, files a Transfer proposal and approves it with its rulebot seat; the DAO pays out in the same call chain. Nobody voted. |
-| A bigger spend paid after one other member's OK | [`HXxyZzo3…`](https://testnet.nearblocks.io/txns/HXxyZzo3nqjTii7EXX2CMcxUcQLAUMJJyUauKZgAwQDy) | Another member's OK goes to the hub, which checks it is allowed (not the payee, joined earlier, within the one-OK limit) and approves the DAO transfer: $180 is paid. |
-| A spend decided by a group vote | [`6D5MGdYb…`](https://testnet.nearblocks.io/txns/6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH) | Leo's VoteApprove goes straight to the Pot's DAO; it is the deciding vote (2 of 3), so the DAO pays the $300 in the same transaction. |
-| Ask the group to close the Pot | [`ERXG8nVZ…`](https://testnet.nearblocks.io/txns/ERXG8nVZbDRxomb8D4MMabpzmw7ZqMcZtx5Vqdw3pxxF) | The hub files one FunctionCall proposal holding every member's pro-rata refund; members then approve it. |
-| Close: everyone gets their share back | [`MC1U7asQ…`](https://testnet.nearblocks.io/txns/MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK) | The deciding approval of the close runs every refund in one receipt (two ft_transfers here, one per member). |
-| Someone outside the group chips in | [`AAB3VrGQ…`](https://testnet.nearblocks.io/txns/AAB3VrGQsUBwg64Qvj92ZWywx13L64WH1Cdmg1AwPubm) | A non-member pays into a Pot through its public page; the hub records it as a gift, not a member's contribution. |
-| Get paid by a pay link | [`3ugWi8Jc…`](https://testnet.nearblocks.io/txns/3ugWi8JcATANi4x2fLAqvDy8rgPagwYPYpm8waN2JDuj) | A payee outside the Pot claims an approved spend through its link; the hub checks the link's signature and the DAO pays. |
-| A spend with a scanned receipt's fingerprint | [`Fdoomr3e…`](https://testnet.nearblocks.io/txns/Fdoomr3eomqHa3bYzy7BwxFMzt1VgA5NbegEZCiCt4e4) | The spend's request_ref is its 16-character operation key followed by 592a265a80b96f78, the first 64 bits of the saved receipt's SHA-256. |
-| Money from another chain arrives (simulated on testnet) | [`2KbupNFp…`](https://testnet.nearblocks.io/txns/2KbupNFpQRSfvyxEuQuJsmsatfHjWJxp1LXFk3KRJrVL) | There is no NEAR Intents testnet, so after a real 1Click quote the simulator (treasury.potprev.testnet) delivers the quoted dollars to the member; the next row is the member putting them in. |
-| …and goes into the Pot | [`2DjQVumq…`](https://testnet.nearblocks.io/txns/2DjQVumq5oqqnWpSrRAeD1KhcJLrnCR7KLobKytkjemB) | The delivered dollars go into the Pot in the same minute, recorded as a contribution. |
+| Start a Pot under the current rules (policy v3) | [`DMStMzsU…`](https://testnet.nearblocks.io/txns/DMStMzsUAkBQph7BZuos3ADmhizyxitrjQUugybMMXXw) | Maya's one signed call: the hub creates reference-trip-2gzw.pots.potprev.testnet as a Sputnik DAO from the global code (policy v3: members only vote), with trip rules ($100 instant, $200 each), one OK up to $300, earned trust and pay links on, and its first invite. |
+| Join with an invite link | [`CTk22gc9…`](https://testnet.nearblocks.io/txns/CTk22gc9qp2fumUjFRKCaznd4DihZpkZfy68z9KCykTr) | Sam signs with the invite link's key; the hub checks the ed25519 signature, files AddMemberToRole in the DAO and approves it with its 1-of-1 rulebot seat. |
+| Put money in | [`HsfSKzGz…`](https://testnet.nearblocks.io/txns/HsfSKzGztF3FVHpJHtrxD7TCWVUD4bZVs8XScPN6pNfD) | Maya's ft_transfer_call to the hub moves $200 of test dollars into the Pot's DAO and records her contribution (the relayer pays the 1 yoctoNEAR deposit). |
+| A small spend approved by the rules alone | [`AcobWgTJ…`](https://testnet.nearblocks.io/txns/AcobWgTJZMyosrP1nEhiE5YB1UCfZtkXcSwuFwEtXzke) | Maya asks for $40: within the $100 rule, so the hub files a Transfer proposal and approves it with its rulebot seat, and the DAO pays out in the same call chain. Nobody voted. |
+| A bigger spend paid after one other member's OK | [`9K4beHZV…`](https://testnet.nearblocks.io/txns/9K4beHZV1BkxKvXgaQ2WY8KAz5MPrHSkHTj5NqGL1HVr) | Maya's $150 is over the instant limit but within one OK. Sam's OK goes to the hub, which checks it is allowed (not the payee, joined earlier, has put money in) and approves the DAO transfer: it is paid. |
+| A spend with a scanned receipt's fingerprint | [`2ZD6Y71v…`](https://testnet.nearblocks.io/txns/2ZD6Y71vEusAaTLwhdKRuqi97F4yRUSZwmh63rHeX2yJ) | The $30 spend's request_ref is its 16-character operation key followed by 5ac7a261e59f1c99, the first 64 bits of the saved receipt's SHA-256. It is Maya's third paid spend, so the hub raises her trust to level 1 in the same call. |
+| A spend decided by a group vote | [`9YfZ6DtZ…`](https://testnet.nearblocks.io/txns/9YfZ6DtZ2Ey5trk5CVPqDTKByfEasLYyvsbTZJwTbNAM) | Maya's $310 is over the one-OK limit, so the group decides. Leo's VoteApprove goes straight to the Pot's DAO; it is the deciding vote (2 of 3), so the DAO pays in the same transaction. |
+| Someone outside the group chips in | [`4vFJWr4E…`](https://testnet.nearblocks.io/txns/4vFJWr4ERpzZ9u7WaLugZpo53x5KC97gwWCWCJwS5ySd) | Gus, who never joined, pays $25 into the Pot through a gift link; the hub records it as a gift, not a member's contribution. |
+| Pay someone outside the Pot by link | [`3kd2RTE1…`](https://testnet.nearblocks.io/txns/3kd2RTE1Tycj2CmqsbHL6KSaCEdp9iedXfhF1gJTadfL) | Maya pays $20 by link: the rules approve it, and the DAO pays it into the hub's escrow until whoever holds the link claims it. |
+| Get paid by a pay link | [`AdYtneka…`](https://testnet.nearblocks.io/txns/AdYtnekaHQxCfdjbznuW412tnkMoD5EPjD5S1e3c6y6X) | Gus, outside the Pot, claims it with a brand-new signature from the link's key; the hub checks the signature and pays him from escrow. |
+| Money from another chain arrives (simulated on testnet) | [`2c38cRZh…`](https://testnet.nearblocks.io/txns/2c38cRZh4JGVQ2wMkJhB2Mud4EAjXMoEDxGmkDbDjZA5) | There is no NEAR Intents testnet, so after a 1Click-priced quote the simulator (treasury.potprev.testnet) delivers the quoted $49.99 to Leo; the next row is Leo putting it in. |
+| …and goes into the Pot | [`46mThvqC…`](https://testnet.nearblocks.io/txns/46mThvqCzWX9wFXb34WZTeJ49ApZPdjjd16vzM249q1j) | The delivered dollars go into the Pot in one tap, recorded as Leo's contribution. |
+| Ask the group to close the Pot | [`EjggW51d…`](https://testnet.nearblocks.io/txns/EjggW51daS5saiJ3w4cSRJ2WJ2siKfmMnTKLAKJPsSSY) | The hub files one FunctionCall proposal holding every member's pro-rata refund; members then approve it. |
+| Close: everyone gets their share back | [`6Si9m42f…`](https://testnet.nearblocks.io/txns/6Si9m42frwXBTiKTWbd3Xgmz895uULXSsbcPsH9Vken7) | Sam's deciding approval of the close runs every refund in one receipt (3 ft_transfers, one per member). |
 
 | View (read-only) | Call | What it shows |
 |---|---|---|
-| hub | `pots.potprev.testnet` `get_config` | The hub's version and its only relayer |
-| policy-v3 | `test-gktq.pots.potprev.testnet` `get_policy` | A current Pot: members can only vote; only the hub files proposals |
-| trust | `pots.potprev.testnet` `get_trust` | Earned trust: after settled spends, ben's instant limit doubled |
+| hub | `pots.potprev.testnet` `get_config` | The hub's version, its only relayer and the DAO code it deploys |
+| pot | `pots.potprev.testnet` `get_pot` | The reference Pot: closed after the whole story, policy v3, one OK and trust on |
+| policy-v3 | `reference-trip-2gzw.pots.potprev.testnet` `get_policy` | A current Pot: members can only vote; only the hub files proposals |
+| trust | `pots.potprev.testnet` `get_trust` | Earned trust: after three paid spends, Maya's instant limit doubled |
 | record | `pots.potprev.testnet` `get_record` | The public record: every spend with its tier and who approved it |
 
 To check one by hand: `curl -s https://archival-rpc.testnet.fastnear.com -H 'content-type: application/json' -d
@@ -178,8 +189,9 @@ To check one by hand: `curl -s https://archival-rpc.testnet.fastnear.com -H 'con
 and read `receipts_outcome[].outcome.logs` for the `EVENT_JSON` lines. Use the archival RPC: the regular one forgets
 transactions after a few days. The nearblocks links are for a browser; nearblocks may refuse plain `curl`.
 
-These come from Pot's own test runs (accounts named `*.e2e-*.pot-funds-65k8.testnet` are throwaway wallets the testnet
-suite creates) and from people trying the live app. The one-OK, trust and close rules also run in the contract sandbox tests
-(J-8).
+They all come from one run of the whole story in one Pot, `reference-trip-2gzw.pots.potprev.testnet` (J-7), on the
+current hub: `scripts/run e2e-chain --reference`, which writes `docs/proofs.json` only once every proof holds on chain.
+Maya, Sam, Leo and Gus are throwaway test accounts (`*.e2e-*.pot-funds-65k8.testnet`) with 0 NEAR. The one-OK, trust
+and close rules also run in the contract sandbox tests (J-8).
 
 ---

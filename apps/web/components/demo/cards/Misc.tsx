@@ -441,7 +441,7 @@ const DECIDED: Record<Recap["rows"][number]["decidedBy"], MessageKey> = {
 /** README J-7: read-only near-cli-rs calls on the real reference Pot (a unit test keeps them verbatim). */
 export const CLI_COMMANDS = [
   "near() { npx -y near-cli-rs@0.30.1 \"$@\"; }",
-  "ROOT=potprev.testnet; HUB=pots.$ROOT; POT=lisbon-trip.$HUB",
+  "ROOT=potprev.testnet; HUB=pots.$ROOT; POT=reference-trip-2gzw.$HUB",
   "near contract call-function as-read-only $POT get_policy json-args '{}' network-config testnet now",
   "near contract call-function as-read-only $HUB get_pot json-args \"{\\\"pot\\\":\\\"$POT\\\"}\" network-config testnet now",
   "near contract call-function as-read-only usdc.$ROOT ft_balance_of json-args \"{\\\"account_id\\\":\\\"$POT\\\"}\" network-config testnet now",

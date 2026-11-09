@@ -1,177 +1,500 @@
 {
-  "about": "Real testnet transactions and read-only views, one per thing Pot claims to do. scripts/verify-proofs.mjs checks every entry (read-only, no keys, no install) and docs/judging-guide.md J-10 lists them. Every tx except the simulated cross-chain delivery (sent directly by treasury.potprev.testnet, the testnet stand-in for 1Click) is a NEP-366 delegate: the person signed it with 0 NEAR, and the relayer users.potprev.testnet sent it and paid the gas.",
+  "about": "Real testnet transactions and read-only views, one per thing Pot claims to do, all from one Pot: reference-trip-2gzw.pots.potprev.testnet (\"Reference Trip\"), played start to finish by scripts/e2e-chain.ts --reference. scripts/verify-proofs.mjs checks every entry (read-only, no keys, no install) and docs/judging-guide.md J-10 lists them. Every tx except the simulated cross-chain delivery (sent directly by treasury.potprev.testnet, the testnet stand-in for 1Click) is a NEP-366 delegate: the person signed it with 0 NEAR, and the relayer users.potprev.testnet sent it and paid the gas.",
   "network": "testnet",
   "rpc": "https://archival-rpc.testnet.fastnear.com",
   "explorer": "https://testnet.nearblocks.io/txns/",
   "relayer": "users.potprev.testnet",
   "hub": "pots.potprev.testnet",
+  "pot": "reference-trip-2gzw.pots.potprev.testnet",
   "txs": [
     {
       "id": "create",
       "action": "Start a Pot under the current rules (policy v3)",
-      "hash": "Hj4yX2Q1qch7C2ZYqamzHJLui9oy5XAKbTxRFEDa4ZCw",
-      "call": { "receiver": "pots.potprev.testnet", "method": "create_pot" },
+      "hash": "DMStMzsUAkBQph7BZuos3ADmhizyxitrjQUugybMMXXw",
+      "call": {
+        "receiver": "pots.potprev.testnet",
+        "method": "create_pot"
+      },
       "expect": [
-        { "in": "pots.potprev.testnet", "event": "pot_created", "data": { "pot": "test-gktq.pots.potprev.testnet" } },
-        { "in": "pots.potprev.testnet", "event": "invite_added" }
+        {
+          "in": "pots.potprev.testnet",
+          "event": "pot_created",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "creator": "maya.e2e-f1izp7.pot-funds-65k8.testnet",
+            "preset": "trip"
+          }
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "rule_extras_set",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "policy_version": 3
+          }
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "invite_added",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet"
+          }
+        }
       ],
-      "shows": "The hub creates test-gktq.pots.potprev.testnet as a Sputnik DAO from the global code and stores its rules and its first invite, in one signed call."
+      "shows": "Maya's one signed call: the hub creates reference-trip-2gzw.pots.potprev.testnet as a Sputnik DAO from the global code (policy v3: members only vote), with trip rules ($100 instant, $200 each), one OK up to $300, earned trust and pay links on, and its first invite."
     },
     {
       "id": "join",
       "action": "Join with an invite link",
-      "hash": "FtREMaHX9qLizU7EnUFS7B6gBdGp1XNeEBaiSUqEPDNt",
-      "call": { "receiver": "pots.potprev.testnet", "method": "join" },
+      "hash": "CTk22gc9qp2fumUjFRKCaznd4DihZpkZfy68z9KCykTr",
+      "call": {
+        "receiver": "pots.potprev.testnet",
+        "method": "join"
+      },
       "expect": [
-        { "log": "auto: valid Pot invite" },
-        { "in": "pots.potprev.testnet", "event": "member_joined" }
+        {
+          "log": "auto: valid Pot invite"
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "member_joined",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "member": "sam.e2e-f1izp7.pot-funds-65k8.testnet"
+          }
+        }
       ],
-      "shows": "The hub checks the invite's ed25519 signature, files AddMemberToRole in the DAO and approves it with its 1-of-1 rulebot seat."
+      "shows": "Sam signs with the invite link's key; the hub checks the ed25519 signature, files AddMemberToRole in the DAO and approves it with its 1-of-1 rulebot seat."
     },
     {
       "id": "add-money",
       "action": "Put money in",
-      "hash": "JDKXDF3DBhdPQy4FRGL2dzxAYPCFC9iTBBppfw3NtMba",
-      "call": { "receiver": "usdc.potprev.testnet", "method": "ft_transfer_call" },
+      "hash": "HsfSKzGztF3FVHpJHtrxD7TCWVUD4bZVs8XScPN6pNfD",
+      "call": {
+        "receiver": "usdc.potprev.testnet",
+        "method": "ft_transfer_call"
+      },
       "expect": [
-        { "in": "usdc.potprev.testnet", "event": "ft_transfer" },
-        { "in": "pots.potprev.testnet", "event": "contribution" }
+        {
+          "in": "usdc.potprev.testnet",
+          "event": "ft_transfer"
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "contribution",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "member": "maya.e2e-f1izp7.pot-funds-65k8.testnet",
+            "amount": "200000000"
+          }
+        }
       ],
-      "shows": "An ft_transfer_call to the hub moves test dollars into the Pot's DAO and records the contribution (the relayer pays the 1 yoctoNEAR deposit)."
+      "shows": "Maya's ft_transfer_call to the hub moves $200 of test dollars into the Pot's DAO and records her contribution (the relayer pays the 1 yoctoNEAR deposit)."
     },
     {
       "id": "instant-spend",
       "action": "A small spend approved by the rules alone",
-      "hash": "Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk",
-      "call": { "receiver": "pots.potprev.testnet", "method": "request_spend" },
+      "hash": "AcobWgTJZMyosrP1nEhiE5YB1UCfZtkXcSwuFwEtXzke",
+      "call": {
+        "receiver": "pots.potprev.testnet",
+        "method": "request_spend"
+      },
       "expect": [
-        { "in": "pots.potprev.testnet", "event": "spend_requested" },
-        { "log": "auto: within Pot rules" },
-        { "in": "usdc.potprev.testnet", "event": "ft_transfer" },
-        { "in": "pots.potprev.testnet", "event": "spend_auto_approved" }
+        {
+          "in": "pots.potprev.testnet",
+          "event": "spend_requested",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "tier": "instant",
+            "path": "instant"
+          }
+        },
+        {
+          "log": "auto: within Pot rules"
+        },
+        {
+          "in": "usdc.potprev.testnet",
+          "event": "ft_transfer"
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "spend_auto_approved",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "requester": "maya.e2e-f1izp7.pot-funds-65k8.testnet"
+          }
+        }
       ],
-      "shows": "The hub checks the Pot's rules, files a Transfer proposal and approves it with its rulebot seat; the DAO pays out in the same call chain. Nobody voted."
+      "shows": "Maya asks for $40: within the $100 rule, so the hub files a Transfer proposal and approves it with its rulebot seat, and the DAO pays out in the same call chain. Nobody voted."
     },
     {
       "id": "one-ok",
       "action": "A bigger spend paid after one other member's OK",
-      "hash": "HXxyZzo3nqjTii7EXX2CMcxUcQLAUMJJyUauKZgAwQDy",
-      "call": { "receiver": "pots.potprev.testnet", "method": "ok_request" },
+      "hash": "9K4beHZV1BkxKvXgaQ2WY8KAz5MPrHSkHTj5NqGL1HVr",
+      "call": {
+        "receiver": "pots.potprev.testnet",
+        "method": "ok_request"
+      },
       "expect": [
-        { "log": "auto: one member OK" },
-        { "in": "usdc.potprev.testnet", "event": "ft_transfer" },
-        { "in": "pots.potprev.testnet", "event": "spend_ok_approved" }
+        {
+          "log": "auto: one member OK"
+        },
+        {
+          "in": "usdc.potprev.testnet",
+          "event": "ft_transfer"
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "spend_ok_approved",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "requester": "maya.e2e-f1izp7.pot-funds-65k8.testnet",
+            "by": "sam.e2e-f1izp7.pot-funds-65k8.testnet",
+            "amount": "150000000"
+          }
+        }
       ],
-      "shows": "Another member's OK goes to the hub, which checks it is allowed (not the payee, joined earlier, within the one-OK limit) and approves the DAO transfer: $180 is paid."
+      "shows": "Maya's $150 is over the instant limit but within one OK. Sam's OK goes to the hub, which checks it is allowed (not the payee, joined earlier, has put money in) and approves the DAO transfer: it is paid."
+    },
+    {
+      "id": "receipt",
+      "action": "A spend with a scanned receipt's fingerprint",
+      "hash": "2ZD6Y71vEusAaTLwhdKRuqi97F4yRUSZwmh63rHeX2yJ",
+      "call": {
+        "receiver": "pots.potprev.testnet",
+        "method": "request_spend"
+      },
+      "expect": [
+        {
+          "in": "pots.potprev.testnet",
+          "event": "spend_requested",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "request_ref": "pf7faq5ecn54prdn5ac7a261e59f1c99"
+          }
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "spend_auto_approved",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "requester": "maya.e2e-f1izp7.pot-funds-65k8.testnet"
+          }
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "trust_level_changed",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "member": "maya.e2e-f1izp7.pot-funds-65k8.testnet",
+            "from": 0,
+            "to": 1,
+            "cause": "settled"
+          }
+        }
+      ],
+      "shows": "The $30 spend's request_ref is its 16-character operation key followed by 5ac7a261e59f1c99, the first 64 bits of the saved receipt's SHA-256. It is Maya's third paid spend, so the hub raises her trust to level 1 in the same call."
     },
     {
       "id": "group-vote",
       "action": "A spend decided by a group vote",
-      "hash": "6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH",
-      "call": { "receiver": "lisbon-fhq8.pots.potprev.testnet", "method": "act_proposal" },
-      "expect": [{ "in": "usdc.potprev.testnet", "event": "ft_transfer" }],
-      "shows": "Leo's VoteApprove goes straight to the Pot's DAO; it is the deciding vote (2 of 3), so the DAO pays the $300 in the same transaction."
+      "hash": "9YfZ6DtZ2Ey5trk5CVPqDTKByfEasLYyvsbTZJwTbNAM",
+      "call": {
+        "receiver": "reference-trip-2gzw.pots.potprev.testnet",
+        "method": "act_proposal"
+      },
+      "expect": [
+        {
+          "in": "usdc.potprev.testnet",
+          "event": "ft_transfer"
+        }
+      ],
+      "shows": "Maya's $310 is over the one-OK limit, so the group decides. Leo's VoteApprove goes straight to the Pot's DAO; it is the deciding vote (2 of 3), so the DAO pays in the same transaction."
+    },
+    {
+      "id": "gift",
+      "action": "Someone outside the group chips in",
+      "hash": "4vFJWr4ERpzZ9u7WaLugZpo53x5KC97gwWCWCJwS5ySd",
+      "call": {
+        "receiver": "usdc.potprev.testnet",
+        "method": "ft_transfer_call"
+      },
+      "expect": [
+        {
+          "in": "usdc.potprev.testnet",
+          "event": "ft_transfer"
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "gift_received",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "from": "gus.e2e-f1izp7.pot-funds-65k8.testnet",
+            "amount": "25000000",
+            "ref": "ggzkvxvxnkkvk78m1gskvg4h"
+          }
+        }
+      ],
+      "shows": "Gus, who never joined, pays $25 into the Pot through a gift link; the hub records it as a gift, not a member's contribution."
+    },
+    {
+      "id": "pay-link-make",
+      "action": "Pay someone outside the Pot by link",
+      "hash": "3kd2RTE1Tycj2CmqsbHL6KSaCEdp9iedXfhF1gJTadfL",
+      "call": {
+        "receiver": "pots.potprev.testnet",
+        "method": "request_spend"
+      },
+      "expect": [
+        {
+          "in": "pots.potprev.testnet",
+          "event": "spend_requested",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "link": true,
+            "tier": "instant"
+          }
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "spend_auto_approved",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "requester": "maya.e2e-f1izp7.pot-funds-65k8.testnet"
+          }
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "link_funded",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "amount": "20000000"
+          }
+        }
+      ],
+      "shows": "Maya pays $20 by link: the rules approve it, and the DAO pays it into the hub's escrow until whoever holds the link claims it."
+    },
+    {
+      "id": "pay-link",
+      "action": "Get paid by a pay link",
+      "hash": "AdYtnekaHQxCfdjbznuW412tnkMoD5EPjD5S1e3c6y6X",
+      "call": {
+        "receiver": "pots.potprev.testnet",
+        "method": "claim_link"
+      },
+      "expect": [
+        {
+          "in": "usdc.potprev.testnet",
+          "event": "ft_transfer"
+        },
+        {
+          "in": "pots.potprev.testnet",
+          "event": "link_claimed",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "receiver_id": "gus.e2e-f1izp7.pot-funds-65k8.testnet",
+            "amount": "20000000"
+          }
+        }
+      ],
+      "shows": "Gus, outside the Pot, claims it with a brand-new signature from the link's key; the hub checks the signature and pays him from escrow."
+    },
+    {
+      "id": "cross-chain-delivery",
+      "action": "Money from another chain arrives (simulated on testnet)",
+      "hash": "2c38cRZh4JGVQ2wMkJhB2Mud4EAjXMoEDxGmkDbDjZA5",
+      "sender": "treasury.potprev.testnet",
+      "call": {
+        "receiver": "usdc.potprev.testnet",
+        "method": "ft_transfer",
+        "direct": true
+      },
+      "expect": [
+        {
+          "in": "usdc.potprev.testnet",
+          "event": "ft_transfer"
+        }
+      ],
+      "shows": "There is no NEAR Intents testnet, so after a 1Click-priced quote the simulator (treasury.potprev.testnet) delivers the quoted $49.99 to Leo; the next row is Leo putting it in."
+    },
+    {
+      "id": "cross-chain-add",
+      "action": "…and goes into the Pot",
+      "hash": "46mThvqCzWX9wFXb34WZTeJ49ApZPdjjd16vzM249q1j",
+      "call": {
+        "receiver": "usdc.potprev.testnet",
+        "method": "ft_transfer_call"
+      },
+      "expect": [
+        {
+          "in": "pots.potprev.testnet",
+          "event": "contribution",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "member": "leo.e2e-f1izp7.pot-funds-65k8.testnet",
+            "amount": "49990400"
+          }
+        }
+      ],
+      "shows": "The delivered dollars go into the Pot in one tap, recorded as Leo's contribution."
     },
     {
       "id": "close-propose",
       "action": "Ask the group to close the Pot",
-      "hash": "ERXG8nVZbDRxomb8D4MMabpzmw7ZqMcZtx5Vqdw3pxxF",
-      "call": { "receiver": "pots.potprev.testnet", "method": "propose_close" },
-      "expect": [{ "in": "pots.potprev.testnet", "event": "close_proposed" }],
+      "hash": "EjggW51daS5saiJ3w4cSRJ2WJ2siKfmMnTKLAKJPsSSY",
+      "call": {
+        "receiver": "pots.potprev.testnet",
+        "method": "propose_close"
+      },
+      "expect": [
+        {
+          "in": "pots.potprev.testnet",
+          "event": "close_proposed",
+          "data": {
+            "pot": "reference-trip-2gzw.pots.potprev.testnet",
+            "by": "maya.e2e-f1izp7.pot-funds-65k8.testnet"
+          }
+        }
+      ],
       "shows": "The hub files one FunctionCall proposal holding every member's pro-rata refund; members then approve it."
     },
     {
       "id": "close-refund",
       "action": "Close: everyone gets their share back",
-      "hash": "MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK",
-      "call": { "receiver": "testnet-trip-jh6z-t95i.pots.potprev.testnet", "method": "act_proposal" },
-      "expect": [{ "in": "usdc.potprev.testnet", "event": "ft_transfer", "count": 2 }],
-      "shows": "The deciding approval of the close runs every refund in one receipt (two ft_transfers here, one per member)."
-    },
-    {
-      "id": "gift",
-      "action": "Someone outside the group chips in",
-      "hash": "AAB3VrGQsUBwg64Qvj92ZWywx13L64WH1Cdmg1AwPubm",
-      "call": { "receiver": "usdc.potprev.testnet", "method": "ft_transfer_call" },
-      "expect": [{ "in": "pots.potprev.testnet", "event": "gift_received" }],
-      "shows": "A non-member pays into a Pot through its public page; the hub records it as a gift, not a member's contribution."
-    },
-    {
-      "id": "pay-link",
-      "action": "Get paid by a pay link",
-      "hash": "3ugWi8JcATANi4x2fLAqvDy8rgPagwYPYpm8waN2JDuj",
-      "call": { "receiver": "pots.potprev.testnet", "method": "claim_link" },
+      "hash": "6Si9m42frwXBTiKTWbd3Xgmz895uULXSsbcPsH9Vken7",
+      "call": {
+        "receiver": "reference-trip-2gzw.pots.potprev.testnet",
+        "method": "act_proposal"
+      },
       "expect": [
-        { "in": "usdc.potprev.testnet", "event": "ft_transfer" },
-        { "in": "pots.potprev.testnet", "event": "link_claimed" }
+        {
+          "in": "usdc.potprev.testnet",
+          "event": "ft_transfer",
+          "count": 3
+        }
       ],
-      "shows": "A payee outside the Pot claims an approved spend through its link; the hub checks the link's signature and the DAO pays."
-    },
-    {
-      "id": "receipt",
-      "action": "A spend with a scanned receipt's fingerprint",
-      "hash": "Fdoomr3eomqHa3bYzy7BwxFMzt1VgA5NbegEZCiCt4e4",
-      "call": { "receiver": "pots.potprev.testnet", "method": "request_spend" },
-      "expect": [
-        { "in": "pots.potprev.testnet", "event": "spend_requested", "data": { "request_ref": "gbkdybjzchrs6wsn592a265a80b96f78" } },
-        { "in": "pots.potprev.testnet", "event": "spend_auto_approved" }
-      ],
-      "shows": "The spend's request_ref is its 16-character operation key followed by 592a265a80b96f78, the first 64 bits of the saved receipt's SHA-256."
-    },
-    {
-      "id": "cross-chain-delivery",
-      "action": "Money from another chain arrives (simulated on testnet)",
-      "hash": "2KbupNFpQRSfvyxEuQuJsmsatfHjWJxp1LXFk3KRJrVL",
-      "sender": "treasury.potprev.testnet",
-      "call": { "receiver": "usdc.potprev.testnet", "method": "ft_transfer", "direct": true },
-      "expect": [{ "in": "usdc.potprev.testnet", "event": "ft_transfer" }],
-      "shows": "There is no NEAR Intents testnet, so after a real 1Click quote the simulator (treasury.potprev.testnet) delivers the quoted dollars to the member; the next row is the member putting them in."
-    },
-    {
-      "id": "cross-chain-add",
-      "action": "…and goes into the Pot",
-      "hash": "2DjQVumq5oqqnWpSrRAeD1KhcJLrnCR7KLobKytkjemB",
-      "call": { "receiver": "usdc.potprev.testnet", "method": "ft_transfer_call" },
-      "expect": [{ "in": "pots.potprev.testnet", "event": "contribution" }],
-      "shows": "The delivered dollars go into the Pot in the same minute, recorded as a contribution."
+      "shows": "Sam's deciding approval of the close runs every refund in one receipt (3 ft_transfers, one per member)."
     }
   ],
   "views": [
     {
       "id": "hub",
-      "what": "The hub's version and its only relayer",
+      "what": "The hub's version, its only relayer and the DAO code it deploys",
       "contract": "pots.potprev.testnet",
       "method": "get_config",
       "args": {},
       "expect": [
-        { "path": "version", "equals": "1.3.0" },
-        { "path": "relayers", "equals": ["users.potprev.testnet"] },
-        { "path": "dao_code_hash", "equals": "Ea8tHXFSQVszVwGASyzAfLq65DjcRDhkfab4FcPaRpgD" }
+        {
+          "path": "version",
+          "equals": "1.3.0"
+        },
+        {
+          "path": "relayers",
+          "equals": [
+            "users.potprev.testnet"
+          ]
+        },
+        {
+          "path": "dao_code_hash",
+          "equals": "Ea8tHXFSQVszVwGASyzAfLq65DjcRDhkfab4FcPaRpgD"
+        }
+      ]
+    },
+    {
+      "id": "pot",
+      "what": "The reference Pot: closed after the whole story, policy v3, one OK and trust on",
+      "contract": "pots.potprev.testnet",
+      "method": "get_pot",
+      "args": {
+        "pot": "reference-trip-2gzw.pots.potprev.testnet"
+      },
+      "expect": [
+        {
+          "path": "name",
+          "equals": "Reference Trip"
+        },
+        {
+          "path": "status",
+          "equals": "closed"
+        },
+        {
+          "path": "policy_version",
+          "equals": 3
+        },
+        {
+          "path": "member_count",
+          "equals": 3
+        },
+        {
+          "path": "extras.trust",
+          "equals": true
+        },
+        {
+          "path": "extras.one_ok_cap",
+          "equals": "300000000"
+        }
       ]
     },
     {
       "id": "policy-v3",
       "what": "A current Pot: members can only vote; only the hub files proposals",
-      "contract": "test-gktq.pots.potprev.testnet",
+      "contract": "reference-trip-2gzw.pots.potprev.testnet",
       "method": "get_policy",
       "args": {},
       "expect": [
-        { "path": "roles.0.name", "equals": "member" },
-        { "path": "roles.0.permissions", "sameSet": ["*:VoteApprove", "*:VoteReject"] },
-        { "path": "roles.1.name", "equals": "rulebot" },
-        { "path": "roles.1.kind.Group", "equals": ["pots.potprev.testnet"] }
+        {
+          "path": "roles.0.name",
+          "equals": "member"
+        },
+        {
+          "path": "roles.0.kind.Group",
+          "sameSet": [
+            "maya.e2e-f1izp7.pot-funds-65k8.testnet",
+            "sam.e2e-f1izp7.pot-funds-65k8.testnet",
+            "leo.e2e-f1izp7.pot-funds-65k8.testnet"
+          ]
+        },
+        {
+          "path": "roles.0.permissions",
+          "sameSet": [
+            "*:VoteApprove",
+            "*:VoteReject"
+          ]
+        },
+        {
+          "path": "roles.1.name",
+          "equals": "rulebot"
+        },
+        {
+          "path": "roles.1.kind.Group",
+          "equals": [
+            "pots.potprev.testnet"
+          ]
+        }
       ]
     },
     {
       "id": "trust",
-      "what": "Earned trust: after settled spends, ben's instant limit doubled",
+      "what": "Earned trust: after three paid spends, Maya's instant limit doubled",
       "contract": "pots.potprev.testnet",
       "method": "get_trust",
-      "args": { "pot": "trust-trip-g5ri-sr03.pots.potprev.testnet", "account_id": "ben.e2e-hu34bn.pot-funds-65k8.testnet" },
+      "args": {
+        "pot": "reference-trip-2gzw.pots.potprev.testnet",
+        "account_id": "maya.e2e-f1izp7.pot-funds-65k8.testnet"
+      },
       "expect": [
-        { "path": "level", "equals": 1 },
-        { "path": "multiplier", "equals": 2 },
-        { "path": "effective_cap", "equals": "200000000" }
+        {
+          "path": "level",
+          "equals": 1
+        },
+        {
+          "path": "multiplier",
+          "equals": 2
+        },
+        {
+          "path": "effective_cap",
+          "equals": "200000000"
+        }
       ]
     },
     {
@@ -179,13 +502,76 @@
       "what": "The public record: every spend with its tier and who approved it",
       "contract": "pots.potprev.testnet",
       "method": "get_record",
-      "args": { "pot": "halloween-2026-qe0j.pots.potprev.testnet", "from_index": 0, "limit": 5 },
+      "args": {
+        "pot": "reference-trip-2gzw.pots.potprev.testnet",
+        "from_index": 0,
+        "limit": 10
+      },
       "expect": [
-        { "path": "0.tier", "equals": "instant" },
-        { "path": "0.approved_by", "equals": "rules" },
-        { "path": "0.money", "equals": "paid" },
-        { "path": "1.tier", "equals": "group" },
-        { "path": "1.approved_by", "equals": "group" }
+        {
+          "path": "0.tier",
+          "equals": "instant"
+        },
+        {
+          "path": "0.approved_by",
+          "equals": "rules"
+        },
+        {
+          "path": "0.money",
+          "equals": "paid"
+        },
+        {
+          "path": "1.tier",
+          "equals": "one_ok"
+        },
+        {
+          "path": "1.approved_by",
+          "equals": "one_ok"
+        },
+        {
+          "path": "1.ok_by",
+          "equals": "sam.e2e-f1izp7.pot-funds-65k8.testnet"
+        },
+        {
+          "path": "1.money",
+          "equals": "paid"
+        },
+        {
+          "path": "2.tier",
+          "equals": "instant"
+        },
+        {
+          "path": "2.approved_by",
+          "equals": "rules"
+        },
+        {
+          "path": "2.request_ref",
+          "equals": "pf7faq5ecn54prdn5ac7a261e59f1c99"
+        },
+        {
+          "path": "3.tier",
+          "equals": "group"
+        },
+        {
+          "path": "3.approved_by",
+          "equals": "group"
+        },
+        {
+          "path": "3.money",
+          "equals": "paid"
+        },
+        {
+          "path": "4.link",
+          "equals": true
+        },
+        {
+          "path": "4.payee",
+          "equals": "gus.e2e-f1izp7.pot-funds-65k8.testnet"
+        },
+        {
+          "path": "4.money",
+          "equals": "paid"
+        }
       ]
     }
   ]
