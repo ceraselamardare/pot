@@ -56,9 +56,10 @@ sent to you"; the Pot shows **$366.00**. Nobody voted: under the hood the Hub's 
 **J-4. Part 4, "Bigger spends": a $300 boat trip.**
 The phone says "This needs one OK from someone else who has added money" (a new Pot's rules: one OK covers spends up to $300) and, after
 "Ask for one OK", "Needs one OK". Then you're Leo: his lock screen shows "Maya needs one OK", and "OK $300" pays Maya
-("Done. Your OK sent $300 to Maya."); the Pot shows **$66.00**. Part 4's Under the hood was recorded before one OK
-existed: it shows the path that spends over the one-OK limit still take, with Maya's and Leo's approvals as DAO votes
-(2 of 3, threshold `min(3 × 1 ÷ 2 + 1, 3) = 2`).
+("Done. Your OK sent $300 to Maya."); the Pot shows **$66.00**. Part 4's Under the hood simulates the other path, the
+one spends over the one-OK limit take, with Maya's and Leo's approvals as DAO votes (2 of 3, threshold
+`min(3 × 1 ÷ 2 + 1, 3) = 2`). Its real links are both from the reference Pot (J-10): Sam's one OK on a $150 spend,
+which the Hub approves with its seat, and Leo's deciding vote on a $310 spend that went to the group.
 
 <!-- J-5 -->
 **J-5. Part 5, "Close and share back".**

@@ -43,25 +43,33 @@ Written 2026-10-27 by the data-layer agent. This section covers the simulation d
 
 ### The real testnet references
 
-Every real link the dataset carries. All 15 were re-read on 2026-10-27 with `EXPERIMENTAL_tx_status` (read-only).
+**Links** (`REAL_TXS` in `real.ts`): one per action the demo shows, all from the reference Pot `reference-trip-2gzw.pots.potprev.testnet` (policy v3, hub 1.3.0), where the whole story ran on 2026-11-09. Every one is in `docs/proofs.json`, and every one was relayed by `users.potprev.testnet`. The interlude has no link: the reference's only recorded join and plain add serve chapters 2 and 3. Re-pointed on 2026-11-09 from the older test Pots (`lisbon-trip`, `lisbon-fhq8`, `testnet-trip-jh6z-t95i`): a judge found the demo calling `lisbon-trip` "the reference", part 4 linking a group vote while its story is one OK, and the close link a two-member Pot.
 
-| Chapter | Real tx | Mirrors | Label key |
-|---|---|---|---|
-| 1 | [3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY](https://testnet.nearblocks.io/txns/3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY) | `c1.create` | `demo.real.c1.create` |
-| 2 (interlude) | [A3FUQBRNzPewHgnJwaVz96zCUVNAU39gfr5EZC1MgzG9](https://testnet.nearblocks.io/txns/A3FUQBRNzPewHgnJwaVz96zCUVNAU39gfr5EZC1MgzG9) | Sam joins | `demo.real.interlude.sam_joins` |
-| 2 (interlude) | [E5f2JRgzUZHiRwUvyPrXk1rVXXPRaTC7NB2GxH6L5ASS](https://testnet.nearblocks.io/txns/E5f2JRgzUZHiRwUvyPrXk1rVXXPRaTC7NB2GxH6L5ASS) | Sam adds $150 | `demo.real.interlude.sam_adds` |
-| 2 (interlude) | [HM56jUM6Eghp37iPq7tuJBynUcRKisipZGpchnqc3GVy](https://testnet.nearblocks.io/txns/HM56jUM6Eghp37iPq7tuJBynUcRKisipZGpchnqc3GVy) | Maya adds $150 | `demo.real.interlude.maya_adds` |
-| 2 | [CA6KoGzoun9HLNho1561roToRerrLChySLwnyMUtoowd](https://testnet.nearblocks.io/txns/CA6KoGzoun9HLNho1561roToRerrLChySLwnyMUtoowd) | `c2.join` | `demo.real.c2.join` |
-| 3 | [HFy2Vfzie3zk9LGoa2XAzR67Ahv4VKR7z1ZAYgWBf3Hy](https://testnet.nearblocks.io/txns/HFy2Vfzie3zk9LGoa2XAzR67Ahv4VKR7z1ZAYgWBf3Hy) | `c3.add` | `demo.real.c3.add` |
-| 4 | [Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk](https://testnet.nearblocks.io/txns/Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk) | `c4.request` | `demo.real.c4.request` |
-| 4 | [BXy7NYUUGt3SDGxL6Q2on5tBXh914SAHTDmsU52c7Fke](https://testnet.nearblocks.io/txns/BXy7NYUUGt3SDGxL6Q2on5tBXh914SAHTDmsU52c7Fke) | same shape | `demo.real.c4.same_shape` |
-| 5 | [9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b](https://testnet.nearblocks.io/txns/9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b) | `c5.request` | `demo.real.c5.request` |
-| 5 | [H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa](https://testnet.nearblocks.io/txns/H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa) | `c5.maya_vote` | `demo.real.c5.maya_vote` |
-| 5 | [6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH](https://testnet.nearblocks.io/txns/6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH) | `c5.leo_vote` | `demo.real.c5.leo_vote` |
-| 5 | [BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU](https://testnet.nearblocks.io/txns/BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU) | `c5.sync`, and the ≈ figures of `c6.sync` | `demo.real.c5.sync` |
-| 6 | [CfC4hZgLtceLYmH4fEQWEUwv7kSM6oyvxJfJa8dvX6uG](https://testnet.nearblocks.io/txns/CfC4hZgLtceLYmH4fEQWEUwv7kSM6oyvxJfJa8dvX6uG) | `c6.propose` | `demo.real.c6.propose` |
-| 6 | [3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK](https://testnet.nearblocks.io/txns/3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK) | `c6.maya_vote` | `demo.real.c6.maya_vote` |
-| 6 | [MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK](https://testnet.nearblocks.io/txns/MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK) | `c6.sam_vote` | `demo.real.c6.sam_vote` |
+| Chapter (tour part) | Real tx | What it is | Mirrors | Label key |
+|---|---|---|---|---|
+| 1 (part 1) | [DMStMzsUAkBQph7BZuos3ADmhizyxitrjQUugybMMXXw](https://testnet.nearblocks.io/txns/DMStMzsUAkBQph7BZuos3ADmhizyxitrjQUugybMMXXw) | Maya's `create_pot` (with extras) | none: different shape | `demo.real.c1.create` |
+| 2 (part 2) | [CTk22gc9qp2fumUjFRKCaznd4DihZpkZfy68z9KCykTr](https://testnet.nearblocks.io/txns/CTk22gc9qp2fumUjFRKCaznd4DihZpkZfy68z9KCykTr) | Sam's `join` with the invite | `c2.join` | `demo.real.c2.join` |
+| 3 (part 2) | [HsfSKzGztF3FVHpJHtrxD7TCWVUD4bZVs8XScPN6pNfD](https://testnet.nearblocks.io/txns/HsfSKzGztF3FVHpJHtrxD7TCWVUD4bZVs8XScPN6pNfD) | Maya's $200 `ft_transfer_call` | `c3.add` | `demo.real.c3.add` |
+| 4 (part 3) | [AcobWgTJZMyosrP1nEhiE5YB1UCfZtkXcSwuFwEtXzke](https://testnet.nearblocks.io/txns/AcobWgTJZMyosrP1nEhiE5YB1UCfZtkXcSwuFwEtXzke) | the $40 instant spend | none: different shape | `demo.real.c4.request` |
+| 5 (part 4) | [9K4beHZV1BkxKvXgaQ2WY8KAz5MPrHSkHTj5NqGL1HVr](https://testnet.nearblocks.io/txns/9K4beHZV1BkxKvXgaQ2WY8KAz5MPrHSkHTj5NqGL1HVr) | Sam's `ok_request` on the $150 (one OK) | none: no simulated twin | `demo.real.c5.one_ok` |
+| 5 (part 4) | [9YfZ6DtZ2Ey5trk5CVPqDTKByfEasLYyvsbTZJwTbNAM](https://testnet.nearblocks.io/txns/9YfZ6DtZ2Ey5trk5CVPqDTKByfEasLYyvsbTZJwTbNAM) | Leo's deciding vote on the $310 (group, 2 of 3) | `c5.leo_vote` | `demo.real.c5.group_vote` |
+| 6 (part 5) | [EjggW51daS5saiJ3w4cSRJ2WJ2siKfmMnTKLAKJPsSSY](https://testnet.nearblocks.io/txns/EjggW51daS5saiJ3w4cSRJ2WJ2siKfmMnTKLAKJPsSSY) | Maya's `propose_close` | `c6.propose` | `demo.real.c6.propose` |
+| 6 (part 5) | [6Si9m42frwXBTiKTWbd3Xgmz895uULXSsbcPsH9Vken7](https://testnet.nearblocks.io/txns/6Si9m42frwXBTiKTWbd3Xgmz895uULXSsbcPsH9Vken7) | Sam's deciding close approval (3 refunds) | `c6.sam_vote` | `demo.real.c6.close` |
+
+Shapes: the reference `create_pot` passes `extras` and `policy_v` and logs `rule_extras_set`; the reference instant spend's `spend_requested` and `on_spend_status` carry `tier` and `link`. The simulation runs on the older hub's shapes, so those two templates keep their old chains (below) and the links say how the real one differs.
+
+**Template chains** (`TEMPLATE_TXS`): real chains a simulated template copies (gas, refunds, burnt NEAR) but the demo doesn't link, because the reference run changed that shape or recorded no tx of it (its first approvals, its group request and its relayer syncs aren't in `docs/proofs.json`). From the older test Pots of 2026-10-21/22, also relayed by `users.potprev.testnet`; demo.test.ts checks them like the links.
+
+| Real tx | Mirrors |
+|---|---|
+| [3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY](https://testnet.nearblocks.io/txns/3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY) | `c1.create` |
+| [Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk](https://testnet.nearblocks.io/txns/Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk) | `c4.request` |
+| [9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b](https://testnet.nearblocks.io/txns/9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b) | `c5.request` |
+| [H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa](https://testnet.nearblocks.io/txns/H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa) | `c5.maya_vote` |
+| [BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU](https://testnet.nearblocks.io/txns/BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU) | `c5.sync`, and the ≈ figures of `c6.sync` |
+| [3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK](https://testnet.nearblocks.io/txns/3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK) | `c6.maya_vote` |
+
+Because some ≈ figures now come from an unlinked chain, `demo.approx` says "Copied from a real testnet run of the same call" (it said "the real testnet run linked below").
 
 ### Deviations from spec §7
 
@@ -71,7 +79,7 @@ Every real link the dataset carries. All 15 were re-read on 2026-10-27 with `EXP
    - It needs the sdk's MockChain, signers and near-api-js.
    - `scripts/gen-demo-script.ts` is a thin CLI over it.
    - The command is `pnpm gen:demo`, or `scripts/run gen-demo-script`.
-2. **Chapter 4 has 14 receipts, not 13.** The real chain (`Gmoey4Le…`, and `BXy7NYUU…`) has the Pot → Hub `Transfer 0` bond return after `on_proposal_callback`, which the §2 table omits. The template follows the real chain:
+2. **Chapter 4 has 14 receipts, not 13.** The real chain (`Gmoey4Le…`, and the reference's `AcobWgTJ…`) has the Pot → Hub `Transfer 0` bond return after `on_proposal_callback`, which the §2 table omits. The template follows the real chain:
    - row 12 is that bond return;
    - rows 13-14 are `get_proposal` and `on_spend_status`.
    - So chapter 4 beat 8 explains rows 10-14.
@@ -128,7 +136,7 @@ Every real link the dataset carries. All 15 were re-read on 2026-10-27 with `EXP
 - `demo.cN.bM`: every caption, verbatim from §2.
 - `demo.note.{no_keys, status_lies, limits_in_hub, exact_kind, payout_separate, sync, busy, atomic, after_close}`: the notes (§6.3).
 - `demo.interlude`: the Meanwhile card (§2.1).
-- `demo.real.{c1.create, interlude.sam_joins, interlude.sam_adds, interlude.maya_adds, c2.join, c3.add, c4.request, c4.same_shape, c5.request, c5.maya_vote, c5.leo_vote, c5.sync, c6.propose, c6.maya_vote, c6.sam_vote}`: the real links.
+- `demo.real.{c1.create, c2.join, c3.add, c4.request, c5.one_ok, c5.group_vote, c6.propose, c6.close}`: the real links (the reference Pot; see "The real testnet references").
 - `demo.rules.{instant_cap, member_budget, instant_payees, contributed}`: the rules checks.
 - `demo.g.<id>`: the glossary entries. The ids are `dao`, `sputnik_dao`, `proposal`, `role`, `threshold`, `quorum`, `rulebot`, `pot_hub`, `policy`, `delegate_action`, `relayer`, `transaction`, `receipt`, `callback`, `gas`, `yoctonear`, `deposit`, `storage_prepay`, `nonce`, `max_block_height`, `device_key`, `ed25519`, `invite_key`, `account`, `usdc`, `ft_transfer_call`, `global_contract`, `sync` and `pro_rata`.
 
@@ -231,7 +239,7 @@ Written 2026-11-03 by builder-tour (the website-update team; plan/design-directi
 - `create.step1.title`, `create.step_of`, `create.cta.next` and `create.goal.each` lost their last use with the old naming and rules screens; site-QA deleted them from en.json (the video keeps its own copies in `marketing/video/src/ui/copy.ts`).
 
 **The hood (T14, copy only)**:
-- `demo.near.p4.summary` says that today Leo's OK goes to the Hub, and that the steps below were recorded before one OK existed, on the path spends over the one-OK limit still take.
+- `demo.near.p4.summary` says that today Leo's OK goes to the Hub (the first real link), and that the steps below show the other path, the one spends over the one-OK limit take (the second real link, the reference's $310 group vote).
 - `demo.c1.b2` now reads "She keeps the suggested rules…".
 - `demo.c5.aha` now reads "Above the one-OK limit…", so `/demo/all` doesn't contradict the phone beside it.
 - No dataset change: `pnpm check:demo` passes.

@@ -14,7 +14,7 @@ import { inviteKeyFromSeed, verifyJoin } from "../sign/invite.ts"
 import { LISBON_EXPECTED } from "../testing/fixtures.ts"
 import { DEMO, DEMO_SEED_PREFIX, SIM_HASH_RE, generateDemoScript, serializeDemoScript } from "./generate.ts"
 import realChains from "./real-chains.json" with { type: "json" }
-import { REAL_HASH_RE, REAL_TXS, fetchRealTx, type RealAction, type RealReceipt, type RealTx } from "./real.ts"
+import { REAL_CHAIN_HASHES, REAL_HASH_RE, REAL_TXS, TEMPLATE_TXS, fetchRealTx, type RealAction, type RealReceipt, type RealTx } from "./real.ts"
 import type { Card, DemoScript, Receipt, ReceiptAction, SimTx, Snapshot } from "./types.ts"
 
 const root = (p: string): string => fileURLToPath(new URL(`../../../../${p}`, import.meta.url))
@@ -241,9 +241,16 @@ describe("demo dataset: simulated vs real hashes", () => {
     for (const r of real) expect(sims.has(r.hash)).toBe(false)
   })
 
-  it("every real link is written down in notes/demo.md", () => {
+  it("every real link and template chain is written down in notes/demo.md", () => {
     const notes = readFileSync(NOTES, "utf8")
-    for (const r of REAL_TXS) expect(notes, r.hash).toContain(`https://testnet.nearblocks.io/txns/${r.hash}`)
+    for (const h of REAL_CHAIN_HASHES) expect(notes, h).toContain(`https://testnet.nearblocks.io/txns/${h}`)
+  })
+
+  it("a simulated tx mirrors one real chain at most, and the snapshot holds exactly the linked and template chains", () => {
+    const mirrors = [...REAL_TXS, ...TEMPLATE_TXS].flatMap((r) => (r.mirrors ? [r.mirrors] : []))
+    expect(new Set(mirrors).size).toBe(mirrors.length)
+    expect(new Set(REAL_CHAIN_HASHES).size).toBe(REAL_CHAIN_HASHES.length)
+    expect(Object.keys(REAL).sort()).toEqual([...REAL_CHAIN_HASHES].sort())
   })
 })
 
@@ -291,7 +298,7 @@ function sigOf(r: Receipt | RealReceipt, person: string, approx: boolean, inner?
 }
 
 describe("demo dataset: receipt templates match the real testnet chains (real-chains.json)", () => {
-  const mirrored = REAL_TXS.filter((r) => r.mirrors)
+  const mirrored = [...REAL_TXS, ...TEMPLATE_TXS].filter((r) => r.mirrors)
   it.each(mirrored.map((r) => [r.mirrors as string, r.hash]))("%s ≡ %s", (id, hash) => {
     const t = allTxs().find((x) => x.id === id)
     const real = REAL[hash]
@@ -317,7 +324,7 @@ describe("demo dataset: receipt templates match the real testnet chains (real-ch
 })
 
 describe.skipIf(process.env.POT_DEMO_TESTNET !== "1")("[testnet] the real reference txs still resolve (read-only RPC)", { timeout: 60_000 }, () => {
-  it.each(REAL_TXS.map((r) => [r.hash]))("%s", async (hash) => {
+  it.each(REAL_CHAIN_HASHES.map((h) => [h]))("%s", async (hash) => {
     const fresh = await fetchRealTx(hash)
     const committed = REAL[hash]
     expect(fresh.receipts.map((r) => r.actions.map((a) => Object.keys(a)[0]))).toEqual(committed?.receipts.map((r) => r.actions.map((a) => Object.keys(a)[0])))

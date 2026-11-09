@@ -26,7 +26,8 @@ describe("prepay twin (lib.rs prepay_bytes × bytes_cost)", () => {
   it("finds the real prepay batches (joins, instant and vote spends, close)", () => {
     const kinds = batches.map((b) => Object.keys(b.proposal.kind)[0])
     expect(kinds).toEqual(expect.arrayContaining(["AddMemberToRole", "Transfer", "FunctionCall"]))
-    expect(batches.length).toBeGreaterThanOrEqual(6)
+    expect(batches.some((b) => b.onSpendAdded?.includes('"path":"vote"'))).toBe(true)
+    expect(batches.length).toBeGreaterThanOrEqual(5)
   })
 
   it.each(batches.map((b) => [b.hash, b]))("reproduces the real prepay of %s", (_, b) => {

@@ -757,18 +757,11 @@ export interface Messages {
   "demo.real.c2.join": undefined
   "demo.real.c3.add": undefined
   "demo.real.c4.request": undefined
-  "demo.real.c4.same_shape": undefined
-  "demo.real.c5.leo_vote": undefined
-  "demo.real.c5.maya_vote": undefined
-  "demo.real.c5.request": undefined
-  "demo.real.c5.sync": undefined
-  "demo.real.c6.maya_vote": undefined
+  "demo.real.c5.group_vote": undefined
+  "demo.real.c5.one_ok": undefined
+  "demo.real.c6.close": undefined
   "demo.real.c6.propose": undefined
-  "demo.real.c6.sam_vote": undefined
   "demo.real.cta": undefined
-  "demo.real.interlude.maya_adds": undefined
-  "demo.real.interlude.sam_adds": undefined
-  "demo.real.interlude.sam_joins": undefined
   "demo.real.newtab": undefined
   "demo.real.title": undefined
   "demo.recap.all": undefined

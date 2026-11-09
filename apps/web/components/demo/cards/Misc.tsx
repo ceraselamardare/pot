@@ -335,6 +335,7 @@ export function BeforeCard({ id, chapter }: { id: string; chapter: Chapter }) {
 const nearblocks = (hash: string) => `https://testnet.nearblocks.io/txns/${hash}`
 
 export function RealLinks({ links }: { links: { hash: string; labelKey: string }[] }) {
+  if (!links.length) return null
   return (
     <ul className="mt-3 flex flex-col gap-4">
       {links.map((l) => (

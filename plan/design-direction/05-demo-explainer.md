@@ -132,10 +132,10 @@ Written 2026-10-27 for Cerasela (P2, design lead) and the `/demo` builder. It re
 | Pot Hub | — | − 0.05 NEAR float − 0.00125 NEAR registration (+ ≈ 0.015 NEAR of its own state) | the Hub sponsors creation |
 | Lisbon Trip | — | 0.05 NEAR (≈ 0.012 locked for its storage) · $0.00 | — |
 
-**Real one:** [`3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY`](https://testnet.nearblocks.io/txns/3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY): the real reference "Lisbon Trip" (`lisbon-trip.pots.potprev.testnet`), created the same way by the persona account `maya.users.potprev.testnet`.
+**Real one** (re-pointed 2026-11-09 to the reference Pot `reference-trip-2gzw.pots.potprev.testnet`, `docs/proofs.json`; the receipt chain above stays the template, notes/demo.md): [`DMStMzsUAkBQph7BZuos3ADmhizyxitrjQUugybMMXXw`](https://testnet.nearblocks.io/txns/DMStMzsUAkBQph7BZuos3ADmhizyxitrjQUugybMMXXw): Maya creating the reference Pot; its newer hub also passes `extras` and logs `rule_extras_set`.
 
 #### Interlude card (between chapters 1 and 2, on `/demo/1`'s last beat and `/demo/2`'s Before)
-"Meanwhile: Sam joined from the same link (proposal #0, auto-approved like Leo's in chapter 2), and Maya and Sam each added $150. Lisbon Trip has **$300 of $450**." Real equivalents from the reference Pot: Sam joins [`A3FUQBRN…`](https://testnet.nearblocks.io/txns/A3FUQBRNzPewHgnJwaVz96zCUVNAU39gfr5EZC1MgzG9), Sam adds [`E5f2JRgz…`](https://testnet.nearblocks.io/txns/E5f2JRgzUZHiRwUvyPrXk1rVXXPRaTC7NB2GxH6L5ASS), Maya adds [`HM56jUM6…`](https://testnet.nearblocks.io/txns/HM56jUM6Eghp37iPq7tuJBynUcRKisipZGpchnqc3GVy).
+"Meanwhile: Sam joined from the same link (proposal #0, auto-approved like Leo's in chapter 2), and Maya and Sam each added $150. Lisbon Trip has **$300 of $450**." No real links since 2026-11-09: the reference Pot's only recorded join and plain add are chapters 2 and 3's.
 
 ---
 
@@ -179,7 +179,7 @@ with the key whose seed is the link's fragment (`#<43-char secret>`). The card s
 
 **Balances:** Leo 0 NEAR → 0 NEAR. Relayer − ≈ 0.0017 NEAR gas (real: 0.00174). Hub − ≈ 0.005 NEAR prepay to the Pot (+ its own state). No dollars move.
 
-**Real one:** [`CA6KoGzoun9HLNho1561roToRerrLChySLwnyMUtoowd`](https://testnet.nearblocks.io/txns/CA6KoGzoun9HLNho1561roToRerrLChySLwnyMUtoowd): Leo's persona joins the real reference Lisbon Trip.
+**Real one** (since 2026-11-09): [`CTk22gc9qp2fumUjFRKCaznd4DihZpkZfy68z9KCykTr`](https://testnet.nearblocks.io/txns/CTk22gc9qp2fumUjFRKCaznd4DihZpkZfy68z9KCykTr): Sam joining the reference Pot with its invite link (same chain shape as Leo's join).
 
 ---
 
@@ -225,7 +225,7 @@ Note card (the gotcha a judge will appreciate): "The transaction's top-level sta
 | Lisbon Trip | $300.00 | **$450.00** |
 | Relayer | — | − ≈ 0.0012 NEAR gas (real: 0.00118) − 1 yocto |
 
-**Real one:** [`HFy2Vfzie3zk9LGoa2XAzR67Ahv4VKR7z1ZAYgWBf3Hy`](https://testnet.nearblocks.io/txns/HFy2Vfzie3zk9LGoa2XAzR67Ahv4VKR7z1ZAYgWBf3Hy): Leo's $150 into the real reference Lisbon Trip.
+**Real one** (since 2026-11-09): [`HsfSKzGztF3FVHpJHtrxD7TCWVUD4bZVs8XScPN6pNfD`](https://testnet.nearblocks.io/txns/HsfSKzGztF3FVHpJHtrxD7TCWVUD4bZVs8XScPN6pNfD): Maya's $200 into the reference Pot (same chain shape).
 
 ---
 
@@ -283,7 +283,7 @@ Note card: "Sputnik itself enforces no limit: the rulebot seat could approve any
 
 **Balances:** Pot $450.00 → **$366.00**; Maya $0.00 → $84.00 (still 0 NEAR); Maya's "without asking" used $0 → $84 of $200. Relayer − ≈ 0.0031 NEAR gas (real: 0.00306). Hub − ≈ 0.0059 NEAR prepay.
 
-**Real one:** [`Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk`](https://testnet.nearblocks.io/txns/Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk): a $20 instant spend by the persona `maya-fhq8` in the demo-pool Pot `lisbon-fhq8` (28 receipts including gas refunds).
+**Real one** (since 2026-11-09; `Gmoey4Le…` stays the template): [`AcobWgTJZMyosrP1nEhiE5YB1UCfZtkXcSwuFwEtXzke`](https://testnet.nearblocks.io/txns/AcobWgTJZMyosrP1nEhiE5YB1UCfZtkXcSwuFwEtXzke): the reference Pot's $40 instant spend; its newer hub also reports `tier` and `link`.
 
 ---
 
@@ -338,7 +338,7 @@ Note cards: (beat 3) "The relayer also sends a `sync` after Maya's own approval;
 
 **Balances:** Pot $366.00 → **$66.00**; Maya $84.00 → $384.00; Leo unchanged; everyone 0 NEAR. Relayer − ≈ 0.0037 NEAR across the four transactions (real: 0.00176 + 0.00033 + 0.00086 + 0.00072).
 
-**Real ones:** the four above, from the demo-pool Pot `lisbon-fhq8`, where the persona Maya asked for $300 for tickets, her own approval counted and Leo's approval paid it (that Pot then had $130, because its instant spend was $20).
+**Real ones** (since 2026-11-09; the four above stay the templates, except Leo's): [`9K4beHZV1BkxKvXgaQ2WY8KAz5MPrHSkHTj5NqGL1HVr`](https://testnet.nearblocks.io/txns/9K4beHZV1BkxKvXgaQ2WY8KAz5MPrHSkHTj5NqGL1HVr), Sam's one OK on the reference Pot's $150 (the tour's part 4 story; no simulated twin), and [`9YfZ6DtZ2Ey5trk5CVPqDTKByfEasLYyvsbTZJwTbNAM`](https://testnet.nearblocks.io/txns/9YfZ6DtZ2Ey5trk5CVPqDTKByfEasLYyvsbTZJwTbNAM), Leo's deciding vote on its $310 group spend (the template of Leo's vote here).
 
 ---
 
@@ -395,7 +395,7 @@ Note cards: (beat 3) "The relayer also sends a `sync` after Maya's own approval;
 
 **Balances:** Pot $66.00 → **$0.00**; Maya $384.00 → $406.00; Sam $0.00 → $22.00; Leo $0.00 → $22.00; everyone 0 NEAR. Relayer − ≈ 0.0034 NEAR across four transactions (real: 0.00134 propose, 0.0011 deciding approval). Hub − ≈ 0.014 NEAR prepay.
 
-**Real ones:** the three above, from the testnet flows run of 2026-10-22 (a two-member Pot `testnet-trip-jh6z-t95i`, so "$44 / $66" and 2 of 2).
+**Real ones** (since 2026-11-09; the templates of the proposal and Sam's approval; the proposer's approval keeps `3bR6AZBa…`): [`EjggW51daS5saiJ3w4cSRJ2WJ2siKfmMnTKLAKJPsSSY`](https://testnet.nearblocks.io/txns/EjggW51daS5saiJ3w4cSRJ2WJ2siKfmMnTKLAKJPsSSY), Maya asking to close the reference Pot, and [`6Si9m42frwXBTiKTWbd3Xgmz895uULXSsbcPsH9Vken7`](https://testnet.nearblocks.io/txns/6Si9m42frwXBTiKTWbd3Xgmz895uULXSsbcPsH9Vken7), Sam's deciding approval with all three refunds in one receipt.
 
 ---
 
@@ -610,7 +610,7 @@ A 3-column `<table>`: Check (plain words, with the field name `instant_cap` etc.
 - **Balances** = a `<table>`, caption "Balances", columns Account · Before · After · Change. Dollar amounts through `MoneyText` (two decimals, tabular); the change column uses "+ $22.00" / "− $84.00" (U+2212) **beside** the words "in"/"out" (`arrow-down-left` / `arrow-up-right` icons in `ink`). No `approved` green here: these are movements, not approvals. NEAR rows are separate and labelled "NEAR (fees and storage)".
 
 ### 4.9 The real-one footer
-A `surface` card with a `globe` icon, "See a real one on testnet" (`heading`), then per link: what it is ("Leo's persona joins the real reference Lisbon Trip"), how it differs ("it used the persona account `leo.users.potprev.testnet`"), and the secondary "Real · testnet" button. It opens `https://testnet.nearblocks.io/txns/<hash>` in a new tab with `rel="noopener noreferrer"` and the visually hidden "(opens nearblocks.io in a new tab)".
+A `surface` card with a `globe` icon, "See a real one on testnet" (`heading`), then per link: what it is and how it differs ("Sam joining the reference Pot with its invite link: the same join as Leo's here"), and the secondary "Real · testnet" button. It opens `https://testnet.nearblocks.io/txns/<hash>` in a new tab with `rel="noopener noreferrer"` and the visually hidden "(opens nearblocks.io in a new tab)".
 
 ---
 

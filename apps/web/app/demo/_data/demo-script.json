@@ -841,7 +841,7 @@
       ],
       "real": [
         {
-          "hash": "3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY",
+          "hash": "DMStMzsUAkBQph7BZuos3ADmhizyxitrjQUugybMMXXw",
           "labelKey": "demo.real.c1.create"
         }
       ],
@@ -1624,7 +1624,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "10791117763556700000000"
+                    "deposit": "10794394958357500000000"
                   }
                 }
               ],
@@ -1652,7 +1652,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "20396710035468100000000"
+                    "deposit": "20400794970001400000000"
                   }
                 }
               ],
@@ -1666,7 +1666,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "10723379287319900000000"
+                    "deposit": "10723913501885500000000"
                   }
                 }
               ],
@@ -1680,7 +1680,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "10638384958904100000000"
+                    "deposit": "10619886613461500000000"
                   }
                 }
               ],
@@ -1694,7 +1694,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "17872877843550500000000"
+                    "deposit": "17855134321586700000000"
                   }
                 }
               ],
@@ -1708,7 +1708,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "28625395801524200000000"
+                    "deposit": "28607134237142400000000"
                   }
                 }
               ],
@@ -1722,7 +1722,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "466523264196000000000"
+                    "deposit": "466866586944000000000"
                   }
                 }
               ],
@@ -1731,10 +1731,10 @@
             }
           ],
           "burnt": {
-            "tgas": 19.2,
-            "near": "0.0017",
+            "tgas": 19.6,
+            "near": "0.0018",
             "approx": true,
-            "yocto": "1743484301658500000000"
+            "yocto": "1790185570963000000000"
           },
           "events": [
             {
@@ -1804,8 +1804,8 @@
             {
               "account": "users.potprev.testnet",
               "what": "gas",
-              "near": "0.0017",
-              "yocto": "1743484301658500000000",
+              "near": "0.0018",
+              "yocto": "1790185570963000000000",
               "approx": true
             },
             {
@@ -1823,13 +1823,13 @@
               "approx": false
             }
           ],
-          "realRef": "CA6KoGzoun9HLNho1561roToRerrLChySLwnyMUtoowd",
+          "realRef": "CTk22gc9qp2fumUjFRKCaznd4DihZpkZfy68z9KCykTr",
           "blockHeight": 275010032
         }
       ],
       "real": [
         {
-          "hash": "CA6KoGzoun9HLNho1561roToRerrLChySLwnyMUtoowd",
+          "hash": "CTk22gc9qp2fumUjFRKCaznd4DihZpkZfy68z9KCykTr",
           "labelKey": "demo.real.c2.join"
         }
       ],
@@ -1851,20 +1851,7 @@
       ],
       "interlude": {
         "key": "demo.interlude",
-        "real": [
-          {
-            "hash": "A3FUQBRNzPewHgnJwaVz96zCUVNAU39gfr5EZC1MgzG9",
-            "labelKey": "demo.real.interlude.sam_joins"
-          },
-          {
-            "hash": "E5f2JRgzUZHiRwUvyPrXk1rVXXPRaTC7NB2GxH6L5ASS",
-            "labelKey": "demo.real.interlude.sam_adds"
-          },
-          {
-            "hash": "HM56jUM6Eghp37iPq7tuJBynUcRKisipZGpchnqc3GVy",
-            "labelKey": "demo.real.interlude.maya_adds"
-          }
-        ]
+        "real": []
       }
     },
     {
@@ -2471,7 +2458,7 @@
                       "amount": "150000000",
                       "msg": "{\"pot\":\"lisbon-trip-7k2f.pots.potprev.testnet\"}"
                     },
-                    "gas": "91514280843927",
+                    "gas": "91496582436109",
                     "deposit": "0"
                   }
                 }
@@ -2552,7 +2539,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "10706248189582200000000"
+                    "deposit": "10704923869108200000000"
                   }
                 }
               ],
@@ -2566,7 +2553,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "10662617840325200000000"
+                    "deposit": "10637701706258200000000"
                   }
                 }
               ],
@@ -2580,7 +2567,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "70348370870197200000000"
+                    "deposit": "70304736409882200000000"
                   }
                 }
               ],
@@ -2594,7 +2581,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "5755075064252400000000"
+                    "deposit": "5755029925102800000000"
                   }
                 }
               ],
@@ -2608,7 +2595,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "2337654221934300000000"
+                    "deposit": "2353530468114900000000"
                   }
                 }
               ],
@@ -2622,7 +2609,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "462832544655000000000"
+                    "deposit": "463175867403000000000"
                   }
                 }
               ],
@@ -2631,10 +2618,10 @@
             }
           ],
           "burnt": {
-            "tgas": 13.1,
+            "tgas": 13.6,
             "near": "0.0012",
             "approx": true,
-            "yocto": "1181235661718700000000"
+            "yocto": "1235373650959700000000"
           },
           "events": [
             {
@@ -2729,7 +2716,7 @@
               "account": "users.potprev.testnet",
               "what": "gas",
               "near": "0.0012",
-              "yocto": "1181235661718700000000",
+              "yocto": "1235373650959700000000",
               "approx": true
             },
             {
@@ -2754,13 +2741,13 @@
               "approx": false
             }
           ],
-          "realRef": "HFy2Vfzie3zk9LGoa2XAzR67Ahv4VKR7z1ZAYgWBf3Hy",
+          "realRef": "HsfSKzGztF3FVHpJHtrxD7TCWVUD4bZVs8XScPN6pNfD",
           "blockHeight": 275010037
         }
       ],
       "real": [
         {
-          "hash": "HFy2Vfzie3zk9LGoa2XAzR67Ahv4VKR7z1ZAYgWBf3Hy",
+          "hash": "HsfSKzGztF3FVHpJHtrxD7TCWVUD4bZVs8XScPN6pNfD",
           "labelKey": "demo.real.c3.add"
         }
       ],
@@ -4207,12 +4194,8 @@
       ],
       "real": [
         {
-          "hash": "Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk",
+          "hash": "AcobWgTJZMyosrP1nEhiE5YB1UCfZtkXcSwuFwEtXzke",
           "labelKey": "demo.real.c4.request"
-        },
-        {
-          "hash": "BXy7NYUUGt3SDGxL6Q2on5tBXh914SAHTDmsU52c7Fke",
-          "labelKey": "demo.real.c4.same_shape"
         }
       ],
       "glossary": [
@@ -5895,7 +5878,7 @@
                       "amount": "300000000",
                       "memo": "Pot request #1: tickets (ref p8w2m4q6z1x3r5t7)"
                     },
-                    "gas": "48003068182918",
+                    "gas": "47988303445598",
                     "deposit": "1"
                   }
                 }
@@ -5916,7 +5899,7 @@
                     "args": {
                       "proposal_id": 3
                     },
-                    "gas": "48003068182918",
+                    "gas": "47988303445598",
                     "deposit": "0"
                   }
                 }
@@ -5943,7 +5926,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "48705160725764100000000"
+                    "deposit": "48689969501530600000000"
                   }
                 }
               ],
@@ -5971,7 +5954,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "48426666166884800000000"
+                    "deposit": "48409438665886600000000"
                   }
                 }
               ],
@@ -5985,7 +5968,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "2795241831813000000000"
+                    "deposit": "2821818358989000000000"
                   }
                 }
               ],
@@ -5999,7 +5982,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "465107057860500000000"
+                    "deposit": "465407465265000000000"
                   }
                 }
               ],
@@ -6008,10 +5991,10 @@
             }
           ],
           "burnt": {
-            "tgas": 9.7,
+            "tgas": 9.8,
             "near": "0.0009",
             "approx": true,
-            "yocto": "863892769179100000000"
+            "yocto": "869817375973800000000"
           },
           "events": [
             {
@@ -6084,7 +6067,7 @@
               "account": "users.potprev.testnet",
               "what": "gas",
               "near": "0.0009",
-              "yocto": "863892769179100000000",
+              "yocto": "869817375973800000000",
               "approx": true
             },
             {
@@ -6102,7 +6085,7 @@
               "approx": false
             }
           ],
-          "realRef": "6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH",
+          "realRef": "9YfZ6DtZ2Ey5trk5CVPqDTKByfEasLYyvsbTZJwTbNAM",
           "blockHeight": 275013563
         },
         {
@@ -6272,20 +6255,12 @@
       ],
       "real": [
         {
-          "hash": "9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b",
-          "labelKey": "demo.real.c5.request"
+          "hash": "9K4beHZV1BkxKvXgaQ2WY8KAz5MPrHSkHTj5NqGL1HVr",
+          "labelKey": "demo.real.c5.one_ok"
         },
         {
-          "hash": "H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa",
-          "labelKey": "demo.real.c5.maya_vote"
-        },
-        {
-          "hash": "6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH",
-          "labelKey": "demo.real.c5.leo_vote"
-        },
-        {
-          "hash": "BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU",
-          "labelKey": "demo.real.c5.sync"
+          "hash": "9YfZ6DtZ2Ey5trk5CVPqDTKByfEasLYyvsbTZJwTbNAM",
+          "labelKey": "demo.real.c5.group_vote"
         }
       ],
       "glossary": [
@@ -7601,7 +7576,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "5764303970345800000000"
+                    "deposit": "5764340347191900000000"
                   }
                 }
               ],
@@ -7615,7 +7590,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "20776888690651200000000"
+                    "deposit": "20772285406215400000000"
                   }
                 }
               ],
@@ -7629,7 +7604,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "10632602110891100000000"
+                    "deposit": "10611545343255800000000"
                   }
                 }
               ],
@@ -7643,7 +7618,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "28678978636456500000000"
+                    "deposit": "28639640853905300000000"
                   }
                 }
               ],
@@ -7657,7 +7632,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "83796550041764300000000"
+                    "deposit": "83740232743886900000000"
                   }
                 }
               ],
@@ -7671,7 +7646,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "460085962671000000000"
+                    "deposit": "459957216640500000000"
                   }
                 }
               ],
@@ -7680,10 +7655,10 @@
             }
           ],
           "burnt": {
-            "tgas": 14.7,
-            "near": "0.0013",
+            "tgas": 15.9,
+            "near": "0.0015",
             "approx": true,
-            "yocto": "1341124946573100000000"
+            "yocto": "1462368384195700000000"
           },
           "events": [
             {
@@ -7769,8 +7744,8 @@
             {
               "account": "users.potprev.testnet",
               "what": "gas",
-              "near": "0.0013",
-              "yocto": "1341124946573100000000",
+              "near": "0.0015",
+              "yocto": "1462368384195700000000",
               "approx": true
             },
             {
@@ -7788,7 +7763,7 @@
               "approx": false
             }
           ],
-          "realRef": "CfC4hZgLtceLYmH4fEQWEUwv7kSM6oyvxJfJa8dvX6uG",
+          "realRef": "EjggW51daS5saiJ3w4cSRJ2WJ2siKfmMnTKLAKJPsSSY",
           "blockHeight": 275016570
         },
         {
@@ -8183,7 +8158,7 @@
                     "args": {
                       "proposal_id": 4
                     },
-                    "gas": "284905303840552",
+                    "gas": "278836429301849",
                     "deposit": "0"
                   }
                 }
@@ -8210,7 +8185,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "11318808927508400000000"
+                    "deposit": "16935594107758500000000"
                   }
                 }
               ],
@@ -8238,7 +8213,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "285320940372203700000000"
+                    "deposit": "279247440498010900000000"
                   }
                 }
               ],
@@ -8252,7 +8227,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "3084526387168200000000"
+                    "deposit": "3344720743082700000000"
                   }
                 }
               ],
@@ -8266,7 +8241,7 @@
               "actions": [
                 {
                   "Transfer": {
-                    "deposit": "479312036559000000000"
+                    "deposit": "488753412129000000000"
                   }
                 }
               ],
@@ -8275,10 +8250,10 @@
             }
           ],
           "burnt": {
-            "tgas": 11.8,
-            "near": "0.0011",
+            "tgas": 13.8,
+            "near": "0.0013",
             "approx": true,
-            "yocto": "1070582562847700000000"
+            "yocto": "1269692889815900000000"
           },
           "events": [
             {
@@ -8374,8 +8349,8 @@
             {
               "account": "users.potprev.testnet",
               "what": "gas",
-              "near": "0.0011",
-              "yocto": "1070582562847700000000",
+              "near": "0.0013",
+              "yocto": "1269692889815900000000",
               "approx": true
             },
             {
@@ -8393,7 +8368,7 @@
               "approx": false
             }
           ],
-          "realRef": "MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK",
+          "realRef": "6Si9m42frwXBTiKTWbd3Xgmz895uULXSsbcPsH9Vken7",
           "blockHeight": 275017581
         },
         {
@@ -8587,16 +8562,12 @@
       ],
       "real": [
         {
-          "hash": "CfC4hZgLtceLYmH4fEQWEUwv7kSM6oyvxJfJa8dvX6uG",
+          "hash": "EjggW51daS5saiJ3w4cSRJ2WJ2siKfmMnTKLAKJPsSSY",
           "labelKey": "demo.real.c6.propose"
         },
         {
-          "hash": "3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK",
-          "labelKey": "demo.real.c6.maya_vote"
-        },
-        {
-          "hash": "MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK",
-          "labelKey": "demo.real.c6.sam_vote"
+          "hash": "6Si9m42frwXBTiKTWbd3Xgmz895uULXSsbcPsH9Vken7",
+          "labelKey": "demo.real.c6.close"
         }
       ],
       "glossary": [

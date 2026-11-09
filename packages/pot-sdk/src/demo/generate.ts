@@ -25,7 +25,7 @@ import type { Policy, Proposal } from "../types/dao.ts"
 import type { AccountId, Slug } from "../types/ids.ts"
 import type { ActionIntent } from "../types/intents.ts"
 import { closePrepay, PREPAY_MODEL, proposalPrepay, yoctoToNear, yoctoToNearExact } from "./prepay.ts"
-import { REAL_TXS } from "./real.ts"
+import { REAL_TXS, TEMPLATE_TXS } from "./real.ts"
 import { addMoneyReceipts, createPotReceipts, EventQueue, joinReceipts, proposeCloseReceipts, realTx, requestSpendReceipts, syncReceipts, voteReceipts, type Ids, type MockEvent } from "./receipts.ts"
 import type { AppScene, Beat, Card, Chapter, ChapterN, DemoScript, Envelope, Persona, ProposalJson, Recap, RulesRow, SignedDelegateJson, SimTx, Snapshot, VoteMeter, WhoPaid } from "./types.ts"
 
@@ -60,7 +60,7 @@ const IDS: Ids = { relayer: DEMO.relayer, hub: DEMO.hub, usdc: DEMO.usdc, pot: D
 
 /** The simulated tx ids, in story order, and the real tx each one mirrors (gas, burnt NEAR, refunds). */
 export const SIM_TX_REAL: Readonly<Record<string, string>> = {
-  ...Object.fromEntries(REAL_TXS.filter((r) => r.mirrors).map((r) => [r.mirrors as string, r.hash])),
+  ...Object.fromEntries([...REAL_TXS, ...TEMPLATE_TXS].filter((r) => r.mirrors).map((r) => [r.mirrors as string, r.hash])),
   // no real sync was recorded for a close; the chapter-5 sync has the same three receipts
   "c6.sync": "BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU",
 }

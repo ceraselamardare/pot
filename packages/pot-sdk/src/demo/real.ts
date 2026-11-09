@@ -7,7 +7,7 @@
 import { base64Decode, utf8Decode } from "../encoding.ts"
 
 export const ARCHIVAL_RPC_URL = "https://archival-rpc.testnet.fastnear.com"
-/** Every real tx above was submitted by the preview relayer. */
+/** Every real tx below (linked or template) was submitted by the preview relayer. */
 export const REAL_TX_SENDER = "users.potprev.testnet"
 
 export interface RealTxRef {
@@ -16,29 +16,54 @@ export interface RealTxRef {
   chapter: 1 | 2 | 3 | 4 | 5 | 6
   /** i18n key of its one-line description ("what it is, how it differs"). */
   labelKey: string
-  /** The simulated tx it mirrors, when there is one (receipt templates are checked against it). */
+  /** The simulated tx it mirrors, when it has the same receipt shape (demo.test.ts checks it). */
   mirrors?: string
   interlude?: true
 }
 
-/** In chapter order. Hashes are real base58 (43-44 chars); never `sim-`. */
+/**
+ * The links, in chapter order: the reference Pot `reference-trip-2gzw.pots.potprev.testnet` (policy v3, hub 1.3.0),
+ * where the whole story ran on 2026-11-09 (docs/proofs.json has every one). Hashes are real base58 (43-44 chars);
+ * never `sim-`. The interlude has none: the reference's only recorded join and plain add are chapters 2 and 3.
+ */
 export const REAL_TXS: readonly RealTxRef[] = [
-  { hash: "3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY", chapter: 1, labelKey: "demo.real.c1.create", mirrors: "c1.create" },
-  { hash: "A3FUQBRNzPewHgnJwaVz96zCUVNAU39gfr5EZC1MgzG9", chapter: 2, labelKey: "demo.real.interlude.sam_joins", interlude: true },
-  { hash: "E5f2JRgzUZHiRwUvyPrXk1rVXXPRaTC7NB2GxH6L5ASS", chapter: 2, labelKey: "demo.real.interlude.sam_adds", interlude: true },
-  { hash: "HM56jUM6Eghp37iPq7tuJBynUcRKisipZGpchnqc3GVy", chapter: 2, labelKey: "demo.real.interlude.maya_adds", interlude: true },
-  { hash: "CA6KoGzoun9HLNho1561roToRerrLChySLwnyMUtoowd", chapter: 2, labelKey: "demo.real.c2.join", mirrors: "c2.join" },
-  { hash: "HFy2Vfzie3zk9LGoa2XAzR67Ahv4VKR7z1ZAYgWBf3Hy", chapter: 3, labelKey: "demo.real.c3.add", mirrors: "c3.add" },
-  { hash: "Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk", chapter: 4, labelKey: "demo.real.c4.request", mirrors: "c4.request" },
-  { hash: "BXy7NYUUGt3SDGxL6Q2on5tBXh914SAHTDmsU52c7Fke", chapter: 4, labelKey: "demo.real.c4.same_shape" },
-  { hash: "9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b", chapter: 5, labelKey: "demo.real.c5.request", mirrors: "c5.request" },
-  { hash: "H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa", chapter: 5, labelKey: "demo.real.c5.maya_vote", mirrors: "c5.maya_vote" },
-  { hash: "6D5MGdYb5hnFCATcL9VkuuHapYkcuZifA7tvwbQngvsH", chapter: 5, labelKey: "demo.real.c5.leo_vote", mirrors: "c5.leo_vote" },
-  { hash: "BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU", chapter: 5, labelKey: "demo.real.c5.sync", mirrors: "c5.sync" },
-  { hash: "CfC4hZgLtceLYmH4fEQWEUwv7kSM6oyvxJfJa8dvX6uG", chapter: 6, labelKey: "demo.real.c6.propose", mirrors: "c6.propose" },
-  { hash: "3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK", chapter: 6, labelKey: "demo.real.c6.maya_vote", mirrors: "c6.maya_vote" },
-  { hash: "MC1U7asQRbpqipa8o5qXasNYgqyWXghk8gHgUwaXhbK", chapter: 6, labelKey: "demo.real.c6.sam_vote", mirrors: "c6.sam_vote" },
+  // create_pot with extras (one OK, trust, pay links) and a rule_extras_set event: not the simulated create's shape
+  { hash: "DMStMzsUAkBQph7BZuos3ADmhizyxitrjQUugybMMXXw", chapter: 1, labelKey: "demo.real.c1.create" },
+  { hash: "CTk22gc9qp2fumUjFRKCaznd4DihZpkZfy68z9KCykTr", chapter: 2, labelKey: "demo.real.c2.join", mirrors: "c2.join" },
+  { hash: "HsfSKzGztF3FVHpJHtrxD7TCWVUD4bZVs8XScPN6pNfD", chapter: 3, labelKey: "demo.real.c3.add", mirrors: "c3.add" },
+  // hub 1.3.0's spend_requested / on_spend_status also carry `tier` and `link`: not the simulated request's shape
+  { hash: "AcobWgTJZMyosrP1nEhiE5YB1UCfZtkXcSwuFwEtXzke", chapter: 4, labelKey: "demo.real.c4.request" },
+  // ok_request: the tour's part 4 story; the simulated chapter 5 has no tx of this shape
+  { hash: "9K4beHZV1BkxKvXgaQ2WY8KAz5MPrHSkHTj5NqGL1HVr", chapter: 5, labelKey: "demo.real.c5.one_ok" },
+  { hash: "9YfZ6DtZ2Ey5trk5CVPqDTKByfEasLYyvsbTZJwTbNAM", chapter: 5, labelKey: "demo.real.c5.group_vote", mirrors: "c5.leo_vote" },
+  { hash: "EjggW51daS5saiJ3w4cSRJ2WJ2siKfmMnTKLAKJPsSSY", chapter: 6, labelKey: "demo.real.c6.propose", mirrors: "c6.propose" },
+  { hash: "6Si9m42frwXBTiKTWbd3Xgmz895uULXSsbcPsH9Vken7", chapter: 6, labelKey: "demo.real.c6.close", mirrors: "c6.sam_vote" },
 ]
+
+export interface TemplateTxRef {
+  hash: string
+  /** The simulated tx whose receipt template (gas, refunds, burnt NEAR) is copied from this chain. */
+  mirrors: string
+  /** Why no linked reference tx serves instead. */
+  why: string
+}
+
+/**
+ * Real chains a simulated template mirrors but the demo does not link (hub before 1.3.0, older test Pots of
+ * 2026-10-21/22): the simulated story runs on that hub's shapes, and the reference run either changed the shape or
+ * recorded no tx of it. Same check as the links (demo.test.ts); the snapshot holds them too.
+ */
+export const TEMPLATE_TXS: readonly TemplateTxRef[] = [
+  { hash: "3VpaA2MPY9LRoiobKFf7vLhNGoSKfY5TCGpV7XAmd2CY", mirrors: "c1.create", why: "the reference create_pot also sets the extra rules" },
+  { hash: "Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk", mirrors: "c4.request", why: "the reference instant spend also logs its tier" },
+  { hash: "9D52NEhn1zduyrPVBkP2pR2WuSTCz5Q3qsvUzNQjMT2b", mirrors: "c5.request", why: "the reference group request is not in docs/proofs.json" },
+  { hash: "H8E7W9HdStBQZvyUCLcZ32kQjyjjY6TKeZMrLyLSJRfa", mirrors: "c5.maya_vote", why: "the reference's first approvals are not in docs/proofs.json" },
+  { hash: "BSQFyv2HfngBDEMRw8svtwkZ8Vxk4NnZc834kriB7LFU", mirrors: "c5.sync", why: "the reference's relayer syncs are not in docs/proofs.json" },
+  { hash: "3bR6AZBaMyUZ9noNADv5wNQ144ZkvcBwB7skCTjoWuxK", mirrors: "c6.maya_vote", why: "the reference's first approvals are not in docs/proofs.json" },
+]
+
+/** Every chain in real-chains.json: the links, then the template-only ones. */
+export const REAL_CHAIN_HASHES: readonly string[] = [...REAL_TXS.map((r) => r.hash), ...TEMPLATE_TXS.map((r) => r.hash)]
 
 export const REAL_HASH_RE = /^[1-9A-HJ-NP-Za-km-z]{43,44}$/
 

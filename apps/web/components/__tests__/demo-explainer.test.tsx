@@ -105,7 +105,7 @@ describe("copy", () => {
 describe("server HTML (no JS, AI judges)", () => {
   it("renders /demo/4 with the whole story and the judge strings, every hood closed", () => {
     const html = renderToString(<TourPage initial={6} chapter={4} />)
-    for (const s of ["Approved by Pot rules", "request_spend", "VoteApprove", "84000000", "Simulated", "https://testnet.nearblocks.io/txns/Gmoey4Le16CeqZN45AWpWmmtHgBtDNWnY37HkNnAYtMk"])
+    for (const s of ["Approved by Pot rules", "request_spend", "VoteApprove", "84000000", "Simulated", "https://testnet.nearblocks.io/txns/AcobWgTJZMyosrP1nEhiE5YB1UCfZtkXcSwuFwEtXzke"])
       expect(html, s).toContain(s)
     expect(html).not.toContain('role="dialog"')
     expect(html).not.toContain('role="tablist"')
