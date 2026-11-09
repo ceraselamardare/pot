@@ -11,6 +11,8 @@ near() { npx -y near-cli-rs@0.30.1 "$@"; }
 ROOT=${ROOT:-potprev.testnet}; HUB=pots.$ROOT; POT=lisbon-trip.$HUB
 fail=0
 strip() { sed 's/\x1b\[[0-9;]*m//g'; }
+# list-keys with up to 3 tries: the free RPC rate-limits bursts, and then the CLI prints no key table at all
+keys() { local out i; for i in 1 2 3; do out=$(near account list-keys "$1" network-config testnet now 2>&1 | strip); grep -qF "| Public Key" <<<"$out" && break; sleep 10; done; printf '%s' "$out"; }
 expect() { # expect <label> <output> <substring>…
   local label=$1 out=$2; shift 2
   for s in "$@"; do
@@ -34,11 +36,11 @@ out=$(near account view-account-summary $POT network-config testnet now 2>&1 | s
 expect "the Pot runs the global Sputnik code by hash, no keys" "$out" "c9a502ef08a06cef04e2fce82da60b1fbc78db3066ff41416110f4292fca39ce" "Account is locked"
 out=$(near contract call-function as-read-only $POT get_factory_info json-args '{}' network-config testnet now 2>&1 | strip)
 expect "get_factory_info: the hub is the factory" "$out" "\"factory_id\": \"$HUB\""
-out=$(near account list-keys usdc.$ROOT network-config testnet now 2>&1 | strip)
+out=$(keys usdc.$ROOT) # near account list-keys usdc.$ROOT network-config testnet now
 expect_no_keys "list-keys usdc (locked token)" "$out"
-out=$(near account list-keys $POT network-config testnet now 2>&1 | strip)
+out=$(keys $POT) # near account list-keys $POT network-config testnet now
 expect_no_keys "list-keys reference Pot" "$out"
-out=$(near account list-keys $HUB network-config testnet now 2>&1 | strip)
+out=$(keys $HUB) # near account list-keys $HUB network-config testnet now
 if [ "${EXPECT_HUB_LOCKED:-0}" = "1" ]; then expect_no_keys "list-keys hub (locked)" "$out"
 else echo "info list-keys hub: $(grep -c 'ed25519:' <<<"$out") key(s) (kept while Pot is on testnet, deleted before mainnet; set EXPECT_HUB_LOCKED=1 once it is)"; fi
 
