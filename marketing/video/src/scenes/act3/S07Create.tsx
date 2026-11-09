@@ -73,7 +73,7 @@ const plan = () => {
     lift1,
     lift2,
     lift3,
-    // the rules list scrolls between the lifts: 0 → 400 (the one-OK card to mid-screen), 400 → 690 (the fixed box)
+    // the rules list scrolls between the lifts: 0 → 412 (the one-OK card to mid-screen), 412 → 714 (the fixed box)
     scrollA: [lift1 + 6, lift2 - 3] as const,
     scrollB: [lift2 + 1, lift3 - 1] as const,
     create: dur - 46,
@@ -88,18 +88,19 @@ const POS = {
   coverTile: { x: 56, y: 177 },
   flag: { x: 109.5, y: 349.5 },
   done: { x: 326, y: 557 },
-  change: { x: 319.6, y: 491 },
+  change: { x: 319.6, y: 519 }, // v3: "Suggested amount" wraps "each" to a 2nd line (+28)
   createStep2: { x: 195, y: 716 },
   /** Pot rules cards at bodyScroll 0 (centres; y moves up with the scroll). */
   ruleInstant: { x: 195, y: 269 },
-  ruleOneOk: { x: 195, y: 763 },
+  ruleOneOk: { x: 195, y: 775 }, // v3: the one-OK card is 180 tall ("…someone else who has added money.")
   /** "Every Pot works like this": only its header + first row (the majority line) lifts: top 1123, 108 tall. */
-  rulesFixedTop: { x: 195, y: 1177 },
+  rulesFixedTop: { x: 195, y: 1201 }, // v3: +24 (the taller one-OK card above it)
 };
 /** Height of the cropped majority twin: 16 padding + 20 header + 8 + 48 (two-line row) + 16. */
 const FIXED_CROP = 108;
-const SCROLL_A = 400;
-const SCROLL_B = 690;
+// v3 (+12 / +24): the one-OK card and the fixed box land where they did in v2 despite the taller one-OK card.
+const SCROLL_A = 412;
+const SCROLL_B = 714;
 
 const L1 = "Anyone can spend up to $100 without asking.";
 const L2 = "Up to $300? Just one OK.";

@@ -13,7 +13,7 @@ export type PlateDef = { key: string; Icon: LucideIcon; title: string; label: st
 
 /** Top → bottom: the request's path through the stack. Copy = the director's brief (technical, accurate). */
 export const PLATES: PlateDef[] = [
-  { key: "app", Icon: Smartphone, title: "App", label: "Sign in with Google (NEAR Auth) · no wallet, no seed phrase" },
+  { key: "app", Icon: Smartphone, title: "App", label: "Sign in with Google (NEAR Auth) or a NEAR wallet" },
   { key: "relay", Icon: Zap, title: "Gasless relay", label: "NEP-366 meta-transactions · people hold 0 NEAR" },
   { key: "rules", Icon: ShieldCheck, title: "Pot rules", label: "Pot Hub contract · approves only what the rules allow" },
   { key: "pot", Icon: Users, title: "Your Pot", label: "a Sputnik DAO · bigger calls need most of the group" },

@@ -91,7 +91,7 @@ npx remotion render src/scenes/act4/preview/index.ts S12Tech  out/scenes/s12-tec
 | → 810 (4680) | Hold (≈ 1.8 s after the sentence completes), with a slow creep. Hard cut to the cream end card | — |
 
 **Layer copy** (callout = Gabarito 700 40 px title + Figtree 500 28 px label; each slab also carries its Lucide icon and title engraved on its exposed band):
-1. App · smartphone · "Sign in with Google (NEAR Auth) · no wallet, no seed phrase"
+1. App · smartphone · "Sign in with Google (NEAR Auth) or a NEAR wallet"
 2. Gasless relay · zap · "NEP-366 meta-transactions · people hold 0 NEAR"
 3. Pot rules · shield-check · "Pot Hub contract · approves only what the rules allow"
 4. Your Pot · users · "a Sputnik DAO · bigger calls need most of the group"

@@ -32,7 +32,7 @@ Measure in-screen rects again after kit changes: `node src/scenes/act3/preview-c
 | 80 / 85 / 94 / 106 (1520-1546) | tap the picture → the picker → 🇵🇹 (cover switches at 97) → [Done] (closes at 111) | — |
 | 116 → 123 (1556 → 1563) | [Change] → "Pot rules" (cards with inline amounts) | — |
 | 140 (1580) | tier 1 lifts out of the instant card; ⚡ "Anyone can spend up to **$100** without asking." words 149-163, block 177 | "rules" 163 |
-| 146-169 / 173-191 | the rules list scrolls (0 → 400 → 690) between the lifts | — |
+| 146-169 / 173-191 | the rules list scrolls (0 → 412 → 714; v3, was 400 → 690) between the lifts | — |
 | 172 (1612) | tier 2 lifts out of the one-OK card; ✋ "Up to **$300**? Just **one OK**." words 181-189, blocks 198 / 202 | "plain" 195 |
 | 192 (1632) | tier 3: only the majority row of "Every Pot works like this" lifts (cropped, 1.15×, routed under line 2); 👥 "Over **$300**? **Most of the group**." words 201-205, blocks 215 / 217 | "words" 218 |
 | 230-308 (1670-1748) | all three readable together (≈ 1.3 s) | — |

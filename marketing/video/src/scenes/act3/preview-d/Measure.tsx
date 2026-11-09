@@ -228,7 +228,7 @@ export const DMeasure: React.FC = () => (
         { key: "cta", ui: "cta" },
         { key: "decline", text: "Decline", up: 1 },
         { key: "title", text: "Maya asks for $300" },
-        { key: "why", text: "Needs one OK from anyone in the group. It's over Maya's instant limit." },
+        { key: "why", text: "Needs one OK from someone in the group who has added money. It's over Maya's instant limit." },
       ]}
     >
       <PotScreen balance={366} yourShare={122} putIn={150} feed={feedBoatPending()} />

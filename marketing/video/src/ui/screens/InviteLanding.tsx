@@ -22,6 +22,7 @@ import { GoalBar } from "../atoms/GoalBar";
 import { GoogleMark } from "../atoms/GoogleMark";
 import { MoneyText } from "../atoms/MoneyText";
 import { ProgressSteps, type StepState } from "../atoms/ProgressSteps";
+import { NetworkBadge } from "../atoms/NetworkBadge";
 
 export type InviteLandingProps = {
   inviter?: Person;
@@ -59,6 +60,9 @@ export type InviteLandingProps = {
   dotsFrame?: number;
   /** Per-seat 0..1 pop for the avatars (indexed like members). */
   seatAppear?: number[];
+  /** The Testnet badge (2026-11-09; the app's /j page: absolute top-3 right-4): an overlay in the empty space above
+   *  the lockup, so nothing moves. */
+  networkBadge?: boolean;
   children?: React.ReactNode;
   style?: React.CSSProperties;
 };
@@ -89,6 +93,7 @@ export const InviteLanding: React.FC<InviteLandingProps> = ({
   emailPress = 0,
   dotsFrame,
   seatAppear,
+  networkBadge = true,
   children,
   style,
 }) => {
@@ -120,6 +125,7 @@ export const InviteLanding: React.FC<InviteLandingProps> = ({
           transform: scrollY ? `translateY(${-scrollY}px)` : undefined,
         }}
       >
+        {networkBadge ? <NetworkBadge style={{ position: "absolute", top: safeTop + 12, right: 16 }} /> : null}
         <div style={{ marginBottom: 24, display: "flex", justifyContent: "center" }}>
           <Lockup height={40} on={theme === "night" ? "dark" : "light"} />
         </div>

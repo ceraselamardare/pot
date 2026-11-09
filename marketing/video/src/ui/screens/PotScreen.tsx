@@ -18,6 +18,7 @@ import { BalanceHero, DemoBanner, PotHeader, type HeroPress } from "./PotParts";
 import { MembersTab, SettingsTab, type MemberLine, type SettingsTabProps } from "./PotTabs";
 import { ClosedMoment } from "../sheets/CloseSheet";
 import { Button } from "../atoms/Button";
+import { NetworkBadge } from "../atoms/NetworkBadge";
 
 export type WaitingRequest = {
   who: Person;
@@ -88,6 +89,9 @@ export type PotScreenProps = {
   closed?: { date: string; refund: number; putIn?: number } | null;
   /** Hide the balance card (keeps its space) while a breakout twin is on screen. */
   hideHero?: boolean;
+  /** The Testnet badge (2026-11-09): an overlay in the band between the status bar and the header, right-aligned
+   *  over the avatar stack (the app's phone strip sits there). Never moves the layout. Only inside a phone (safeTop > 0). */
+  networkBadge?: boolean;
   /** Overlays rendered inside the screen root, above the tab bar (sheets, toasts, taps). */
   children?: React.ReactNode;
   style?: React.CSSProperties;
@@ -126,6 +130,7 @@ export const PotScreen: React.FC<PotScreenProps> = ({
   closing = false,
   closed = null,
   hideHero,
+  networkBadge = true,
   children,
   style,
 }) => {
@@ -137,6 +142,7 @@ export const PotScreen: React.FC<PotScreenProps> = ({
     <div style={{ position: "absolute", inset: 0, zIndex: 0, background: c.ground, color: c.ink, overflow: "hidden", ...SCREEN_TEXT, ...style }}>
       <div style={{ position: "absolute", left: 0, right: 0, top: 0, transform: scrollY ? `translateY(${-scrollY}px)` : undefined }}>
         <div style={{ height: safeTop }} />
+        {networkBadge && safeTop > 0 ? <NetworkBadge size="sm" style={{ position: "absolute", top: safeTop - 10, right: 16 }} /> : null}
         {showDemoBanner ? <DemoBanner person={demoPerson} /> : null}
         <main style={{ padding: `0 16px ${32 + tabBarH}px` }}>
           <PotHeader name={potName} emoji={emoji} cover={cover} members={members} showMore={!!closed} />

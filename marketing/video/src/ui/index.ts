@@ -37,6 +37,7 @@ export { CoverTile, COVER_GRADIENTS, coverGradient, type CoverSize } from "./ato
 export { GoalBar } from "./atoms/GoalBar";
 export { Button, type ButtonVariant } from "./atoms/Button";
 export { StatusChip, type ChipStatus } from "./atoms/StatusChip";
+export { NetworkBadge } from "./atoms/NetworkBadge";
 export { MoneyText, type MoneyVariant } from "./atoms/MoneyText";
 export { Keypad, AmountDisplay, KEYS, type KeyName } from "./atoms/Keypad";
 export { TypingDots, dotState } from "./atoms/TypingDots";

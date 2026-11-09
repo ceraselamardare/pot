@@ -1,7 +1,7 @@
 // Add money (apps/web/components/sheets/AddMoneySheet.tsx, two steps since 2026-11-03, like Spend):
 //  1 "How much?": the big amount, the chips (Your share $150 · $50 · $100, pills), a quiet "Someone else paying? Send
 //    them a link" (pay in), and the footer [Next] (the one marigold) over the keypad;
-//  2 "How do you want to add it?": the amount ("$150" + [Change]), the source list (Demo dollars (test money) [Test] ·
+//  2 "How do you want to add it?": the amount ("$150" + [Change]), the source list (Free test dollars ·
 //    Pot dollars you have · $0.00 "You don't have any yet" · Another app or exchange), and the footer: "Lisbon Trip
 //    will have $450.00. Goal reached." + "After this, you'd get back $150 if the Pot closed.", [Add $150], [‹ Back].
 // "Add my $150 share" (You're in) opens straight on step 2, so that's the default `step`; the round Add money action
@@ -218,7 +218,7 @@ export const AddMoneySheet: React.FC<AddMoneySheetProps> = ({
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <p style={{ margin: 0, ...T.bodySm, color: c.inkMuted }}>{copy["add.source.title"]}</p>
           <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: 16, border: `1px solid ${c.line}` }}>
-            <SourceRow checked={source === "demo"} label={copy["add.source.demo"]} pill={copy["add.source.test_pill"]} />
+            <SourceRow checked={source === "demo"} label={copy["add.source.demo"]} />
             <SourceRow
               checked={source === "pot_dollars"}
               label={copy["add.source.pot_dollars"](formatUsd(ownDollars))}
