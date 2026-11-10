@@ -110,7 +110,10 @@ if (argv.includes("--markdown")) {
   console.log("| Action | Transaction | What it shows |\n|---|---|---|")
   for (const p of proofs.txs) console.log(`| ${p.action} | [\`${p.hash.slice(0, 8)}…\`](${proofs.explorer}${p.hash}) | ${p.shows} |`)
   console.log("\n| View (read-only) | Call | What it shows |\n|---|---|---|")
-  for (const v of proofs.views) console.log(`| ${v.id} | \`${v.contract}\` \`${v.method}\` | ${v.what} |`)
+  for (const v of proofs.views) {
+    const args = v.args && Object.keys(v.args).length ? ` \`${JSON.stringify(v.args)}\`` : ""
+    console.log(`| ${v.id} | \`${v.contract}\` \`${v.method}\`${args} | ${v.what} |`)
+  }
   process.exit(0)
 }
 

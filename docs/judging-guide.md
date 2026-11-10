@@ -179,10 +179,10 @@ free tier rate-limits bursts; run it again in a minute). The list itself is `doc
 | View (read-only) | Call | What it shows |
 |---|---|---|
 | hub | `pots.potprev.testnet` `get_config` | The hub's version, its only relayer and the DAO code it deploys |
-| pot | `pots.potprev.testnet` `get_pot` | The reference Pot: closed after the whole story, policy v3, one OK and trust on |
+| pot | `pots.potprev.testnet` `get_pot` `{"pot":"reference-trip-2gzw.pots.potprev.testnet"}` | The reference Pot: closed after the whole story, policy v3, one OK and trust on |
 | policy-v3 | `reference-trip-2gzw.pots.potprev.testnet` `get_policy` | A current Pot: members can only vote; only the hub files proposals |
-| trust | `pots.potprev.testnet` `get_trust` | Earned trust: after three paid spends, Maya's instant limit doubled |
-| record | `pots.potprev.testnet` `get_record` | The public record: every spend with its tier and who approved it |
+| trust | `pots.potprev.testnet` `get_trust` `{"pot":"reference-trip-2gzw.pots.potprev.testnet","account_id":"maya.e2e-f1izp7.pot-funds-65k8.testnet"}` | Earned trust: after three paid spends, Maya's instant limit doubled |
+| record | `pots.potprev.testnet` `get_record` `{"pot":"reference-trip-2gzw.pots.potprev.testnet","from_index":0,"limit":10}` | The public record: every spend with its tier and who approved it |
 
 To check one by hand: `curl -s https://archival-rpc.testnet.fastnear.com -H 'content-type: application/json' -d
 '{"jsonrpc":"2.0","id":1,"method":"EXPERIMENTAL_tx_status","params":{"tx_hash":"<hash>","sender_account_id":"users.potprev.testnet","wait_until":"NONE"}}'`

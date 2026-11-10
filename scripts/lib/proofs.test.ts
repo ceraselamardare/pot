@@ -150,6 +150,8 @@ describe("helpers", () => {
     const out = spawnSync(process.execPath, [verifier, "--file", file, "--markdown"], { encoding: "utf8" })
     expect(out.status).toBe(0)
     for (const t of f.txs) expect(out.stdout).toContain(`${BASE.explorer}${t.hash}`)
-    expect(out.stdout).toContain(`| record | \`${HUB}\` \`get_record\` |`)
+    // each view shows its arguments, so a judge can repeat the call as written
+    const record = f.views.find((v) => v.id === "record")!
+    expect(out.stdout).toContain(`| record | \`${HUB}\` \`get_record\` \`${JSON.stringify(record.args)}\` |`)
   })
 })

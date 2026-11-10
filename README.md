@@ -151,7 +151,9 @@ Pot went through an AI-assisted security audit (contracts, relayer, app and key 
 reviewed again independently. The trust model, every fix with the test that proves it, and the open limitations are in
 [SECURITY.md](SECURITY.md). In short: no member can move a Pot's money alone, the server holds no user keys, and our
 relayer only forwards the specific calls the app makes. The hub, the token and every Pot have no access keys, so
-their code can't change; J-7's `list-keys` shows it.
+their code can't change; J-7's `list-keys` shows it. The hub's owner account (`potprev.testnet`) can still pause new
+activity (closing a Pot and the refunds always work), tune limits within ranges fixed in the code, and choose whose
+costs the hub covers; it can't move money or change code ([limitations](docs/limitations.md)).
 
 ## Costs and sustainability
 
