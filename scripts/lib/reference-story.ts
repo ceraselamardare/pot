@@ -1,4 +1,4 @@
-// The reference story (LAUNCH.md "Final testnet deploy, before the lock"; docs/judging-guide.md J-7 / J-10): Pot's whole
+// The reference story (LAUNCH.md "The final testnet deploy"; docs/judging-guide.md J-7 / J-10): Pot's whole
 // story in ONE well-named Pot under the current rules, against a locally running `next start`, then docs/proofs.json
 // from that one run. Run it only after the final hub redeploy, with the human's OK (it signs and relays real testnet
 // transactions):

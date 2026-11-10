@@ -133,7 +133,13 @@ Playwright runs), mostly DAO floats (0.05 each, which stay in the DAOs) plus acc
 
 ## Keys and locks
 
-- Token: **locked** (no key). Hub: key kept (the lock is Nov 12, runbook §3.10). DAOs: keyless from birth.
+- Token: **locked** (no key). DAOs: keyless from birth.
+- **Hub: locked 2026-11-10** (D-13): `scripts/with-testnet-lock.sh scripts/run deploy lock-hub` checked that the chain runs the local
+  build (`fa7af2fb…`) and deleted its only key `ed25519:2WAUkD3T61nkQZMEnTuawsVr2X5Y4eZsXfBx6ZiMsNpY`, tx
+  `AcwkiR93ouUFTip77ywpZGv88zMbH43U7FDYVJJpT1kT` (one DeleteKey). After it: `scripts/run deploy status` ✓, `scripts/readme-cli-check.sh`
+  PASS (it now requires the empty key list), 19/19 live proofs, and `scripts/run e2e-chain` passed on the locked hub (16 txs, Pot
+  `e2e-szg5n.pots.potprev.testnet`). `redeploy-hub` / `upgrade-hub` can no longer work; a fix means `pots-v2` (plan/accounts-and-deploy.md
+  §3.11). The owner `potprev.testnet` keeps `set_config` (pause, bounded limits and float, relayer list). Top-ups are plain transfers.
 - Reference personas keep `DEMO_PERSONA_KEY` on preview (rev4 step 9 deletes it on prod, C-13). The API refuses demo intents on the
   reference Pot first (`demo_forbidden`, live-tested).
 - Hot keys only in `apps/web/.keys/preview.env` and `apps/web/.env.local` (both gitignored, 0600). Custody keys only in the near-cli-rs

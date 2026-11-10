@@ -1275,7 +1275,7 @@
   "demo.balances.near": "NEAR (fees and storage)",
   "demo.note.no_keys": "The Pot's account has no access keys. Nobody can sign for it, not even us. It can only do what its members and the Hub's seat approve.",
   "demo.note.status_lies": "On NEAR a transaction can report success while a step inside it failed. Pot's relayer reads every receipt, here the last one: \"150000000\" used means the money was added.",
-  "demo.note.limits_in_hub": "Sputnik itself enforces no limit: the Hub's seat could approve any transfer. The limits live in the Hub's code, which only votes on requests it filed a moment earlier. The Hub's own key is deleted at the planned lock, after which nobody can change that code. Until then, the README's Limitations say so.",
+  "demo.note.limits_in_hub": "Sputnik itself enforces no limit: the Hub's seat could approve any transfer. The limits live in the Hub's code, which only votes on requests it filed a moment earlier. The Hub has no keys (it was locked), so nobody can change that code.",
   "demo.note.exact_kind": "A vote carries a copy of the exact request. The DAO refuses it if the copy differs, so nobody approves something other than what they saw.",
   "demo.note.payout_separate": "Approving doesn't prove the money arrived: the payout is a separate receipt. Pot checks it, and sync records a failure if there is one.",
   "demo.note.sync": "Anyone may call sync. Our relayer does it after every vote, so the Hub's records always match the Pot.",

@@ -14,7 +14,7 @@ It is **testnet software**: test dollars, test NEAR, and a hub contract that is 
 |---|---|---|
 | **Pot members (a majority)** | Approve any spend that goes to a vote, change the rules, close the Pot | In new Pots (policy v3), members can only vote on proposals the hub files. They cannot file raw DAO proposals (transfers, policy changes, new members, code calls). Every money move therefore appears in the app, where everyone can see it and vote on it. |
 | **One member** | Spend within the rules on their own: instant spends up to the cap and the member budget. With one OK from someone else, a bigger spend up to the one-OK ceiling. | The hub checks every rule on chain. An instant or one-OK spend needs the requester to have added at least $1. The person giving the OK must be someone else who joined before the request and has also added at least $1, and must not be the one receiving the money. Each member's one-OK spending has a lifetime cap. |
-| **The Pot Hub (`pots.<root>`)** | Holds the 1-of-1 "rulebot" seat in every Pot, so it files and auto-approves the spends the rules allow | Its code is public and its decisions are tested (unit, property, sandbox tests). **Testnet stage:** the hub still has an owner key and can be redeployed, and Pots accept code updates from it. This is deliberate while we iterate; the plan is to lock the hub (delete its keys) before any real money. |
+| **The Pot Hub (`pots.<root>`)** | Holds the 1-of-1 "rulebot" seat in every Pot, so it files and auto-approves the spends the rules allow | Its code is public and its decisions are tested (unit, property, sandbox tests). **Locked:** the hub has no access keys, so nobody can redeploy it or make it call anything its code doesn't, and its code never updates a Pot's code. Its owner account can only pause new activity (a close always works), tune limits within coded ranges and choose whom it sponsors. |
 | **Our relayer (server)** | Pays gas for the actions people sign | It is not trusted with money. It can only forward one allowlisted function call per signed delegate, to the hub, the token or a Pot. Deposits and gas are exact. Arguments are checked key by key. It can't make up an action, because people sign every action in their own browser. |
 | **The web app** | Shows balances and builds the actions people sign | A Content-Security-Policy with no `eval` (inline scripts are allowed, which Next.js needs) and a short `connect-src` allowlist, so an injected script can't send a signed action to anyone else's relayer. The Approve screen shows who gets the money before you vote. Public pages say they were made by a user, not by Pot, and have a Report link. |
 | **Token (test USDC)** | — | No keys and no mint method. The hub accepts money only from this token. |
@@ -57,9 +57,10 @@ It is **testnet software**: test dollars, test NEAR, and a hub contract that is 
 ## Known limitations (open)
 
 - **Testnet stage (by design):**
-  - The hub's owner key can redeploy the hub, and Pots accept the hub's code updates. Before mainnet: lock the hub,
-    turn off DAO auto-update, keep custody keys off developer machines, and give each environment its own
-    low-balance relayer. (GOV-1, GOV-5, GOV-6, GOV-8)
+  - The testnet hub is locked (no access keys), so nobody can redeploy it. The other side of that: a hub bug can't be
+    patched in place, only replaced by a new hub for new Pots. Before mainnet: turn off DAO auto-update as well,
+    keep custody keys off developer machines, and give each environment its own low-balance relayer. (GOV-1, GOV-5,
+    GOV-6, GOV-8)
   - **Older Pots (policy v1/v2)** keep their old policy: there, members can still file raw DAO proposals.
 - **Invites are trust.** An invite link is a bearer pass that expires after 7 days and 10 joins by default, and a
   Pot holds at most 40 members.

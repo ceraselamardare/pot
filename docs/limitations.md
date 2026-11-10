@@ -1,8 +1,11 @@
 # Limitations
 
-- **Testnet only.** Test dollars, test NEAR, contracts under `potprev.testnet`, the app at https://usepot.xyz. The hub
-  keeps its key while we iterate on testnet and is locked before mainnet ([judging guide](judging-guide.md), J-7); until then, whoever holds it could
-  approve transfers through the rulebot seat or push DAO code. The token and every Pot are already keyless. See [SECURITY.md](../SECURITY.md).
+- **Testnet only.** Test dollars, test NEAR, contracts under `potprev.testnet`, the app at https://usepot.xyz. The hub,
+  the token and every Pot have no access keys ([judging guide](judging-guide.md), J-7), so nobody can change their code
+  or sign for them. The flip side: a bug in the hub can't be patched in place. A fix would be a new hub (`pots-v2`) for
+  new Pots, while existing Pots keep the rules of this one. The hub's owner account (`potprev.testnet`) can still
+  pause new activity (closing and refunds always work), tune limits within ranges fixed in the code, and choose whose
+  costs the hub sponsors. It can't move money. See [SECURITY.md](../SECURITY.md).
 - **NEAR Auth origin.** The shared testnet NEAR Auth client only accepts `http://localhost:3000`, so Google sign-in
   works only on a local run. A hosted build offers "Continue with a NEAR wallet" (NEAR Connect).
 - **Trezu is mainnet-only**, so testnet Pots can't be opened there. On mainnet, Trezu's approval count would be wrong

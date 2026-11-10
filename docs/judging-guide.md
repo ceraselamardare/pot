@@ -111,12 +111,11 @@ ended with the close, so it reads as a finished Pot.
   `Ea8tHXFSQVszVwGASyzAfLq65DjcRDhkfab4FcPaRpgD`) and "Account is locked (no access keys)".
 - `get_factory_info`: `factory_id` is the hub, `pots.potprev.testnet`.
 - `list-keys` on the token and on the Pot: an empty table. Nobody can sign for them.
-- `list-keys` on the hub: **one full-access key today.** It stays while Pot is on testnet so we can keep improving
-  the hub, and it is deleted before mainnet, after which this table is empty too. Until then, whoever holds it could
-  approve transfers through the rulebot seat (see [limitations](limitations.md)).
+- `list-keys` on the hub: an empty table too. The hub is locked, so nobody can change its code or sign as it; the
+  code hash below is final (see [limitations](limitations.md)).
 - `contract_source_metadata` on the hub (NEP-330): `version` `"1.3.0"` and `link`
   `https://github.com/ceraselamardare/pot`.
-- `view-account-summary` on the hub: the code's SHA-256 is
+- `view-account-summary` on the hub: "Account is locked (no access keys)", and the code's SHA-256 is
   `fa7af2fb7f612acd8d114a791aa9c670cad5e3baeb756f78937aa8df71d5d984`. `contracts/scripts/build.sh` on this repo
   builds the same bytes (arm64 macOS or Linux, the pinned toolchain): the deployed hub is this source.
 

@@ -1,222 +1,91 @@
 # Pot: launch checklist (NEAR HACKATHON, Nov 1-14, 2026)
 
-> Written 2026-10-27, after a scan of everything in the folder. Owners: **[You]** = Cerasela (anything that needs an account, money, a login, a phone or a judgment call), **[Claude]** = Claude Code sessions, **[Both]** = you decide, Claude executes.
+> Owners: **[You]** = Cerasela (anything that needs an account, money, a login, a phone or a judgment call), **[Claude]** =
+> Claude Code sessions. Agents never push, make the repo public, post, sign or submit without your explicit OK.
 >
-> **Decisions this assumes:**
-> - **Testnet only**; no mainnet contracts.
-> - **Vercel Hobby.**
-> - **Custom domain:** https://usepot.xyz (Vercel, production on every push to `main`).
-> - **Repo:** `github.com/ceraselamardare/pot` (branch `main`; created Nov 1). Commits only when asked, and always confirm before a push.
-> - **No wallet-less real accounts** (Rev 9): sign-in is NEAR wallet or Google (NEAR Auth) only. The simulated `/demo` tour stays.
+> **Key dates (UTC):** submissions close **Nov 14 23:59** (the API answers 403 after that); we submit **Nov 13 before
+> 18:00**. Judging runs Nov 16-18. Keep the app up and funded until **Nov 25** (Q-012: "ideally 2026-11-25").
 >
-> **Key dates (UTC):**
-> - Submissions open Nov 1 00:00 and close Nov 14 23:59. The API returns 403 outside that window.
-> - We submit **Nov 13 before 18:00**.
-> - Judging runs Nov 16-18. Keep everything up and funded until **Nov 25**: the rules ask for Nov 18 at least and "ideally 2026-11-25" (Q-012).
->
-> **Rules update of 2026-10-29** (`kb/hackathon-rules.md`, top section):
-> - Code written since the Oct 19 announcement counts (Q-001), so all our work is in-window.
-> - Testnet-only is eligible in every track (Q-010).
-> - A LICENSE file is required (Q-014).
-> - Claude Code and Codex screen for reproducibility (Q-017).
+> **Rules last re-checked 2026-11-10** (`kb/hackathon-rules.md`, snapshot `kb/sources/HACKATHON-2026-11-10.md`): no rule,
+> date or field changed since Oct 29. New: the X post must tag `@NEARProtocol` and `#NEARHackathon`, and a saved
+> submission is corrected at https://nearhackathon.com/request-changes, never by submitting again.
 
-## Where things stand (updated 2026-11-09)
+## Where things stand (2026-11-10: the final testnet deploy is done)
 
 | Area | State | Where |
 |---|---|---|
-| Contracts | Pot Hub 1.3.0 + test USDC, sandbox tests on both Sputnik builds. Deployed on testnet under `potprev.testnet` and rebuilt byte for byte from `main` (`contracts/scripts/build.sh`). Token locked; **hub key still held** (lock decision below) | `contracts/`, `notes/contracts.md`, `notes/deploy.md` |
-| App (UI + API + relayer) | Live at https://usepot.xyz on testnet; every flow passes the unit, mock e2e, integrations and testnet suites | `apps/web/`, `docs/testing.md` |
-| Marketing site | Landing, use-case pages, the trip cost calculator, search and AI-answer basics | `apps/web/app/(marketing)/` |
-| Live proofs | The reference story ran in `reference-trip-2gzw.pots.potprev.testnet`; `node scripts/verify-proofs.mjs` checks every transaction | `docs/proofs.json`, `docs/judging-guide.md` J-10 |
-| Judge README | Written for people and AI judges, with the judging guide (J-1 to J-10) and `scripts/judge-check.sh` | `README.md`, `docs/`, `AGENTS.md` |
+| Contracts | Pot Hub 1.3.0 + test USDC on testnet under `potprev.testnet`. `main` rebuilds both byte for byte (`contracts/scripts/build.sh`: hub `fa7af2fb…`, token `8253d223…`). **Hub, token and every Pot are keyless (locked).** | `contracts/`, `notes/deploy.md` |
+| App (UI + API + relayer) | Live at https://usepot.xyz on testnet (`/api/health` shows the deployed commit) | `apps/web/`, `docs/testing.md` |
+| Live proofs | The reference story in `reference-trip-2gzw.pots.potprev.testnet`; `node scripts/verify-proofs.mjs` checks every transaction | `docs/proofs.json`, `docs/judging-guide.md` J-10 |
+| Judge path | README, judging guide J-1 to J-10, `AGENTS.md`, `scripts/judge-check.sh` | `README.md`, `docs/` |
 | Demo video | 82 s, v3 (copy matches the app, Testnet badge, usepot.xyz on the end card) | `marketing/video/out/final/`, `notes/video.md` |
-| CI | `.github/workflows/ci.yml`; runs on push once the repo is public | — |
+| Funding (Nov 10) | Hub 5.5 NEAR free (≈ 75 sponsored Pots), relayer 7.1 NEAR, treasury $976k test, holding account 32.4 NEAR | `scripts/run deploy status` |
 | Repo visibility | **Private**: must be public before submitting (Q-014) | GitHub settings |
 
----|---|---|
-| Contracts | Pot Hub + test USDC, 120 sandbox tests, both Sputnik builds. Deployed on testnet under `potprev.testnet`; token locked, **hub key still held** | `contracts/`, `notes/contracts.md`, `notes/deploy.md` |
-| App (UI + API + relayer) | Every MVP and Phase-2 flow works on testnet. 770 unit, 164 mock e2e and the testnet e2e suites all pass | `apps/web/`, `notes/qa-report.md` |
-| Landing page `/` | Built (two rounds, motion) | `notes/landing.md` |
-| Demo video | 82 s, clean + captioned; motion graphics | `marketing/video/out/final/`, `notes/video.md` |
-| Judge README | Written; `<APP_URL>` placeholders; CLI steps verified on testnet | `README.md` |
-| CI | Workflow written, **never run** (the repo exists; Actions not yet enabled) | `.github/workflows/ci.yml` |
-| Hosting | **Never deployed** (Vercel/Neon untested) | — |
-| Real devices / real logins | **Never tested** | `notes/near-auth-manual-test.md` |
+## The final testnet deploy (done)
 
----
+- **Hub 1.3.0 with its build info fixed**, 2026-11-09: tx `GpsmmQ6kqSCEdjYd6k75CxUU42LJKJX1i7FgHAV9oEAK` (one DeployContract, no
+  migrate). Code hash `HrmfMaz3CPm5U7uZrBgffngTmHdNPKpmMwX4jt1RDw8w`; NEP-330 says 1.3.0 and `github.com/ceraselamardare/pot`.
+- **The reference story**, 2026-11-09: one Pot from create to close on the current hub; its transactions are J-10 and the demo's
+  "real equivalent on testnet" links.
+- **The lock (D-13)**, 2026-11-10: `scripts/with-testnet-lock.sh scripts/run deploy lock-hub` deleted the hub's only key
+  (`ed25519:2WAUkD3T…`) in tx `AcwkiR93ouUFTip77ywpZGv88zMbH43U7FDYVJJpT1kT`, after checking that the chain runs exactly the local build. `list-keys` on the hub is
+  empty, and `scripts/readme-cli-check.sh` now requires it.
+  - Nobody can redeploy the hub any more. A bug fix would be a new hub (`pots-v2`, `plan/accounts-and-deploy.md` §3.11) for new
+    Pots. The owner `potprev.testnet` can still `set_config`: pause new activity (a close always works), tune limits within the
+    coded ranges, change the relayer list. Top-ups are plain transfers and need no key.
+- **Checks before and after the lock:** `scripts/judge-check.sh --e2e` (everything keyless, the mocked UI suite and the contract
+  tests) before; `scripts/run e2e-chain` against a local `next start` (the whole MVP story, 16 signed txs from create to close, on the locked hub: Pot `e2e-szg5n.pots.potprev.testnet`, refunds checked on chain),
+  `scripts/readme-cli-check.sh`, `node scripts/verify-proofs.mjs` and `scripts/run deploy status` after.
+- **Secret scan** of the full history, 2026-11-09 (gitleaks v8.30.1): only false positives. Re-run it if secrets-adjacent files
+  change before the repo goes public: `docker run --rm -v "$PWD":/repo:ro ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact`.
 
-## Day 1 (Sun Nov 1): go live
+## Left to do, in order
 
-Goal by end of day: the app runs at `https://<project>.vercel.app` on testnet, `/demo` works for a stranger, and CI is green.
+1. **[You] Make the repo public** (Settings → General → Change visibility) and open it logged out. Until then the README's
+   source link and the hub's on-chain source link (NEP-330) return 404. Then **[You]** check that CI (GitHub Actions) is green
+   on `main`.
+2. **[You] Vercel and search, optional:** set `NEXT_PUBLIC_APP_URL=https://usepot.xyz` in Production; redirect `www`; add the
+   sitemap in Google Search Console and Bing; keep the Vercel AI-bots firewall rule off (judges' agents must reach the site).
+3. **[You] The video's s08 line** ("Friends join with Google… No wallet. No seed phrase.") describes mainnet. Keep it and say in
+   the post that the testnet app signs in with a NEAR wallet, or re-record that line.
+4. **[You] The X post** (`plan/submission-plan.md` §3; Claude can draft it): say it was built at NEAR HACKATHON, tag
+   `@NEARProtocol` and `#NEARHackathon` (optionally `@NearLegion`, `@NearBuilders`), attach the captioned video, and link
+   https://usepot.xyz and the repo. Lead with the problem, show one complete moment, say what NEAR does in it, end with a real
+   question. Copy the public post URL.
+5. **[You] The `idea` text** (20-2,000 chars), written by you; Claude may only draft a starting point.
+6. **[Claude] The submission JSON:** exactly 11 fields, ≤ 12,000 bytes, `size: "1"` (Cerasela Mardare, solo builder),
+   `tracks: ["social","realworld"]`, a `requestId` UUID generated once, **never** a `website` field (a spam trap).
+7. **[You] Check every field:** `projectName` and `email` are yours (an email carries at most 2 submissions); `projectUrl` is the
+   public repo (each repo is submitted once); `demoUrl` is the X post; `nearAddress` is a **mainnet** account you created. Read
+   the consent text and say "submit".
+8. **[Claude] `POST https://nearhackathon.com/api/applications`.** `201`: done. `400`: fix and resend with the same `requestId`.
+   `503`: wait and resend. `403` or `409`: stop and tell you. A mistake in a saved submission goes through
+   https://nearhackathon.com/request-changes (you send it), never a second submission.
 
-### 1. Repo
-- [x] **[You]** GitHub repo created: `ceraselamardare/pot` ("init" commit; scanned clean of secrets). Make it **public** when you're ready; on a private Hobby repo only the owner's commits deploy.
-- [ ] **[Claude]** Next commit (when you ask). Before committing:
-  - check `.gitignore` covers `.env*`, `.keys/`, `node_modules`, `.next*`, `target/`;
-  - run a secret scan over the staged files;
-  - decide on `spikes/` (recommended: **exclude** it; it's throwaway pre-event code);
-  - add a `LICENSE` file, which is **required** (Q-014; MIT is fine; you choose).
-- [ ] **[You]** Push. The hackathon's agent rule is that pushes need your explicit OK, so Claude asks before every push.
+## Nov 14-25: judging watch
 
-### 2. Vercel + database
-- [ ] **[You]** Vercel → New Project → import the repo.
-  - **Root Directory: `apps/web`**, framework Next.js, region **iad1**.
-  - Enable Corepack so Vercel uses pnpm 11 (`ENABLE_EXPERIMENTAL_COREPACK=1`, plus the `packageManager` field in the root `package.json`; Claude checks it).
-- [ ] **[You]** Vercel → Storage / Marketplace → **Neon Postgres** (free) → connect to the project. This sets `DATABASE_URL` / `DATABASE_URL_UNPOOLED`.
-- [ ] **[Claude]** Run the Drizzle migrations against Neon (`apps/web/db/migrations`).
-- [ ] **[Both]** Add the env vars in Vercel. Secrets go in as **Sensitive**, from `apps/web/.keys/preview.env`; Claude prepares the list, and you paste the values.
-  - **Public:** `NEXT_PUBLIC_NETWORK=testnet`, `NEXT_PUBLIC_APP_URL=https://<project>.vercel.app`, `NEXT_PUBLIC_HUB_ID=pots.potprev.testnet`, `NEXT_PUBLIC_USDC_ID=usdc.potprev.testnet`, `NEXT_PUBLIC_RPC_URLS` (FastNEAR, dRPC; **never** `rpc.testnet.near.org`), `NEXT_PUBLIC_TX_API`, `NEXT_PUBLIC_EXPLORER`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Never `NEXT_PUBLIC_E2E_MOCK_WALLET` (the build refuses it on Vercel).
-  - **Server:** `RELAYER_ACCOUNT_ID`, `TREASURY_ACCOUNT_ID`, `MPC_SIGN_DEPOSIT_YOCTO`, `RELAYER_*_NEAR`, `QUOTA_*`, `VAPID_SUBJECT`.
-  - **Sensitive:** `RELAYER_KEYS`, `TREASURY_KEYS`, `APP_HMAC_SECRET` (a **new** random value), `VAPID_PRIVATE_KEY`, `CRON_SECRET`.
-  - **Removed in Rev 9 (delete them if they were added):** the live demo and the test-account sign-in are gone, so Vercel needs none of `FLAG_DEMO`, `NEXT_PUBLIC_FLAG_DEMO`, `FLAG_DEMO_LIVE`, `FLAG_DEMO_PUSH`, `FLAG_DEV_SESSION`, `NEXT_PUBLIC_FLAG_DEV_SESSION`, `DEMO_REFERENCE_POT`, `DEMO_POOL_TARGET`, `QUOTA_GLOBAL_DEMO_YOCTO` or the `DEMO_PERSONA_KEY` secret.
-  - **Separation:** use separate relayer keys for Preview and Production. Claude adds keys to `users.potprev.testnet`.
-- [ ] **[Claude]** Confirm that the cron in `apps/web/vercel.json` (daily reconcile) is accepted on Hobby.
-- [ ] **[You]** Deploy, and paste the URL in chat.
+- **[Claude]** Twice a day until Nov 25: `/api/health`; `scripts/run deploy status` (balances of hub, relayer, treasury); the
+  daily cron ran; top up testnet NEAR from `pot-funds-65k8.testnet` if needed (plain transfers, so the locked hub can be topped up).
+- **[You]** Don't redeploy Production during judging unless something is broken. Keep the repo public at least through judging
+  (Q-014).
 
-### 3. Smoke test the live URL
-- [ ] **[Claude]** Run against the deployed URL:
-  - `GET /api/health`;
-  - the README judge steps J-1…J-7 (`scripts/readme-cli-check.sh`, `scripts/check-readme-steps.ts`).
-
-  (The signing testnet Playwright suites run on a local build only: they sign in through the e2e mock wallet, which the
-  build refuses on Vercel.)
-
-  Run each through `scripts/with-testnet-lock.sh`.
-- [ ] **[Claude]** Check the things never verified on Vercel:
-  - relay latency (two-phase spend: first answer ≤ 4 s, final ≤ 10 s);
-  - no function timeouts on `/api/relay`;
-  - FastNEAR 429s from Vercel's shared IPs (failover to dRPC should absorb them; buy a FastNEAR key, H-16, only if it doesn't);
-  - the security headers;
-  - the PWA manifest and service worker served correctly.
-- [ ] **[You]** Open the URL logged out on your phone and do the demo once.
-- [ ] **[Claude]** Replace `<APP_URL>` in `README.md` (and in `scripts/check-readme-steps.ts` if needed), then re-run the README drift check.
-
-### 4. CI
-- [ ] **[You]** Allow GitHub Actions on the repo.
-- [ ] **[Claude]** Push-triggered CI must go green. It has never run, so expect fixes to Ubuntu specifics: the Postgres 17 service, pnpm 11 setup, the cargo-near install, the sandbox download on Linux.
-- [ ] **[Claude]** Add the testnet e2e job's protection-bypass step, or turn off Vercel Deployment Protection for Production, which judges need anyway.
-
-### 5. Hackathon admin
-- [ ] **[Claude]** Re-fetch `HACKATHON.md` and diff it against `kb/sources/HACKATHON-2026-10-29.md` (H-13). Repeat on Nov 7 and Nov 13.
-- [x] ~~Ask whether pre-Nov-1 code is OK~~ Answered by the rules update: yes (Q-001).
-- [ ] **[You]** Optional: ask on Discord about the two points the rules still don't cover, KYC/tax at payout and whether one project can place in two tracks.
-
----
-
-## Days 2-6 (Nov 2-6): validate on real devices and real people
-
-- [ ] **[You] NEAR Auth.** Request a **dedicated testnet client** for `https://<project>.vercel.app` (and `http://localhost:3000`), with app name "Pot" and the logo `brand/web/pot-mark-256.png`. Channel: GitHub `Peersyst/fast-auth` or NEAR Discord. Without it, Google/email login works only on localhost, and the hosted app offers `/demo` + NEAR Connect wallets. **Decide on Nov 8 (G4).**
-- [ ] **[You] Real Google login on localhost**, following the checklist in `notes/near-auth-manual-test.md` (about 20 min).
-- [ ] **[You] Phones**, on the live URL. **[Claude]** fixes whatever breaks.
-  - iPhone (Safari): open an invite, `/demo`, Add to Home Screen, open the installed app, turn on notifications, get a push ("needs your approval" from a second phone).
-  - Android (Chrome): the install prompt, then the same push test.
-  - Open an invite link inside Telegram or WhatsApp and check the "Open in Safari" guidance.
-- [ ] **[You] Wallet.** Sign in with Meteor or Intear on testnet ("I have a NEAR wallet"), and do one gasless action.
-- [ ] **[You] Hallway test (round A).** 3-5 non-crypto friends on the live URL, following `plan/hallway-test.md` (join and pay in under 2 min). **[Claude]** fixes the top 5 findings.
-- [ ] **[You] Design calls.** Go through the 44 defaulted questions in `notes/frontend.md`, and the landing decisions 1-7 in `notes/landing.md`. Claude applies your answers.
-- [ ] **[Claude] Abuse check (E-12).** A scripted run against Preview: faucet limits, wallet sign-in limits, create caps, a relay of a non-hub vote.
-- [ ] **[Claude] Testnet funding.** Keep `pot-funds-65k8.testnet` ≥ 30 NEAR (faucet top-ups, verified on chain), hub ≥ 5 NEAR free, relayer ≥ 3 NEAR, treasury ≥ $50k test dollars. Log it in `notes/deploy.md`.
-
-## Days 7-10 (Nov 7-10): freeze features, decide the extras
-
-- [ ] **[Both] Nov 7: MVP freeze.** Full regression (`notes/qa-report.md` matrix) against the live URL.
-- [ ] **[Both] Optional: Tidepool**, the community testnet 1Click. It enables a real deposit from Base, Arbitrum or Ethereum Sepolia, with the simulator kept as fallback. Two blockers first:
-  - it pays out **its own** USDC token, so we either move testnet Pots to that token or convert 1:1;
-  - it's one community operator with no SLA.
-
-  Go/no-go **Nov 8**, otherwise ship the simulator. Notes are in the chat of 2026-10-27.
-- [ ] **[You] Recommended: a mainnet 1Click proof clip** (about $5 USDC Base → your own NEAR account, from a separate dev account; no Pot contracts on mainnet). This is the organizers' own advice for Intents (Q-007, Q-010), and the "realworld" track hints NEAR INTENTS. A partner key from partners.near-intents.org is optional; without one the fee is 0.2% (Q-006). Decide **Nov 9**.
-- [ ] **[You] Video.**
-  - Decide the ElevenLabs licence: upgrade to Starter, or credit them.
-  - Optionally record a human voice-over.
-  - **[Claude]** re-renders the end card with the repo URL (`repoUrl`) once the repo is public, plus any copy changes from the design calls.
-- [ ] **[Both] Nov 10: feature freeze.** After this, fixes only.
-
-## Days 11-12 (Nov 11-12): release and lock
-
-- [ ] **[Claude] Final regression** on the live URL: contracts, unit, mock e2e, integrations tier, the live backend suite, `scripts/e2e-chain.ts`, every testnet suite, the README CLI check.
-- [ ] **Final testnet deploy, before the lock: go live from RC-1.** Found by the blind AI-judge run on Nov 6 and held back on purpose: editing `Cargo.toml` changes the compiled wasm, and `main` must keep building the deployed hub until the redeploy.
-  - [x] **[Claude] Prepared on Nov 9 (nothing signed):**
-    - Branch `final-deploy` (`39123cf`): `pot-hub` version 1.3.0 (and `get_config` reads it from `Cargo.toml`), the repository `https://github.com/ceraselamardare/pot`; the locked test token keeps its old link so its source still builds its deployed code (`8253d223…`, unchanged). `contracts/scripts/build.sh` and the test harness build the hub with the home folder remapped: 0 local paths in the wasm.
-    - The hub build: sha256 `fa7af2fb7f612acd8d114a791aa9c670cad5e3baeb756f78937aa8df71d5d984`, which the chain shows as code hash `HrmfMaz3CPm5U7uZrBgffngTmHdNPKpmMwX4jt1RDw8w` (today's hub: `9CQNEp6MEpNocr4wMCPRhYgYHKuEVRP6NPBPFbFSPXhB`). Contract tests on it: all pass. A copy for the account that holds the hub key: `/Users/Shared/pot-hub-1.3.0-fa7af2fb.wasm`.
-    - Branch `rc-1` = `main` + `final-deploy` (local, not pushed).
-    - The reference story (`scripts/run e2e-chain --reference`, on `main` since `9035ab6`), the secret scan, and the full regression of the app on `main`.
-  - **Go-live runbook (in this order):**
-    1. **[You]** Push `main` (the app; it doesn't touch the hub). Wait for Vercel; **[Claude]** checks `/api/health`.
-    2. **[You]** On the account that holds the hub key, check the file and deploy it, as ONE DeployContract with no init call (1.3.0 → 1.3.0: the state is unchanged, so no `migrate`):
-       ```bash
-       shasum -a 256 /Users/Shared/pot-hub-1.3.0-fa7af2fb.wasm   # must print fa7af2fb7f612acd…d5d984
-       npx -y near-cli-rs@0.30.1 contract deploy pots.potprev.testnet use-file /Users/Shared/pot-hub-1.3.0-fa7af2fb.wasm without-init-call network-config testnet sign-with-legacy-keychain send
-       ```
-       Rollback: the same command with `/Users/Shared/pot-hub-1.3.0-rollback-79c94df5.wasm` (today's hub, sha256 `79c94df5…`, on chain `9CQNEp6…`).
-    - **Done 2026-11-09:** steps 1-3. `main` pushed (`d756328`); the hub redeployed with the user's OK (tx `GpsmmQ6kqSCEdjYd6k75CxUU42LJKJX1i7FgHAV9oEAK`, 4.4 Tgas); code hash `HrmfMaz3…` ✓, `contract_source_metadata` 1.3.0 + `github.com/ceraselamardare/pot` ✓, `get_config` 1.3.0 ✓, `lisbon-trip` reads as before ✓, 17/17 live proofs ✓, `scripts/readme-cli-check.sh` PASS ✓. `rc-1` merged into `main`; a rebuild from `main` gives `fa7af2fb…` again (hub) and `8253d223…` (token).
-    - **Done 2026-11-09:** steps 4-6. `main` pushed with the hub fix (`e6aac03`). The reference story ran with the user's OK in 331 s: Pot `reference-trip-2gzw.pots.potprev.testnet` (policy v3; ended closed with every refund paid), 19/19 proofs hold, ≈ 0.16 NEAR spent. `docs/proofs.json`, the J-10 table, J-7 (now also the hub's NEP-330 info and its code hash = `build.sh`'s), `scripts/readme-cli-check.sh`, the demo recap's CLI block and `llms.txt` point at it. `scripts/judge-check.sh --quick` passes.
-    - ⚠️ The hub's full-access key (`pots.potprev.testnet`) is in this account's legacy keychain (`~/.near-credentials/testnet/`), which D-13 says must never hold it. Delete or lock it as part of the lock decision below.
-    3. **[Claude]** Read-only checks: the hub's code hash is `HrmfMaz3…`; `contract_source_metadata` shows version 1.3.0 and the real repository; `get_config.version` is 1.3.0; an old Pot still reads (`get_pot`), and `node scripts/verify-proofs.mjs` still holds.
-    4. **[Claude]** Fast-forward `main` to `rc-1`; **[You]** push. Source and deployment match again (a judge can rebuild the hub and get `fa7af2fb…`).
-    5. **[You]** Approve the reference story; **[Claude]** runs it (about 0.23 NEAR and $650 of test dollars, $600 of it from the faucet's $1,000-a-day limit): `scripts/with-testnet-lock.sh scripts/run e2e-chain --reference --proofs docs/proofs.json` against a local `next start` with `FLAG_GIFTS=true`. It writes `docs/proofs.json` only if every proof holds on chain.
-    6. **[Claude]** Then: regenerate J-10 (`node scripts/verify-proofs.mjs --markdown`), point J-7 and `scripts/readme-cli-check.sh` at the new Pot (it ends closed: `status: "closed"`, balance 0, `policy_version: 3`), update the reference Pot in `apps/web/lib/marketing/llms.ts`, and run `scripts/judge-check.sh`. Done 2026-11-09: the demo's "real equivalent" links point at the reference Pot (Part 4 links its one OK and its group vote). **[You]** push.
-    7. **[Claude]** A last blind AI-judge run on a fresh clone; fix what it finds.
-    8. **[You]** Check that CI (GitHub Actions) is green on the final `main` once the repo is public.
-- [ ] **[You] Lock the hub** (`pots.potprev.testnet`): delete its full-access key per `plan/accounts-and-deploy.md`.
-  - After the lock nobody can fix the contract; the fallback is a redeploy as `pots-v2`.
-  - **[Claude]** then runs `EXPECT_HUB_LOCKED=1 scripts/readme-cli-check.sh` and updates the README line about keys.
-  - If you'd rather keep the ability to hot-fix during judging, skip the lock and say so in the README limitations.
-- [ ] **[Claude]** Finalize the README:
-  - the URL;
-  - costs and sustainability;
-  - limitations: testnet only (eligible per Q-010); NEAR Auth origin; Trezu mainnet-only; the demo is a simulation; the 1Click simulator on testnet;
-  - **"Built with"**: libraries, templates and AI-assisted code (Q-005: near-sdk, near-contract-standards, the vendored Sputnik wasm, near-api-js, Next.js, shadcn/Base UI, etc.);
-  - a **reproducibility path** an AI judge can run on a clean machine with no secrets or keys (Q-017). Make sure `pnpm i && pnpm test` passes or skips cleanly without Postgres or testnet credentials, and say exactly what Docker or Rust adds;
-  - track hints used: SPUTNIK DAO, NAMED ACCOUNTS, STABLECOINS, NEAR INTENTS, META TRANSACTIONS;
-  - 4-6 screenshots.
-- [x] **[Claude]** Make sure `CLAUDE.md` and the notes contain no secrets, and run a secret scan over the full git history (`gitleaks`). Done 2026-11-09 on every commit: gitleaks v8.30.1 found only false positives (the public testnet NEAR Auth client id, mock-world fixtures, test constants, an `sk-test` placeholder); a NEAR-specific search found no private keys (every long `ed25519:` value is a `"signature"`), no database passwords and no PEM keys. Re-run it if secrets-adjacent files change before the repo goes public: `docker run --rm -v "$PWD":/repo:ro ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact`.
-
-## Day 13 (Fri Nov 13): submit
-
-Order matters (`plan/submission-plan.md` §5). Agents never post, make repos public or submit without your OK.
-1. [ ] **[You]** The repo is public and opens logged out.
-2. [ ] **[You]** Post on X with the captioned video. Say "built at NEAR HACKATHON", and include the repo link and the demo link. Copy the public post URL.
-3. [ ] **[You]** Write the `idea` text yourself (20-2,000 chars). It must be human-written; Claude may only draft a starting point.
-4. [ ] **[Claude]** Build the JSON: **exactly 11 fields**, ≤ 12,000 bytes, `size: "1"` (Cerasela Mardare, solo builder), `tracks: ["social","realworld"]`, a `requestId` UUID generated once. **Never** a `website` field (it's a spam trap).
-5. [ ] **[You]** Check every field:
-   - `projectName` and `email` are the team's own (an email can carry at most 2 submissions);
-   - `projectUrl` is unique, because each repo can be submitted only once;
-   - `nearAddress` is a **mainnet** address;
-   - `projectUrl` is the repo, and `demoUrl` is the X post.
-
-   Then read the consent text, and say "submit".
-6. [ ] **[Claude]** `POST https://nearhackathon.com/api/applications`.
-   - `201` means done.
-   - `400`: fix the fields and resend with the same `requestId`.
-   - `503`: wait and resend.
-   - `403` or `409` (409 means the repo was already submitted, or the email already has 2 submissions): stop and tell you; never change the link or email to get around it.
-
-## Nov 14-25: buffer and judging watch
-
-- [ ] **[Claude]** Twice a day until **Nov 25** (Q-012: "keep it up to 2026-11-18, ideally 2026-11-25"):
-  - `/api/health`;
-  - balances (hub, relayer, treasury);
-  - the cron runs (Hobby crons are daily);
-  - top up testnet NEAR if needed.
-- [ ] **[You]** Don't redeploy Production during judging unless something is broken. Keep the repo public at least through judging (Q-014).
-
----
-
-## Known gaps to accept or fix
+## Known gaps to accept
 - No on-chain test of an instant spend that is approved and then refused (unit tests only).
 - Visual snapshots, the PWA installability check, performance budgets and tap-target sizes aren't automated.
 - `pnpm audit`: one high finding in a build-time-only shadcn CLI dependency, with no patch available.
 - The report-only CSP for scripts and connections isn't emitted.
 - `withdraw_request` is not built (Phase 3); requests expire after 7 days.
 - No cash-out after close: money stays in the member's Pot account. The copy says so.
+- Google sign-in works on a local run only until NEAR Auth allows https://usepot.xyz (requested 2026-11-09); then set
+  `NEXT_PUBLIC_FLAG_NEAR_AUTH` and `FLAG_NEAR_AUTH` to `true` in `apps/web/.env.production`.
 
 ## Accounts and files cheat sheet
 | What | Where |
 |---|---|
 | Testnet funding account | `pot-funds-65k8.testnet` (key in `~/.near-credentials/testnet/`) |
-| Preview root / hub / token / relayer / treasury | `potprev.testnet`, `pots.`, `usdc.`, `users.`, `treasury.` (+ `reserve.`) |
-| Secrets for Vercel | `apps/web/.keys/preview.env` (gitignored, never commit) |
+| Root (hub owner) / hub / token / relayer / treasury / reserve | `potprev.testnet`, `pots.`, `usdc.`, `users.`, `treasury.`, `reserve.` |
+| Secrets for Vercel | `apps/web/.keys/` (gitignored, never commit) |
 | Local env | `apps/web/.env.local` (gitignored) |
 | Testnet lock for any testnet run | `scripts/with-testnet-lock.sh <cmd>` |
 | Scripts (deploy status, keys, env, e2e) | `scripts/run <name>`, documented in `notes/deploy.md` |

@@ -4,7 +4,6 @@
 # No keys, no signing, read-only RPC (near-cli-rs's default testnet config is FastNEAR's archival RPC).
 #   scripts/readme-cli-check.sh                         # against the preview root potprev.testnet
 #   ROOT=<root>.testnet scripts/readme-cli-check.sh     # another deployment
-#   EXPECT_HUB_LOCKED=1 scripts/readme-cli-check.sh     # after the hub's key is deleted (D-13 lock)
 # Every `near …` line of the guide's J-7 block must appear verbatim below (scripts/check-readme-steps.ts).
 set -uo pipefail
 near() { npx -y near-cli-rs@0.30.1 "$@"; }
@@ -45,13 +44,12 @@ expect_no_keys "list-keys usdc (locked token)" "$out"
 out=$(keys $POT) # near account list-keys $POT network-config testnet now
 expect_no_keys "list-keys reference Pot" "$out"
 out=$(keys $HUB) # near account list-keys $HUB network-config testnet now
-if [ "${EXPECT_HUB_LOCKED:-0}" = "1" ]; then expect_no_keys "list-keys hub (locked)" "$out"
-else echo "info list-keys hub: $(grep -c 'ed25519:' <<<"$out") key(s) (kept while Pot is on testnet, deleted before mainnet; set EXPECT_HUB_LOCKED=1 once it is)"; fi
+expect_no_keys "list-keys hub (locked, D-13)" "$out"
 
 out=$(near contract call-function as-read-only $HUB contract_source_metadata json-args '{}' network-config testnet now 2>&1 | strip)
 expect "hub NEP-330: version 1.3.0, this repository" "$out" '"version": "1.3.0"' '"link": "https://github.com/ceraselamardare/pot"'
 out=$(near account view-account-summary $HUB network-config testnet now 2>&1 | strip)
-expect "hub code = contracts/scripts/build.sh's build" "$out" "fa7af2fb7f612acd8d114a791aa9c670cad5e3baeb756f78937aa8df71d5d984"
+expect "hub code = contracts/scripts/build.sh's build, no keys" "$out" "fa7af2fb7f612acd8d114a791aa9c670cad5e3baeb756f78937aa8df71d5d984" "Account is locked"
 
 [ $fail -eq 0 ] && echo "README CLI twins: PASS" || echo "README CLI twins: FAIL"
 exit $fail

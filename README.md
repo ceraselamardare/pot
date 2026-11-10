@@ -31,8 +31,8 @@ NEAR **testnet** with test dollars; nothing is on mainnet yet.
 - Split-the-bill apps track debts but hold no money, so nobody can actually pay from the group.
 
 Pot keeps the money in a contract the group controls together, with rules everyone can read, so no single person
-holds it. (While Pot is on testnet, our hub contract keeps an upgrade key, so for now you also trust us with it; the
-key is deleted before mainnet. See [Security](#security).)
+holds it. The hub contract that holds each Pot's rule seat is locked as well: it has no access keys, so nobody, us
+included, can change its code. See [Security](#security).
 
 ## What it does
 
@@ -150,8 +150,8 @@ Track hints used: Sputnik DAO, named accounts (`social`); stablecoins, NEAR Inte
 Pot went through an AI-assisted security audit (contracts, relayer, app and key handling), and the fixes were then
 reviewed again independently. The trust model, every fix with the test that proves it, and the open limitations are in
 [SECURITY.md](SECURITY.md). In short: no member can move a Pot's money alone, the server holds no user keys, and our
-relayer only forwards the specific calls the app makes. While Pot is on testnet, the hub keeps an upgrade key; it is
-deleted before mainnet.
+relayer only forwards the specific calls the app makes. The hub, the token and every Pot have no access keys, so
+their code can't change; J-7's `list-keys` shows it.
 
 ## Costs and sustainability
 
@@ -161,7 +161,8 @@ clubs and teams. The measured numbers: [costs](docs/costs.md).
 
 ## Limitations
 
-- **Testnet only**, with test dollars. The hub keeps an upgrade key while we iterate; it is deleted before mainnet.
+- **Testnet only**, with test dollars. The hub is locked, so a bug fix would mean a new hub and new Pots; existing
+  Pots keep running on this one.
 - **Google sign-in works on a local run only** for now (NEAR Auth's shared testnet setup); the live app uses a NEAR
   wallet and shows Google switched off, with a "!" that says why. The site's pages and the demo describe the mainnet product, Google sign-in included; the Testnet badge on
   every page says that on testnet you sign in with a NEAR wallet.

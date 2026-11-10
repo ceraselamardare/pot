@@ -24,7 +24,7 @@ builder**. The older docs split the work into two roles; both are hers:
   - `contracts/`: Pot Hub + test USDC, with sandbox tests.
   - `packages/pot-sdk`.
   - `apps/web`: UI + API + relayer, in the pnpm workspace layout of D-64.
-  - The preview deployment on testnet under `potprev.testnet` (see notes/deploy.md).
+  - The preview deployment on testnet under `potprev.testnet` (see notes/deploy.md). **Final testnet deploy done and the hub locked (2026-11-10, no keys):** the hub can't be redeployed; a fix means a new hub (`pots-v2`). What's left is in LAUNCH.md (repo public, X post, submission).
 - **Per-area build notes, deviations and open items:** `notes/*.md`. Read the relevant one before changing an area.
 - **Every testnet-touching run** (live tests, testnet Playwright, seeding) must go through `scripts/with-testnet-lock.sh <cmd>`.
 - **Testnet funding:** the holding account is `pot-funds-65k8.testnet`. Top it up via the faucet, and verify on chain, because the faucet can report success without creating the account.

@@ -3,6 +3,17 @@
 
 Everything below comes from the live `https://nearhackathon.com/HACKATHON.md` (HTTP 200, `content-type: text/markdown`, fetched 2026-10-21 10:21 UTC), the homepage `https://nearhackathon.com/` and its JS bundle, unless another source is named. HACKATHON.md says: "read it again before submitting, because dates and rules may change." **Re-fetch it on Nov 1 and again on submission day.**
 
+## Update 2026-11-10: re-checked before the final deploy
+Live `HACKATHON.md` fetched 2026-11-10 13:38 UTC, snapshot [sources/HACKATHON-2026-11-10.md](sources/HACKATHON-2026-11-10.md)
+(sha256 `6dd0c1ff…`). **No rule, date, field or limit changed** since Oct 29. Added:
+- **The X post must tag `@NEARProtocol` and `#NEARHackathon`** (optionally `@NearLegion`, `@NearBuilders`), plus guidance: lead
+  with the user problem, show one complete moment, say concretely what NEAR enables, link the demo and the repo, ask a real question.
+- **Request changes** (`https://nearhackathon.com/request-changes`): a saved submission with a mistake is fixed by a request the
+  organizers review by hand, never by submitting again (a second submission of the repo is a 409).
+- Example prompts per track (`github.com/nearai/near-hackathon-prompt-examples`), Q-000 (NEAR AI credits), the builders' Telegram,
+  and more partners (Agent Market, NEAR Builders, Gulf Labs, BRRRAIN, NEAR Business). None of it affects Pot.
+- `GET /api/applications` → `{"count":451}`.
+
 ## Update 2026-10-29: the organizers revised HACKATHON.md
 A snapshot is in [sources/HACKATHON-2026-10-29.md](sources/HACKATHON-2026-10-29.md) (sha256 `9da1c4b4…`). It adds a **Rules** section (Q-001…Q-017). **Where it conflicts with anything below, this update wins.**
 

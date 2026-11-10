@@ -11,6 +11,9 @@
 //                                      (notes/contracts-gifts.md). Refuses on a 1.0.0 hub (that needs upgrade-hub).
 //   scripts/run deploy upgrade-hub     hub 1.0.0 → 1.1.0 (wave 4): DeployContract + `migrate` in ONE tx
 //                                      (notes/contracts-wave4.md); refuses unless the chain runs 1.0.0
+//   scripts/run deploy lock-hub        the D-13 lock: delete every key of pots.<root>, after checking that the chain runs
+//                                      exactly the local build (contracts/scripts/build.sh). Irreversible: a fix after it
+//                                      is a new hub (pots-v2, plan/accounts-and-deploy.md §3.11)
 //   scripts/run deploy fund <account> <NEAR>   top up from the root (e.g. the hub or the relayer)
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
@@ -67,6 +70,17 @@ async function lockToken() {
   if (keys.length && !cliDeleteKeys(IDS.usdc, keys).ok) fail("delete-keys")
   const after = await accessKeys(IDS.usdc)
   console.log(`${IDS.usdc} keys: ${after.length === 0 ? "none (locked)" : after.map((k) => k.public_key).join(", ")}`)
+  if (after.length) process.exitCode = 1
+}
+
+async function lockHub() {
+  const local = base58(Buffer.from(sha(WASM.hub), "hex"))
+  const onChain = (await account(IDS.hub))?.code_hash
+  if (onChain !== local) fail(`${IDS.hub} runs ${onChain}, not the local build ${local}: rebuild (contracts/scripts/build.sh) or redeploy first`)
+  const keys = (await accessKeys(IDS.hub)).map((k) => k.public_key)
+  if (keys.length && !cliDeleteKeys(IDS.hub, keys).ok) fail("delete-keys")
+  const after = await accessKeys(IDS.hub)
+  console.log(`${IDS.hub} keys: ${after.length === 0 ? "none (locked)" : after.map((k) => k.public_key).join(", ")}`)
   if (after.length) process.exitCode = 1
 }
 
@@ -146,6 +160,8 @@ async function status() {
     check(onChain === base58(Buffer.from(local, "hex")), `${id} code sha256 ${local.slice(0, 12)}… = local ${wasm.split("/").pop()}`)
   }
   check((await accessKeys(IDS.usdc)).length === 0, `${IDS.usdc} has no keys (locked)`)
+  const hubKeys = (await accessKeys(IDS.hub)).length
+  console.log(`  ${IDS.hub}: ${hubKeys === 0 ? "no keys (locked, D-13)" : `${hubKeys} key(s), not locked yet (scripts/run deploy lock-hub)`}`)
   const relayerKeys = await accessKeys(IDS.relayer)
   check(relayerKeys.length >= 4, `${IDS.relayer} has ${relayerKeys.length} full-access keys (recovery + pool)`)
   for (const id of [IDS.root, IDS.hub, IDS.usdc, IDS.relayer, IDS.treasury, IDS.reserve]) {
@@ -168,6 +184,9 @@ switch (mode) {
     break
   case "lock-token":
     await lockToken()
+    break
+  case "lock-hub":
+    await lockHub()
     break
   case "hub":
     await hub(false)
