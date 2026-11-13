@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { t } from "@/i18n/t"
 import { OG_IMAGE } from "@/lib/marketing/meta"
 import { appUrl } from "@/lib/marketing/site"
+import { analyticsEnabled, PLAUSIBLE_INIT_SCRIPT, PLAUSIBLE_SCRIPT_SRC } from "@/lib/analytics/plausible"
 import { THEME_SCRIPT } from "@/lib/theme/script"
 import { display, sans } from "./fonts"
 import { Providers } from "./providers"
@@ -56,6 +57,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         {/* eslint-disable-next-line react/no-danger -- the one allowed inline script: no-flash theme (D-67) */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {analyticsEnabled() && (
+          <>
+            {/* Plausible, production only, served from our origin (lib/analytics/plausible.ts) */}
+            <script async src={PLAUSIBLE_SCRIPT_SRC} />
+            {/* eslint-disable-next-line react/no-danger -- Plausible's queue stub + init, static (no user data) */}
+            <script dangerouslySetInnerHTML={{ __html: PLAUSIBLE_INIT_SCRIPT }} />
+          </>
+        )}
       </head>
       <body className="min-h-dvh bg-ground font-sans text-body text-ink tabular-nums antialiased">
         {/* F-25 keyboard path: the first Tab stop skips the bars and banners (WCAG 2.4.1) */}

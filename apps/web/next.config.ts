@@ -1,4 +1,5 @@
 import type { NextConfig } from "next"
+import { PLAUSIBLE_EVENT_PATH, PLAUSIBLE_SCRIPT_SRC, PLAUSIBLE_UPSTREAM_EVENT, PLAUSIBLE_UPSTREAM_SCRIPT } from "./lib/analytics/plausible"
 import { contentSecurityPolicy } from "./lib/security/csp"
 
 // Rev 9: the e2e mock wallet (lib/signing/near-connect/e2e-mock-wallet.ts) signs with a key the test puts in
@@ -32,6 +33,13 @@ const nextConfig: NextConfig = {
       { source: "/p/:slug/r/:id", destination: "/p/:slug?r=:id", permanent: false },
       // the /demo explainer's old step links (plan/design-direction/05 §3.1): /demo?step=4 → /demo/4 (308)
       { source: "/demo", has: [{ type: "query", key: "step", value: "(?<step>[1-6])" }], destination: "/demo/:step", permanent: true },
+    ]
+  },
+  async rewrites() {
+    // Plausible through our own origin, so the CSP stays 'self'-only (lib/analytics/plausible.ts)
+    return [
+      { source: PLAUSIBLE_SCRIPT_SRC, destination: PLAUSIBLE_UPSTREAM_SCRIPT },
+      { source: PLAUSIBLE_EVENT_PATH, destination: PLAUSIBLE_UPSTREAM_EVENT },
     ]
   },
   async headers() {
